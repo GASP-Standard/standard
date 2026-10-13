@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  mcp:
+    name: Standard and MCP server (parser, compiler, fixture execution, Ossie export)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gasp-wiki-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: gasp-wiki-mcp/package-lock.json
+      # The upstream Apache Ossie validator (ossie-validator/) runs under uv.
+      - uses: astral-sh/setup-uv@v5
+      - run: npm ci
+      - run: npm run build
+      - name: Derived files are current
+        run: npm run derive:check
+      - run: npm test

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaspwiki.com/schemas/gasp-adapter-v1.json",
+  "title": "GASP Adapter",
+  "description": "Maps a business's data warehouse to the canonical GASP vocabulary. Each GASP field belongs to one or more datasets (logical tables). Map a table to each dataset you have and a column to each field, then validate to see which GASP metrics you can compute.",
+  "type": "object",
+  "required": ["version", "mappings"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URL of this schema"
+    },
+    "version": {
+      "enum": ["1.0", "1.1"],
+      "description": "Adapter schema version. 1.1 adds datasets and per-field metadata."
+    },
+    "organization": {
+      "type": "string",
+      "description": "Your organization name (for reference only)"
+    },
+    "warehouse": {
+      "type": "string",
+      "description": "Warehouse platform (e.g. snowflake, bigquery, postgres, redshift, databricks)",
+      "examples": ["snowflake", "bigquery", "postgres"]
+    },
+    "_instructions": {
+      "type": "string",
+      "description": "Free text for template guidance; ignored by tools"
+    },
+    "metricOwners": {
+      "type": "array",
+      "description": "Who in your organization owns each metric definition. Recommended for every metric you report; the validator lists metrics without an owner.",
+      "items": { "$ref": "#/$defs/metricOwner" }
+    },
+    "datasets": {
+      "type": "object",
+      "description": "Warehouse table behind each GASP dataset, as schema.table. Optional: when absent, the validator infers the table from the warehouseRef prefix shared by the dataset's mapped fields, and reports datasets whose fields point at different tables.",
+      "additionalProperties": {
+        "type": "string",
+        "examples": ["billing.subscriptions", "analytics.dim_customer"]
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "description": "One entry per GASP field you can map. Unmapped fields may be omitted or left with an empty warehouseRef; the validator reports which metrics are covered.",
+      "items": { "$ref": "#/$defs/fieldMapping" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "metricOwner": {
+      "type": "object",
+      "required": ["metric", "team"],
+      "description": "Declares who owns the definition of a metric: the person or team that resolves disputes about how it is calculated.",
+      "properties": {
+        "metric": {
+          "type": "string",
+          "description": "Metric name or formula id (e.g. 'NRR', 'nrr', 'Pipeline Value'), or 'All Core Metrics'",
+          "examples": ["MRR", "NRR", "Pipeline Value", "All Core Metrics"]
+        },
+        "team": {
+          "type": "string",
+          "description": "The team that owns this metric definition",
+          "examples": ["Finance", "RevOps", "Data Engineering", "Customer Success"]
+        },
+        "contact": {
+          "type": "string",
+          "description": "Optional contact person: email, Slack handle or name",
+          "examples": ["jane@acme.com", "#finance-metrics", "Jane Smith"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "fieldMapping": {
+      "type": "object",
+      "required": ["gaspField", "warehouseRef"],
+      "properties": {
+        "gaspField": {
+          "type": "string",
+          "description": "Canonical GASP field id (e.g. 'customer_id', 'mrr', 'event_type'). Must match a field in the GASP ontology."
+        },
+        "dataset": {
+          "type": "string",
+          "description": "GASP dataset this mapping applies to. Fields that live on several datasets (customer_id, snapshot_date, event_date) need one mapping per dataset you use; a mapping without dataset applies to every dataset of the field."
+        },
+        "warehouseRef": {
+          "type": "string",
+          "description": "Your warehouse column, as schema.table.column or as a bare column name when the dataset's table is declared under datasets. Leave empty for fields you have not mapped yet.",
+          "examples": ["billing.subscriptions.mrr", "analytics.dim_customer.customer_id"]
+        },
+        "transform": {
+          "type": "string",
+          "description": "Optional SQL expression applied to the column so the value matches GASP semantics, including mapping your enum values onto GASP's. Use {{value}} for the column.",
+          "examples": ["{{value}} / 100", "CASE WHEN {{value}} = 'Won' THEN 'closed_won' WHEN {{value}} = 'Lost' THEN 'closed_lost' ELSE 'open' END"]
+        },
+        "owner": {
+          "type": "string",
+          "description": "Optional owner of this field's data quality"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free text"
+        },
+        "type": {
+          "type": "string",
+          "description": "GASP type of the field (informational, copied from the ontology)"
+        },
+        "datasets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "GASP datasets the field belongs to (informational, copied from the ontology)"
+        },
+        "values": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Declared enum values the mapped column must produce after transform (informational, copied from the ontology)"
+        },
+        "source": {
+          "type": "string",
+          "description": "Typical source system category (informational)"
+        },
+        "usedBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Metrics whose formulas reference this field (informational)"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

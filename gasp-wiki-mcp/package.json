@@ -1,0 +1,65 @@
+{
+  "name": "gasp-standard-mcp",
+  "version": "1.12.0",
+  "description": "MCP server for the GASP Standard — SaaS metrics definitions, formulas, benchmarks, entity relationships, business model graph, access governance, and query generation",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "403page labs (https://403.ie)",
+  "homepage": "https://gaspwiki.com/v1/tools",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GASP-Standard/standard.git",
+    "directory": "gasp-wiki-mcp"
+  },
+  "bugs": "https://github.com/GASP-Standard/standard/issues",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "saas",
+    "metrics",
+    "gasp",
+    "kpi",
+    "arr",
+    "mrr",
+    "churn",
+    "nrr",
+    "ontology",
+    "digital-twin",
+    "knowledge-graph",
+    "governance",
+    "access-control"
+  ],
+  "mcpName": "dev.gasp/gasp-standard-mcp",
+  "main": "build/index.js",
+  "bin": {
+    "gasp-standard-mcp": "build/index.js"
+  },
+  "files": [
+    "build/**/*.js",
+    "build/**/*.d.ts",
+    "build/standard-data.json",
+    "build/standard-version.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "test": "vitest run",
+    "derive": "tsx src/derive.ts",
+    "derive:check": "tsx src/derive.ts --check",
+    "export-data": "node build/export-data.js",
+    "prepublishOnly": "npm run build && npm run export-data"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "yaml": "^2.9.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
+    "@types/node": "^22.15.2",
+    "ajv": "^8.20.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.18"
+  }
+}

@@ -1,0 +1,4016 @@
+# Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
+version: 0.2.0.dev0
+name: GASP
+description: "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://gaspwiki.com."
+ontology:
+  - concept: RevenueEvent
+    type: EntityType
+    description: "Revenue event (event dataset `revenue_event`). CEL class: Revenue_Event."
+    identify_by:
+      - event_id
+    relationships:
+      - name: change_nature
+        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+        roles:
+          - concept: ChangeNature
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {ChangeNature}"
+      - name: currency
+        description: ISO 4217 currency code
+        roles:
+          - concept: Currency
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {Currency}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{RevenueEvent} is identified by {EventId}"
+      - name: event_type
+        description: Revenue movement classifier (CEL Revenue_Event.event_type)
+        roles:
+          - concept: EventType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {EventType}"
+      - name: expansion_classification
+        description: ATL expansion tag; required for NRR-M and ARR-M
+        roles:
+          - concept: ExpansionClassification
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {ExpansionClassification}"
+      - name: lifecycle_attribution
+        description: ATL lifecycle tag
+        roles:
+          - concept: LifecycleAttribution
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {LifecycleAttribution}"
+      - name: mrr_change
+        description: Change in MRR; negative for contraction and churn
+        roles:
+          - concept: MrrChange
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {MrrChange}"
+      - name: new_mrr
+        description: MRR after the event
+        roles:
+          - concept: NewMrr
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {NewMrr}"
+      - name: prior_mrr
+        description: MRR before the event
+        roles:
+          - concept: PriorMrr
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {PriorMrr}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: Subscription
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} belongs to {Subscription}"
+  - concept: CostEvent
+    type: EntityType
+    description: "Cost event (event dataset `cost_event`). CEL class: Cost_Event."
+    identify_by:
+      - event_id
+    relationships:
+      - name: cost
+        description: Cost amount (CEL Cost_Event.amount)
+        roles:
+          - concept: Cost
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has {Cost}"
+      - name: cost_centre
+        description: Department or team that incurred the cost
+        roles:
+          - concept: CostCentre
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has {CostCentre}"
+      - name: cost_function
+        description: Purpose of cost (ATL cost function, extended to all cost events)
+        roles:
+          - concept: CostFunction
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has {CostFunction}"
+      - name: cost_type
+        description: Nature of cost (CEL)
+        roles:
+          - concept: CostType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has {CostType}"
+      - name: currency
+        description: ISO 4217 currency code
+        roles:
+          - concept: Currency
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has {Currency}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{CostEvent} is identified by {EventId}"
+      - name: lifecycle_attribution
+        description: ATL lifecycle tag
+        roles:
+          - concept: LifecycleAttribution
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} has {LifecycleAttribution}"
+      - name: partner_id
+        description: Partner identifier
+        roles:
+          - concept: Partner
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} belongs to {Partner}"
+      - name: project_id
+        description: Services project identifier; null on costs not attributable to a project
+        roles:
+          - concept: Project
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CostEvent} belongs to {Project}"
+  - concept: ContractEvent
+    type: EntityType
+    description: "Contract event (event dataset `contract_event`). CEL class: Contract_Event."
+    identify_by:
+      - event_id
+    relationships:
+      - name: acv
+        description: Annual contract value, recurring only
+        roles:
+          - concept: Acv
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has {Acv}"
+      - name: contract_end
+        description: Contract end date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has contract end {Date}"
+      - name: contract_event_type
+        description: Contract milestone (CEL Contract_Event.event_type)
+        roles:
+          - concept: ContractEventType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has {ContractEventType}"
+      - name: contract_start
+        description: Contract start date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has contract start {Date}"
+      - name: currency
+        description: ISO 4217 currency code
+        roles:
+          - concept: Currency
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has {Currency}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{ContractEvent} is identified by {EventId}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: Subscription
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} belongs to {Subscription}"
+      - name: tcv
+        description: Total contract value
+        roles:
+          - concept: TcvValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has {TcvValue}"
+  - concept: AmendmentEvent
+    type: EntityType
+    description: "Amendment event (event dataset `amendment_event`). CEL class: Amendment_Event."
+    identify_by:
+      - event_id
+    relationships:
+      - name: amendment_type
+        description: Mid-term change kind (CEL, extended with cross_sell)
+        roles:
+          - concept: AmendmentType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has {AmendmentType}"
+      - name: change_nature
+        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+        roles:
+          - concept: ChangeNature
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has {ChangeNature}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{AmendmentEvent} is identified by {EventId}"
+      - name: expansion_classification
+        description: ATL expansion tag; required for NRR-M and ARR-M
+        roles:
+          - concept: ExpansionClassification
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has {ExpansionClassification}"
+      - name: lifecycle_attribution
+        description: ATL lifecycle tag
+        roles:
+          - concept: LifecycleAttribution
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has {LifecycleAttribution}"
+      - name: mrr_change
+        description: Change in MRR; negative for contraction and churn
+        roles:
+          - concept: MrrChange
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has {MrrChange}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: Subscription
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} belongs to {Subscription}"
+  - concept: LifecycleEvent
+    type: EntityType
+    description: "Lifecycle state change (event dataset `lifecycle_event`). CEL class: Lifecycle_State_Change."
+    identify_by:
+      - event_id
+    relationships:
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{LifecycleEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{LifecycleEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{LifecycleEvent} is identified by {EventId}"
+      - name: new_state
+        description: New lifecycle state
+        roles:
+          - concept: NewState
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{LifecycleEvent} has {NewState}"
+      - name: prior_state
+        description: Previous lifecycle state
+        roles:
+          - concept: PriorState
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{LifecycleEvent} has {PriorState}"
+      - name: state_category
+        description: Lifecycle state after the change (CEL)
+        roles:
+          - concept: StateCategory
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{LifecycleEvent} has {StateCategory}"
+  - concept: Customer
+    type: EntityType
+    description: 'Customer (snapshot dataset `customer`). A distinct billing entity with one or more subscriptions. The "who" of your business relationship. Also known as: Account, Organization.'
+    identify_by:
+      - customer_id
+    relationships:
+      - name: acquisition_date
+        description: Date the customer first became paying
+        roles:
+          - concept: Date
+          - concept: Date
+            name: acquisition_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has acquisition date {Date:acquisition_date}"
+      - name: activation_date
+        description: Date the activation milestone was reached
+        roles:
+          - concept: Date
+          - concept: Date
+            name: activation_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has activation date {Date:activation_date}"
+      - name: composite_score
+        description: Health score on a 0 to 100 scale
+        roles:
+          - concept: Date
+          - concept: CompositeScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {CompositeScore}"
+      - name: criteria_met
+        description: Product-qualified criteria met
+        roles:
+          - concept: Date
+          - concept: CriteriaMet
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {CriteriaMet}"
+      - name: csm_id
+        description: Assigned customer success manager
+        roles:
+          - concept: Date
+          - concept: CsmId
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {CsmId}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: CustomerId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Customer} is identified by {CustomerId}"
+      - name: customer_status
+        description: Customer lifecycle status; active means at least one active subscription
+        roles:
+          - concept: Date
+          - concept: CustomerStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {CustomerStatus}"
+      - name: engaged_contact_count
+        description: Contacts engaged in the period
+        roles:
+          - concept: Date
+          - concept: EngagedContactCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {EngagedContactCount}"
+      - name: has_exec_sponsor
+        description: An executive sponsor is identified
+        roles:
+          - concept: Date
+          - concept: HasExecSponsor
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {HasExecSponsor}"
+      - name: last_active_date
+        description: Most recent qualifying activity
+        roles:
+          - concept: Date
+          - concept: Date
+            name: last_active_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has last active date {Date:last_active_date}"
+      - name: onboarding_completion_date
+        description: Onboarding completion; null while open
+        roles:
+          - concept: Date
+          - concept: Date
+            name: onboarding_completion_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has onboarding completion date {Date:onboarding_completion_date}"
+      - name: qbr_completed
+        description: A QBR was held in the period
+        roles:
+          - concept: Date
+          - concept: QbrCompleted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {QbrCompleted}"
+      - name: qbr_due
+        description: A QBR was due in the period
+        roles:
+          - concept: Date
+          - concept: QbrDue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {QbrDue}"
+      - name: tier
+        description: Pricing tier or segment
+        roles:
+          - concept: Date
+          - concept: Tier
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {Tier}"
+      - name: upgrade_eligible
+        description: Customer is on a plan with an upgrade path
+        roles:
+          - concept: Date
+          - concept: UpgradeEligible
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Customer} on {Date} has {UpgradeEligible}"
+      - name: owns
+        description: "A customer holds one or more subscriptions. Hierarchy Principle 1: customers own subscriptions, not the reverse."
+        roles:
+          - concept: Subscription
+        verbalizes:
+          - "{Customer} owns {Subscription}"
+      - name: engages_via
+        description: In B2B SaaS, one customer organization has many product users. Usage and engagement metrics are measured at the user level.
+        roles:
+          - concept: User
+        verbalizes:
+          - "{Customer} engages via {User}"
+      - name: submits
+        description: Customers open support tickets. Support volume and resolution metrics are measured at the ticket level.
+        roles:
+          - concept: Ticket
+        verbalizes:
+          - "{Customer} submits {Ticket}"
+      - name: belongs_to_cohort
+        description: Each customer belongs to an acquisition cohort based on their start date. Cohort analysis isolates vintage effects in retention and expansion.
+        roles:
+          - concept: Cohort
+        verbalizes:
+          - "{Customer} belongs to {Cohort}"
+      - name: parent_of
+        description: Self-referential edge for account hierarchy. Global enterprises with subsidiaries roll up to a parent customer. Used for global account ARR and consolidated reporting.
+        roles:
+          - concept: Customer
+            name: child
+        verbalizes:
+          - "{Customer} is parent of {Customer:child}"
+      - name: belongs_to_segment
+        description: Each customer belongs to a segment classification (SMB, Mid-Market, Enterprise) based on size, ARR or fit. Segment is the foundational lens for cohort and benchmark comparisons.
+        roles:
+          - concept: Segment
+        verbalizes:
+          - "{Customer} belongs to {Segment}"
+  - concept: Subscription
+    type: EntityType
+    description: 'Subscription (snapshot dataset `subscription`). A billable agreement between a customer and your product, with defined terms, pricing, and status. The "what and when" of the relationship. Also known as: Contract, Agreement.'
+    identify_by:
+      - subscription_id
+    relationships:
+      - name: auto_renewed
+        description: Renewal happened without manual intervention
+        roles:
+          - concept: Date
+          - concept: AutoRenewed
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {AutoRenewed}"
+      - name: contract_end
+        description: Contract end date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: contract_end
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has contract end {Date:contract_end}"
+      - name: contract_start
+        description: Contract start date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: contract_start
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has contract start {Date:contract_start}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} belongs to {Customer}"
+      - name: forecast_renewal_amount
+        description: Forecast renewal value
+        roles:
+          - concept: Date
+          - concept: ForecastRenewalAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {ForecastRenewalAmount}"
+      - name: mrr
+        description: Monthly recurring revenue of the subscription
+        roles:
+          - concept: Date
+          - concept: Mrr
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {Mrr}"
+      - name: mrr_end
+        description: MRR at period end (cohort form)
+        roles:
+          - concept: Date
+          - concept: MrrEnd
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {MrrEnd}"
+      - name: mrr_start
+        description: MRR at period start (cohort form)
+        roles:
+          - concept: Date
+          - concept: MrrStart
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {MrrStart}"
+      - name: renewal_amount
+        description: Value up for renewal
+        roles:
+          - concept: Date
+          - concept: RenewalAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {RenewalAmount}"
+      - name: renewal_complete_date
+        description: Date renewal processing finished
+        roles:
+          - concept: Date
+          - concept: Date
+            name: renewal_complete_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has renewal complete date {Date:renewal_complete_date}"
+      - name: renewal_notified_on_time
+        description: Renewal notice sent within the agreed window
+        roles:
+          - concept: Date
+          - concept: RenewalNotifiedOnTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {RenewalNotifiedOnTime}"
+      - name: renewal_trigger_date
+        description: Date renewal processing started
+        roles:
+          - concept: Date
+          - concept: Date
+            name: renewal_trigger_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has renewal trigger date {Date:renewal_trigger_date}"
+      - name: renewed
+        description: Renewed at the most recent term end
+        roles:
+          - concept: Date
+          - concept: Renewed
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {Renewed}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: SubscriptionId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Subscription} is identified by {SubscriptionId}"
+      - name: subscription_status
+        description: Subscription status
+        roles:
+          - concept: Date
+          - concept: SubscriptionStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {SubscriptionStatus}"
+      - name: generates_revenue
+        description: Subscriptions generate recognized revenue over their term as obligations are fulfilled.
+        roles:
+          - concept: Revenue
+        verbalizes:
+          - "{Subscription} generates {Revenue}"
+      - name: generates_invoice
+        description: Subscriptions generate periodic invoices according to their billing schedule.
+        roles:
+          - concept: Invoice
+        verbalizes:
+          - "{Subscription} generates {Invoice}"
+      - name: incurs
+        description: Delivering on subscriptions incurs costs (hosting, support, onboarding) that form the COGS basis for Gross Margin.
+        roles:
+          - concept: Cogs
+        verbalizes:
+          - "{Subscription} incurs {Cogs}"
+  - concept: Opportunity
+    type: EntityType
+    description: "Opportunity (snapshot dataset `opportunity`). A qualified sales prospect with an estimated value, stage, and expected close date. Also known as: Deal, Pipeline Item."
+    identify_by:
+      - opportunity_id
+    relationships:
+      - name: advanced_to_next_stage
+        description: Advanced one stage in the period
+        roles:
+          - concept: Date
+          - concept: AdvancedToNextStage
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {AdvancedToNextStage}"
+      - name: close_date
+        description: Actual or expected close date of the opportunity; on a project or registration, the close date of the won deal
+        roles:
+          - concept: Date
+          - concept: Date
+            name: close_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has close date {Date:close_date}"
+      - name: close_date_valid
+        description: Close date is in the future or matches the actual close
+        roles:
+          - concept: Date
+          - concept: CloseDateValid
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {CloseDateValid}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} belongs to {Customer}"
+      - name: forecast_category
+        description: Forecast category
+        roles:
+          - concept: Date
+          - concept: ForecastCategory
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {ForecastCategory}"
+      - name: includes_services
+        description: Deal includes professional services
+        roles:
+          - concept: Date
+          - concept: IncludesServices
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {IncludesServices}"
+      - name: lead_id
+        description: Lead identifier
+        roles:
+          - concept: Lead
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} belongs to {Lead}"
+      - name: marketing_channel
+        description: First-touch marketing channel
+        roles:
+          - concept: Date
+          - concept: MarketingChannel
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {MarketingChannel}"
+      - name: marketing_influenced
+        description: A marketing touch exists on the opportunity
+        roles:
+          - concept: Date
+          - concept: MarketingInfluenced
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {MarketingInfluenced}"
+      - name: marketing_source
+        description: Team that sourced the opportunity
+        roles:
+          - concept: Date
+          - concept: MarketingSource
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {MarketingSource}"
+      - name: opportunity_amount
+        description: Opportunity value (recurring)
+        roles:
+          - concept: Date
+          - concept: OpportunityAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {OpportunityAmount}"
+      - name: opportunity_created_date
+        description: Date the opportunity was created
+        roles:
+          - concept: Date
+          - concept: Date
+            name: opportunity_created_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has opportunity created date {Date:opportunity_created_date}"
+      - name: opportunity_id
+        description: Opportunity (deal) identifier
+        roles:
+          - concept: OpportunityId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Opportunity} is identified by {OpportunityId}"
+      - name: opportunity_stage
+        description: Opportunity stage
+        roles:
+          - concept: Date
+          - concept: OpportunityStage
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {OpportunityStage}"
+      - name: partner_id
+        description: Partner identifier
+        roles:
+          - concept: Partner
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} belongs to {Partner}"
+      - name: partner_sourced
+        description: Sourced by a partner
+        roles:
+          - concept: Date
+          - concept: PartnerSourced
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {PartnerSourced}"
+      - name: rep_id
+        description: Sales rep identifier
+        roles:
+          - concept: SalesRep
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} belongs to {SalesRep}"
+      - name: required_fields_complete
+        description: All required CRM fields populated
+        roles:
+          - concept: Date
+          - concept: RequiredFieldsComplete
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {RequiredFieldsComplete}"
+      - name: revenue_type
+        description: Revenue line type
+        roles:
+          - concept: Date
+          - concept: RevenueType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {RevenueType}"
+      - name: stage_accurate
+        description: Stage matches observed activity
+        roles:
+          - concept: Date
+          - concept: StageAccurate
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {StageAccurate}"
+      - name: stage_probability
+        description: Win probability for the stage, 0 to 1
+        roles:
+          - concept: Date
+          - concept: StageProbability
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {StageProbability}"
+      - name: updated_within_sla
+        description: Updated inside the hygiene SLA
+        roles:
+          - concept: Date
+          - concept: UpdatedWithinSla
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {UpdatedWithinSla}"
+      - name: converts_to
+        description: A won opportunity creates a new customer (closed-won). This is the SQL→Customer transition.
+        roles:
+          - concept: Customer
+        verbalizes:
+          - "{Opportunity} converts to {Customer}"
+      - name: produces_bookings
+        description: Closed-won opportunities produce bookings. Bookings convert to revenue over the contract term.
+        roles:
+          - concept: Bookings
+        verbalizes:
+          - "{Opportunity} produces {Bookings}"
+      - name: contributes_to
+        description: Active opportunities contribute to pipeline value, weighted by stage probability.
+        roles:
+          - concept: Pipeline
+        verbalizes:
+          - "{Opportunity} contributes to {Pipeline}"
+      - name: produces_tcv
+        description: "Closed-won opportunities produce TCV (Total Contract Value). Distinct from Bookings (period-attributable) and ACV (annualized): TCV captures the full multi-year commitment value."
+        roles:
+          - concept: Tcv
+        verbalizes:
+          - "{Opportunity} produces {Tcv}"
+  - concept: Lead
+    type: EntityType
+    description: "Lead (snapshot dataset `lead`). A person or company that has shown interest but has not been qualified as a sales opportunity. Also known as: Prospect, Contact."
+    identify_by:
+      - lead_id
+    relationships:
+      - name: lead_created_date
+        description: Date the lead was created
+        roles:
+          - concept: Date
+          - concept: Date
+            name: lead_created_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Lead} on {Date} has lead created date {Date:lead_created_date}"
+      - name: lead_id
+        description: Lead identifier
+        roles:
+          - concept: LeadId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Lead} is identified by {LeadId}"
+      - name: lead_source
+        description: Lead source
+        roles:
+          - concept: Date
+          - concept: LeadSource
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Lead} on {Date} has {LeadSource}"
+      - name: lead_stage
+        description: Lead funnel stage
+        roles:
+          - concept: Date
+          - concept: LeadStage
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Lead} on {Date} has {LeadStage}"
+      - name: mql_date
+        description: Date the lead became an MQL
+        roles:
+          - concept: Date
+          - concept: Date
+            name: mql_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Lead} on {Date} has mql date {Date:mql_date}"
+      - name: sql_date
+        description: Date the lead was accepted by sales
+        roles:
+          - concept: Date
+          - concept: Date
+            name: sql_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Lead} on {Date} has sql date {Date:sql_date}"
+      - name: converts_to
+        description: A qualified lead converts into a sales opportunity. This is the MQL→SQL transition in the acquisition funnel.
+        roles:
+          - concept: Opportunity
+        verbalizes:
+          - "{Lead} converts to {Opportunity}"
+  - concept: User
+    type: EntityType
+    description: "User (snapshot dataset `user`). An individual who uses the product. In B2B, one Customer may have many Users. Usage metrics are measured at this level. Also known as: Product User, End User."
+    identify_by:
+      - user_id
+    relationships:
+      - name: activation_date
+        description: Date the activation milestone was reached
+        roles:
+          - concept: Date
+          - concept: Date
+            name: activation_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} on {Date} has activation date {Date:activation_date}"
+      - name: core_features_adopted
+        description: User has adopted the defined core feature set
+        roles:
+          - concept: Date
+          - concept: CoreFeaturesAdopted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} on {Date} has {CoreFeaturesAdopted}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} belongs to {Customer}"
+      - name: first_use_date
+        description: First use of the feature
+        roles:
+          - concept: Date
+          - concept: Date
+            name: first_use_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} on {Date} has first use date {Date:first_use_date}"
+      - name: last_active_date
+        description: Most recent qualifying activity
+        roles:
+          - concept: Date
+          - concept: Date
+            name: last_active_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} on {Date} has last active date {Date:last_active_date}"
+      - name: signup_date
+        description: User signup date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: signup_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} on {Date} has signup date {Date:signup_date}"
+      - name: user_id
+        description: Product user identifier
+        roles:
+          - concept: UserId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{User} is identified by {UserId}"
+      - name: user_status
+        description: User activity status
+        roles:
+          - concept: Date
+          - concept: UserStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{User} on {Date} has {UserStatus}"
+  - concept: Employee
+    type: EntityType
+    description: "Employee (snapshot dataset `employee`). An internal team member. People metrics and efficiency ratios (revenue per employee) are measured at this level. Also known as: Team Member, Headcount."
+    identify_by:
+      - employee_id
+    relationships:
+      - name: department
+        description: Department
+        roles:
+          - concept: Date
+          - concept: Department
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {Department}"
+      - name: employee_id
+        description: Employee identifier
+        roles:
+          - concept: EmployeeId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Employee} is identified by {EmployeeId}"
+      - name: employee_status
+        description: Employment status
+        roles:
+          - concept: Date
+          - concept: EmployeeStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {EmployeeStatus}"
+      - name: hire_date
+        description: Employment start date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: hire_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has hire date {Date:hire_date}"
+      - name: is_high_performer
+        description: Rated high performer
+        roles:
+          - concept: Date
+          - concept: IsHighPerformer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {IsHighPerformer}"
+      - name: job_level
+        description: Seniority level
+        roles:
+          - concept: Date
+          - concept: JobLevel
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {JobLevel}"
+      - name: market_midpoint
+        description: Market midpoint for the role
+        roles:
+          - concept: Date
+          - concept: MarketMidpoint
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {MarketMidpoint}"
+      - name: performance_rating
+        description: Most recent performance rating
+        roles:
+          - concept: Date
+          - concept: PerformanceRating
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {PerformanceRating}"
+      - name: salary
+        description: Base salary
+        roles:
+          - concept: Date
+          - concept: Salary
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {Salary}"
+      - name: termination_date
+        description: Employment end date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: termination_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has termination date {Date:termination_date}"
+      - name: termination_type
+        description: Voluntary or involuntary
+        roles:
+          - concept: Date
+          - concept: TerminationType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {TerminationType}"
+      - name: underrepresented_group
+        description: Self-identified member of an underrepresented group
+        roles:
+          - concept: Date
+          - concept: UnderrepresentedGroup
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {UnderrepresentedGroup}"
+      - name: manages
+        description: CSMs and account managers are assigned to customer accounts. Employee efficiency and coverage ratios are measured through this relationship.
+        roles:
+          - concept: Customer
+        verbalizes:
+          - "{Employee} manages {Customer}"
+  - concept: Partner
+    type: EntityType
+    description: "Partner (snapshot dataset `partner`). An external organization that sources, influences, or resells deals. Partner metrics are measured at this level. Also known as: Channel Partner, Reseller."
+    identify_by:
+      - partner_id
+    relationships:
+      - name: certification_status
+        description: Certification state
+        roles:
+          - concept: Date
+          - concept: CertificationStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has {CertificationStatus}"
+      - name: partner_churn_date
+        description: Date the partner left the programme
+        roles:
+          - concept: Date
+          - concept: Date
+            name: partner_churn_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has partner churn date {Date:partner_churn_date}"
+      - name: partner_id
+        description: Partner identifier
+        roles:
+          - concept: PartnerId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Partner} is identified by {PartnerId}"
+      - name: partner_recruited_date
+        description: Date the partner signed
+        roles:
+          - concept: Date
+          - concept: Date
+            name: partner_recruited_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has partner recruited date {Date:partner_recruited_date}"
+      - name: partner_status
+        description: Partner lifecycle status
+        roles:
+          - concept: Date
+          - concept: PartnerStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has {PartnerStatus}"
+      - name: partner_tier
+        description: Partner programme tier
+        roles:
+          - concept: Date
+          - concept: PartnerTier
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has {PartnerTier}"
+      - name: training_completed
+        description: Required training completed
+        roles:
+          - concept: Date
+          - concept: TrainingCompleted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has {TrainingCompleted}"
+      - name: sources
+        description: A channel partner sources or influences deal opportunities. Partner-sourced vs. direct pipeline is a key attribution metric.
+        roles:
+          - concept: Opportunity
+        verbalizes:
+          - "{Partner} sources {Opportunity}"
+  - concept: Project
+    type: EntityType
+    description: "Project (snapshot dataset `project`). A professional services engagement with defined scope, timeline, and deliverables. Also known as: Engagement, SOW."
+    identify_by:
+      - project_id
+    relationships:
+      - name: close_date
+        description: Actual or expected close date of the opportunity; on a project or registration, the close date of the won deal
+        roles:
+          - concept: Date
+          - concept: Date
+            name: close_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has close date {Date:close_date}"
+      - name: consultant_id
+        description: Consultant identifier
+        roles:
+          - concept: Consultant
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} belongs to {Consultant}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} belongs to {Customer}"
+      - name: escalated
+        description: Escalated beyond first line
+        roles:
+          - concept: Date
+          - concept: Escalated
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {Escalated}"
+      - name: hours_actual
+        description: Actual hours
+        roles:
+          - concept: Date
+          - concept: HoursActual
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {HoursActual}"
+      - name: hours_budgeted
+        description: Budgeted hours
+        roles:
+          - concept: Date
+          - concept: HoursBudgeted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {HoursBudgeted}"
+      - name: project_completion_date
+        description: Project completion; null while open
+        roles:
+          - concept: Date
+          - concept: Date
+            name: project_completion_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has project completion date {Date:project_completion_date}"
+      - name: project_cost
+        description: Delivery cost of the project
+        roles:
+          - concept: Date
+          - concept: ProjectCost
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {ProjectCost}"
+      - name: project_id
+        description: Services project identifier; null on costs not attributable to a project
+        roles:
+          - concept: ProjectId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Project} is identified by {ProjectId}"
+      - name: project_revenue
+        description: Revenue recognised on the project
+        roles:
+          - concept: Date
+          - concept: ProjectRevenue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {ProjectRevenue}"
+      - name: project_start_date
+        description: Project start
+        roles:
+          - concept: Date
+          - concept: Date
+            name: project_start_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has project start date {Date:project_start_date}"
+      - name: referenceable
+        description: Customer agreed to be a reference
+        roles:
+          - concept: Date
+          - concept: Referenceable
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {Referenceable}"
+      - name: scope_changed
+        description: Scope changed after kickoff
+        roles:
+          - concept: Date
+          - concept: ScopeChanged
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has {ScopeChanged}"
+      - name: target_date
+        description: Committed completion date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: target_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Project} on {Date} has target date {Date:target_date}"
+      - name: serves
+        description: Professional services projects are delivered to customers. Project margins and utilization are measured through this relationship.
+        roles:
+          - concept: Customer
+        verbalizes:
+          - "{Project} serves {Customer}"
+  - concept: Invoice
+    type: EntityType
+    description: "Invoice (snapshot dataset `invoice`). A billing document representing money owed or collected. Cash flow and collections metrics are measured at this level. Also known as: Transaction, Billing Document."
+    identify_by:
+      - invoice_id
+    relationships:
+      - name: billing_trigger_date
+        description: Date the billing event occurred
+        roles:
+          - concept: Date
+          - concept: Date
+            name: billing_trigger_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has billing trigger date {Date:billing_trigger_date}"
+      - name: credit_memo_count
+        description: Credit memos issued against the invoice
+        roles:
+          - concept: Date
+          - concept: CreditMemoCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {CreditMemoCount}"
+      - name: currency
+        description: ISO 4217 currency code
+        roles:
+          - concept: Date
+          - concept: Currency
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {Currency}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} belongs to {Customer}"
+      - name: invoice_amount
+        description: Invoiced amount
+        roles:
+          - concept: Date
+          - concept: InvoiceAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {InvoiceAmount}"
+      - name: invoice_corrected
+        description: Corrected after issue
+        roles:
+          - concept: Date
+          - concept: InvoiceCorrected
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {InvoiceCorrected}"
+      - name: invoice_date
+        description: Invoice date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: invoice_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has invoice date {Date:invoice_date}"
+      - name: invoice_disputed
+        description: Disputed by the customer
+        roles:
+          - concept: Date
+          - concept: InvoiceDisputed
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {InvoiceDisputed}"
+      - name: invoice_id
+        description: Invoice identifier
+        roles:
+          - concept: InvoiceId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Invoice} is identified by {InvoiceId}"
+      - name: outstanding_amount
+        description: Unpaid balance as of snapshot_date
+        roles:
+          - concept: Date
+          - concept: OutstandingAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {OutstandingAmount}"
+      - name: payment_date
+        description: Date paid in full; null while unpaid
+        roles:
+          - concept: Date
+          - concept: Date
+            name: payment_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has payment date {Date:payment_date}"
+      - name: payment_method
+        description: Payment method
+        roles:
+          - concept: Date
+          - concept: PaymentMethod
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {PaymentMethod}"
+      - name: payment_status
+        description: Payment status
+        roles:
+          - concept: Date
+          - concept: PaymentStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {PaymentStatus}"
+  - concept: Campaign
+    type: EntityType
+    description: "Campaign spend (fact dataset `campaign`). A marketing initiative with defined objectives, channels, budget and dates. Campaigns source leads and influence opportunities. Also known as: Marketing Campaign, Initiative."
+    identify_by:
+      - campaign_id
+    relationships:
+      - name: ad_spend
+        description: Media spend in the period
+        roles:
+          - concept: Date
+          - concept: AdSpend
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Campaign} on {Date} has {AdSpend}"
+      - name: campaign_id
+        description: Campaign identifier
+        roles:
+          - concept: CampaignId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Campaign} is identified by {CampaignId}"
+      - name: channel
+        description: Campaign channel
+        roles:
+          - concept: Date
+          - concept: Channel
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Campaign} on {Date} has {Channel}"
+      - name: sources
+        description: A marketing campaign sources leads. Captures attribution beyond the free-text source field. Enables campaign ROI, channel-mix, and sourced-pipeline metrics.
+        roles:
+          - concept: Lead
+        verbalizes:
+          - "{Campaign} sources {Lead}"
+  - concept: SalesRep
+    type: EntityType
+    description: Sales rep period (fact dataset `sales_rep`).
+    identify_by:
+      - rep_id
+    relationships:
+      - name: closed_revenue
+        description: Closed-won value credited to the rep in the period
+        roles:
+          - concept: Date
+          - concept: ClosedRevenue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesRep} on {Date} has {ClosedRevenue}"
+      - name: hire_date
+        description: Employment start date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: hire_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesRep} on {Date} has hire date {Date:hire_date}"
+      - name: quota
+        description: Quota for the period
+        roles:
+          - concept: Date
+          - concept: Quota
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesRep} on {Date} has {Quota}"
+      - name: ramped_date
+        description: Date the rep first hit sustained quota
+        roles:
+          - concept: Date
+          - concept: Date
+            name: ramped_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesRep} on {Date} has ramped date {Date:ramped_date}"
+      - name: rep_id
+        description: Sales rep identifier
+        roles:
+          - concept: RepId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{SalesRep} is identified by {RepId}"
+  - concept: Consultant
+    type: EntityType
+    description: Consultant capacity (fact dataset `consultant`).
+    identify_by:
+      - consultant_id
+    relationships:
+      - name: available_hours
+        description: Capacity hours in the period
+        roles:
+          - concept: Date
+          - concept: AvailableHours
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Consultant} on {Date} has {AvailableHours}"
+      - name: consultant_id
+        description: Consultant identifier
+        roles:
+          - concept: ConsultantId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Consultant} is identified by {ConsultantId}"
+  - concept: Ticket
+    type: EntityType
+    description: "Support ticket (event dataset `ticket`). A discrete support interaction initiated by a customer or user, tracked to resolution. Also known as: Support Case, Issue."
+    identify_by:
+      - ticket_id
+    relationships:
+      - name: agent_id
+        description: Handling agent
+        roles:
+          - concept: AgentId
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has {AgentId}"
+      - name: created_at
+        description: Creation time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has created at {DateTime}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} belongs to {Customer}"
+      - name: escalated
+        description: Escalated beyond first line
+        roles:
+          - concept: Escalated
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has {Escalated}"
+      - name: first_response_at
+        description: First agent response time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has first response at {DateTime}"
+      - name: first_response_due_at
+        description: First response SLA deadline
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has first response due at {DateTime}"
+      - name: reopened
+        description: Reopened after resolution
+        roles:
+          - concept: Reopened
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has {Reopened}"
+      - name: resolution_due_at
+        description: Resolution SLA deadline
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has resolution due at {DateTime}"
+      - name: resolved_at
+        description: Resolution time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has resolved at {DateTime}"
+      - name: resolved_first_contact
+        description: Resolved in the first interaction
+        roles:
+          - concept: ResolvedFirstContact
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has {ResolvedFirstContact}"
+      - name: ticket_id
+        description: Ticket identifier
+        roles:
+          - concept: TicketId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Ticket} is identified by {TicketId}"
+      - name: ticket_status
+        description: Ticket status
+        roles:
+          - concept: TicketStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has {TicketStatus}"
+  - concept: ProductEvent
+    type: EntityType
+    description: Product usage event (event dataset `product_event`).
+    identify_by:
+      - event_id
+    relationships:
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{ProductEvent} is identified by {EventId}"
+      - name: feature_id
+        description: Feature identifier
+        roles:
+          - concept: Feature
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} belongs to {Feature}"
+      - name: product_event_type
+        description: Kind of product event; qualifying events define active use
+        roles:
+          - concept: ProductEventType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} has {ProductEventType}"
+      - name: session_duration
+        description: Session length in minutes
+        roles:
+          - concept: SessionDuration
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} has {SessionDuration}"
+      - name: session_id
+        description: Session identifier
+        roles:
+          - concept: SessionId
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} has {SessionId}"
+      - name: signup_date
+        description: User signup date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} has signup date {Date}"
+      - name: usage_count
+        description: Actions in the event or session
+        roles:
+          - concept: UsageCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} has {UsageCount}"
+      - name: user_id
+        description: Product user identifier
+        roles:
+          - concept: User
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProductEvent} belongs to {User}"
+  - concept: SurveyResponse
+    type: EntityType
+    description: Survey response (event dataset `survey_response`).
+    identify_by:
+      - response_id
+    relationships:
+      - name: ces_score
+        description: 1 to 7 effort score
+        roles:
+          - concept: CesScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {CesScore}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} belongs to {Customer}"
+      - name: employee_id
+        description: Employee identifier
+        roles:
+          - concept: Employee
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} belongs to {Employee}"
+      - name: engagement_score
+        description: Engagement survey score
+        roles:
+          - concept: EngagementScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {EngagementScore}"
+      - name: lead_id
+        description: Lead identifier
+        roles:
+          - concept: Lead
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} belongs to {Lead}"
+      - name: nps_score
+        description: 0 to 10 recommend score
+        roles:
+          - concept: NpsScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {NpsScore}"
+      - name: partner_id
+        description: Partner identifier
+        roles:
+          - concept: Partner
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} belongs to {Partner}"
+      - name: project_id
+        description: Services project identifier; null on costs not attributable to a project
+        roles:
+          - concept: Project
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} belongs to {Project}"
+      - name: response_id
+        description: Survey response identifier
+        roles:
+          - concept: ResponseId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{SurveyResponse} is identified by {ResponseId}"
+      - name: satisfaction_score
+        description: 1 to 5 satisfaction score
+        roles:
+          - concept: SatisfactionScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {SatisfactionScore}"
+      - name: survey_completed
+        description: Response completed
+        roles:
+          - concept: SurveyCompleted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {SurveyCompleted}"
+      - name: survey_date
+        description: Response date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has survey date {Date}"
+      - name: survey_type
+        description: Survey programme the response belongs to
+        roles:
+          - concept: SurveyType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {SurveyType}"
+  - concept: KbArticle
+    type: EntityType
+    description: Knowledge base article (fact dataset `kb_article`).
+    identify_by:
+      - article_id
+    relationships:
+      - name: article_id
+        description: Knowledge base article identifier
+        roles:
+          - concept: ArticleId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{KbArticle} is identified by {ArticleId}"
+      - name: deflections
+        description: Sessions resolved without a ticket
+        roles:
+          - concept: Date
+          - concept: Deflections
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{KbArticle} on {Date} has {Deflections}"
+  - concept: Requisition
+    type: EntityType
+    description: Job requisition (snapshot dataset `requisition`).
+    identify_by:
+      - requisition_id
+    relationships:
+      - name: filled_date
+        description: Date the requisition was filled
+        roles:
+          - concept: Date
+          - concept: Date
+            name: filled_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Requisition} on {Date} has filled date {Date:filled_date}"
+      - name: hire_date
+        description: Employment start date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: hire_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Requisition} on {Date} has hire date {Date:hire_date}"
+      - name: offer_status
+        description: Status of the latest offer
+        roles:
+          - concept: Date
+          - concept: OfferStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Requisition} on {Date} has {OfferStatus}"
+      - name: requisition_id
+        description: Requisition identifier
+        roles:
+          - concept: RequisitionId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Requisition} is identified by {RequisitionId}"
+      - name: requisition_opened_date
+        description: Date the requisition opened
+        roles:
+          - concept: Date
+          - concept: Date
+            name: requisition_opened_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Requisition} on {Date} has requisition opened date {Date:requisition_opened_date}"
+      - name: requisition_status
+        description: Requisition status
+        roles:
+          - concept: Date
+          - concept: RequisitionStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Requisition} on {Date} has {RequisitionStatus}"
+  - concept: Incident
+    type: EntityType
+    description: Incident (event dataset `incident`).
+    identify_by:
+      - incident_id
+    relationships:
+      - name: acknowledged_at
+        description: Acknowledgement time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has acknowledged at {DateTime}"
+      - name: detected_at
+        description: Detection time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has detected at {DateTime}"
+      - name: incident_id
+        description: Incident identifier
+        roles:
+          - concept: IncidentId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Incident} is identified by {IncidentId}"
+      - name: incident_type
+        description: Incident category
+        roles:
+          - concept: IncidentType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has {IncidentType}"
+      - name: recovery_time
+        description: Minutes from start to service restored
+        roles:
+          - concept: RecoveryTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has {RecoveryTime}"
+      - name: resolved_at
+        description: Resolution time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has resolved at {DateTime}"
+      - name: severity
+        description: Incident severity
+        roles:
+          - concept: Severity
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has {Severity}"
+      - name: started_at
+        description: Incident start time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Incident} has started at {DateTime}"
+  - concept: Deployment
+    type: EntityType
+    description: Deployment (event dataset `deployment`).
+    identify_by:
+      - deployment_id
+    relationships:
+      - name: committed_at
+        description: First commit time of the change
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Deployment} has committed at {DateTime}"
+      - name: deploy_date
+        description: Deployment time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Deployment} has deploy date {DateTime}"
+      - name: deployment_id
+        description: Deployment identifier
+        roles:
+          - concept: DeploymentId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Deployment} is identified by {DeploymentId}"
+      - name: incident_id
+        description: Incident identifier
+        roles:
+          - concept: Incident
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Deployment} belongs to {Incident}"
+  - concept: Vulnerability
+    type: EntityType
+    description: Vulnerability (snapshot dataset `vulnerability`).
+    identify_by:
+      - vulnerability_id
+    relationships:
+      - name: discovered_at
+        description: Discovery time
+        roles:
+          - concept: Date
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Vulnerability} on {Date} has discovered at {DateTime}"
+      - name: patched_at
+        description: Patch time
+        roles:
+          - concept: Date
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Vulnerability} on {Date} has patched at {DateTime}"
+      - name: vulnerability_id
+        description: Vulnerability identifier
+        roles:
+          - concept: VulnerabilityId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Vulnerability} is identified by {VulnerabilityId}"
+      - name: vulnerability_status
+        description: Vulnerability status
+        roles:
+          - concept: Date
+          - concept: VulnerabilityStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Vulnerability} on {Date} has {VulnerabilityStatus}"
+  - concept: ServiceMetrics
+    type: EntityType
+    description: Service reliability (fact dataset `service_metrics`).
+    identify_by:
+      - service_id
+    relationships:
+      - name: downtime_minutes
+        description: Minutes unavailable in the period
+        roles:
+          - concept: Date
+          - concept: DowntimeMinutes
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ServiceMetrics} on {Date} has {DowntimeMinutes}"
+      - name: error_count
+        description: Failed requests
+        roles:
+          - concept: Date
+          - concept: ErrorCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ServiceMetrics} on {Date} has {ErrorCount}"
+      - name: request_count
+        description: Total requests
+        roles:
+          - concept: Date
+          - concept: RequestCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ServiceMetrics} on {Date} has {RequestCount}"
+      - name: response_time_ms
+        description: Response time per request sample
+        roles:
+          - concept: Date
+          - concept: ResponseTimeMs
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ServiceMetrics} on {Date} has {ResponseTimeMs}"
+      - name: service_id
+        description: Service identifier
+        roles:
+          - concept: ServiceId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{ServiceMetrics} is identified by {ServiceId}"
+      - name: sla_met
+        description: SLA met for the period row
+        roles:
+          - concept: Date
+          - concept: SlaMet
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ServiceMetrics} on {Date} has {SlaMet}"
+      - name: utilization
+        description: Resource utilisation, 0 to 1
+        roles:
+          - concept: Date
+          - concept: Utilization
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ServiceMetrics} on {Date} has {Utilization}"
+  - concept: Issue
+    type: EntityType
+    description: Issue (bug or request) (event dataset `issue`).
+    identify_by:
+      - issue_id
+    relationships:
+      - name: created_at
+        description: Creation time
+        roles:
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Issue} has created at {DateTime}"
+      - name: issue_environment
+        description: Where the issue was found
+        roles:
+          - concept: IssueEnvironment
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Issue} has {IssueEnvironment}"
+      - name: issue_id
+        description: Issue identifier
+        roles:
+          - concept: IssueId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Issue} is identified by {IssueId}"
+      - name: issue_source
+        description: Who reported the issue
+        roles:
+          - concept: IssueSource
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Issue} has {IssueSource}"
+      - name: issue_type
+        description: Issue kind
+        roles:
+          - concept: IssueType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Issue} has {IssueType}"
+  - concept: Feature
+    type: EntityType
+    description: Feature (snapshot dataset `feature`).
+    identify_by:
+      - feature_id
+    relationships:
+      - name: actual_date
+        description: Actual delivery date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: actual_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Feature} on {Date} has actual date {Date:actual_date}"
+      - name: feature_created_date
+        description: Date the feature was first specified
+        roles:
+          - concept: Date
+          - concept: Date
+            name: feature_created_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Feature} on {Date} has feature created date {Date:feature_created_date}"
+      - name: feature_id
+        description: Feature identifier
+        roles:
+          - concept: FeatureId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Feature} is identified by {FeatureId}"
+      - name: first_use_date
+        description: First use of the feature
+        roles:
+          - concept: Date
+          - concept: Date
+            name: first_use_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Feature} on {Date} has first use date {Date:first_use_date}"
+      - name: planned_date
+        description: Planned delivery date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: planned_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Feature} on {Date} has planned date {Date:planned_date}"
+      - name: release_date
+        description: Release date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: release_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Feature} on {Date} has release date {Date:release_date}"
+      - name: release_id
+        description: Release identifier
+        roles:
+          - concept: Release
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Feature} belongs to {Release}"
+  - concept: Release
+    type: EntityType
+    description: Release (event dataset `release`).
+    identify_by:
+      - release_id
+    relationships:
+      - name: release_date
+        description: Release date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Release} has release date {Date}"
+      - name: release_id
+        description: Release identifier
+        roles:
+          - concept: ReleaseId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Release} is identified by {ReleaseId}"
+  - concept: RoadmapItem
+    type: EntityType
+    description: Roadmap item (snapshot dataset `roadmap_item`).
+    identify_by:
+      - roadmap_item_id
+    relationships:
+      - name: roadmap_item_completed
+        description: Roadmap item delivered
+        roles:
+          - concept: Date
+          - concept: RoadmapItemCompleted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RoadmapItem} on {Date} has {RoadmapItemCompleted}"
+      - name: roadmap_item_id
+        description: Roadmap item identifier
+        roles:
+          - concept: RoadmapItemId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{RoadmapItem} is identified by {RoadmapItemId}"
+  - concept: ProjectMilestone
+    type: EntityType
+    description: Project milestone (snapshot dataset `project_milestone`).
+    identify_by:
+      - project_milestone_id
+    relationships:
+      - name: actual_date
+        description: Actual delivery date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: actual_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProjectMilestone} on {Date} has actual date {Date:actual_date}"
+      - name: planned_date
+        description: Planned delivery date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: planned_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProjectMilestone} on {Date} has planned date {Date:planned_date}"
+      - name: project_id
+        description: Services project identifier; null on costs not attributable to a project
+        roles:
+          - concept: Project
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ProjectMilestone} belongs to {Project}"
+      - name: project_milestone_id
+        description: Project milestone identifier
+        roles:
+          - concept: ProjectMilestoneId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{ProjectMilestone} is identified by {ProjectMilestoneId}"
+  - concept: TimeEntry
+    type: EntityType
+    description: Time entry (event dataset `time_entry`).
+    identify_by:
+      - entry_id
+    relationships:
+      - name: billed_hours
+        description: Hours billed to the customer
+        roles:
+          - concept: BilledHours
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has {BilledHours}"
+      - name: billed_revenue
+        description: Revenue billed for the entry
+        roles:
+          - concept: BilledRevenue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has {BilledRevenue}"
+      - name: consultant_id
+        description: Consultant identifier
+        roles:
+          - concept: Consultant
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} belongs to {Consultant}"
+      - name: entry_date
+        description: Time entry date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has entry date {Date}"
+      - name: entry_id
+        description: Time entry identifier
+        roles:
+          - concept: EntryId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{TimeEntry} is identified by {EntryId}"
+      - name: hours
+        description: Hours logged
+        roles:
+          - concept: Hours
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has {Hours}"
+      - name: project_id
+        description: Services project identifier; null on costs not attributable to a project
+        roles:
+          - concept: Project
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} belongs to {Project}"
+      - name: standard_rate
+        description: Standard hourly rate
+        roles:
+          - concept: StandardRate
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has {StandardRate}"
+      - name: time_entry_type
+        description: Billable or non-billable category
+        roles:
+          - concept: TimeEntryType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has {TimeEntryType}"
+      - name: written_off_hours
+        description: Hours written off
+        roles:
+          - concept: WrittenOffHours
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{TimeEntry} has {WrittenOffHours}"
+  - concept: Deliverable
+    type: EntityType
+    description: Deliverable (snapshot dataset `deliverable`).
+    identify_by:
+      - deliverable_id
+    relationships:
+      - name: deliverable_id
+        description: Deliverable identifier
+        roles:
+          - concept: DeliverableId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Deliverable} is identified by {DeliverableId}"
+      - name: project_id
+        description: Services project identifier; null on costs not attributable to a project
+        roles:
+          - concept: Project
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Deliverable} belongs to {Project}"
+      - name: reworked
+        description: Deliverable required rework
+        roles:
+          - concept: Date
+          - concept: Reworked
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Deliverable} on {Date} has {Reworked}"
+  - concept: Onboarding
+    type: EntityType
+    description: Onboarding engagement (snapshot dataset `onboarding`).
+    identify_by:
+      - onboarding_id
+    relationships:
+      - name: contract_start
+        description: Contract start date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: contract_start
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has contract start {Date:contract_start}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} belongs to {Customer}"
+      - name: hours
+        description: Hours logged
+        roles:
+          - concept: Date
+          - concept: Hours
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has {Hours}"
+      - name: onboarding_completion_date
+        description: Onboarding completion; null while open
+        roles:
+          - concept: Date
+          - concept: Date
+            name: onboarding_completion_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has onboarding completion date {Date:onboarding_completion_date}"
+      - name: onboarding_id
+        description: Onboarding engagement identifier
+        roles:
+          - concept: OnboardingId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Onboarding} is identified by {OnboardingId}"
+      - name: onboarding_start_date
+        description: Onboarding kickoff date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: onboarding_start_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has onboarding start date {Date:onboarding_start_date}"
+      - name: resource_id
+        description: Onboarding specialist
+        roles:
+          - concept: Date
+          - concept: ResourceId
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has {ResourceId}"
+      - name: steps_completed
+        description: Onboarding tasks completed
+        roles:
+          - concept: Date
+          - concept: StepsCompleted
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has {StepsCompleted}"
+      - name: steps_total
+        description: Onboarding tasks assigned
+        roles:
+          - concept: Date
+          - concept: StepsTotal
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has {StepsTotal}"
+      - name: target_date
+        description: Committed completion date
+        roles:
+          - concept: Date
+          - concept: Date
+            name: target_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has target date {Date:target_date}"
+  - concept: OnboardingMilestone
+    type: EntityType
+    description: Onboarding milestone (event dataset `onboarding_milestone`).
+    identify_by:
+      - onboarding_id
+    relationships:
+      - name: contract_start
+        description: Contract start date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{OnboardingMilestone} has contract start {Date}"
+      - name: milestone_date
+        description: Date the milestone was reached
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{OnboardingMilestone} has milestone date {Date}"
+      - name: onboarding_id
+        description: Onboarding engagement identifier
+        roles:
+          - concept: OnboardingId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{OnboardingMilestone} is identified by {OnboardingId}"
+      - name: onboarding_milestone
+        description: Milestone reached
+        roles:
+          - concept: OnboardingMilestoneValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{OnboardingMilestone} has {OnboardingMilestoneValue}"
+  - concept: OnboardingSession
+    type: EntityType
+    description: Onboarding session (event dataset `onboarding_session`).
+    identify_by:
+      - onboarding_id
+    relationships:
+      - name: attendees
+        description: Customer attendees at the session
+        roles:
+          - concept: Attendees
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{OnboardingSession} has {Attendees}"
+      - name: onboarding_id
+        description: Onboarding engagement identifier
+        roles:
+          - concept: OnboardingId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{OnboardingSession} is identified by {OnboardingId}"
+      - name: onboarding_session_date
+        description: Scheduled session date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{OnboardingSession} has onboarding session date {Date}"
+  - concept: Quote
+    type: EntityType
+    description: Quote (snapshot dataset `quote`).
+    identify_by:
+      - quote_id
+    relationships:
+      - name: list_price
+        description: List price of the quote
+        roles:
+          - concept: Date
+          - concept: ListPrice
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Quote} on {Date} has {ListPrice}"
+      - name: quote_id
+        description: Quote identifier
+        roles:
+          - concept: QuoteId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Quote} is identified by {QuoteId}"
+      - name: quote_requested_at
+        description: Quote requested
+        roles:
+          - concept: Date
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Quote} on {Date} has quote requested at {DateTime}"
+      - name: quote_sent_at
+        description: Quote sent
+        roles:
+          - concept: Date
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Quote} on {Date} has quote sent at {DateTime}"
+      - name: quoted_price
+        description: Net price of the quote
+        roles:
+          - concept: Date
+          - concept: QuotedPrice
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Quote} on {Date} has {QuotedPrice}"
+      - name: revision_count
+        description: Revisions before acceptance
+        roles:
+          - concept: Date
+          - concept: RevisionCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Quote} on {Date} has {RevisionCount}"
+  - concept: Order
+    type: EntityType
+    description: Order (snapshot dataset `order`).
+    identify_by:
+      - order_id
+    relationships:
+      - name: has_error
+        description: Order needed correction
+        roles:
+          - concept: Date
+          - concept: HasError
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Order} on {Date} has {HasError}"
+      - name: order_completed_at
+        description: Order processed
+        roles:
+          - concept: Date
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Order} on {Date} has order completed at {DateTime}"
+      - name: order_id
+        description: Order identifier
+        roles:
+          - concept: OrderId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Order} is identified by {OrderId}"
+      - name: order_received_at
+        description: Order received
+        roles:
+          - concept: Date
+          - concept: DateTime
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Order} on {Date} has order received at {DateTime}"
+      - name: quote_id
+        description: Quote identifier
+        roles:
+          - concept: Quote
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Order} belongs to {Quote}"
+  - concept: RevenueSchedule
+    type: EntityType
+    description: Revenue schedule (fact dataset `revenue_schedule`).
+    identify_by:
+      - subscription_id
+    relationships:
+      - name: billed_amount
+        description: Amount billed for the subscription in the period
+        roles:
+          - concept: Date
+          - concept: BilledAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueSchedule} on {Date} has {BilledAmount}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueSchedule} belongs to {Customer}"
+      - name: recognition_correct
+        description: Recognition matched policy on review
+        roles:
+          - concept: Date
+          - concept: RecognitionCorrect
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueSchedule} on {Date} has {RecognitionCorrect}"
+      - name: recognized_revenue
+        description: Revenue recognised for the subscription in the period
+        roles:
+          - concept: Date
+          - concept: RecognizedRevenue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueSchedule} on {Date} has {RecognizedRevenue}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: SubscriptionId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{RevenueSchedule} is identified by {SubscriptionId}"
+  - concept: Financials
+    type: EntityType
+    description: Income statement and cash flow (fact dataset `financials`).
+    identify_by:
+      - period_start
+    relationships:
+      - name: bad_debt_expense
+        description: Bad debt written off in the period
+        roles:
+          - concept: BadDebtExpense
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {BadDebtExpense}"
+      - name: capital_expenditures
+        description: Capital expenditure for the period
+        roles:
+          - concept: CapitalExpenditures
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {CapitalExpenditures}"
+      - name: ebitda
+        description: EBITDA for the period
+        roles:
+          - concept: Ebitda
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {Ebitda}"
+      - name: net_income
+        description: Net income for the period
+        roles:
+          - concept: NetIncome
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {NetIncome}"
+      - name: operating_cash_flow
+        description: Operating cash flow for the period
+        roles:
+          - concept: OperatingCashFlow
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {OperatingCashFlow}"
+      - name: period_start
+        description: Start of the period the row describes
+        roles:
+          - concept: Date
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Financials} is identified by {Date}"
+      - name: revenue
+        description: GAAP recognised revenue for the period
+        roles:
+          - concept: RevenueValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {RevenueValue}"
+      - name: revenue_type
+        description: Revenue line type
+        roles:
+          - concept: RevenueType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Financials} has {RevenueType}"
+  - concept: BalanceSheet
+    type: EntityType
+    description: Balance sheet (snapshot dataset `balance_sheet`).
+    identify_by:
+      - snapshot_date
+    relationships:
+      - name: accounts_receivable
+        description: Accounts receivable balance at period end
+        roles:
+          - concept: AccountsReceivable
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{BalanceSheet} has {AccountsReceivable}"
+      - name: cash_balance
+        description: Cash and equivalents at period end
+        roles:
+          - concept: CashBalance
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{BalanceSheet} has {CashBalance}"
+      - name: snapshot_date
+        description: As-of date of the snapshot row
+        roles:
+          - concept: Date
+        multiplicity: OneToOne
+        verbalizes:
+          - "{BalanceSheet} is identified by {Date}"
+  - concept: WebTraffic
+    type: EntityType
+    description: Web traffic (fact dataset `web_traffic`).
+    identify_by:
+      - traffic_source
+    relationships:
+      - name: traffic_source
+        description: Traffic source
+        roles:
+          - concept: TrafficSource
+        multiplicity: OneToOne
+        verbalizes:
+          - "{WebTraffic} is identified by {TrafficSource}"
+      - name: unique_visitors
+        description: Unique visitors in the period
+        roles:
+          - concept: Date
+          - concept: UniqueVisitors
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{WebTraffic} on {Date} has {UniqueVisitors}"
+  - concept: BrandMention
+    type: EntityType
+    description: Brand mentions (fact dataset `brand_mention`).
+    identify_by:
+      - mention_source
+    relationships:
+      - name: is_competitor
+        description: Mention is of a competitor
+        roles:
+          - concept: Date
+          - concept: IsCompetitor
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{BrandMention} on {Date} has {IsCompetitor}"
+      - name: mention_count
+        description: Brand mentions in the period
+        roles:
+          - concept: Date
+          - concept: MentionCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{BrandMention} on {Date} has {MentionCount}"
+      - name: mention_source
+        description: Mention source
+        roles:
+          - concept: MentionSource
+        multiplicity: OneToOne
+        verbalizes:
+          - "{BrandMention} is identified by {MentionSource}"
+  - concept: CrmRecord
+    type: EntityType
+    description: CRM record quality (snapshot dataset `crm_record`).
+    identify_by:
+      - record_id
+    relationships:
+      - name: populated_field_count
+        description: Required fields populated
+        roles:
+          - concept: Date
+          - concept: PopulatedFieldCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CrmRecord} on {Date} has {PopulatedFieldCount}"
+      - name: record_id
+        description: CRM record identifier
+        roles:
+          - concept: RecordId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{CrmRecord} is identified by {RecordId}"
+      - name: required_field_count
+        description: Required fields defined
+        roles:
+          - concept: Date
+          - concept: RequiredFieldCount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CrmRecord} on {Date} has {RequiredFieldCount}"
+      - name: sync_status
+        description: Cross-system match state
+        roles:
+          - concept: Date
+          - concept: SyncStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CrmRecord} on {Date} has {SyncStatus}"
+  - concept: PartnerActivity
+    type: EntityType
+    description: Partner activity (event dataset `partner_activity`).
+    identify_by:
+      - activity_id
+    relationships:
+      - name: activity_date
+        description: Activity date
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{PartnerActivity} has activity date {Date}"
+      - name: activity_id
+        description: Partner activity identifier
+        roles:
+          - concept: ActivityId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{PartnerActivity} is identified by {ActivityId}"
+      - name: partner_activity_type
+        description: Joint marketing activity kind
+        roles:
+          - concept: PartnerActivityType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{PartnerActivity} has {PartnerActivityType}"
+      - name: partner_id
+        description: Partner identifier
+        roles:
+          - concept: Partner
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{PartnerActivity} belongs to {Partner}"
+  - concept: DealRegistration
+    type: EntityType
+    description: Partner deal registration (snapshot dataset `deal_registration`).
+    identify_by:
+      - registration_id
+    relationships:
+      - name: close_date
+        description: Actual or expected close date of the opportunity; on a project or registration, the close date of the won deal
+        roles:
+          - concept: Date
+          - concept: Date
+            name: close_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{DealRegistration} on {Date} has close date {Date:close_date}"
+      - name: opportunity_id
+        description: Opportunity (deal) identifier
+        roles:
+          - concept: Opportunity
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{DealRegistration} belongs to {Opportunity}"
+      - name: partner_id
+        description: Partner identifier
+        roles:
+          - concept: Partner
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{DealRegistration} belongs to {Partner}"
+      - name: registration_date
+        description: Date the deal was registered
+        roles:
+          - concept: Date
+          - concept: Date
+            name: registration_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{DealRegistration} on {Date} has registration date {Date:registration_date}"
+      - name: registration_id
+        description: Partner deal registration identifier
+        roles:
+          - concept: RegistrationId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{DealRegistration} is identified by {RegistrationId}"
+      - name: registration_stage
+        description: Stage of the registered deal
+        roles:
+          - concept: Date
+          - concept: RegistrationStage
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{DealRegistration} on {Date} has {RegistrationStage}"
+  - concept: Forecast
+    type: EntityType
+    description: Revenue forecast (fact dataset `forecast`).
+    identify_by:
+      - period_start
+    relationships:
+      - name: actual_revenue
+        description: Revenue actually closed in the period
+        roles:
+          - concept: ActualRevenue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Forecast} has {ActualRevenue}"
+      - name: forecasted_revenue
+        description: Revenue forecast made before the period
+        roles:
+          - concept: ForecastedRevenue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Forecast} has {ForecastedRevenue}"
+      - name: period_start
+        description: Start of the period the row describes
+        roles:
+          - concept: Date
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Forecast} is identified by {Date}"
+  - concept: Revenue
+    type: EntityType
+    description: Revenue (GAAP). Recognized revenue under accrual accounting. The financial outcome of delivering on subscription obligations.
+  - concept: Bookings
+    type: EntityType
+    description: Bookings. The total value of new contracts signed in a period. A forward-looking commitment that converts to revenue over the contract term.
+  - concept: Cogs
+    type: EntityType
+    description: "COGS. Cost of Goods Sold: the direct cost of delivering the product, infrastructure only (hosting, compute, payment processing, delivery software). Support, success engineering, implementation and onboarding are subtracted in Gross Margin's Operating form, not in COGS. Subtracted from revenue in Gross Margin."
+  - concept: Cohort
+    type: EntityType
+    description: Cohort. A time-bound grouping of customers by acquisition period. Used for retention and expansion analysis to isolate vintage effects.
+  - concept: Pipeline
+    type: EntityType
+    description: Pipeline. The aggregate weighted value of active opportunities. Represents potential future bookings at various probability stages.
+  - concept: Segment
+    type: EntityType
+    description: Segment. A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison.
+  - concept: Tcv
+    type: EntityType
+    description: TCV (Total Contract Value). The total value of a contract over its full term, including one-time fees and multi-year commitments. Distinct from Bookings (period-attributable) and ACV (annualized).
+  - concept: AccountsReceivable
+    type: ValueType
+    description: Accounts receivable balance at period end
+    extends:
+      - Decimal
+  - concept: ActivityId
+    type: ValueType
+    description: Partner activity identifier
+    extends:
+      - String
+  - concept: ActualRevenue
+    type: ValueType
+    description: Revenue actually closed in the period
+    extends:
+      - Decimal
+  - concept: Acv
+    type: ValueType
+    description: Annual contract value, recurring only
+    extends:
+      - Decimal
+  - concept: AdSpend
+    type: ValueType
+    description: Media spend in the period
+    extends:
+      - Decimal
+  - concept: AdvancedToNextStage
+    type: ValueType
+    description: Advanced one stage in the period
+    extends:
+      - Boolean
+  - concept: AgentId
+    type: ValueType
+    description: Handling agent
+    extends:
+      - String
+  - concept: AmendmentType
+    type: ValueType
+    description: Mid-term change kind (CEL, extended with cross_sell)
+    extends:
+      - String
+    requires:
+      - AmendmentType == 'upgrade' OR AmendmentType == 'downgrade' OR AmendmentType == 'add_on' OR AmendmentType == 'cross_sell' OR AmendmentType == 'seat_change' OR AmendmentType == 'pricing_change'
+  - concept: ArticleId
+    type: ValueType
+    description: Knowledge base article identifier
+    extends:
+      - String
+  - concept: Attendees
+    type: ValueType
+    description: Customer attendees at the session
+    extends:
+      - Integer
+  - concept: AutoRenewed
+    type: ValueType
+    description: Renewal happened without manual intervention
+    extends:
+      - Boolean
+  - concept: AvailableHours
+    type: ValueType
+    description: Capacity hours in the period
+    extends:
+      - Decimal
+  - concept: BadDebtExpense
+    type: ValueType
+    description: Bad debt written off in the period
+    extends:
+      - Decimal
+  - concept: BilledAmount
+    type: ValueType
+    description: Amount billed for the subscription in the period
+    extends:
+      - Decimal
+  - concept: BilledHours
+    type: ValueType
+    description: Hours billed to the customer
+    extends:
+      - Decimal
+  - concept: BilledRevenue
+    type: ValueType
+    description: Revenue billed for the entry
+    extends:
+      - Decimal
+  - concept: CampaignId
+    type: ValueType
+    description: Campaign identifier
+    extends:
+      - String
+  - concept: CapitalExpenditures
+    type: ValueType
+    description: Capital expenditure for the period
+    extends:
+      - Decimal
+  - concept: CashBalance
+    type: ValueType
+    description: Cash and equivalents at period end
+    extends:
+      - Decimal
+  - concept: CertificationStatus
+    type: ValueType
+    description: Certification state
+    extends:
+      - String
+    requires:
+      - CertificationStatus == 'none' OR CertificationStatus == 'in_progress' OR CertificationStatus == 'certified' OR CertificationStatus == 'expired'
+  - concept: CesScore
+    type: ValueType
+    description: 1 to 7 effort score
+    extends:
+      - Integer
+  - concept: ChangeNature
+    type: ValueType
+    description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+    extends:
+      - String
+    requires:
+      - ChangeNature == 'permanent' OR ChangeNature == 'temporary' OR ChangeNature == 'scheduled_reversal'
+  - concept: Channel
+    type: ValueType
+    description: Campaign channel
+    extends:
+      - String
+    requires:
+      - Channel == 'paid_ads' OR Channel == 'organic_search' OR Channel == 'email' OR Channel == 'events' OR Channel == 'content' OR Channel == 'referral' OR Channel == 'direct' OR Channel == 'other'
+  - concept: CloseDateValid
+    type: ValueType
+    description: Close date is in the future or matches the actual close
+    extends:
+      - Boolean
+  - concept: ClosedRevenue
+    type: ValueType
+    description: Closed-won value credited to the rep in the period
+    extends:
+      - Decimal
+  - concept: CompositeScore
+    type: ValueType
+    description: Health score on a 0 to 100 scale
+    extends:
+      - Decimal
+  - concept: ConsultantId
+    type: ValueType
+    description: Consultant identifier
+    extends:
+      - String
+  - concept: ContractEventType
+    type: ValueType
+    description: Contract milestone (CEL Contract_Event.event_type)
+    extends:
+      - String
+    requires:
+      - ContractEventType == 'new_contract' OR ContractEventType == 'renewal' OR ContractEventType == 'amendment' OR ContractEventType == 'cancellation'
+  - concept: CoreFeaturesAdopted
+    type: ValueType
+    description: User has adopted the defined core feature set
+    extends:
+      - Boolean
+  - concept: Cost
+    type: ValueType
+    description: Cost amount (CEL Cost_Event.amount)
+    extends:
+      - Decimal
+  - concept: CostCentre
+    type: ValueType
+    description: Department or team that incurred the cost
+    extends:
+      - String
+    requires:
+      - CostCentre == 'marketing' OR CostCentre == 'sales' OR CostCentre == 'customer_success' OR CostCentre == 'support' OR CostCentre == 'engineering' OR CostCentre == 'product' OR CostCentre == 'finance' OR CostCentre == 'people' OR CostCentre == 'services' OR CostCentre == 'partnerships' OR CostCentre == 'general'
+  - concept: CostFunction
+    type: ValueType
+    description: Purpose of cost (ATL cost function, extended to all cost events)
+    extends:
+      - String
+    requires:
+      - CostFunction == 'gtm' OR CostFunction == 'implementation' OR CostFunction == 'onboarding' OR CostFunction == 'infrastructure' OR CostFunction == 'support' OR CostFunction == 'success_engineering' OR CostFunction == 'account_management' OR CostFunction == 'research_development' OR CostFunction == 'general_administrative' OR CostFunction == 'services_delivery' OR CostFunction == 'recruiting' OR CostFunction == 'partner_program' OR CostFunction == 'partner_commission'
+  - concept: CostType
+    type: ValueType
+    description: Nature of cost (CEL)
+    extends:
+      - String
+    requires:
+      - CostType == 'personnel' OR CostType == 'software' OR CostType == 'services' OR CostType == 'infrastructure' OR CostType == 'other'
+  - concept: CreditMemoCount
+    type: ValueType
+    description: Credit memos issued against the invoice
+    extends:
+      - Integer
+  - concept: CriteriaMet
+    type: ValueType
+    description: Product-qualified criteria met
+    extends:
+      - Boolean
+  - concept: CsmId
+    type: ValueType
+    description: Assigned customer success manager
+    extends:
+      - String
+  - concept: Currency
+    type: ValueType
+    description: ISO 4217 currency code
+    extends:
+      - String
+  - concept: CustomerId
+    type: ValueType
+    description: Customer (account) identifier. Primary business noun; CEL name
+    extends:
+      - String
+  - concept: CustomerStatus
+    type: ValueType
+    description: Customer lifecycle status; active means at least one active subscription
+    extends:
+      - String
+    requires:
+      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
+  - concept: Deflections
+    type: ValueType
+    description: Sessions resolved without a ticket
+    extends:
+      - Integer
+  - concept: DeliverableId
+    type: ValueType
+    description: Deliverable identifier
+    extends:
+      - String
+  - concept: Department
+    type: ValueType
+    description: Department
+    extends:
+      - String
+  - concept: DeploymentId
+    type: ValueType
+    description: Deployment identifier
+    extends:
+      - String
+  - concept: DowntimeMinutes
+    type: ValueType
+    description: Minutes unavailable in the period
+    extends:
+      - Integer
+  - concept: Ebitda
+    type: ValueType
+    description: EBITDA for the period
+    extends:
+      - Decimal
+  - concept: EmployeeId
+    type: ValueType
+    description: Employee identifier
+    extends:
+      - String
+  - concept: EmployeeStatus
+    type: ValueType
+    description: Employment status
+    extends:
+      - String
+    requires:
+      - EmployeeStatus == 'active' OR EmployeeStatus == 'on_leave' OR EmployeeStatus == 'terminated'
+  - concept: EngagedContactCount
+    type: ValueType
+    description: Contacts engaged in the period
+    extends:
+      - Integer
+  - concept: EngagementScore
+    type: ValueType
+    description: Engagement survey score
+    extends:
+      - Decimal
+  - concept: EntryId
+    type: ValueType
+    description: Time entry identifier
+    extends:
+      - String
+  - concept: ErrorCount
+    type: ValueType
+    description: Failed requests
+    extends:
+      - Integer
+  - concept: Escalated
+    type: ValueType
+    description: Escalated beyond first line
+    extends:
+      - Boolean
+  - concept: EventId
+    type: ValueType
+    description: Unique, immutable event identifier
+    extends:
+      - String
+  - concept: EventType
+    type: ValueType
+    description: Revenue movement classifier (CEL Revenue_Event.event_type)
+    extends:
+      - String
+    requires:
+      - EventType == 'new' OR EventType == 'expansion' OR EventType == 'contraction' OR EventType == 'churn' OR EventType == 'reactivation' OR EventType == 'renewal'
+  - concept: ExpansionClassification
+    type: ValueType
+    description: ATL expansion tag; required for NRR-M and ARR-M
+    extends:
+      - String
+    requires:
+      - ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting' OR ExpansionClassification == 'usage_realisation'
+  - concept: FeatureId
+    type: ValueType
+    description: Feature identifier
+    extends:
+      - String
+  - concept: ForecastCategory
+    type: ValueType
+    description: Forecast category
+    extends:
+      - String
+    requires:
+      - ForecastCategory == 'pipeline' OR ForecastCategory == 'best_case' OR ForecastCategory == 'commit' OR ForecastCategory == 'closed'
+  - concept: ForecastRenewalAmount
+    type: ValueType
+    description: Forecast renewal value
+    extends:
+      - Decimal
+  - concept: ForecastedRevenue
+    type: ValueType
+    description: Revenue forecast made before the period
+    extends:
+      - Decimal
+  - concept: HasError
+    type: ValueType
+    description: Order needed correction
+    extends:
+      - Boolean
+  - concept: HasExecSponsor
+    type: ValueType
+    description: An executive sponsor is identified
+    extends:
+      - Boolean
+  - concept: Hours
+    type: ValueType
+    description: Hours logged
+    extends:
+      - Decimal
+  - concept: HoursActual
+    type: ValueType
+    description: Actual hours
+    extends:
+      - Decimal
+  - concept: HoursBudgeted
+    type: ValueType
+    description: Budgeted hours
+    extends:
+      - Decimal
+  - concept: IncidentId
+    type: ValueType
+    description: Incident identifier
+    extends:
+      - String
+  - concept: IncidentType
+    type: ValueType
+    description: Incident category
+    extends:
+      - String
+    requires:
+      - IncidentType == 'availability' OR IncidentType == 'performance' OR IncidentType == 'security' OR IncidentType == 'data'
+  - concept: IncludesServices
+    type: ValueType
+    description: Deal includes professional services
+    extends:
+      - Boolean
+  - concept: InvoiceAmount
+    type: ValueType
+    description: Invoiced amount
+    extends:
+      - Decimal
+  - concept: InvoiceCorrected
+    type: ValueType
+    description: Corrected after issue
+    extends:
+      - Boolean
+  - concept: InvoiceDisputed
+    type: ValueType
+    description: Disputed by the customer
+    extends:
+      - Boolean
+  - concept: InvoiceId
+    type: ValueType
+    description: Invoice identifier
+    extends:
+      - String
+  - concept: IsCompetitor
+    type: ValueType
+    description: Mention is of a competitor
+    extends:
+      - Boolean
+  - concept: IsHighPerformer
+    type: ValueType
+    description: Rated high performer
+    extends:
+      - Boolean
+  - concept: IssueEnvironment
+    type: ValueType
+    description: Where the issue was found
+    extends:
+      - String
+    requires:
+      - IssueEnvironment == 'production' OR IssueEnvironment == 'pre_production'
+  - concept: IssueId
+    type: ValueType
+    description: Issue identifier
+    extends:
+      - String
+  - concept: IssueSource
+    type: ValueType
+    description: Who reported the issue
+    extends:
+      - String
+    requires:
+      - IssueSource == 'user_report' OR IssueSource == 'internal' OR IssueSource == 'monitoring'
+  - concept: IssueType
+    type: ValueType
+    description: Issue kind
+    extends:
+      - String
+    requires:
+      - IssueType == 'bug' OR IssueType == 'feature_request' OR IssueType == 'question' OR IssueType == 'incident'
+  - concept: JobLevel
+    type: ValueType
+    description: Seniority level
+    extends:
+      - String
+    requires:
+      - JobLevel == 'individual_contributor' OR JobLevel == 'manager' OR JobLevel == 'director' OR JobLevel == 'vp' OR JobLevel == 'c_level'
+  - concept: LeadId
+    type: ValueType
+    description: Lead identifier
+    extends:
+      - String
+  - concept: LeadSource
+    type: ValueType
+    description: Lead source
+    extends:
+      - String
+  - concept: LeadStage
+    type: ValueType
+    description: Lead funnel stage
+    extends:
+      - String
+    requires:
+      - LeadStage == 'lead' OR LeadStage == 'mql' OR LeadStage == 'sql' OR LeadStage == 'opportunity' OR LeadStage == 'disqualified'
+  - concept: LifecycleAttribution
+    type: ValueType
+    description: ATL lifecycle tag
+    extends:
+      - String
+    requires:
+      - LifecycleAttribution == 'acquisition' OR LifecycleAttribution == 'activation' OR LifecycleAttribution == 'retention' OR LifecycleAttribution == 'expansion' OR LifecycleAttribution == 'reactivation' OR LifecycleAttribution == 'servicing'
+  - concept: ListPrice
+    type: ValueType
+    description: List price of the quote
+    extends:
+      - Decimal
+  - concept: MarketMidpoint
+    type: ValueType
+    description: Market midpoint for the role
+    extends:
+      - Decimal
+  - concept: MarketingChannel
+    type: ValueType
+    description: First-touch marketing channel
+    extends:
+      - String
+    requires:
+      - MarketingChannel == 'paid_ads' OR MarketingChannel == 'organic_search' OR MarketingChannel == 'email' OR MarketingChannel == 'events' OR MarketingChannel == 'content' OR MarketingChannel == 'referral' OR MarketingChannel == 'direct' OR MarketingChannel == 'other'
+  - concept: MarketingInfluenced
+    type: ValueType
+    description: A marketing touch exists on the opportunity
+    extends:
+      - Boolean
+  - concept: MarketingSource
+    type: ValueType
+    description: Team that sourced the opportunity
+    extends:
+      - String
+    requires:
+      - MarketingSource == 'marketing' OR MarketingSource == 'sales' OR MarketingSource == 'partner' OR MarketingSource == 'other'
+  - concept: MentionCount
+    type: ValueType
+    description: Brand mentions in the period
+    extends:
+      - Integer
+  - concept: MentionSource
+    type: ValueType
+    description: Mention source
+    extends:
+      - String
+  - concept: Mrr
+    type: ValueType
+    description: Monthly recurring revenue of the subscription
+    extends:
+      - Decimal
+  - concept: MrrChange
+    type: ValueType
+    description: Change in MRR; negative for contraction and churn
+    extends:
+      - Decimal
+  - concept: MrrEnd
+    type: ValueType
+    description: MRR at period end (cohort form)
+    extends:
+      - Decimal
+  - concept: MrrStart
+    type: ValueType
+    description: MRR at period start (cohort form)
+    extends:
+      - Decimal
+  - concept: NetIncome
+    type: ValueType
+    description: Net income for the period
+    extends:
+      - Decimal
+  - concept: NewMrr
+    type: ValueType
+    description: MRR after the event
+    extends:
+      - Decimal
+  - concept: NewState
+    type: ValueType
+    description: New lifecycle state
+    extends:
+      - String
+  - concept: NpsScore
+    type: ValueType
+    description: 0 to 10 recommend score
+    extends:
+      - Integer
+  - concept: OfferStatus
+    type: ValueType
+    description: Status of the latest offer
+    extends:
+      - String
+    requires:
+      - OfferStatus == 'extended' OR OfferStatus == 'accepted' OR OfferStatus == 'declined' OR OfferStatus == 'withdrawn'
+  - concept: OnboardingId
+    type: ValueType
+    description: Onboarding engagement identifier
+    extends:
+      - String
+  - concept: OnboardingMilestoneValue
+    type: ValueType
+    description: Milestone reached
+    extends:
+      - String
+    requires:
+      - OnboardingMilestoneValue == 'kickoff' OR OnboardingMilestoneValue == 'first_value' OR OnboardingMilestoneValue == 'go_live' OR OnboardingMilestoneValue == 'full_adoption'
+  - concept: OperatingCashFlow
+    type: ValueType
+    description: Operating cash flow for the period
+    extends:
+      - Decimal
+  - concept: OpportunityAmount
+    type: ValueType
+    description: Opportunity value (recurring)
+    extends:
+      - Decimal
+  - concept: OpportunityId
+    type: ValueType
+    description: Opportunity (deal) identifier
+    extends:
+      - String
+  - concept: OpportunityStage
+    type: ValueType
+    description: Opportunity stage
+    extends:
+      - String
+    requires:
+      - OpportunityStage == 'qualification' OR OpportunityStage == 'discovery' OR OpportunityStage == 'proposal' OR OpportunityStage == 'negotiation' OR OpportunityStage == 'closed_won' OR OpportunityStage == 'closed_lost'
+  - concept: OrderId
+    type: ValueType
+    description: Order identifier
+    extends:
+      - String
+  - concept: OutstandingAmount
+    type: ValueType
+    description: Unpaid balance as of snapshot_date
+    extends:
+      - Decimal
+  - concept: PartnerActivityType
+    type: ValueType
+    description: Joint marketing activity kind
+    extends:
+      - String
+    requires:
+      - PartnerActivityType == 'webinar' OR PartnerActivityType == 'event' OR PartnerActivityType == 'content' OR PartnerActivityType == 'campaign'
+  - concept: PartnerId
+    type: ValueType
+    description: Partner identifier
+    extends:
+      - String
+  - concept: PartnerSourced
+    type: ValueType
+    description: Sourced by a partner
+    extends:
+      - Boolean
+  - concept: PartnerStatus
+    type: ValueType
+    description: Partner lifecycle status
+    extends:
+      - String
+    requires:
+      - PartnerStatus == 'recruited' OR PartnerStatus == 'active' OR PartnerStatus == 'churned'
+  - concept: PartnerTier
+    type: ValueType
+    description: Partner programme tier
+    extends:
+      - String
+    requires:
+      - PartnerTier == 'registered' OR PartnerTier == 'silver' OR PartnerTier == 'gold' OR PartnerTier == 'platinum'
+  - concept: PaymentMethod
+    type: ValueType
+    description: Payment method
+    extends:
+      - String
+    requires:
+      - PaymentMethod == 'credit_card' OR PaymentMethod == 'ach' OR PaymentMethod == 'wire' OR PaymentMethod == 'check' OR PaymentMethod == 'other'
+  - concept: PaymentStatus
+    type: ValueType
+    description: Payment status
+    extends:
+      - String
+    requires:
+      - PaymentStatus == 'paid' OR PaymentStatus == 'unpaid' OR PaymentStatus == 'partial' OR PaymentStatus == 'written_off'
+  - concept: PerformanceRating
+    type: ValueType
+    description: Most recent performance rating
+    extends:
+      - Decimal
+  - concept: PopulatedFieldCount
+    type: ValueType
+    description: Required fields populated
+    extends:
+      - Integer
+  - concept: PriorMrr
+    type: ValueType
+    description: MRR before the event
+    extends:
+      - Decimal
+  - concept: PriorState
+    type: ValueType
+    description: Previous lifecycle state
+    extends:
+      - String
+  - concept: ProductEventType
+    type: ValueType
+    description: Kind of product event; qualifying events define active use
+    extends:
+      - String
+    requires:
+      - ProductEventType == 'qualifying' OR ProductEventType == 'action' OR ProductEventType == 'error' OR ProductEventType == 'reactivation' OR ProductEventType == 'login'
+  - concept: ProjectCost
+    type: ValueType
+    description: Delivery cost of the project
+    extends:
+      - Decimal
+  - concept: ProjectId
+    type: ValueType
+    description: Services project identifier; null on costs not attributable to a project
+    extends:
+      - String
+  - concept: ProjectMilestoneId
+    type: ValueType
+    description: Project milestone identifier
+    extends:
+      - String
+  - concept: ProjectRevenue
+    type: ValueType
+    description: Revenue recognised on the project
+    extends:
+      - Decimal
+  - concept: QbrCompleted
+    type: ValueType
+    description: A QBR was held in the period
+    extends:
+      - Boolean
+  - concept: QbrDue
+    type: ValueType
+    description: A QBR was due in the period
+    extends:
+      - Boolean
+  - concept: Quota
+    type: ValueType
+    description: Quota for the period
+    extends:
+      - Decimal
+  - concept: QuoteId
+    type: ValueType
+    description: Quote identifier
+    extends:
+      - String
+  - concept: QuotedPrice
+    type: ValueType
+    description: Net price of the quote
+    extends:
+      - Decimal
+  - concept: RecognitionCorrect
+    type: ValueType
+    description: Recognition matched policy on review
+    extends:
+      - Boolean
+  - concept: RecognizedRevenue
+    type: ValueType
+    description: Revenue recognised for the subscription in the period
+    extends:
+      - Decimal
+  - concept: RecordId
+    type: ValueType
+    description: CRM record identifier
+    extends:
+      - String
+  - concept: RecoveryTime
+    type: ValueType
+    description: Minutes from start to service restored
+    extends:
+      - Integer
+  - concept: Referenceable
+    type: ValueType
+    description: Customer agreed to be a reference
+    extends:
+      - Boolean
+  - concept: RegistrationId
+    type: ValueType
+    description: Partner deal registration identifier
+    extends:
+      - String
+  - concept: RegistrationStage
+    type: ValueType
+    description: Stage of the registered deal
+    extends:
+      - String
+    requires:
+      - RegistrationStage == 'qualification' OR RegistrationStage == 'discovery' OR RegistrationStage == 'proposal' OR RegistrationStage == 'negotiation' OR RegistrationStage == 'closed_won' OR RegistrationStage == 'closed_lost'
+  - concept: ReleaseId
+    type: ValueType
+    description: Release identifier
+    extends:
+      - String
+  - concept: RenewalAmount
+    type: ValueType
+    description: Value up for renewal
+    extends:
+      - Decimal
+  - concept: RenewalNotifiedOnTime
+    type: ValueType
+    description: Renewal notice sent within the agreed window
+    extends:
+      - Boolean
+  - concept: Renewed
+    type: ValueType
+    description: Renewed at the most recent term end
+    extends:
+      - Boolean
+  - concept: Reopened
+    type: ValueType
+    description: Reopened after resolution
+    extends:
+      - Boolean
+  - concept: RepId
+    type: ValueType
+    description: Sales rep identifier
+    extends:
+      - String
+  - concept: RequestCount
+    type: ValueType
+    description: Total requests
+    extends:
+      - Integer
+  - concept: RequiredFieldCount
+    type: ValueType
+    description: Required fields defined
+    extends:
+      - Integer
+  - concept: RequiredFieldsComplete
+    type: ValueType
+    description: All required CRM fields populated
+    extends:
+      - Boolean
+  - concept: RequisitionId
+    type: ValueType
+    description: Requisition identifier
+    extends:
+      - String
+  - concept: RequisitionStatus
+    type: ValueType
+    description: Requisition status
+    extends:
+      - String
+    requires:
+      - RequisitionStatus == 'open' OR RequisitionStatus == 'filled' OR RequisitionStatus == 'closed'
+  - concept: ResolvedFirstContact
+    type: ValueType
+    description: Resolved in the first interaction
+    extends:
+      - Boolean
+  - concept: ResourceId
+    type: ValueType
+    description: Onboarding specialist
+    extends:
+      - String
+  - concept: ResponseId
+    type: ValueType
+    description: Survey response identifier
+    extends:
+      - String
+  - concept: ResponseTimeMs
+    type: ValueType
+    description: Response time per request sample
+    extends:
+      - Integer
+  - concept: RevenueValue
+    type: ValueType
+    description: GAAP recognised revenue for the period
+    extends:
+      - Decimal
+  - concept: RevenueType
+    type: ValueType
+    description: Revenue line type
+    extends:
+      - String
+    requires:
+      - RevenueType == 'subscription' OR RevenueType == 'services' OR RevenueType == 'usage' OR RevenueType == 'other'
+  - concept: RevisionCount
+    type: ValueType
+    description: Revisions before acceptance
+    extends:
+      - Integer
+  - concept: Reworked
+    type: ValueType
+    description: Deliverable required rework
+    extends:
+      - Boolean
+  - concept: RoadmapItemCompleted
+    type: ValueType
+    description: Roadmap item delivered
+    extends:
+      - Boolean
+  - concept: RoadmapItemId
+    type: ValueType
+    description: Roadmap item identifier
+    extends:
+      - String
+  - concept: Salary
+    type: ValueType
+    description: Base salary
+    extends:
+      - Decimal
+  - concept: SatisfactionScore
+    type: ValueType
+    description: 1 to 5 satisfaction score
+    extends:
+      - Integer
+  - concept: ScopeChanged
+    type: ValueType
+    description: Scope changed after kickoff
+    extends:
+      - Boolean
+  - concept: ServiceId
+    type: ValueType
+    description: Service identifier
+    extends:
+      - String
+  - concept: SessionDuration
+    type: ValueType
+    description: Session length in minutes
+    extends:
+      - Integer
+  - concept: SessionId
+    type: ValueType
+    description: Session identifier
+    extends:
+      - String
+  - concept: Severity
+    type: ValueType
+    description: Incident severity
+    extends:
+      - String
+    requires:
+      - Severity == 'sev1' OR Severity == 'sev2' OR Severity == 'sev3' OR Severity == 'sev4'
+  - concept: SlaMet
+    type: ValueType
+    description: SLA met for the period row
+    extends:
+      - Boolean
+  - concept: StageAccurate
+    type: ValueType
+    description: Stage matches observed activity
+    extends:
+      - Boolean
+  - concept: StageProbability
+    type: ValueType
+    description: Win probability for the stage, 0 to 1
+    extends:
+      - Decimal
+  - concept: StandardRate
+    type: ValueType
+    description: Standard hourly rate
+    extends:
+      - Decimal
+  - concept: StateCategory
+    type: ValueType
+    description: Lifecycle state after the change (CEL)
+    extends:
+      - String
+    requires:
+      - StateCategory == 'activation' OR StateCategory == 'onboarding_complete' OR StateCategory == 'healthy' OR StateCategory == 'at_risk' OR StateCategory == 'churned' OR StateCategory == 'reactivated'
+  - concept: StepsCompleted
+    type: ValueType
+    description: Onboarding tasks completed
+    extends:
+      - Integer
+  - concept: StepsTotal
+    type: ValueType
+    description: Onboarding tasks assigned
+    extends:
+      - Integer
+  - concept: SubscriptionId
+    type: ValueType
+    description: Subscription identifier
+    extends:
+      - String
+  - concept: SubscriptionStatus
+    type: ValueType
+    description: Subscription status
+    extends:
+      - String
+    requires:
+      - SubscriptionStatus == 'active' OR SubscriptionStatus == 'cancelled' OR SubscriptionStatus == 'expired' OR SubscriptionStatus == 'paused'
+  - concept: SurveyCompleted
+    type: ValueType
+    description: Response completed
+    extends:
+      - Boolean
+  - concept: SurveyType
+    type: ValueType
+    description: Survey programme the response belongs to
+    extends:
+      - String
+    requires:
+      - SurveyType == 'customer' OR SurveyType == 'onboarding' OR SurveyType == 'project' OR SurveyType == 'partner' OR SurveyType == 'employee' OR SurveyType == 'prospect'
+  - concept: SyncStatus
+    type: ValueType
+    description: Cross-system match state
+    extends:
+      - String
+    requires:
+      - SyncStatus == 'matched' OR SyncStatus == 'mismatched' OR SyncStatus == 'missing'
+  - concept: TcvValue
+    type: ValueType
+    description: Total contract value
+    extends:
+      - Decimal
+  - concept: TerminationType
+    type: ValueType
+    description: Voluntary or involuntary
+    extends:
+      - String
+    requires:
+      - TerminationType == 'voluntary' OR TerminationType == 'involuntary'
+  - concept: TicketId
+    type: ValueType
+    description: Ticket identifier
+    extends:
+      - String
+  - concept: TicketStatus
+    type: ValueType
+    description: Ticket status
+    extends:
+      - String
+    requires:
+      - TicketStatus == 'open' OR TicketStatus == 'pending' OR TicketStatus == 'resolved' OR TicketStatus == 'closed'
+  - concept: Tier
+    type: ValueType
+    description: Pricing tier or segment
+    extends:
+      - String
+  - concept: TimeEntryType
+    type: ValueType
+    description: Billable or non-billable category
+    extends:
+      - String
+    requires:
+      - TimeEntryType == 'billable' OR TimeEntryType == 'training' OR TimeEntryType == 'pre_sales' OR TimeEntryType == 'internal'
+  - concept: TrafficSource
+    type: ValueType
+    description: Traffic source
+    extends:
+      - String
+    requires:
+      - TrafficSource == 'organic_search' OR TrafficSource == 'paid_search' OR TrafficSource == 'paid_social' OR TrafficSource == 'social' OR TrafficSource == 'email' OR TrafficSource == 'referral' OR TrafficSource == 'direct' OR TrafficSource == 'other'
+  - concept: TrainingCompleted
+    type: ValueType
+    description: Required training completed
+    extends:
+      - Boolean
+  - concept: UnderrepresentedGroup
+    type: ValueType
+    description: Self-identified member of an underrepresented group
+    extends:
+      - Boolean
+  - concept: UniqueVisitors
+    type: ValueType
+    description: Unique visitors in the period
+    extends:
+      - Integer
+  - concept: UpdatedWithinSla
+    type: ValueType
+    description: Updated inside the hygiene SLA
+    extends:
+      - Boolean
+  - concept: UpgradeEligible
+    type: ValueType
+    description: Customer is on a plan with an upgrade path
+    extends:
+      - Boolean
+  - concept: UsageCount
+    type: ValueType
+    description: Actions in the event or session
+    extends:
+      - Integer
+  - concept: UserId
+    type: ValueType
+    description: Product user identifier
+    extends:
+      - String
+  - concept: UserStatus
+    type: ValueType
+    description: User activity status
+    extends:
+      - String
+    requires:
+      - UserStatus == 'active' OR UserStatus == 'dormant' OR UserStatus == 'deactivated'
+  - concept: Utilization
+    type: ValueType
+    description: Resource utilisation, 0 to 1
+    extends:
+      - Decimal
+  - concept: VulnerabilityId
+    type: ValueType
+    description: Vulnerability identifier
+    extends:
+      - String
+  - concept: VulnerabilityStatus
+    type: ValueType
+    description: Vulnerability status
+    extends:
+      - String
+    requires:
+      - VulnerabilityStatus == 'open' OR VulnerabilityStatus == 'patched' OR VulnerabilityStatus == 'accepted'
+  - concept: WrittenOffHours
+    type: ValueType
+    description: Hours written off
+    extends:
+      - Decimal

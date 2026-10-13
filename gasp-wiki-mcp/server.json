@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "dev.gasp/gasp-standard-mcp",
+  "title": "GASP Standard",
+  "description": "SaaS metrics definitions, formulas, benchmarks, and relationships from the GASP Standard",
+  "version": "1.12.0",
+  "websiteUrl": "https://gaspwiki.com/v1/tools",
+  "repository": {
+    "url": "https://github.com/GASP-Standard/standard",
+    "source": "github",
+    "subfolder": "gasp-wiki-mcp"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "gasp-standard-mcp",
+      "version": "1.12.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

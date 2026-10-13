@@ -1,0 +1,206 @@
+/**
+ * GASP Standard → Apache Ossie semantic model (core-spec/spec.md).
+ *
+ *   datasets       one per GASP dataset (ontology.json datasets), every field whose
+ *                  `datasets` names it, the date field as the time dimension
+ *   relationships  every `*_id` field that is the key of another dataset
+ *   metrics        one per formula entry expression (main, forms, variants);
+ *                  direct when the formula is a plain Ossie aggregate (metrics.ts),
+ *                  else a staged per-period dataset built from the compiled SQL
+ *
+ * The reference model's physical sources are `gasp.<dataset>` and its columns are
+ * the canonical field ids; an adopter's mapping replaces both.
+ */
+import { compileMetric } from "../compile.js";
+import { metricFormulaId, isMetricStub } from "../loader.js";
+import { metricUrl } from "../urls.js";
+import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
+import { emitMetric, formulaSource, type EmitContext } from "./metrics.js";
+import { metricName, ossieDataType, physicalSource } from "./names.js";
+import {
+  GASP_VENDOR, OSSIE_DIALECT, OSSIE_VERSION,
+  type MetricCoverage, type OssieDataset, type OssieExpression, type OssieExtension, type OssieField,
+  type OssieMetric, type OssieRelationship, type OssieSemanticModel,
+} from "./types.js";
+
+/** Grain table the adopter provides for staged metrics: one row per reporting period. */
+export const PERIOD_SPINE = "gasp.period_spine";
+
+const sql = (expression: string): OssieExpression => ({ dialects: [{ dialect: OSSIE_DIALECT, expression }] });
+const gasp = (data: Record<string, unknown>): OssieExtension[] => [{ vendor_name: GASP_VENDOR, data: JSON.stringify(data) }];
+
+export const stagedDatasetName = (metric: string): string => `gasp_staged_${metric}`;
+
+/** Snapshot and fact rows are one per key per date; event rows one per key. */
+export function primaryKey(d: OntologyDataset): string[] {
+  if (d.kind === "event") return [d.key];
+  return d.key === d.date ? [d.date] : [d.key, d.date];
+}
+
+function datasetOf(id: string, d: OntologyDataset, fields: OntologyField[]): OssieDataset {
+  const own = fields.filter((f) => f.datasets?.includes(id));
+  const description = [d.label.replace(/\.?$/, "."), `Kind: ${d.kind}.`, d.cel ? `CEL class: ${d.cel}.` : ""].filter(Boolean).join(" ");
+  return {
+    name: id,
+    source: physicalSource(id),
+    description,
+    primary_key: primaryKey(d),
+    fields: own.map((f): OssieField => ({
+      name: f.id,
+      expression: sql(f.id),
+      ...(f.id === d.date ? { dimension: { is_time: true } } : {}),
+      ...(f.description ? { description: f.description } : {}),
+      datatype: ossieDataType(f.type),
+      ...(f.type === "enum" && f.values?.length ? { ai_context: { instructions: `One of ${f.values.join(", ")}` } } : {}),
+    })),
+    custom_extensions: gasp({ kind: d.kind, ...(d.cel ? { cel: d.cel } : {}), ...(d.activeWhen ? { activeWhen: d.activeWhen } : {}) }),
+  };
+}
+
+/**
+ * A field is a foreign key when it is named `*_id`, is not the dataset's own key
+ * or date, and is the key of another dataset. When several datasets share that
+ * key (subscription and revenue_schedule both key on subscription_id) the target
+ * is the first dataset, in ontology.json order, whose `entities` include the
+ * entity the key names (`subscription_id` → `subscription`), else the first
+ * dataset keyed by it. Shared non-entity keys (event_id, period_start,
+ * snapshot_date) are each dataset's own key and so never become joins.
+ * A snapshot or fact target is a daily snapshot or a period row, so the join
+ * carries the date too; an event target joins on the key alone.
+ */
+export function relationshipsOf(datasets: Record<string, OntologyDataset>, fields: OntologyField[]): OssieRelationship[] {
+  const ids = Object.keys(datasets);
+  const target = (key: string): string | undefined => {
+    const keyed = ids.filter((id) => datasets[id].key === key);
+    const entity = key.replace(/_id$/, "");
+    return keyed.find((id) => datasets[id].entities?.includes(entity)) ?? keyed[0];
+  };
+  const out: OssieRelationship[] = [];
+  for (const from of ids) {
+    const d = datasets[from];
+    for (const f of fields) {
+      if (!f.datasets?.includes(from) || !f.id.endsWith("_id") || f.id === d.key || f.id === d.date) continue;
+      const to = target(f.id);
+      if (!to || to === from) continue;
+      const t = datasets[to];
+      const withDate = t.kind !== "event";
+      out.push({
+        name: `${from}_${f.id}`,
+        from,
+        to,
+        from_columns: withDate ? [f.id, d.date] : [f.id],
+        to_columns: withDate ? [t.key, t.date] : [t.key],
+      });
+    }
+  }
+  return out;
+}
+
+/** The compiled scalar SQL with every placeholder filled for the reference model, per reporting period. */
+export function stagedSource(compiledSql: string): string {
+  const m = /^SELECT ([\s\S]*) AS \w+$/.exec(compiledSql);
+  if (!m) throw new Error(`Unexpected compiled SQL shape: ${compiledSql.slice(0, 80)}`);
+  const scalar = m[1]
+    .replace(/\{\{(\w+)@\w+\}\}/g, "$1")
+    .replace(/\{\{_table:(\w+)\}\}/g, (_, ds: string) => physicalSource(ds))
+    .replace(/\{\{_period_start\}\}/g, "p.period_start")
+    .replace(/\{\{_period_end\}\}/g, "p.period_end");
+  if (scalar.includes("{{")) throw new Error(`Unfilled placeholder in ${scalar}`);
+  return `SELECT p.period_start, p.period_end, (${scalar}) AS value FROM ${PERIOD_SPINE} p`;
+}
+
+const FORM_LABEL: Record<string, string> = { O: "Operating form", M: "Market form" };
+
+export function exportModel(data: StandardData): { model: OssieSemanticModel; coverage: Record<string, MetricCoverage> } {
+  const ont = data.ontology;
+  if (!ont?.fields || !ont.datasets || !data.formulas) throw new Error("Standard data has no fields, datasets or formulas");
+  const fieldList = ont.fields;
+  const ctx: EmitContext = { fields: Object.fromEntries(fieldList.map((f) => [f.id, f])), datasets: ont.datasets, formulas: data.formulas };
+
+  const datasets = Object.entries(ont.datasets).map(([id, d]) => datasetOf(id, d, fieldList));
+  const relationships = relationshipsOf(ont.datasets, fieldList);
+
+  // Formula id → the metric record that owns it (stubs defer to another metric).
+  const owner = new Map<string, Metric>();
+  for (const m of data.metrics) {
+    if (isMetricStub(m)) continue;
+    const id = metricFormulaId(data, m);
+    if (!owner.has(id)) owner.set(id, m);
+  }
+
+  const metrics: OssieMetric[] = [];
+  const staged: OssieDataset[] = [];
+  const coverage: Record<string, MetricCoverage> = {};
+
+  for (const [id, f] of Object.entries(data.formulas)) {
+    const m = owner.get(id);
+    const entries: Array<{ key: string; variant?: string; form?: string }> = [];
+    if (f.formula || f.notComputable) entries.push({ key: id });
+    for (const form of Object.keys(f.forms ?? {})) entries.push({ key: `${id}:${form}`, variant: form, form });
+    for (const v of Object.keys(f.variants ?? {})) entries.push({ key: `${id}:${v}`, variant: v });
+
+    for (const e of entries) {
+      const emission = emitMetric(id, ctx, e.variant);
+      if (emission.kind === "notComputable") {
+        coverage[e.key] = { kind: "notComputable", reason: emission.reason };
+        continue;
+      }
+      const name = metricName(id, e.variant);
+      const label = m?.name ?? id;
+      const qualifier = e.form ? `, ${FORM_LABEL[e.form]}` : e.variant ? `, ${e.variant} variant` : "";
+      const instructions = [m ? `Canonical definition: ${metricUrl(m)}.` : ""];
+      let expression: string;
+      if (emission.kind === "direct") {
+        expression = emission.expression;
+        coverage[e.key] = { kind: "direct", ossieName: name };
+        if (emission.snapshots.length) {
+          instructions.push(`Reads the ${emission.snapshots.join(" and ")} snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts.`);
+        }
+      } else {
+        const dsName = stagedDatasetName(name);
+        const compiled = compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas }, e.variant);
+        staged.push({
+          name: dsName,
+          source: stagedSource(compiled.sql),
+          description: `Staged dataset for ${name}: one row per reporting period holding the metric value, computed by the GASP compiled query (needs ${emission.reasons.join(", ")}).`,
+          primary_key: ["period_start"],
+          fields: [
+            { name: "period_start", expression: sql("period_start"), dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
+            { name: "period_end", expression: sql("period_end"), datatype: "Date", description: "Last day of the reporting period" },
+            { name: "value", expression: sql("value"), datatype: "Decimal", description: `${label}${qualifier} for the period` },
+          ],
+          custom_extensions: gasp({ staged: true, for: name, reason: emission.reason }),
+        });
+        expression = `SUM(${dsName}.value)`;
+        coverage[e.key] = { kind: "staged", ossieName: name, stagedDataset: dsName, reason: emission.reason };
+        instructions.push(`Staged (${emission.reason}): ${dsName} holds one row per reporting period, so filter its period_start to one period. ${PERIOD_SPINE} is a table of (period_start, period_end) rows the adopter provides.`);
+      }
+      metrics.push({
+        name,
+        expression: sql(expression),
+        description: `${label}${qualifier}. ${m?.definition ?? f.notes ?? ""}`.trim(),
+        datatype: f.unit === "count" ? "Integer" : "Decimal",
+        ai_context: { ...(m?.aliases?.length ? { synonyms: m.aliases } : {}), instructions: instructions.filter(Boolean).join(" ") },
+        custom_extensions: gasp({
+          gasp_id: id,
+          gasp_version: "1",
+          ...(e.form ? { form: e.form } : {}),
+          ...(e.variant && !e.form ? { variant: e.variant } : {}),
+          unit: f.unit,
+          formula: formulaSource(f, e.variant),
+          ...(emission.kind === "staged" ? { staged: true } : {}),
+        }),
+      });
+    }
+  }
+
+  const model: OssieSemanticModel = {
+    version: OSSIE_VERSION,
+    name: "GASP reference model",
+    description: "GASP Standard reference model: the canonical SaaS datasets, their joins and every computable GASP metric. Sources and columns use the canonical names; an adopter's mapping replaces them. https://gaspwiki.com",
+    datasets: [...datasets, ...staged],
+    relationships,
+    metrics,
+  };
+  return { model, coverage };
+}

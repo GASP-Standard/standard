@@ -1,0 +1,1488 @@
+{
+  "nodes": [
+    {
+      "id": "arr",
+      "label": "ARR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 1,
+      "slug": "arr-annual-recurring-revenue"
+    },
+    {
+      "id": "rule_of_40",
+      "label": "Rule of 40",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 1,
+      "slug": "rule-of-40"
+    },
+    {
+      "id": "mrr",
+      "label": "MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "mrr-monthly-recurring-revenue"
+    },
+    {
+      "id": "net_new_mrr",
+      "label": "Net New MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "net-new-mrr"
+    },
+    {
+      "id": "nrr",
+      "label": "NRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "net-revenue-retention-nrr"
+    },
+    {
+      "id": "grr",
+      "label": "GRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "gross-revenue-retention-grr"
+    },
+    {
+      "id": "gross_margin",
+      "label": "Gross Margin",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "gross-margin"
+    },
+    {
+      "id": "arpa",
+      "label": "ARPA",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "arpa-average-revenue-per-account"
+    },
+    {
+      "id": "mrr_growth_rate",
+      "label": "MRR Growth Rate",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "mrr-growth-rate"
+    },
+    {
+      "id": "operating_margin",
+      "label": "Operating Margin",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "operating-margin-ebit-margin"
+    },
+    {
+      "id": "fcf",
+      "label": "Free Cash Flow",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "free-cash-flow-fcf"
+    },
+    {
+      "id": "new_mrr",
+      "label": "New MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "new-mrr"
+    },
+    {
+      "id": "expansion_mrr",
+      "label": "Expansion MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "expansion-mrr"
+    },
+    {
+      "id": "churned_mrr",
+      "label": "Churned MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "churned-mrr"
+    },
+    {
+      "id": "contraction_mrr",
+      "label": "Contraction MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "contraction-mrr"
+    },
+    {
+      "id": "cac",
+      "label": "CAC",
+      "department": "Core",
+      "signalType": "efficiency",
+      "level": 3,
+      "slug": "cac-customer-acquisition-cost"
+    },
+    {
+      "id": "ltv",
+      "label": "LTV",
+      "department": "Core",
+      "signalType": "efficiency",
+      "level": 3,
+      "slug": "ltv-customer-lifetime-value"
+    },
+    {
+      "id": "ltv_cac_ratio",
+      "label": "LTV:CAC Ratio",
+      "department": "Core",
+      "signalType": "efficiency",
+      "level": 3,
+      "slug": "ltvcac-ratio"
+    },
+    {
+      "id": "cac_payback",
+      "label": "CAC Payback Period",
+      "department": "Core",
+      "signalType": "efficiency",
+      "level": 3,
+      "slug": "cac-payback-period"
+    },
+    {
+      "id": "logo_churn_rate",
+      "label": "Logo Churn Rate",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "logo-churn-rate-customer-churn"
+    },
+    {
+      "id": "revenue_churn_rate",
+      "label": "Revenue Churn Rate",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "revenue-churn-rate"
+    },
+    {
+      "id": "nps",
+      "label": "NPS",
+      "department": "Core",
+      "signalType": "leading",
+      "level": 3,
+      "slug": "nps-net-promoter-score"
+    },
+    {
+      "id": "pipeline_value",
+      "label": "Pipeline Value",
+      "department": "Sales",
+      "signalType": "leading",
+      "level": 3,
+      "slug": "pipeline-value"
+    },
+    {
+      "id": "pipeline_coverage",
+      "label": "Pipeline Coverage",
+      "department": "Sales",
+      "signalType": "leading",
+      "level": 3,
+      "slug": "pipeline-coverage-ratio"
+    },
+    {
+      "id": "win_rate",
+      "label": "Win Rate",
+      "department": "Sales",
+      "signalType": "efficiency",
+      "level": 3,
+      "slug": "win-rate"
+    },
+    {
+      "id": "acv",
+      "label": "ACV",
+      "department": "Sales",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "acv-annual-contract-value"
+    },
+    {
+      "id": "quota_attainment",
+      "label": "Quota Attainment",
+      "department": "Sales",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "quota-attainment"
+    },
+    {
+      "id": "health_score",
+      "label": "Customer Health Score",
+      "department": "Customer Success",
+      "signalType": "leading",
+      "level": 3,
+      "slug": "customer-health-score"
+    },
+    {
+      "id": "expansion_rate",
+      "label": "Expansion Revenue Rate",
+      "department": "Customer Success",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "expansion-revenue-rate"
+    },
+    {
+      "id": "renewal_rate",
+      "label": "Renewal Rate",
+      "department": "Customer Success",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "renewal-rate"
+    },
+    {
+      "id": "at_risk_rate",
+      "label": "At-Risk Customer Rate",
+      "department": "Customer Success",
+      "signalType": "leading",
+      "level": 3,
+      "slug": "at-risk-customer-rate"
+    },
+    {
+      "id": "magic_number",
+      "label": "Magic Number",
+      "department": "Finance",
+      "signalType": "efficiency",
+      "level": 3,
+      "slug": "magic-number"
+    },
+    {
+      "id": "burn_rate",
+      "label": "Cash Burn Rate",
+      "department": "Finance",
+      "signalType": "operational",
+      "level": 3,
+      "slug": "cash-burn-rate"
+    },
+    {
+      "id": "revenue_per_employee",
+      "label": "Revenue per Employee",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "revenue-per-employee"
+    },
+    {
+      "id": "partner_sourced_revenue",
+      "label": "Partner-Sourced Revenue",
+      "department": "Partnerships",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "partner-sourced-revenue"
+    },
+    {
+      "id": "sales_cycle",
+      "label": "Sales Cycle Length",
+      "department": "Sales",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "sales-cycle-length"
+    },
+    {
+      "id": "mqls",
+      "label": "MQLs",
+      "department": "Marketing",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "marketing-qualified-leads-mqls"
+    },
+    {
+      "id": "sqls",
+      "label": "SQLs",
+      "department": "Marketing",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "sales-qualified-leads-sqls"
+    },
+    {
+      "id": "lvr",
+      "label": "Lead Velocity Rate",
+      "department": "Marketing",
+      "signalType": "leading",
+      "level": 4,
+      "slug": "lead-velocity-rate-lvr"
+    },
+    {
+      "id": "marketing_cac",
+      "label": "Marketing CAC",
+      "department": "Marketing",
+      "signalType": "efficiency",
+      "level": 4,
+      "slug": "marketing-cac"
+    },
+    {
+      "id": "cpl",
+      "label": "Cost per Lead",
+      "department": "Marketing",
+      "signalType": "efficiency",
+      "level": 4,
+      "slug": "cost-per-lead-cpl"
+    },
+    {
+      "id": "marketing_sourced_pipeline",
+      "label": "Marketing Sourced Pipeline",
+      "department": "Marketing",
+      "signalType": "leading",
+      "level": 4,
+      "slug": "marketing-sourced-pipeline"
+    },
+    {
+      "id": "qbr_completion",
+      "label": "QBR Completion Rate",
+      "department": "Customer Success",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "quarterly-business-review-qbr-completion-rate"
+    },
+    {
+      "id": "csat",
+      "label": "CSAT",
+      "department": "Support",
+      "signalType": "outcome",
+      "level": 4,
+      "slug": "customer-satisfaction-score-csat"
+    },
+    {
+      "id": "ttfv",
+      "label": "Time to First Value",
+      "department": "Onboarding",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "time-to-first-value-ttfv"
+    },
+    {
+      "id": "onboarding_completion",
+      "label": "Onboarding Completion Rate",
+      "department": "Onboarding",
+      "signalType": "outcome",
+      "level": 4,
+      "slug": "onboarding-completion-rate"
+    },
+    {
+      "id": "activation_rate",
+      "label": "Activation Rate",
+      "department": "Onboarding",
+      "signalType": "outcome",
+      "level": 4,
+      "slug": "onboarding-to-active-rate-activation-rate"
+    },
+    {
+      "id": "dau_mau",
+      "label": "DAU/MAU Ratio",
+      "department": "Product",
+      "signalType": "leading",
+      "level": 4,
+      "slug": "daumau-ratio-stickiness"
+    },
+    {
+      "id": "feature_adoption",
+      "label": "Feature Adoption Rate",
+      "department": "Product",
+      "signalType": "leading",
+      "level": 4,
+      "slug": "feature-adoption-rate"
+    },
+    {
+      "id": "pqas",
+      "label": "Product Qualified Accounts",
+      "department": "Product",
+      "signalType": "leading",
+      "level": 4,
+      "slug": "product-qualified-accounts-pqas"
+    },
+    {
+      "id": "forecast_accuracy",
+      "label": "Forecast Accuracy",
+      "department": "RevOps",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "forecast-accuracy"
+    },
+    {
+      "id": "dso",
+      "label": "Days Sales Outstanding",
+      "department": "RevOps",
+      "signalType": "operational",
+      "level": 4,
+      "slug": "days-sales-outstanding-dso"
+    },
+    {
+      "id": "employee_turnover",
+      "label": "Employee Turnover Rate",
+      "department": "People",
+      "signalType": "outcome",
+      "level": 4,
+      "slug": "employee-turnover-rate"
+    },
+    {
+      "id": "frt",
+      "label": "First Response Time",
+      "department": "Support",
+      "signalType": "operational",
+      "level": 5,
+      "slug": "first-response-time-frt"
+    },
+    {
+      "id": "ticket_volume",
+      "label": "Ticket Volume",
+      "department": "Support",
+      "signalType": "operational",
+      "level": 5,
+      "slug": "ticket-volume"
+    },
+    {
+      "id": "self_service_rate",
+      "label": "Self-Service Rate",
+      "department": "Support",
+      "signalType": "efficiency",
+      "level": 5,
+      "slug": "self-service-rate-ticket-deflection"
+    },
+    {
+      "id": "uptime",
+      "label": "Uptime",
+      "department": "Engineering",
+      "signalType": "outcome",
+      "level": 5,
+      "slug": "uptime-availability"
+    },
+    {
+      "id": "deployment_frequency",
+      "label": "Deployment Frequency",
+      "department": "Engineering",
+      "signalType": "operational",
+      "level": 5,
+      "slug": "deployment-frequency"
+    },
+    {
+      "id": "mttr",
+      "label": "MTTR",
+      "department": "Engineering",
+      "signalType": "operational",
+      "level": 5,
+      "slug": "mean-time-to-resolve-mttr"
+    },
+    {
+      "id": "enps",
+      "label": "Employee NPS",
+      "department": "People",
+      "signalType": "leading",
+      "level": 5,
+      "slug": "employee-net-promoter-score-enps"
+    },
+    {
+      "id": "entity_customer",
+      "label": "Customer",
+      "nodeType": "entity",
+      "level": 0,
+      "definition": "customer-account-organization"
+    },
+    {
+      "id": "entity_subscription",
+      "label": "Subscription",
+      "nodeType": "entity",
+      "level": 0,
+      "definition": "subscription-contract-agreement"
+    },
+    {
+      "id": "entity_license",
+      "label": "License",
+      "nodeType": "entity",
+      "level": 0,
+      "definition": "license-entitlement-access-quota"
+    },
+    {
+      "id": "entity_lead",
+      "label": "Lead",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_opportunity",
+      "label": "Opportunity",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_user",
+      "label": "User",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_ticket",
+      "label": "Ticket",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_employee",
+      "label": "Employee",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_invoice",
+      "label": "Invoice",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_partner",
+      "label": "Partner",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_project",
+      "label": "Project",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_plan",
+      "label": "Plan",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_product",
+      "label": "Product",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_campaign",
+      "label": "Campaign",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_contact",
+      "label": "Contact",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "concept_revenue",
+      "label": "Revenue (GAAP)",
+      "nodeType": "concept",
+      "level": 0,
+      "definition": "revenue-gaap"
+    },
+    {
+      "id": "concept_bookings",
+      "label": "Bookings",
+      "nodeType": "concept",
+      "level": 0,
+      "definition": "bookings"
+    },
+    {
+      "id": "concept_cogs",
+      "label": "COGS",
+      "nodeType": "concept",
+      "level": 0,
+      "definition": "cogs-cost-of-goods-sold"
+    },
+    {
+      "id": "concept_cohort",
+      "label": "Cohort",
+      "nodeType": "concept",
+      "level": 0,
+      "definition": "cohort"
+    },
+    {
+      "id": "concept_pipeline",
+      "label": "Pipeline",
+      "nodeType": "concept",
+      "level": 0,
+      "definition": "pipeline"
+    },
+    {
+      "id": "concept_segment",
+      "label": "Segment",
+      "nodeType": "concept",
+      "level": 0
+    },
+    {
+      "id": "concept_tcv",
+      "label": "TCV",
+      "nodeType": "concept",
+      "level": 0
+    }
+  ],
+  "edges": [
+    {
+      "source": "churned_mrr",
+      "target": "net_new_mrr",
+      "type": "reduces"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "net_new_mrr",
+      "type": "reduces"
+    },
+    {
+      "source": "net_new_mrr",
+      "target": "mrr",
+      "type": "drives"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "nrr",
+      "type": "reduces"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "nrr",
+      "type": "reduces"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "grr",
+      "type": "reduces"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "grr",
+      "type": "reduces"
+    },
+    {
+      "source": "mqls",
+      "target": "sqls",
+      "type": "drives"
+    },
+    {
+      "source": "sqls",
+      "target": "pipeline_value",
+      "type": "drives"
+    },
+    {
+      "source": "pipeline_value",
+      "target": "new_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "win_rate",
+      "target": "new_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "acv",
+      "target": "new_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "quota_attainment",
+      "target": "new_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "sales_cycle",
+      "target": "win_rate",
+      "type": "reduces"
+    },
+    {
+      "source": "partner_sourced_revenue",
+      "target": "pipeline_value",
+      "type": "drives"
+    },
+    {
+      "source": "partner_sourced_revenue",
+      "target": "new_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "pqas",
+      "target": "pipeline_value",
+      "type": "drives"
+    },
+    {
+      "source": "feature_adoption",
+      "target": "pqas",
+      "type": "drives"
+    },
+    {
+      "source": "revenue_churn_rate",
+      "target": "ltv",
+      "type": "reduces"
+    },
+    {
+      "source": "gross_margin",
+      "target": "operating_margin",
+      "type": "drives"
+    },
+    {
+      "source": "acv",
+      "target": "arpa",
+      "type": "drives"
+    },
+    {
+      "source": "ttfv",
+      "target": "onboarding_completion",
+      "type": "drives"
+    },
+    {
+      "source": "onboarding_completion",
+      "target": "activation_rate",
+      "type": "drives"
+    },
+    {
+      "source": "activation_rate",
+      "target": "feature_adoption",
+      "type": "drives"
+    },
+    {
+      "source": "feature_adoption",
+      "target": "dau_mau",
+      "type": "drives"
+    },
+    {
+      "source": "feature_adoption",
+      "target": "health_score",
+      "type": "drives"
+    },
+    {
+      "source": "dau_mau",
+      "target": "health_score",
+      "type": "drives"
+    },
+    {
+      "source": "health_score",
+      "target": "renewal_rate",
+      "type": "drives"
+    },
+    {
+      "source": "health_score",
+      "target": "logo_churn_rate",
+      "type": "reduces"
+    },
+    {
+      "source": "health_score",
+      "target": "at_risk_rate",
+      "type": "reduces"
+    },
+    {
+      "source": "health_score",
+      "target": "expansion_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "nps",
+      "target": "logo_churn_rate",
+      "type": "predicts",
+      "inverse": true
+    },
+    {
+      "source": "nps",
+      "target": "churned_mrr",
+      "type": "predicts",
+      "inverse": true
+    },
+    {
+      "source": "csat",
+      "target": "nps",
+      "type": "drives"
+    },
+    {
+      "source": "ticket_volume",
+      "target": "csat",
+      "type": "reduces"
+    },
+    {
+      "source": "frt",
+      "target": "csat",
+      "type": "drives"
+    },
+    {
+      "source": "qbr_completion",
+      "target": "health_score",
+      "type": "drives"
+    },
+    {
+      "source": "qbr_completion",
+      "target": "expansion_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "renewal_rate",
+      "target": "grr",
+      "type": "drives"
+    },
+    {
+      "source": "logo_churn_rate",
+      "target": "churned_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "at_risk_rate",
+      "target": "logo_churn_rate",
+      "type": "predicts"
+    },
+    {
+      "source": "pqas",
+      "target": "expansion_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "uptime",
+      "target": "csat",
+      "type": "drives"
+    },
+    {
+      "source": "uptime",
+      "target": "nps",
+      "type": "drives"
+    },
+    {
+      "source": "mttr",
+      "target": "uptime",
+      "type": "drives"
+    },
+    {
+      "source": "deployment_frequency",
+      "target": "feature_adoption",
+      "type": "drives"
+    },
+    {
+      "source": "gross_margin",
+      "target": "fcf",
+      "type": "drives"
+    },
+    {
+      "source": "operating_margin",
+      "target": "fcf",
+      "type": "drives"
+    },
+    {
+      "source": "burn_rate",
+      "target": "fcf",
+      "type": "reduces"
+    },
+    {
+      "source": "dso",
+      "target": "fcf",
+      "type": "reduces"
+    },
+    {
+      "source": "forecast_accuracy",
+      "target": "pipeline_coverage",
+      "type": "drives"
+    },
+    {
+      "source": "enps",
+      "target": "employee_turnover",
+      "type": "reduces"
+    },
+    {
+      "source": "employee_turnover",
+      "target": "revenue_per_employee",
+      "type": "reduces"
+    },
+    {
+      "source": "employee_turnover",
+      "target": "quota_attainment",
+      "type": "reduces"
+    },
+    {
+      "source": "mrr",
+      "target": "arpa",
+      "type": "component"
+    },
+    {
+      "source": "mrr",
+      "target": "arr",
+      "type": "component"
+    },
+    {
+      "source": "arpa",
+      "target": "cac_payback",
+      "type": "component"
+    },
+    {
+      "source": "cac",
+      "target": "cac_payback",
+      "type": "component"
+    },
+    {
+      "source": "gross_margin",
+      "target": "cac_payback",
+      "type": "component"
+    },
+    {
+      "source": "expansion_mrr",
+      "target": "expansion_rate",
+      "type": "component"
+    },
+    {
+      "source": "mrr",
+      "target": "expansion_rate",
+      "type": "component"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "grr",
+      "type": "component"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "grr",
+      "type": "component"
+    },
+    {
+      "source": "mrr",
+      "target": "grr",
+      "type": "component"
+    },
+    {
+      "source": "arpa",
+      "target": "ltv",
+      "type": "component"
+    },
+    {
+      "source": "gross_margin",
+      "target": "ltv",
+      "type": "component"
+    },
+    {
+      "source": "revenue_churn_rate",
+      "target": "ltv",
+      "type": "component"
+    },
+    {
+      "source": "cac",
+      "target": "ltv_cac_ratio",
+      "type": "component"
+    },
+    {
+      "source": "ltv",
+      "target": "ltv_cac_ratio",
+      "type": "component"
+    },
+    {
+      "source": "mqls",
+      "target": "lvr",
+      "type": "component"
+    },
+    {
+      "source": "arr",
+      "target": "magic_number",
+      "type": "component"
+    },
+    {
+      "source": "mrr",
+      "target": "mrr_growth_rate",
+      "type": "component"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "net_new_mrr",
+      "type": "component"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "net_new_mrr",
+      "type": "component"
+    },
+    {
+      "source": "expansion_mrr",
+      "target": "net_new_mrr",
+      "type": "component"
+    },
+    {
+      "source": "new_mrr",
+      "target": "net_new_mrr",
+      "type": "component"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "nrr",
+      "type": "component"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "nrr",
+      "type": "component"
+    },
+    {
+      "source": "expansion_mrr",
+      "target": "nrr",
+      "type": "component"
+    },
+    {
+      "source": "mrr",
+      "target": "nrr",
+      "type": "component"
+    },
+    {
+      "source": "gross_margin",
+      "target": "operating_margin",
+      "type": "component"
+    },
+    {
+      "source": "pipeline_value",
+      "target": "pipeline_coverage",
+      "type": "component"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "revenue_churn_rate",
+      "type": "component"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "revenue_churn_rate",
+      "type": "component"
+    },
+    {
+      "source": "mrr",
+      "target": "revenue_churn_rate",
+      "type": "component"
+    },
+    {
+      "source": "arr",
+      "target": "revenue_per_employee",
+      "type": "component"
+    },
+    {
+      "source": "arr",
+      "target": "rule_of_40",
+      "type": "component"
+    },
+    {
+      "source": "ticket_volume",
+      "target": "self_service_rate",
+      "type": "component"
+    },
+    {
+      "source": "activation_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "acv",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "arpa",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "at_risk_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "cac",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "cac_payback",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "expansion_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "expansion_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "grr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "logo_churn_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "ltv",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "ltv_cac_ratio",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "marketing_cac",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "net_new_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "new_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "nrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "pqas",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "qbr_completion",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "revenue_churn_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "acv",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "arpa",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "arr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "cac",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "cac_payback",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "churned_mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "contraction_mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "expansion_mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "expansion_rate",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "grr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "logo_churn_rate",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "ltv",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "ltv_cac_ratio",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "magic_number",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "marketing_cac",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "mrr_growth_rate",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "net_new_mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "new_mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "nrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "renewal_rate",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "revenue_churn_rate",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "revenue_per_employee",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "rule_of_40",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "cpl",
+      "target": "entity_lead",
+      "type": "measures"
+    },
+    {
+      "source": "lvr",
+      "target": "entity_lead",
+      "type": "measures"
+    },
+    {
+      "source": "mqls",
+      "target": "entity_lead",
+      "type": "measures"
+    },
+    {
+      "source": "sqls",
+      "target": "entity_lead",
+      "type": "measures"
+    },
+    {
+      "source": "marketing_sourced_pipeline",
+      "target": "entity_opportunity",
+      "type": "measures"
+    },
+    {
+      "source": "partner_sourced_revenue",
+      "target": "entity_opportunity",
+      "type": "measures"
+    },
+    {
+      "source": "pipeline_coverage",
+      "target": "entity_opportunity",
+      "type": "measures"
+    },
+    {
+      "source": "pipeline_value",
+      "target": "entity_opportunity",
+      "type": "measures"
+    },
+    {
+      "source": "sales_cycle",
+      "target": "entity_opportunity",
+      "type": "measures"
+    },
+    {
+      "source": "win_rate",
+      "target": "entity_opportunity",
+      "type": "measures"
+    },
+    {
+      "source": "dau_mau",
+      "target": "entity_user",
+      "type": "measures"
+    },
+    {
+      "source": "feature_adoption",
+      "target": "entity_user",
+      "type": "measures"
+    },
+    {
+      "source": "frt",
+      "target": "entity_ticket",
+      "type": "measures"
+    },
+    {
+      "source": "self_service_rate",
+      "target": "entity_ticket",
+      "type": "measures"
+    },
+    {
+      "source": "ticket_volume",
+      "target": "entity_ticket",
+      "type": "measures"
+    },
+    {
+      "source": "employee_turnover",
+      "target": "entity_employee",
+      "type": "measures"
+    },
+    {
+      "source": "revenue_per_employee",
+      "target": "entity_employee",
+      "type": "measures"
+    },
+    {
+      "source": "entity_customer",
+      "target": "entity_subscription",
+      "type": "owns"
+    },
+    {
+      "source": "entity_subscription",
+      "target": "entity_license",
+      "type": "grants"
+    },
+    {
+      "source": "entity_customer",
+      "target": "entity_user",
+      "type": "engages_via"
+    },
+    {
+      "source": "entity_customer",
+      "target": "entity_ticket",
+      "type": "submits"
+    },
+    {
+      "source": "entity_lead",
+      "target": "entity_opportunity",
+      "type": "converts_to"
+    },
+    {
+      "source": "entity_opportunity",
+      "target": "entity_customer",
+      "type": "converts_to"
+    },
+    {
+      "source": "entity_partner",
+      "target": "entity_opportunity",
+      "type": "sources"
+    },
+    {
+      "source": "entity_employee",
+      "target": "entity_customer",
+      "type": "manages"
+    },
+    {
+      "source": "entity_project",
+      "target": "entity_customer",
+      "type": "serves"
+    },
+    {
+      "source": "entity_subscription",
+      "target": "concept_revenue",
+      "type": "generates"
+    },
+    {
+      "source": "entity_subscription",
+      "target": "entity_invoice",
+      "type": "generates"
+    },
+    {
+      "source": "entity_opportunity",
+      "target": "concept_bookings",
+      "type": "produces"
+    },
+    {
+      "source": "entity_opportunity",
+      "target": "concept_pipeline",
+      "type": "contributes_to"
+    },
+    {
+      "source": "entity_subscription",
+      "target": "concept_cogs",
+      "type": "incurs"
+    },
+    {
+      "source": "entity_customer",
+      "target": "concept_cohort",
+      "type": "belongs_to"
+    },
+    {
+      "source": "entity_customer",
+      "target": "entity_customer",
+      "type": "parent_of"
+    },
+    {
+      "source": "entity_subscription",
+      "target": "entity_plan",
+      "type": "priced_by"
+    },
+    {
+      "source": "entity_license",
+      "target": "entity_product",
+      "type": "grants"
+    },
+    {
+      "source": "entity_customer",
+      "target": "entity_contact",
+      "type": "represented_by"
+    },
+    {
+      "source": "entity_campaign",
+      "target": "entity_lead",
+      "type": "sources"
+    },
+    {
+      "source": "entity_customer",
+      "target": "concept_segment",
+      "type": "belongs_to"
+    },
+    {
+      "source": "entity_opportunity",
+      "target": "concept_tcv",
+      "type": "produces"
+    }
+  ]
+}

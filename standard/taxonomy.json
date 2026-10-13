@@ -1,0 +1,932 @@
+{
+  "version": "1.0",
+  "types": {
+    "outcome": {
+      "label": "Outcome",
+      "description": "A result you set targets for. If this misses, someone has a hard conversation."
+    },
+    "leading": {
+      "label": "Leading",
+      "description": "A signal that predicts an outcome before it materializes. Changing this today changes an outcome next quarter."
+    },
+    "efficiency": {
+      "label": "Efficiency",
+      "description": "A ratio that measures conversion of inputs to outputs. You benchmark this against peers."
+    },
+    "operational": {
+      "label": "Operational",
+      "description": "A volume, velocity, or process metric you manage day-to-day. The machinery of the business."
+    }
+  },
+  "classifications": {
+    "core::mrr-monthly-recurring-revenue": {
+      "primary": "outcome"
+    },
+    "core::arr-annual-recurring-revenue": {
+      "primary": "outcome"
+    },
+    "core::arpa-average-revenue-per-account": {
+      "primary": "outcome"
+    },
+    "core::mrr-growth-rate": {
+      "primary": "outcome"
+    },
+    "core::new-mrr": {
+      "primary": "outcome"
+    },
+    "core::expansion-mrr": {
+      "primary": "outcome"
+    },
+    "core::churned-mrr": {
+      "primary": "outcome"
+    },
+    "core::contraction-mrr": {
+      "primary": "outcome"
+    },
+    "core::carry-mrr": {
+      "primary": "outcome"
+    },
+    "core::net-new-mrr": {
+      "primary": "outcome"
+    },
+    "core::bundle-pricing-and-mrr-allocation": {
+      "primary": "operational"
+    },
+    "core::net-revenue-retention-nrr": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "core::gross-revenue-retention-grr": {
+      "primary": "outcome"
+    },
+    "core::logo-churn-rate-customer-churn": {
+      "primary": "outcome"
+    },
+    "core::revenue-churn-rate": {
+      "primary": "outcome"
+    },
+    "core::nps-net-promoter-score": {
+      "primary": "leading"
+    },
+    "core::cac-customer-acquisition-cost": {
+      "primary": "efficiency"
+    },
+    "core::ltv-customer-lifetime-value": {
+      "primary": "efficiency"
+    },
+    "core::ltvcac-ratio": {
+      "primary": "efficiency"
+    },
+    "core::cac-payback-period": {
+      "primary": "efficiency"
+    },
+    "core::gross-margin": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "core::rule-of-40": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "customer-success::net-revenue-retention-nrr": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "customer-success::gross-revenue-retention-grr": {
+      "primary": "outcome"
+    },
+    "customer-success::logo-retention-rate": {
+      "primary": "outcome"
+    },
+    "customer-success::customer-health-score": {
+      "primary": "leading"
+    },
+    "customer-success::health-score-coverage": {
+      "primary": "operational"
+    },
+    "customer-success::at-risk-customer-rate": {
+      "primary": "leading"
+    },
+    "customer-success::quarterly-business-review-qbr-completion-rate": {
+      "primary": "operational"
+    },
+    "customer-success::executive-sponsor-coverage": {
+      "primary": "leading"
+    },
+    "customer-success::contact-coverage": {
+      "primary": "operational"
+    },
+    "customer-success::expansion-revenue-rate": {
+      "primary": "outcome"
+    },
+    "customer-success::upsell-rate": {
+      "primary": "efficiency"
+    },
+    "customer-success::cross-sell-rate": {
+      "primary": "efficiency"
+    },
+    "customer-success::renewal-rate": {
+      "primary": "outcome"
+    },
+    "customer-success::renewal-forecast-accuracy": {
+      "primary": "operational"
+    },
+    "customer-success::days-to-renewal": {
+      "primary": "operational"
+    },
+    "customer-success::accounts-per-csm": {
+      "primary": "operational"
+    },
+    "customer-success::arr-per-csm": {
+      "primary": "efficiency"
+    },
+    "engineering::uptime-availability": {
+      "primary": "outcome"
+    },
+    "engineering::sla-adherence": {
+      "primary": "outcome"
+    },
+    "engineering::error-rate": {
+      "primary": "operational"
+    },
+    "engineering::latency-response-time": {
+      "primary": "operational"
+    },
+    "engineering::incident-count": {
+      "primary": "operational"
+    },
+    "engineering::mean-time-to-detect-mttd": {
+      "primary": "operational"
+    },
+    "engineering::mean-time-to-acknowledge-mtta": {
+      "primary": "operational"
+    },
+    "engineering::mean-time-to-resolve-mttr": {
+      "primary": "operational"
+    },
+    "engineering::change-failure-rate": {
+      "primary": "efficiency"
+    },
+    "engineering::deployment-frequency": {
+      "primary": "operational"
+    },
+    "engineering::lead-time-for-changes": {
+      "primary": "operational"
+    },
+    "engineering::mean-time-to-recovery-mttr": {
+      "primary": "operational"
+    },
+    "engineering::infrastructure-utilization": {
+      "primary": "operational"
+    },
+    "engineering::infrastructure-cost-per-customer": {
+      "primary": "efficiency"
+    },
+    "engineering::headroom": {
+      "primary": "leading"
+    },
+    "engineering::vulnerability-count": {
+      "primary": "operational"
+    },
+    "engineering::time-to-patch": {
+      "primary": "operational"
+    },
+    "engineering::security-incident-count": {
+      "primary": "operational"
+    },
+    "finance::revenue-gaap": {
+      "primary": "outcome"
+    },
+    "finance::bookings": {
+      "primary": "outcome"
+    },
+    "finance::billings": {
+      "primary": "outcome"
+    },
+    "finance::arr-mrr": {
+      "primary": "outcome"
+    },
+    "finance::deferred-revenue": {
+      "primary": "operational"
+    },
+    "finance::revenue-per-employee": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "finance::gross-margin": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "finance::operating-margin-ebit-margin": {
+      "primary": "outcome"
+    },
+    "finance::ebitda-margin": {
+      "primary": "outcome"
+    },
+    "finance::net-income-margin": {
+      "primary": "outcome"
+    },
+    "finance::rule-of-40": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "finance::cash-burn-rate": {
+      "primary": "operational"
+    },
+    "finance::cash-runway": {
+      "primary": "leading"
+    },
+    "finance::free-cash-flow-fcf": {
+      "primary": "outcome"
+    },
+    "finance::free-cash-flow-margin": {
+      "primary": "outcome"
+    },
+    "finance::cac-payback-period": {
+      "primary": "efficiency"
+    },
+    "finance::ltvcac-ratio": {
+      "primary": "efficiency"
+    },
+    "finance::magic-number": {
+      "primary": "efficiency"
+    },
+    "finance::burn-multiple": {
+      "primary": "efficiency"
+    },
+    "finance::opex-ratio": {
+      "primary": "efficiency"
+    },
+    "finance::sm-as-of-revenue": {
+      "primary": "efficiency"
+    },
+    "finance::rd-as-of-revenue": {
+      "primary": "efficiency"
+    },
+    "finance::ga-as-of-revenue": {
+      "primary": "efficiency"
+    },
+    "finance::days-sales-outstanding-dso": {
+      "primary": "operational"
+    },
+    "finance::collection-rate": {
+      "primary": "efficiency"
+    },
+    "finance::bad-debt-rate": {
+      "primary": "operational"
+    },
+    "marketing::visitors": {
+      "primary": "operational"
+    },
+    "marketing::visitor-to-lead-rate": {
+      "primary": "efficiency"
+    },
+    "marketing::leads": {
+      "primary": "operational"
+    },
+    "marketing::marketing-qualified-leads-mqls": {
+      "primary": "operational"
+    },
+    "marketing::lead-to-mql-rate": {
+      "primary": "efficiency"
+    },
+    "marketing::sales-qualified-leads-sqls": {
+      "primary": "operational"
+    },
+    "marketing::mql-to-sql-rate": {
+      "primary": "efficiency"
+    },
+    "marketing::sql-to-opportunity-rate": {
+      "primary": "efficiency"
+    },
+    "marketing::lead-velocity-rate-lvr": {
+      "primary": "leading"
+    },
+    "marketing::customer-acquisition-cost-cac": {
+      "primary": "efficiency"
+    },
+    "marketing::marketing-cac": {
+      "primary": "efficiency"
+    },
+    "marketing::cac-by-channel": {
+      "primary": "efficiency"
+    },
+    "marketing::cost-per-lead-cpl": {
+      "primary": "efficiency"
+    },
+    "marketing::cost-per-mql": {
+      "primary": "efficiency"
+    },
+    "marketing::marketing-sourced-pipeline": {
+      "primary": "leading"
+    },
+    "marketing::marketing-sourced-revenue": {
+      "primary": "outcome"
+    },
+    "marketing::marketing-influenced-pipelinerevenue": {
+      "primary": "leading"
+    },
+    "marketing::organic-traffic": {
+      "primary": "operational"
+    },
+    "marketing::paid-media-efficiency-roas": {
+      "primary": "efficiency"
+    },
+    "marketing::email-metrics": {
+      "primary": "operational"
+    },
+    "marketing::content-performance": {
+      "primary": "operational"
+    },
+    "marketing::brand-awareness": {
+      "primary": "leading"
+    },
+    "marketing::share-of-voice": {
+      "primary": "leading"
+    },
+    "marketing::nps-marketing-context": {
+      "primary": "leading"
+    },
+    "onboarding::time-to-first-value-ttfv": {
+      "primary": "operational"
+    },
+    "onboarding::time-to-go-live": {
+      "primary": "operational"
+    },
+    "onboarding::time-to-full-adoption": {
+      "primary": "operational"
+    },
+    "onboarding::onboarding-duration": {
+      "primary": "operational"
+    },
+    "onboarding::onboarding-completion-rate": {
+      "primary": "outcome"
+    },
+    "onboarding::milestone-completion-rate": {
+      "primary": "operational"
+    },
+    "onboarding::on-time-completion-rate": {
+      "primary": "operational"
+    },
+    "onboarding::onboarding-engagement-score": {
+      "primary": "leading"
+    },
+    "onboarding::session-attendance-rate": {
+      "primary": "operational"
+    },
+    "onboarding::task-completion-rate": {
+      "primary": "operational"
+    },
+    "onboarding::onboarding-csat": {
+      "primary": "outcome"
+    },
+    "onboarding::onboarding-nps": {
+      "primary": "leading"
+    },
+    "onboarding::implementation-quality-score": {
+      "primary": "leading"
+    },
+    "onboarding::onboardings-per-resource": {
+      "primary": "efficiency"
+    },
+    "onboarding::cost-per-onboarding": {
+      "primary": "efficiency"
+    },
+    "onboarding::time-spent-per-onboarding": {
+      "primary": "operational"
+    },
+    "onboarding::onboarding-to-active-rate-activation-rate": {
+      "primary": "outcome"
+    },
+    "onboarding::30-day-retention-post-onboarding": {
+      "primary": "outcome"
+    },
+    "onboarding::onboarding-cohort-churn": {
+      "primary": "outcome"
+    },
+    "onboarding::feature-adoption-at-go-live": {
+      "primary": "leading"
+    },
+    "partnerships::total-active-partners": {
+      "primary": "operational"
+    },
+    "partnerships::partner-tier-distribution": {
+      "primary": "operational"
+    },
+    "partnerships::partner-activation-rate": {
+      "primary": "efficiency"
+    },
+    "partnerships::partner-churn-rate": {
+      "primary": "outcome"
+    },
+    "partnerships::partner-sourced-revenue": {
+      "primary": "outcome"
+    },
+    "partnerships::partner-influenced-revenue": {
+      "primary": "outcome"
+    },
+    "partnerships::channel-revenue-percentage": {
+      "primary": "outcome"
+    },
+    "partnerships::partner-revenue-growth": {
+      "primary": "outcome"
+    },
+    "partnerships::average-partner-revenue": {
+      "primary": "outcome"
+    },
+    "partnerships::partner-deal-registration-volume": {
+      "primary": "operational"
+    },
+    "partnerships::deal-registration-to-close-rate": {
+      "primary": "efficiency"
+    },
+    "partnerships::partner-win-rate": {
+      "primary": "efficiency"
+    },
+    "partnerships::partner-deal-size": {
+      "primary": "operational"
+    },
+    "partnerships::partner-sales-cycle": {
+      "primary": "operational"
+    },
+    "partnerships::partner-portal-engagement": {
+      "primary": "leading"
+    },
+    "partnerships::certification-rate": {
+      "primary": "operational"
+    },
+    "partnerships::training-completion": {
+      "primary": "operational"
+    },
+    "partnerships::joint-marketing-activities": {
+      "primary": "operational"
+    },
+    "partnerships::partner-nps": {
+      "primary": "leading"
+    },
+    "partnerships::partner-margin-commission": {
+      "primary": "efficiency"
+    },
+    "partnerships::cost-of-partner-acquisition": {
+      "primary": "efficiency"
+    },
+    "partnerships::partner-lifetime-value": {
+      "primary": "efficiency"
+    },
+    "partnerships::partner-roi": {
+      "primary": "efficiency"
+    },
+    "partnerships::resellers": {
+      "primary": "operational"
+    },
+    "partnerships::referral-partners": {
+      "primary": "operational"
+    },
+    "partnerships::technology-partners-integrations": {
+      "primary": "operational"
+    },
+    "partnerships::system-integrators-sis": {
+      "primary": "operational"
+    },
+    "partnerships::managed-service-providers-msps": {
+      "primary": "operational"
+    },
+    "partnerships::marketplace-revenue": {
+      "primary": "outcome"
+    },
+    "partnerships::marketplace-as-of-revenue": {
+      "primary": "efficiency"
+    },
+    "partnerships::marketplace-listings-performance": {
+      "primary": "operational"
+    },
+    "people::total-headcount": {
+      "primary": "operational"
+    },
+    "people::headcount-growth-rate": {
+      "primary": "operational"
+    },
+    "people::headcount-by-department": {
+      "primary": "operational"
+    },
+    "people::revenue-per-employee": {
+      "primary": "outcome",
+      "secondary": "efficiency"
+    },
+    "people::employee-turnover-rate": {
+      "primary": "outcome"
+    },
+    "people::voluntary-turnover-rate": {
+      "primary": "outcome"
+    },
+    "people::involuntary-turnover-rate": {
+      "primary": "operational"
+    },
+    "people::regrettable-turnover": {
+      "primary": "outcome"
+    },
+    "people::average-tenure": {
+      "primary": "operational"
+    },
+    "people::90-day-turnover": {
+      "primary": "leading"
+    },
+    "people::employee-net-promoter-score-enps": {
+      "primary": "leading"
+    },
+    "people::engagement-score": {
+      "primary": "leading"
+    },
+    "people::survey-participation-rate": {
+      "primary": "operational"
+    },
+    "people::open-positions": {
+      "primary": "operational"
+    },
+    "people::time-to-fill": {
+      "primary": "operational"
+    },
+    "people::time-to-hire": {
+      "primary": "operational"
+    },
+    "people::offer-acceptance-rate": {
+      "primary": "efficiency"
+    },
+    "people::quality-of-hire": {
+      "primary": "leading"
+    },
+    "people::cost-per-hire": {
+      "primary": "efficiency"
+    },
+    "people::source-of-hire": {
+      "primary": "operational"
+    },
+    "people::compa-ratio": {
+      "primary": "operational"
+    },
+    "people::pay-equity-ratio": {
+      "primary": "operational"
+    },
+    "people::diversity-representation": {
+      "primary": "outcome"
+    },
+    "people::diversity-in-leadership": {
+      "primary": "outcome"
+    },
+    "people::diversity-hiring-rate": {
+      "primary": "operational"
+    },
+    "product::daily-active-users-dau": {
+      "primary": "operational"
+    },
+    "product::weekly-active-users-wau": {
+      "primary": "operational"
+    },
+    "product::monthly-active-users-mau": {
+      "primary": "operational"
+    },
+    "product::daumau-ratio-stickiness": {
+      "primary": "leading"
+    },
+    "product::waumau-ratio": {
+      "primary": "leading"
+    },
+    "product::active-accounts": {
+      "primary": "operational"
+    },
+    "product::activation-rate": {
+      "primary": "outcome"
+    },
+    "product::feature-adoption-rate": {
+      "primary": "leading"
+    },
+    "product::core-feature-adoption": {
+      "primary": "leading"
+    },
+    "product::feature-depth": {
+      "primary": "operational"
+    },
+    "product::time-to-feature-adoption": {
+      "primary": "operational"
+    },
+    "product::breadth-of-adoption": {
+      "primary": "leading"
+    },
+    "product::session-frequency": {
+      "primary": "operational"
+    },
+    "product::session-duration": {
+      "primary": "operational"
+    },
+    "product::time-in-product": {
+      "primary": "operational"
+    },
+    "product::actions-per-session": {
+      "primary": "operational"
+    },
+    "product::product-qualified-accounts-pqas": {
+      "primary": "leading"
+    },
+    "product::user-retention-day-n": {
+      "primary": "outcome"
+    },
+    "product::cohort-retention": {
+      "primary": "outcome"
+    },
+    "product::resurrection-rate": {
+      "primary": "operational"
+    },
+    "product::release-frequency": {
+      "primary": "operational"
+    },
+    "product::feature-delivery-rate": {
+      "primary": "operational"
+    },
+    "product::roadmap-completion": {
+      "primary": "outcome"
+    },
+    "product::time-to-market": {
+      "primary": "operational"
+    },
+    "product::error-rate-user-facing": {
+      "primary": "operational"
+    },
+    "product::bug-escape-rate": {
+      "primary": "efficiency"
+    },
+    "product::user-reported-issues": {
+      "primary": "operational"
+    },
+    "product::feature-request-volume": {
+      "primary": "operational"
+    },
+    "professional-services::services-revenue": {
+      "primary": "outcome"
+    },
+    "professional-services::services-as-of-total-revenue": {
+      "primary": "efficiency"
+    },
+    "professional-services::services-attach-rate": {
+      "primary": "efficiency"
+    },
+    "professional-services::average-services-deal-size": {
+      "primary": "operational"
+    },
+    "professional-services::services-backlog": {
+      "primary": "leading"
+    },
+    "professional-services::services-gross-margin": {
+      "primary": "outcome"
+    },
+    "professional-services::project-margin": {
+      "primary": "efficiency"
+    },
+    "professional-services::realization-rate": {
+      "primary": "efficiency"
+    },
+    "professional-services::write-off-rate": {
+      "primary": "operational"
+    },
+    "professional-services::billable-utilization": {
+      "primary": "efficiency"
+    },
+    "professional-services::total-utilization": {
+      "primary": "operational"
+    },
+    "professional-services::bench-rate": {
+      "primary": "operational"
+    },
+    "professional-services::capacity": {
+      "primary": "operational"
+    },
+    "professional-services::capacity-utilization": {
+      "primary": "efficiency"
+    },
+    "professional-services::on-time-delivery": {
+      "primary": "outcome"
+    },
+    "professional-services::on-budget-delivery": {
+      "primary": "outcome"
+    },
+    "professional-services::scope-change-rate": {
+      "primary": "operational"
+    },
+    "professional-services::project-duration-accuracy": {
+      "primary": "operational"
+    },
+    "professional-services::milestone-completion-rate": {
+      "primary": "operational"
+    },
+    "professional-services::project-csat": {
+      "primary": "outcome"
+    },
+    "professional-services::project-nps": {
+      "primary": "leading"
+    },
+    "professional-services::escalation-rate": {
+      "primary": "operational"
+    },
+    "professional-services::rework-rate": {
+      "primary": "operational"
+    },
+    "professional-services::reference-ability": {
+      "primary": "leading"
+    },
+    "professional-services::revenue-per-consultant": {
+      "primary": "efficiency"
+    },
+    "professional-services::projects-per-consultant": {
+      "primary": "operational"
+    },
+    "professional-services::average-project-duration": {
+      "primary": "operational"
+    },
+    "professional-services::services-pipeline": {
+      "primary": "leading"
+    },
+    "professional-services::services-win-rate": {
+      "primary": "efficiency"
+    },
+    "professional-services::time-to-start": {
+      "primary": "operational"
+    },
+    "revops::pipeline-hygiene-score": {
+      "primary": "operational"
+    },
+    "revops::forecast-accuracy": {
+      "primary": "operational"
+    },
+    "revops::commit-accuracy": {
+      "primary": "operational"
+    },
+    "revops::stage-conversion-rates": {
+      "primary": "efficiency"
+    },
+    "revops::quote-volume": {
+      "primary": "operational"
+    },
+    "revops::quote-to-order-rate": {
+      "primary": "efficiency"
+    },
+    "revops::quote-cycle-time": {
+      "primary": "operational"
+    },
+    "revops::quote-accuracy": {
+      "primary": "operational"
+    },
+    "revops::discount-rate": {
+      "primary": "operational"
+    },
+    "revops::order-to-activation-time": {
+      "primary": "operational"
+    },
+    "revops::order-processing-time": {
+      "primary": "operational"
+    },
+    "revops::order-error-rate": {
+      "primary": "operational"
+    },
+    "revops::billing-accuracy": {
+      "primary": "operational"
+    },
+    "revops::invoice-cycle-time": {
+      "primary": "operational"
+    },
+    "revops::billing-disputes": {
+      "primary": "operational"
+    },
+    "revops::credit-memo-rate": {
+      "primary": "operational"
+    },
+    "revops::days-sales-outstanding-dso": {
+      "primary": "operational"
+    },
+    "revops::collection-effectiveness-index-cei": {
+      "primary": "efficiency"
+    },
+    "revops::aging-buckets": {
+      "primary": "operational"
+    },
+    "revops::bad-debt-rate": {
+      "primary": "operational"
+    },
+    "revops::payment-method-distribution": {
+      "primary": "operational"
+    },
+    "revops::recognized-vs-billed": {
+      "primary": "operational"
+    },
+    "revops::deferred-revenue-balance": {
+      "primary": "operational"
+    },
+    "revops::unbilled-revenue": {
+      "primary": "operational"
+    },
+    "revops::revenue-recognition-accuracy": {
+      "primary": "operational"
+    },
+    "revops::renewal-notification-rate": {
+      "primary": "operational"
+    },
+    "revops::auto-renewal-rate": {
+      "primary": "efficiency"
+    },
+    "revops::renewal-processing-time": {
+      "primary": "operational"
+    },
+    "revops::system-sync-accuracy": {
+      "primary": "operational"
+    },
+    "revops::data-completeness": {
+      "primary": "operational"
+    },
+    "sales::pipeline-value": {
+      "primary": "leading"
+    },
+    "sales::pipeline-coverage-ratio": {
+      "primary": "leading"
+    },
+    "sales::pipeline-velocity": {
+      "primary": "leading"
+    },
+    "sales::win-rate": {
+      "primary": "efficiency"
+    },
+    "sales::lead-to-opportunity-rate": {
+      "primary": "efficiency"
+    },
+    "sales::opportunity-to-close-rate": {
+      "primary": "efficiency"
+    },
+    "sales::acv-annual-contract-value": {
+      "primary": "outcome"
+    },
+    "sales::average-deal-size": {
+      "primary": "operational"
+    },
+    "sales::sales-cycle-length": {
+      "primary": "operational"
+    },
+    "sales::quota-attainment": {
+      "primary": "outcome",
+      "secondary": "operational"
+    },
+    "sales::revenue-per-rep": {
+      "primary": "efficiency"
+    },
+    "sales::ramp-time": {
+      "primary": "operational"
+    },
+    "sales::activity-metrics-diagnostic": {
+      "primary": "operational"
+    },
+    "support::ticket-volume": {
+      "primary": "operational"
+    },
+    "support::tickets-per-customer": {
+      "primary": "operational"
+    },
+    "support::ticket-backlog": {
+      "primary": "operational"
+    },
+    "support::ticket-distribution-by-type": {
+      "primary": "operational"
+    },
+    "support::first-response-time-frt": {
+      "primary": "operational"
+    },
+    "support::first-response-sla-adherence": {
+      "primary": "outcome"
+    },
+    "support::resolution-time-time-to-resolution": {
+      "primary": "operational"
+    },
+    "support::first-contact-resolution-fcr": {
+      "primary": "efficiency"
+    },
+    "support::resolution-sla-adherence": {
+      "primary": "outcome"
+    },
+    "support::reopen-rate": {
+      "primary": "operational"
+    },
+    "support::customer-satisfaction-score-csat": {
+      "primary": "outcome"
+    },
+    "support::customer-effort-score-ces": {
+      "primary": "leading"
+    },
+    "support::escalation-rate": {
+      "primary": "operational"
+    },
+    "support::tickets-per-agent": {
+      "primary": "operational"
+    },
+    "support::cost-per-ticket": {
+      "primary": "efficiency"
+    },
+    "support::self-service-rate-ticket-deflection": {
+      "primary": "efficiency"
+    }
+  }
+}

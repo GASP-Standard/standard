@@ -1,0 +1,112 @@
+version: 0.2.0.dev0
+name: GASP
+description: >
+  GASP Standard SaaS ontology, spike subset: the concepts Net Revenue Retention (NRR)
+  needs. Generated-by-hand for the Ossie interop spike; the real file is exported
+  from /standard/ontology.json.
+ontology:
+# ── value types ──────────────────────────────────────────────────────────────
+- concept: CustomerId
+  type: ValueType
+  extends: [ String ]
+- concept: SubscriptionId
+  type: ValueType
+  extends: [ String ]
+- concept: EventId
+  type: ValueType
+  extends: [ String ]
+- concept: Mrr
+  description: "Monthly recurring revenue in the reporting currency"
+  type: ValueType
+  extends: [ Decimal ]
+- concept: MrrChange
+  description: "Change in MRR caused by one revenue event; negative for contraction and churn"
+  type: ValueType
+  extends: [ Decimal ]
+- concept: CustomerStatus
+  type: ValueType
+  extends: [ String ]
+  requires: [ "CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'" ]
+- concept: SubscriptionStatus
+  type: ValueType
+  extends: [ String ]
+  requires: [ "SubscriptionStatus == 'active' OR SubscriptionStatus == 'cancelled' OR SubscriptionStatus == 'expired' OR SubscriptionStatus == 'paused'" ]
+- concept: RevenueEventType
+  description: "CEL Revenue_Event event_type"
+  type: ValueType
+  extends: [ String ]
+  requires: [ "RevenueEventType == 'new' OR RevenueEventType == 'expansion' OR RevenueEventType == 'contraction' OR RevenueEventType == 'churn' OR RevenueEventType == 'reactivation' OR RevenueEventType == 'renewal'" ]
+- concept: ExpansionClassification
+  description: "ATL expansion classification"
+  type: ValueType
+  extends: [ String ]
+  requires: [ "ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting' OR ExpansionClassification == 'usage_realisation'" ]
+# ── entity types ─────────────────────────────────────────────────────────────
+- concept: Customer
+  description: "A distinct billing entity with one or more subscriptions"
+  type: EntityType
+  identify_by: [ id ]
+  relationships:
+  - name: id
+    roles: [ { concept: CustomerId } ]
+    verbalizes: [ '{Customer} is identified by {CustomerId}' ]
+    multiplicity: OneToOne
+  - name: status_on
+    roles: [ { concept: Date }, { concept: CustomerStatus } ]
+    verbalizes: [ '{Customer} on {Date} has {CustomerStatus}' ]
+    multiplicity: ManyToOne
+  - name: mrr_on
+    roles: [ { concept: Date }, { concept: Mrr } ]
+    verbalizes: [ '{Customer} on {Date} has {Mrr}' ]
+    multiplicity: ManyToOne
+    derived_by: [ 'Mrr == SUM[Subscription.mrr_on(Date, Mrr) WHERE Subscription.customer(Customer) GROUP BY Customer, Date]' ]
+- concept: Subscription
+  description: "A contract for recurring revenue between a customer and the company"
+  type: EntityType
+  identify_by: [ id ]
+  relationships:
+  - name: id
+    roles: [ { concept: SubscriptionId } ]
+    verbalizes: [ '{Subscription} is identified by {SubscriptionId}' ]
+    multiplicity: OneToOne
+  - name: customer
+    roles: [ { concept: Customer } ]
+    verbalizes: [ '{Subscription} belongs to {Customer}' ]
+    multiplicity: ManyToOne
+  - name: mrr_on
+    roles: [ { concept: Date }, { concept: Mrr } ]
+    verbalizes: [ '{Subscription} on {Date} carries {Mrr}' ]
+    multiplicity: ManyToOne
+  - name: status_on
+    roles: [ { concept: Date }, { concept: SubscriptionStatus } ]
+    verbalizes: [ '{Subscription} on {Date} has {SubscriptionStatus}' ]
+    multiplicity: ManyToOne
+- concept: RevenueEvent
+  description: "CEL Revenue_Event: one change to a customer's recurring revenue"
+  type: EntityType
+  identify_by: [ id ]
+  relationships:
+  - name: id
+    roles: [ { concept: EventId } ]
+    verbalizes: [ '{RevenueEvent} is identified by {EventId}' ]
+    multiplicity: OneToOne
+  - name: customer
+    roles: [ { concept: Customer } ]
+    verbalizes: [ '{RevenueEvent} happened to {Customer}' ]
+    multiplicity: ManyToOne
+  - name: occurred_on
+    roles: [ { concept: Date } ]
+    verbalizes: [ '{RevenueEvent} occurred on {Date}' ]
+    multiplicity: ManyToOne
+  - name: type
+    roles: [ { concept: RevenueEventType } ]
+    verbalizes: [ '{RevenueEvent} is a {RevenueEventType}' ]
+    multiplicity: ManyToOne
+  - name: mrr_change
+    roles: [ { concept: MrrChange } ]
+    verbalizes: [ '{RevenueEvent} changed MRR by {MrrChange}' ]
+    multiplicity: ManyToOne
+  - name: classified_as
+    roles: [ { concept: ExpansionClassification } ]
+    verbalizes: [ '{RevenueEvent} is classified as {ExpansionClassification}' ]
+    multiplicity: ManyToOne

@@ -1,0 +1,1949 @@
+# Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
+version: 0.2.0.dev0
+name: gasp_reference_mapping
+description: Maps the GASP ontology onto the GASP reference semantic model, whose datasets and fields are named by their GASP ids. A customer mapping keeps this shape and swaps in its own dataset and field names.
+ontology_ref:
+  name: GASP
+  iri: ./gasp.ontology.yaml
+semantic_model_ref:
+  name: GASP reference model
+  iri: ./gasp.semantic_model.yaml
+concept_mappings:
+  - concept: RevenueEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: revenue_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: revenue_event.event_id
+        children:
+          - object_mapping:
+              concept: ChangeNature
+              expression: revenue_event.change_nature
+            relationship: change_nature
+          - object_mapping:
+              concept: Currency
+              expression: revenue_event.currency
+            relationship: currency
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: revenue_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: revenue_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: EventType
+              expression: revenue_event.event_type
+            relationship: event_type
+          - object_mapping:
+              concept: ExpansionClassification
+              expression: revenue_event.expansion_classification
+            relationship: expansion_classification
+          - object_mapping:
+              concept: LifecycleAttribution
+              expression: revenue_event.lifecycle_attribution
+            relationship: lifecycle_attribution
+          - object_mapping:
+              concept: MrrChange
+              expression: revenue_event.mrr_change
+            relationship: mrr_change
+          - object_mapping:
+              concept: NewMrr
+              expression: revenue_event.new_mrr
+            relationship: new_mrr
+          - object_mapping:
+              concept: PriorMrr
+              expression: revenue_event.prior_mrr
+            relationship: prior_mrr
+          - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: revenue_event.subscription_id
+            relationship: subscription_id
+  - concept: CostEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: cost_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: cost_event.event_id
+        children:
+          - object_mapping:
+              concept: Cost
+              expression: cost_event.cost
+            relationship: cost
+          - object_mapping:
+              concept: CostCentre
+              expression: cost_event.cost_centre
+            relationship: cost_centre
+          - object_mapping:
+              concept: CostFunction
+              expression: cost_event.cost_function
+            relationship: cost_function
+          - object_mapping:
+              concept: CostType
+              expression: cost_event.cost_type
+            relationship: cost_type
+          - object_mapping:
+              concept: Currency
+              expression: cost_event.currency
+            relationship: currency
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: cost_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: cost_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: LifecycleAttribution
+              expression: cost_event.lifecycle_attribution
+            relationship: lifecycle_attribution
+          - object_mapping:
+              concept: Partner
+              referent_mappings:
+                - relationship: partner_id
+                  expression: cost_event.partner_id
+            relationship: partner_id
+          - object_mapping:
+              concept: Project
+              referent_mappings:
+                - relationship: project_id
+                  expression: cost_event.project_id
+            relationship: project_id
+  - concept: ContractEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: contract_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: contract_event.event_id
+        children:
+          - object_mapping:
+              concept: Acv
+              expression: contract_event.acv
+            relationship: acv
+          - object_mapping:
+              concept: Date
+              expression: contract_event.contract_end
+            relationship: contract_end
+          - object_mapping:
+              concept: ContractEventType
+              expression: contract_event.contract_event_type
+            relationship: contract_event_type
+          - object_mapping:
+              concept: Date
+              expression: contract_event.contract_start
+            relationship: contract_start
+          - object_mapping:
+              concept: Currency
+              expression: contract_event.currency
+            relationship: currency
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: contract_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: contract_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: contract_event.subscription_id
+            relationship: subscription_id
+          - object_mapping:
+              concept: TcvValue
+              expression: contract_event.tcv
+            relationship: tcv
+  - concept: AmendmentEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: amendment_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: amendment_event.event_id
+        children:
+          - object_mapping:
+              concept: AmendmentType
+              expression: amendment_event.amendment_type
+            relationship: amendment_type
+          - object_mapping:
+              concept: ChangeNature
+              expression: amendment_event.change_nature
+            relationship: change_nature
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: amendment_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: amendment_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: ExpansionClassification
+              expression: amendment_event.expansion_classification
+            relationship: expansion_classification
+          - object_mapping:
+              concept: LifecycleAttribution
+              expression: amendment_event.lifecycle_attribution
+            relationship: lifecycle_attribution
+          - object_mapping:
+              concept: MrrChange
+              expression: amendment_event.mrr_change
+            relationship: mrr_change
+          - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: amendment_event.subscription_id
+            relationship: subscription_id
+  - concept: LifecycleEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: lifecycle_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: lifecycle_event.event_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: lifecycle_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: lifecycle_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: NewState
+              expression: lifecycle_event.new_state
+            relationship: new_state
+          - object_mapping:
+              concept: PriorState
+              expression: lifecycle_event.prior_state
+            relationship: prior_state
+          - object_mapping:
+              concept: StateCategory
+              expression: lifecycle_event.state_category
+            relationship: state_category
+  - concept: Customer
+    object_mappings:
+      - referent_mappings:
+          - relationship: customer_id
+            expression: customer.customer_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: customer_id
+              expression: customer.customer_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: customer.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: customer.acquisition_date
+                relationship: acquisition_date
+              - object_mapping:
+                  concept: Date
+                  expression: customer.activation_date
+                relationship: activation_date
+              - object_mapping:
+                  concept: CompositeScore
+                  expression: customer.composite_score
+                relationship: composite_score
+              - object_mapping:
+                  concept: CriteriaMet
+                  expression: customer.criteria_met
+                relationship: criteria_met
+              - object_mapping:
+                  concept: CsmId
+                  expression: customer.csm_id
+                relationship: csm_id
+              - object_mapping:
+                  concept: CustomerStatus
+                  expression: customer.customer_status
+                relationship: customer_status
+              - object_mapping:
+                  concept: EngagedContactCount
+                  expression: customer.engaged_contact_count
+                relationship: engaged_contact_count
+              - object_mapping:
+                  concept: HasExecSponsor
+                  expression: customer.has_exec_sponsor
+                relationship: has_exec_sponsor
+              - object_mapping:
+                  concept: Date
+                  expression: customer.last_active_date
+                relationship: last_active_date
+              - object_mapping:
+                  concept: Date
+                  expression: customer.onboarding_completion_date
+                relationship: onboarding_completion_date
+              - object_mapping:
+                  concept: QbrCompleted
+                  expression: customer.qbr_completed
+                relationship: qbr_completed
+              - object_mapping:
+                  concept: QbrDue
+                  expression: customer.qbr_due
+                relationship: qbr_due
+              - object_mapping:
+                  concept: Tier
+                  expression: customer.tier
+                relationship: tier
+              - object_mapping:
+                  concept: UpgradeEligible
+                  expression: customer.upgrade_eligible
+                relationship: upgrade_eligible
+      - object_mapping:
+          referent_mappings:
+            - relationship: customer_id
+              expression: subscription.customer_id
+        children:
+          - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: subscription.subscription_id
+            relationship: owns
+      - object_mapping:
+          referent_mappings:
+            - relationship: customer_id
+              expression: user.customer_id
+        children:
+          - object_mapping:
+              concept: User
+              referent_mappings:
+                - relationship: user_id
+                  expression: user.user_id
+            relationship: engages_via
+      - object_mapping:
+          referent_mappings:
+            - relationship: customer_id
+              expression: ticket.customer_id
+        children:
+          - object_mapping:
+              concept: Ticket
+              referent_mappings:
+                - relationship: ticket_id
+                  expression: ticket.ticket_id
+            relationship: submits
+  - concept: Subscription
+    object_mappings:
+      - referent_mappings:
+          - relationship: subscription_id
+            expression: subscription.subscription_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: subscription_id
+              expression: subscription.subscription_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: subscription.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: subscription.snapshot_date
+            children:
+              - object_mapping:
+                  concept: AutoRenewed
+                  expression: subscription.auto_renewed
+                relationship: auto_renewed
+              - object_mapping:
+                  concept: Date
+                  expression: subscription.contract_end
+                relationship: contract_end
+              - object_mapping:
+                  concept: Date
+                  expression: subscription.contract_start
+                relationship: contract_start
+              - object_mapping:
+                  concept: ForecastRenewalAmount
+                  expression: subscription.forecast_renewal_amount
+                relationship: forecast_renewal_amount
+              - object_mapping:
+                  concept: Mrr
+                  expression: subscription.mrr
+                relationship: mrr
+              - object_mapping:
+                  concept: MrrEnd
+                  expression: subscription.mrr_end
+                relationship: mrr_end
+              - object_mapping:
+                  concept: MrrStart
+                  expression: subscription.mrr_start
+                relationship: mrr_start
+              - object_mapping:
+                  concept: RenewalAmount
+                  expression: subscription.renewal_amount
+                relationship: renewal_amount
+              - object_mapping:
+                  concept: Date
+                  expression: subscription.renewal_complete_date
+                relationship: renewal_complete_date
+              - object_mapping:
+                  concept: RenewalNotifiedOnTime
+                  expression: subscription.renewal_notified_on_time
+                relationship: renewal_notified_on_time
+              - object_mapping:
+                  concept: Date
+                  expression: subscription.renewal_trigger_date
+                relationship: renewal_trigger_date
+              - object_mapping:
+                  concept: Renewed
+                  expression: subscription.renewed
+                relationship: renewed
+              - object_mapping:
+                  concept: SubscriptionStatus
+                  expression: subscription.subscription_status
+                relationship: subscription_status
+  - concept: Opportunity
+    object_mappings:
+      - referent_mappings:
+          - relationship: opportunity_id
+            expression: opportunity.opportunity_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: opportunity_id
+              expression: opportunity.opportunity_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: opportunity.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Lead
+              referent_mappings:
+                - relationship: lead_id
+                  expression: opportunity.lead_id
+            relationship: lead_id
+          - object_mapping:
+              concept: Partner
+              referent_mappings:
+                - relationship: partner_id
+                  expression: opportunity.partner_id
+            relationship: partner_id
+          - object_mapping:
+              concept: SalesRep
+              referent_mappings:
+                - relationship: rep_id
+                  expression: opportunity.rep_id
+            relationship: rep_id
+          - object_mapping:
+              concept: Date
+              expression: opportunity.snapshot_date
+            children:
+              - object_mapping:
+                  concept: AdvancedToNextStage
+                  expression: opportunity.advanced_to_next_stage
+                relationship: advanced_to_next_stage
+              - object_mapping:
+                  concept: Date
+                  expression: opportunity.close_date
+                relationship: close_date
+              - object_mapping:
+                  concept: CloseDateValid
+                  expression: opportunity.close_date_valid
+                relationship: close_date_valid
+              - object_mapping:
+                  concept: ForecastCategory
+                  expression: opportunity.forecast_category
+                relationship: forecast_category
+              - object_mapping:
+                  concept: IncludesServices
+                  expression: opportunity.includes_services
+                relationship: includes_services
+              - object_mapping:
+                  concept: MarketingChannel
+                  expression: opportunity.marketing_channel
+                relationship: marketing_channel
+              - object_mapping:
+                  concept: MarketingInfluenced
+                  expression: opportunity.marketing_influenced
+                relationship: marketing_influenced
+              - object_mapping:
+                  concept: MarketingSource
+                  expression: opportunity.marketing_source
+                relationship: marketing_source
+              - object_mapping:
+                  concept: OpportunityAmount
+                  expression: opportunity.opportunity_amount
+                relationship: opportunity_amount
+              - object_mapping:
+                  concept: Date
+                  expression: opportunity.opportunity_created_date
+                relationship: opportunity_created_date
+              - object_mapping:
+                  concept: OpportunityStage
+                  expression: opportunity.opportunity_stage
+                relationship: opportunity_stage
+              - object_mapping:
+                  concept: PartnerSourced
+                  expression: opportunity.partner_sourced
+                relationship: partner_sourced
+              - object_mapping:
+                  concept: RequiredFieldsComplete
+                  expression: opportunity.required_fields_complete
+                relationship: required_fields_complete
+              - object_mapping:
+                  concept: RevenueType
+                  expression: opportunity.revenue_type
+                relationship: revenue_type
+              - object_mapping:
+                  concept: StageAccurate
+                  expression: opportunity.stage_accurate
+                relationship: stage_accurate
+              - object_mapping:
+                  concept: StageProbability
+                  expression: opportunity.stage_probability
+                relationship: stage_probability
+              - object_mapping:
+                  concept: UpdatedWithinSla
+                  expression: opportunity.updated_within_sla
+                relationship: updated_within_sla
+      - object_mapping:
+          referent_mappings:
+            - relationship: opportunity_id
+              expression: opportunity.opportunity_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: opportunity.customer_id
+            relationship: converts_to
+  - concept: Lead
+    object_mappings:
+      - referent_mappings:
+          - relationship: lead_id
+            expression: lead.lead_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: lead_id
+              expression: lead.lead_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: lead.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: lead.lead_created_date
+                relationship: lead_created_date
+              - object_mapping:
+                  concept: LeadSource
+                  expression: lead.lead_source
+                relationship: lead_source
+              - object_mapping:
+                  concept: LeadStage
+                  expression: lead.lead_stage
+                relationship: lead_stage
+              - object_mapping:
+                  concept: Date
+                  expression: lead.mql_date
+                relationship: mql_date
+              - object_mapping:
+                  concept: Date
+                  expression: lead.sql_date
+                relationship: sql_date
+      - object_mapping:
+          referent_mappings:
+            - relationship: lead_id
+              expression: opportunity.lead_id
+        children:
+          - object_mapping:
+              concept: Opportunity
+              referent_mappings:
+                - relationship: opportunity_id
+                  expression: opportunity.opportunity_id
+            relationship: converts_to
+  - concept: User
+    object_mappings:
+      - referent_mappings:
+          - relationship: user_id
+            expression: user.user_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: user_id
+              expression: user.user_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: user.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: user.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: user.activation_date
+                relationship: activation_date
+              - object_mapping:
+                  concept: CoreFeaturesAdopted
+                  expression: user.core_features_adopted
+                relationship: core_features_adopted
+              - object_mapping:
+                  concept: Date
+                  expression: user.first_use_date
+                relationship: first_use_date
+              - object_mapping:
+                  concept: Date
+                  expression: user.last_active_date
+                relationship: last_active_date
+              - object_mapping:
+                  concept: Date
+                  expression: user.signup_date
+                relationship: signup_date
+              - object_mapping:
+                  concept: UserStatus
+                  expression: user.user_status
+                relationship: user_status
+  - concept: Employee
+    object_mappings:
+      - referent_mappings:
+          - relationship: employee_id
+            expression: employee.employee_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: employee_id
+              expression: employee.employee_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: employee.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Department
+                  expression: employee.department
+                relationship: department
+              - object_mapping:
+                  concept: EmployeeStatus
+                  expression: employee.employee_status
+                relationship: employee_status
+              - object_mapping:
+                  concept: Date
+                  expression: employee.hire_date
+                relationship: hire_date
+              - object_mapping:
+                  concept: IsHighPerformer
+                  expression: employee.is_high_performer
+                relationship: is_high_performer
+              - object_mapping:
+                  concept: JobLevel
+                  expression: employee.job_level
+                relationship: job_level
+              - object_mapping:
+                  concept: MarketMidpoint
+                  expression: employee.market_midpoint
+                relationship: market_midpoint
+              - object_mapping:
+                  concept: PerformanceRating
+                  expression: employee.performance_rating
+                relationship: performance_rating
+              - object_mapping:
+                  concept: Salary
+                  expression: employee.salary
+                relationship: salary
+              - object_mapping:
+                  concept: Date
+                  expression: employee.termination_date
+                relationship: termination_date
+              - object_mapping:
+                  concept: TerminationType
+                  expression: employee.termination_type
+                relationship: termination_type
+              - object_mapping:
+                  concept: UnderrepresentedGroup
+                  expression: employee.underrepresented_group
+                relationship: underrepresented_group
+  - concept: Partner
+    object_mappings:
+      - referent_mappings:
+          - relationship: partner_id
+            expression: partner.partner_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: partner_id
+              expression: partner.partner_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: partner.snapshot_date
+            children:
+              - object_mapping:
+                  concept: CertificationStatus
+                  expression: partner.certification_status
+                relationship: certification_status
+              - object_mapping:
+                  concept: Date
+                  expression: partner.partner_churn_date
+                relationship: partner_churn_date
+              - object_mapping:
+                  concept: Date
+                  expression: partner.partner_recruited_date
+                relationship: partner_recruited_date
+              - object_mapping:
+                  concept: PartnerStatus
+                  expression: partner.partner_status
+                relationship: partner_status
+              - object_mapping:
+                  concept: PartnerTier
+                  expression: partner.partner_tier
+                relationship: partner_tier
+              - object_mapping:
+                  concept: TrainingCompleted
+                  expression: partner.training_completed
+                relationship: training_completed
+      - object_mapping:
+          referent_mappings:
+            - relationship: partner_id
+              expression: opportunity.partner_id
+        children:
+          - object_mapping:
+              concept: Opportunity
+              referent_mappings:
+                - relationship: opportunity_id
+                  expression: opportunity.opportunity_id
+            relationship: sources
+  - concept: Project
+    object_mappings:
+      - referent_mappings:
+          - relationship: project_id
+            expression: project.project_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: project_id
+              expression: project.project_id
+        children:
+          - object_mapping:
+              concept: Consultant
+              referent_mappings:
+                - relationship: consultant_id
+                  expression: project.consultant_id
+            relationship: consultant_id
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: project.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: project.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: project.close_date
+                relationship: close_date
+              - object_mapping:
+                  concept: Escalated
+                  expression: project.escalated
+                relationship: escalated
+              - object_mapping:
+                  concept: HoursActual
+                  expression: project.hours_actual
+                relationship: hours_actual
+              - object_mapping:
+                  concept: HoursBudgeted
+                  expression: project.hours_budgeted
+                relationship: hours_budgeted
+              - object_mapping:
+                  concept: Date
+                  expression: project.project_completion_date
+                relationship: project_completion_date
+              - object_mapping:
+                  concept: ProjectCost
+                  expression: project.project_cost
+                relationship: project_cost
+              - object_mapping:
+                  concept: ProjectRevenue
+                  expression: project.project_revenue
+                relationship: project_revenue
+              - object_mapping:
+                  concept: Date
+                  expression: project.project_start_date
+                relationship: project_start_date
+              - object_mapping:
+                  concept: Referenceable
+                  expression: project.referenceable
+                relationship: referenceable
+              - object_mapping:
+                  concept: ScopeChanged
+                  expression: project.scope_changed
+                relationship: scope_changed
+              - object_mapping:
+                  concept: Date
+                  expression: project.target_date
+                relationship: target_date
+      - object_mapping:
+          referent_mappings:
+            - relationship: project_id
+              expression: project.project_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: project.customer_id
+            relationship: serves
+  - concept: Invoice
+    object_mappings:
+      - referent_mappings:
+          - relationship: invoice_id
+            expression: invoice.invoice_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: invoice_id
+              expression: invoice.invoice_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: invoice.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: invoice.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: invoice.billing_trigger_date
+                relationship: billing_trigger_date
+              - object_mapping:
+                  concept: CreditMemoCount
+                  expression: invoice.credit_memo_count
+                relationship: credit_memo_count
+              - object_mapping:
+                  concept: Currency
+                  expression: invoice.currency
+                relationship: currency
+              - object_mapping:
+                  concept: InvoiceAmount
+                  expression: invoice.invoice_amount
+                relationship: invoice_amount
+              - object_mapping:
+                  concept: InvoiceCorrected
+                  expression: invoice.invoice_corrected
+                relationship: invoice_corrected
+              - object_mapping:
+                  concept: Date
+                  expression: invoice.invoice_date
+                relationship: invoice_date
+              - object_mapping:
+                  concept: InvoiceDisputed
+                  expression: invoice.invoice_disputed
+                relationship: invoice_disputed
+              - object_mapping:
+                  concept: OutstandingAmount
+                  expression: invoice.outstanding_amount
+                relationship: outstanding_amount
+              - object_mapping:
+                  concept: Date
+                  expression: invoice.payment_date
+                relationship: payment_date
+              - object_mapping:
+                  concept: PaymentMethod
+                  expression: invoice.payment_method
+                relationship: payment_method
+              - object_mapping:
+                  concept: PaymentStatus
+                  expression: invoice.payment_status
+                relationship: payment_status
+  - concept: Campaign
+    object_mappings:
+      - referent_mappings:
+          - relationship: campaign_id
+            expression: campaign.campaign_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: campaign_id
+              expression: campaign.campaign_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: campaign.period_start
+            children:
+              - object_mapping:
+                  concept: AdSpend
+                  expression: campaign.ad_spend
+                relationship: ad_spend
+              - object_mapping:
+                  concept: Channel
+                  expression: campaign.channel
+                relationship: channel
+  - concept: SalesRep
+    object_mappings:
+      - referent_mappings:
+          - relationship: rep_id
+            expression: sales_rep.rep_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: rep_id
+              expression: sales_rep.rep_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: sales_rep.period_start
+            children:
+              - object_mapping:
+                  concept: ClosedRevenue
+                  expression: sales_rep.closed_revenue
+                relationship: closed_revenue
+              - object_mapping:
+                  concept: Date
+                  expression: sales_rep.hire_date
+                relationship: hire_date
+              - object_mapping:
+                  concept: Quota
+                  expression: sales_rep.quota
+                relationship: quota
+              - object_mapping:
+                  concept: Date
+                  expression: sales_rep.ramped_date
+                relationship: ramped_date
+  - concept: Consultant
+    object_mappings:
+      - referent_mappings:
+          - relationship: consultant_id
+            expression: consultant.consultant_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: consultant_id
+              expression: consultant.consultant_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: consultant.period_start
+            children:
+              - object_mapping:
+                  concept: AvailableHours
+                  expression: consultant.available_hours
+                relationship: available_hours
+  - concept: Ticket
+    object_mappings:
+      - referent_mappings:
+          - relationship: ticket_id
+            expression: ticket.ticket_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: ticket_id
+              expression: ticket.ticket_id
+        children:
+          - object_mapping:
+              concept: AgentId
+              expression: ticket.agent_id
+            relationship: agent_id
+          - object_mapping:
+              concept: DateTime
+              expression: ticket.created_at
+            relationship: created_at
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: ticket.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Escalated
+              expression: ticket.escalated
+            relationship: escalated
+          - object_mapping:
+              concept: DateTime
+              expression: ticket.first_response_at
+            relationship: first_response_at
+          - object_mapping:
+              concept: DateTime
+              expression: ticket.first_response_due_at
+            relationship: first_response_due_at
+          - object_mapping:
+              concept: Reopened
+              expression: ticket.reopened
+            relationship: reopened
+          - object_mapping:
+              concept: DateTime
+              expression: ticket.resolution_due_at
+            relationship: resolution_due_at
+          - object_mapping:
+              concept: DateTime
+              expression: ticket.resolved_at
+            relationship: resolved_at
+          - object_mapping:
+              concept: ResolvedFirstContact
+              expression: ticket.resolved_first_contact
+            relationship: resolved_first_contact
+          - object_mapping:
+              concept: TicketStatus
+              expression: ticket.ticket_status
+            relationship: ticket_status
+  - concept: ProductEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: product_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: product_event.event_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: product_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: product_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: Feature
+              referent_mappings:
+                - relationship: feature_id
+                  expression: product_event.feature_id
+            relationship: feature_id
+          - object_mapping:
+              concept: ProductEventType
+              expression: product_event.product_event_type
+            relationship: product_event_type
+          - object_mapping:
+              concept: SessionDuration
+              expression: product_event.session_duration
+            relationship: session_duration
+          - object_mapping:
+              concept: SessionId
+              expression: product_event.session_id
+            relationship: session_id
+          - object_mapping:
+              concept: Date
+              expression: product_event.signup_date
+            relationship: signup_date
+          - object_mapping:
+              concept: UsageCount
+              expression: product_event.usage_count
+            relationship: usage_count
+          - object_mapping:
+              concept: User
+              referent_mappings:
+                - relationship: user_id
+                  expression: product_event.user_id
+            relationship: user_id
+  - concept: SurveyResponse
+    object_mappings:
+      - referent_mappings:
+          - relationship: response_id
+            expression: survey_response.response_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: response_id
+              expression: survey_response.response_id
+        children:
+          - object_mapping:
+              concept: CesScore
+              expression: survey_response.ces_score
+            relationship: ces_score
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: survey_response.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Employee
+              referent_mappings:
+                - relationship: employee_id
+                  expression: survey_response.employee_id
+            relationship: employee_id
+          - object_mapping:
+              concept: EngagementScore
+              expression: survey_response.engagement_score
+            relationship: engagement_score
+          - object_mapping:
+              concept: Lead
+              referent_mappings:
+                - relationship: lead_id
+                  expression: survey_response.lead_id
+            relationship: lead_id
+          - object_mapping:
+              concept: NpsScore
+              expression: survey_response.nps_score
+            relationship: nps_score
+          - object_mapping:
+              concept: Partner
+              referent_mappings:
+                - relationship: partner_id
+                  expression: survey_response.partner_id
+            relationship: partner_id
+          - object_mapping:
+              concept: Project
+              referent_mappings:
+                - relationship: project_id
+                  expression: survey_response.project_id
+            relationship: project_id
+          - object_mapping:
+              concept: SatisfactionScore
+              expression: survey_response.satisfaction_score
+            relationship: satisfaction_score
+          - object_mapping:
+              concept: SurveyCompleted
+              expression: survey_response.survey_completed
+            relationship: survey_completed
+          - object_mapping:
+              concept: Date
+              expression: survey_response.survey_date
+            relationship: survey_date
+          - object_mapping:
+              concept: SurveyType
+              expression: survey_response.survey_type
+            relationship: survey_type
+  - concept: KbArticle
+    object_mappings:
+      - referent_mappings:
+          - relationship: article_id
+            expression: kb_article.article_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: article_id
+              expression: kb_article.article_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: kb_article.period_start
+            children:
+              - object_mapping:
+                  concept: Deflections
+                  expression: kb_article.deflections
+                relationship: deflections
+  - concept: Requisition
+    object_mappings:
+      - referent_mappings:
+          - relationship: requisition_id
+            expression: requisition.requisition_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: requisition_id
+              expression: requisition.requisition_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: requisition.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: requisition.filled_date
+                relationship: filled_date
+              - object_mapping:
+                  concept: Date
+                  expression: requisition.hire_date
+                relationship: hire_date
+              - object_mapping:
+                  concept: OfferStatus
+                  expression: requisition.offer_status
+                relationship: offer_status
+              - object_mapping:
+                  concept: Date
+                  expression: requisition.requisition_opened_date
+                relationship: requisition_opened_date
+              - object_mapping:
+                  concept: RequisitionStatus
+                  expression: requisition.requisition_status
+                relationship: requisition_status
+  - concept: Incident
+    object_mappings:
+      - referent_mappings:
+          - relationship: incident_id
+            expression: incident.incident_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: incident_id
+              expression: incident.incident_id
+        children:
+          - object_mapping:
+              concept: DateTime
+              expression: incident.acknowledged_at
+            relationship: acknowledged_at
+          - object_mapping:
+              concept: DateTime
+              expression: incident.detected_at
+            relationship: detected_at
+          - object_mapping:
+              concept: IncidentType
+              expression: incident.incident_type
+            relationship: incident_type
+          - object_mapping:
+              concept: RecoveryTime
+              expression: incident.recovery_time
+            relationship: recovery_time
+          - object_mapping:
+              concept: DateTime
+              expression: incident.resolved_at
+            relationship: resolved_at
+          - object_mapping:
+              concept: Severity
+              expression: incident.severity
+            relationship: severity
+          - object_mapping:
+              concept: DateTime
+              expression: incident.started_at
+            relationship: started_at
+  - concept: Deployment
+    object_mappings:
+      - referent_mappings:
+          - relationship: deployment_id
+            expression: deployment.deployment_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: deployment_id
+              expression: deployment.deployment_id
+        children:
+          - object_mapping:
+              concept: DateTime
+              expression: deployment.committed_at
+            relationship: committed_at
+          - object_mapping:
+              concept: DateTime
+              expression: deployment.deploy_date
+            relationship: deploy_date
+          - object_mapping:
+              concept: Incident
+              referent_mappings:
+                - relationship: incident_id
+                  expression: deployment.incident_id
+            relationship: incident_id
+  - concept: Vulnerability
+    object_mappings:
+      - referent_mappings:
+          - relationship: vulnerability_id
+            expression: vulnerability.vulnerability_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: vulnerability_id
+              expression: vulnerability.vulnerability_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: vulnerability.snapshot_date
+            children:
+              - object_mapping:
+                  concept: DateTime
+                  expression: vulnerability.discovered_at
+                relationship: discovered_at
+              - object_mapping:
+                  concept: DateTime
+                  expression: vulnerability.patched_at
+                relationship: patched_at
+              - object_mapping:
+                  concept: VulnerabilityStatus
+                  expression: vulnerability.vulnerability_status
+                relationship: vulnerability_status
+  - concept: ServiceMetrics
+    object_mappings:
+      - referent_mappings:
+          - relationship: service_id
+            expression: service_metrics.service_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: service_id
+              expression: service_metrics.service_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: service_metrics.period_start
+            children:
+              - object_mapping:
+                  concept: DowntimeMinutes
+                  expression: service_metrics.downtime_minutes
+                relationship: downtime_minutes
+              - object_mapping:
+                  concept: ErrorCount
+                  expression: service_metrics.error_count
+                relationship: error_count
+              - object_mapping:
+                  concept: RequestCount
+                  expression: service_metrics.request_count
+                relationship: request_count
+              - object_mapping:
+                  concept: ResponseTimeMs
+                  expression: service_metrics.response_time_ms
+                relationship: response_time_ms
+              - object_mapping:
+                  concept: SlaMet
+                  expression: service_metrics.sla_met
+                relationship: sla_met
+              - object_mapping:
+                  concept: Utilization
+                  expression: service_metrics.utilization
+                relationship: utilization
+  - concept: Issue
+    object_mappings:
+      - referent_mappings:
+          - relationship: issue_id
+            expression: issue.issue_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: issue_id
+              expression: issue.issue_id
+        children:
+          - object_mapping:
+              concept: DateTime
+              expression: issue.created_at
+            relationship: created_at
+          - object_mapping:
+              concept: IssueEnvironment
+              expression: issue.issue_environment
+            relationship: issue_environment
+          - object_mapping:
+              concept: IssueSource
+              expression: issue.issue_source
+            relationship: issue_source
+          - object_mapping:
+              concept: IssueType
+              expression: issue.issue_type
+            relationship: issue_type
+  - concept: Feature
+    object_mappings:
+      - referent_mappings:
+          - relationship: feature_id
+            expression: feature.feature_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: feature_id
+              expression: feature.feature_id
+        children:
+          - object_mapping:
+              concept: Release
+              referent_mappings:
+                - relationship: release_id
+                  expression: feature.release_id
+            relationship: release_id
+          - object_mapping:
+              concept: Date
+              expression: feature.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: feature.actual_date
+                relationship: actual_date
+              - object_mapping:
+                  concept: Date
+                  expression: feature.feature_created_date
+                relationship: feature_created_date
+              - object_mapping:
+                  concept: Date
+                  expression: feature.first_use_date
+                relationship: first_use_date
+              - object_mapping:
+                  concept: Date
+                  expression: feature.planned_date
+                relationship: planned_date
+              - object_mapping:
+                  concept: Date
+                  expression: feature.release_date
+                relationship: release_date
+  - concept: Release
+    object_mappings:
+      - referent_mappings:
+          - relationship: release_id
+            expression: release.release_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: release_id
+              expression: release.release_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: release.release_date
+            relationship: release_date
+  - concept: RoadmapItem
+    object_mappings:
+      - referent_mappings:
+          - relationship: roadmap_item_id
+            expression: roadmap_item.roadmap_item_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: roadmap_item_id
+              expression: roadmap_item.roadmap_item_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: roadmap_item.snapshot_date
+            children:
+              - object_mapping:
+                  concept: RoadmapItemCompleted
+                  expression: roadmap_item.roadmap_item_completed
+                relationship: roadmap_item_completed
+  - concept: ProjectMilestone
+    object_mappings:
+      - referent_mappings:
+          - relationship: project_milestone_id
+            expression: project_milestone.project_milestone_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: project_milestone_id
+              expression: project_milestone.project_milestone_id
+        children:
+          - object_mapping:
+              concept: Project
+              referent_mappings:
+                - relationship: project_id
+                  expression: project_milestone.project_id
+            relationship: project_id
+          - object_mapping:
+              concept: Date
+              expression: project_milestone.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: project_milestone.actual_date
+                relationship: actual_date
+              - object_mapping:
+                  concept: Date
+                  expression: project_milestone.planned_date
+                relationship: planned_date
+  - concept: TimeEntry
+    object_mappings:
+      - referent_mappings:
+          - relationship: entry_id
+            expression: time_entry.entry_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: entry_id
+              expression: time_entry.entry_id
+        children:
+          - object_mapping:
+              concept: BilledHours
+              expression: time_entry.billed_hours
+            relationship: billed_hours
+          - object_mapping:
+              concept: BilledRevenue
+              expression: time_entry.billed_revenue
+            relationship: billed_revenue
+          - object_mapping:
+              concept: Consultant
+              referent_mappings:
+                - relationship: consultant_id
+                  expression: time_entry.consultant_id
+            relationship: consultant_id
+          - object_mapping:
+              concept: Date
+              expression: time_entry.entry_date
+            relationship: entry_date
+          - object_mapping:
+              concept: Hours
+              expression: time_entry.hours
+            relationship: hours
+          - object_mapping:
+              concept: Project
+              referent_mappings:
+                - relationship: project_id
+                  expression: time_entry.project_id
+            relationship: project_id
+          - object_mapping:
+              concept: StandardRate
+              expression: time_entry.standard_rate
+            relationship: standard_rate
+          - object_mapping:
+              concept: TimeEntryType
+              expression: time_entry.time_entry_type
+            relationship: time_entry_type
+          - object_mapping:
+              concept: WrittenOffHours
+              expression: time_entry.written_off_hours
+            relationship: written_off_hours
+  - concept: Deliverable
+    object_mappings:
+      - referent_mappings:
+          - relationship: deliverable_id
+            expression: deliverable.deliverable_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: deliverable_id
+              expression: deliverable.deliverable_id
+        children:
+          - object_mapping:
+              concept: Project
+              referent_mappings:
+                - relationship: project_id
+                  expression: deliverable.project_id
+            relationship: project_id
+          - object_mapping:
+              concept: Date
+              expression: deliverable.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Reworked
+                  expression: deliverable.reworked
+                relationship: reworked
+  - concept: Onboarding
+    object_mappings:
+      - referent_mappings:
+          - relationship: onboarding_id
+            expression: onboarding.onboarding_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: onboarding_id
+              expression: onboarding.onboarding_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: onboarding.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: onboarding.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: onboarding.contract_start
+                relationship: contract_start
+              - object_mapping:
+                  concept: Hours
+                  expression: onboarding.hours
+                relationship: hours
+              - object_mapping:
+                  concept: Date
+                  expression: onboarding.onboarding_completion_date
+                relationship: onboarding_completion_date
+              - object_mapping:
+                  concept: Date
+                  expression: onboarding.onboarding_start_date
+                relationship: onboarding_start_date
+              - object_mapping:
+                  concept: ResourceId
+                  expression: onboarding.resource_id
+                relationship: resource_id
+              - object_mapping:
+                  concept: StepsCompleted
+                  expression: onboarding.steps_completed
+                relationship: steps_completed
+              - object_mapping:
+                  concept: StepsTotal
+                  expression: onboarding.steps_total
+                relationship: steps_total
+              - object_mapping:
+                  concept: Date
+                  expression: onboarding.target_date
+                relationship: target_date
+  - concept: OnboardingMilestone
+    object_mappings:
+      - referent_mappings:
+          - relationship: onboarding_id
+            expression: onboarding_milestone.onboarding_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: onboarding_id
+              expression: onboarding_milestone.onboarding_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: onboarding_milestone.contract_start
+            relationship: contract_start
+          - object_mapping:
+              concept: Date
+              expression: onboarding_milestone.milestone_date
+            relationship: milestone_date
+          - object_mapping:
+              concept: OnboardingMilestoneValue
+              expression: onboarding_milestone.onboarding_milestone
+            relationship: onboarding_milestone
+  - concept: OnboardingSession
+    object_mappings:
+      - referent_mappings:
+          - relationship: onboarding_id
+            expression: onboarding_session.onboarding_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: onboarding_id
+              expression: onboarding_session.onboarding_id
+        children:
+          - object_mapping:
+              concept: Attendees
+              expression: onboarding_session.attendees
+            relationship: attendees
+          - object_mapping:
+              concept: Date
+              expression: onboarding_session.onboarding_session_date
+            relationship: onboarding_session_date
+  - concept: Quote
+    object_mappings:
+      - referent_mappings:
+          - relationship: quote_id
+            expression: quote.quote_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: quote_id
+              expression: quote.quote_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: quote.snapshot_date
+            children:
+              - object_mapping:
+                  concept: ListPrice
+                  expression: quote.list_price
+                relationship: list_price
+              - object_mapping:
+                  concept: DateTime
+                  expression: quote.quote_requested_at
+                relationship: quote_requested_at
+              - object_mapping:
+                  concept: DateTime
+                  expression: quote.quote_sent_at
+                relationship: quote_sent_at
+              - object_mapping:
+                  concept: QuotedPrice
+                  expression: quote.quoted_price
+                relationship: quoted_price
+              - object_mapping:
+                  concept: RevisionCount
+                  expression: quote.revision_count
+                relationship: revision_count
+  - concept: Order
+    object_mappings:
+      - referent_mappings:
+          - relationship: order_id
+            expression: order.order_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: order_id
+              expression: order.order_id
+        children:
+          - object_mapping:
+              concept: Quote
+              referent_mappings:
+                - relationship: quote_id
+                  expression: order.quote_id
+            relationship: quote_id
+          - object_mapping:
+              concept: Date
+              expression: order.snapshot_date
+            children:
+              - object_mapping:
+                  concept: HasError
+                  expression: order.has_error
+                relationship: has_error
+              - object_mapping:
+                  concept: DateTime
+                  expression: order.order_completed_at
+                relationship: order_completed_at
+              - object_mapping:
+                  concept: DateTime
+                  expression: order.order_received_at
+                relationship: order_received_at
+  - concept: RevenueSchedule
+    object_mappings:
+      - referent_mappings:
+          - relationship: subscription_id
+            expression: revenue_schedule.subscription_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: subscription_id
+              expression: revenue_schedule.subscription_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: revenue_schedule.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: revenue_schedule.period_start
+            children:
+              - object_mapping:
+                  concept: BilledAmount
+                  expression: revenue_schedule.billed_amount
+                relationship: billed_amount
+              - object_mapping:
+                  concept: RecognitionCorrect
+                  expression: revenue_schedule.recognition_correct
+                relationship: recognition_correct
+              - object_mapping:
+                  concept: RecognizedRevenue
+                  expression: revenue_schedule.recognized_revenue
+                relationship: recognized_revenue
+  - concept: Financials
+    object_mappings:
+      - referent_mappings:
+          - relationship: period_start
+            expression: financials.period_start
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: period_start
+              expression: financials.period_start
+        children:
+          - object_mapping:
+              concept: BadDebtExpense
+              expression: financials.bad_debt_expense
+            relationship: bad_debt_expense
+          - object_mapping:
+              concept: CapitalExpenditures
+              expression: financials.capital_expenditures
+            relationship: capital_expenditures
+          - object_mapping:
+              concept: Ebitda
+              expression: financials.ebitda
+            relationship: ebitda
+          - object_mapping:
+              concept: NetIncome
+              expression: financials.net_income
+            relationship: net_income
+          - object_mapping:
+              concept: OperatingCashFlow
+              expression: financials.operating_cash_flow
+            relationship: operating_cash_flow
+          - object_mapping:
+              concept: RevenueValue
+              expression: financials.revenue
+            relationship: revenue
+          - object_mapping:
+              concept: RevenueType
+              expression: financials.revenue_type
+            relationship: revenue_type
+  - concept: BalanceSheet
+    object_mappings:
+      - referent_mappings:
+          - relationship: snapshot_date
+            expression: balance_sheet.snapshot_date
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: snapshot_date
+              expression: balance_sheet.snapshot_date
+        children:
+          - object_mapping:
+              concept: AccountsReceivable
+              expression: balance_sheet.accounts_receivable
+            relationship: accounts_receivable
+          - object_mapping:
+              concept: CashBalance
+              expression: balance_sheet.cash_balance
+            relationship: cash_balance
+  - concept: WebTraffic
+    object_mappings:
+      - referent_mappings:
+          - relationship: traffic_source
+            expression: web_traffic.traffic_source
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: traffic_source
+              expression: web_traffic.traffic_source
+        children:
+          - object_mapping:
+              concept: Date
+              expression: web_traffic.period_start
+            children:
+              - object_mapping:
+                  concept: UniqueVisitors
+                  expression: web_traffic.unique_visitors
+                relationship: unique_visitors
+  - concept: BrandMention
+    object_mappings:
+      - referent_mappings:
+          - relationship: mention_source
+            expression: brand_mention.mention_source
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: mention_source
+              expression: brand_mention.mention_source
+        children:
+          - object_mapping:
+              concept: Date
+              expression: brand_mention.period_start
+            children:
+              - object_mapping:
+                  concept: IsCompetitor
+                  expression: brand_mention.is_competitor
+                relationship: is_competitor
+              - object_mapping:
+                  concept: MentionCount
+                  expression: brand_mention.mention_count
+                relationship: mention_count
+  - concept: CrmRecord
+    object_mappings:
+      - referent_mappings:
+          - relationship: record_id
+            expression: crm_record.record_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: record_id
+              expression: crm_record.record_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: crm_record.snapshot_date
+            children:
+              - object_mapping:
+                  concept: PopulatedFieldCount
+                  expression: crm_record.populated_field_count
+                relationship: populated_field_count
+              - object_mapping:
+                  concept: RequiredFieldCount
+                  expression: crm_record.required_field_count
+                relationship: required_field_count
+              - object_mapping:
+                  concept: SyncStatus
+                  expression: crm_record.sync_status
+                relationship: sync_status
+  - concept: PartnerActivity
+    object_mappings:
+      - referent_mappings:
+          - relationship: activity_id
+            expression: partner_activity.activity_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: activity_id
+              expression: partner_activity.activity_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: partner_activity.activity_date
+            relationship: activity_date
+          - object_mapping:
+              concept: PartnerActivityType
+              expression: partner_activity.partner_activity_type
+            relationship: partner_activity_type
+          - object_mapping:
+              concept: Partner
+              referent_mappings:
+                - relationship: partner_id
+                  expression: partner_activity.partner_id
+            relationship: partner_id
+  - concept: DealRegistration
+    object_mappings:
+      - referent_mappings:
+          - relationship: registration_id
+            expression: deal_registration.registration_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: registration_id
+              expression: deal_registration.registration_id
+        children:
+          - object_mapping:
+              concept: Opportunity
+              referent_mappings:
+                - relationship: opportunity_id
+                  expression: deal_registration.opportunity_id
+            relationship: opportunity_id
+          - object_mapping:
+              concept: Partner
+              referent_mappings:
+                - relationship: partner_id
+                  expression: deal_registration.partner_id
+            relationship: partner_id
+          - object_mapping:
+              concept: Date
+              expression: deal_registration.snapshot_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: deal_registration.close_date
+                relationship: close_date
+              - object_mapping:
+                  concept: Date
+                  expression: deal_registration.registration_date
+                relationship: registration_date
+              - object_mapping:
+                  concept: RegistrationStage
+                  expression: deal_registration.registration_stage
+                relationship: registration_stage
+  - concept: Forecast
+    object_mappings:
+      - referent_mappings:
+          - relationship: period_start
+            expression: forecast.period_start
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: period_start
+              expression: forecast.period_start
+        children:
+          - object_mapping:
+              concept: ActualRevenue
+              expression: forecast.actual_revenue
+            relationship: actual_revenue
+          - object_mapping:
+              concept: ForecastedRevenue
+              expression: forecast.forecasted_revenue
+            relationship: forecasted_revenue

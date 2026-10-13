@@ -1,0 +1,91 @@
+version: 0.2.0.dev0
+name: gasp_reference_mapping
+description: Maps the GASP ontology onto the GASP reference model (spike subset)
+ontology_ref:
+  name: GASP
+  iri: ./gasp.ontology.yaml
+semantic_model_ref:
+  name: GASP reference model
+  iri: ./gasp.semantic_model.yaml
+concept_mappings:
+- concept: Customer
+  object_mappings:
+  - referent_mappings:
+    - relationship: id
+      expression: customer.customer_id
+  link_mappings:
+  - object_mapping:
+      referent_mappings:
+      - relationship: id
+        expression: customer.customer_id
+    children:
+    - object_mapping:
+        concept: Date
+        expression: customer.snapshot_date
+      children:
+      - object_mapping:
+          concept: CustomerStatus
+          expression: customer.customer_status
+        relationship: status_on
+- concept: Subscription
+  object_mappings:
+  - referent_mappings:
+    - relationship: id
+      expression: subscription.subscription_id
+  link_mappings:
+  - object_mapping:
+      referent_mappings:
+      - relationship: id
+        expression: subscription.subscription_id
+    children:
+    - object_mapping:
+        concept: Customer
+        referent_mappings:
+        - relationship: id
+          expression: subscription.customer_id
+      relationship: customer
+    - object_mapping:
+        concept: Date
+        expression: subscription.snapshot_date
+      children:
+      - object_mapping:
+          concept: Mrr
+          expression: subscription.mrr
+        relationship: mrr_on
+      - object_mapping:
+          concept: SubscriptionStatus
+          expression: subscription.subscription_status
+        relationship: status_on
+- concept: RevenueEvent
+  object_mappings:
+  - referent_mappings:
+    - relationship: id
+      expression: revenue_event.event_id
+  link_mappings:
+  - object_mapping:
+      referent_mappings:
+      - relationship: id
+        expression: revenue_event.event_id
+    children:
+    - object_mapping:
+        concept: Customer
+        referent_mappings:
+        - relationship: id
+          expression: revenue_event.customer_id
+      relationship: customer
+    - object_mapping:
+        concept: Date
+        expression: revenue_event.event_date
+      relationship: occurred_on
+    - object_mapping:
+        concept: RevenueEventType
+        expression: revenue_event.event_type
+      relationship: type
+    - object_mapping:
+        concept: MrrChange
+        expression: revenue_event.mrr_change
+      relationship: mrr_change
+    - object_mapping:
+        concept: ExpansionClassification
+        expression: revenue_event.expansion_classification
+      relationship: classified_as

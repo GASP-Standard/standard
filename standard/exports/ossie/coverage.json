@@ -1,0 +1,1580 @@
+{
+  "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
+  "counts": {
+    "direct": 164,
+    "staged": 138,
+    "notComputable": 19
+  },
+  "stagedReasons": {
+    "cohort": 8,
+    "lag": 5,
+    "at period_start": 25,
+    "period bound in filter": 88,
+    "to_date": 3,
+    "period_days": 2,
+    "window": 5,
+    "all_time": 2
+  },
+  "metrics": {
+    "mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_mrr"
+    },
+    "arr": {
+      "kind": "direct",
+      "ossieName": "gasp_arr"
+    },
+    "arr:O": {
+      "kind": "staged",
+      "ossieName": "gasp_arr_o",
+      "stagedDataset": "gasp_staged_gasp_arr_o",
+      "reason": "cohort"
+    },
+    "arr:M": {
+      "kind": "direct",
+      "ossieName": "gasp_arr_m"
+    },
+    "arpa": {
+      "kind": "direct",
+      "ossieName": "gasp_arpa"
+    },
+    "mrr_growth_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_mrr_growth_rate",
+      "stagedDataset": "gasp_staged_gasp_mrr_growth_rate",
+      "reason": "lag"
+    },
+    "new_mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_new_mrr"
+    },
+    "expansion_mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_expansion_mrr"
+    },
+    "churned_mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_churned_mrr"
+    },
+    "contraction_mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_contraction_mrr"
+    },
+    "carry_mrr": {
+      "kind": "staged",
+      "ossieName": "gasp_carry_mrr",
+      "stagedDataset": "gasp_staged_gasp_carry_mrr",
+      "reason": "at period_start"
+    },
+    "net_new_mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_net_new_mrr"
+    },
+    "bundle_pricing_and_mrr_allocation": {
+      "kind": "notComputable",
+      "reason": "An allocation method applied when recording item-level MRR (Item SSP / sum of SSPs x bundle price), not a reported metric."
+    },
+    "nrr": {
+      "kind": "staged",
+      "ossieName": "gasp_nrr",
+      "stagedDataset": "gasp_staged_gasp_nrr",
+      "reason": "cohort"
+    },
+    "nrr:O": {
+      "kind": "staged",
+      "ossieName": "gasp_nrr_o",
+      "stagedDataset": "gasp_staged_gasp_nrr_o",
+      "reason": "cohort"
+    },
+    "nrr:M": {
+      "kind": "staged",
+      "ossieName": "gasp_nrr_m",
+      "stagedDataset": "gasp_staged_gasp_nrr_m",
+      "reason": "cohort"
+    },
+    "nrr:adjusted": {
+      "kind": "staged",
+      "ossieName": "gasp_nrr_adjusted",
+      "stagedDataset": "gasp_staged_gasp_nrr_adjusted",
+      "reason": "cohort"
+    },
+    "grr": {
+      "kind": "staged",
+      "ossieName": "gasp_grr",
+      "stagedDataset": "gasp_staged_gasp_grr",
+      "reason": "cohort"
+    },
+    "grr:per_customer": {
+      "kind": "staged",
+      "ossieName": "gasp_grr_per_customer",
+      "stagedDataset": "gasp_staged_gasp_grr_per_customer",
+      "reason": "cohort"
+    },
+    "grr:adjusted": {
+      "kind": "staged",
+      "ossieName": "gasp_grr_adjusted",
+      "stagedDataset": "gasp_staged_gasp_grr_adjusted",
+      "reason": "cohort"
+    },
+    "logo_churn_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_logo_churn_rate",
+      "stagedDataset": "gasp_staged_gasp_logo_churn_rate",
+      "reason": "at period_start"
+    },
+    "revenue_churn_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_revenue_churn_rate",
+      "stagedDataset": "gasp_staged_gasp_revenue_churn_rate",
+      "reason": "at period_start"
+    },
+    "nps": {
+      "kind": "direct",
+      "ossieName": "gasp_nps"
+    },
+    "cac": {
+      "kind": "direct",
+      "ossieName": "gasp_cac"
+    },
+    "cac:O": {
+      "kind": "direct",
+      "ossieName": "gasp_cac_o"
+    },
+    "cac:M": {
+      "kind": "direct",
+      "ossieName": "gasp_cac_m"
+    },
+    "ltv": {
+      "kind": "staged",
+      "ossieName": "gasp_ltv",
+      "stagedDataset": "gasp_staged_gasp_ltv",
+      "reason": "at period_start"
+    },
+    "ltv:O": {
+      "kind": "staged",
+      "ossieName": "gasp_ltv_o",
+      "stagedDataset": "gasp_staged_gasp_ltv_o",
+      "reason": "at period_start"
+    },
+    "ltv:M": {
+      "kind": "staged",
+      "ossieName": "gasp_ltv_m",
+      "stagedDataset": "gasp_staged_gasp_ltv_m",
+      "reason": "at period_start"
+    },
+    "ltv_cac_ratio": {
+      "kind": "staged",
+      "ossieName": "gasp_ltv_cac_ratio",
+      "stagedDataset": "gasp_staged_gasp_ltv_cac_ratio",
+      "reason": "at period_start"
+    },
+    "cac_payback": {
+      "kind": "direct",
+      "ossieName": "gasp_cac_payback"
+    },
+    "gross_margin": {
+      "kind": "direct",
+      "ossieName": "gasp_gross_margin"
+    },
+    "gross_margin:O": {
+      "kind": "direct",
+      "ossieName": "gasp_gross_margin_o"
+    },
+    "gross_margin:M": {
+      "kind": "direct",
+      "ossieName": "gasp_gross_margin_m"
+    },
+    "rule_of_40": {
+      "kind": "staged",
+      "ossieName": "gasp_rule_of_40",
+      "stagedDataset": "gasp_staged_gasp_rule_of_40",
+      "reason": "lag"
+    },
+    "total_active_partners": {
+      "kind": "direct",
+      "ossieName": "gasp_total_active_partners"
+    },
+    "partner_tier_distribution": {
+      "kind": "direct",
+      "ossieName": "gasp_partner_tier_distribution"
+    },
+    "partner_activation_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_activation_rate",
+      "stagedDataset": "gasp_staged_gasp_partner_activation_rate",
+      "reason": "period bound in filter"
+    },
+    "partner_churn_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_churn_rate",
+      "stagedDataset": "gasp_staged_gasp_partner_churn_rate",
+      "reason": "at period_start"
+    },
+    "partner_sourced_revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_sourced_revenue",
+      "stagedDataset": "gasp_staged_gasp_partner_sourced_revenue",
+      "reason": "period bound in filter"
+    },
+    "partner_influenced_revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_influenced_revenue",
+      "stagedDataset": "gasp_staged_gasp_partner_influenced_revenue",
+      "reason": "period bound in filter"
+    },
+    "channel_revenue_percentage": {
+      "kind": "staged",
+      "ossieName": "gasp_channel_revenue_percentage",
+      "stagedDataset": "gasp_staged_gasp_channel_revenue_percentage",
+      "reason": "period bound in filter"
+    },
+    "partner_revenue_growth": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_revenue_growth",
+      "stagedDataset": "gasp_staged_gasp_partner_revenue_growth",
+      "reason": "lag"
+    },
+    "average_partner_revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_average_partner_revenue",
+      "stagedDataset": "gasp_staged_gasp_average_partner_revenue",
+      "reason": "period bound in filter"
+    },
+    "partner_deal_registration_volume": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_deal_registration_volume",
+      "stagedDataset": "gasp_staged_gasp_partner_deal_registration_volume",
+      "reason": "period bound in filter"
+    },
+    "deal_registration_to_close_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_deal_registration_to_close_rate",
+      "stagedDataset": "gasp_staged_gasp_deal_registration_to_close_rate",
+      "reason": "period bound in filter"
+    },
+    "partner_win_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_win_rate",
+      "stagedDataset": "gasp_staged_gasp_partner_win_rate",
+      "reason": "period bound in filter"
+    },
+    "partner_deal_size": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_deal_size",
+      "stagedDataset": "gasp_staged_gasp_partner_deal_size",
+      "reason": "period bound in filter"
+    },
+    "partner_sales_cycle": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_sales_cycle",
+      "stagedDataset": "gasp_staged_gasp_partner_sales_cycle",
+      "reason": "period bound in filter"
+    },
+    "partner_portal_engagement": {
+      "kind": "notComputable",
+      "reason": "A family of portal activity measures (logins, downloads, modules accessed, registrations) with no single formula."
+    },
+    "certification_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_certification_rate"
+    },
+    "training_completion": {
+      "kind": "direct",
+      "ossieName": "gasp_training_completion"
+    },
+    "joint_marketing_activities": {
+      "kind": "direct",
+      "ossieName": "gasp_joint_marketing_activities"
+    },
+    "partner_nps": {
+      "kind": "direct",
+      "ossieName": "gasp_partner_nps"
+    },
+    "partner_margin_commission": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_margin_commission",
+      "stagedDataset": "gasp_staged_gasp_partner_margin_commission",
+      "reason": "period bound in filter"
+    },
+    "cost_of_partner_acquisition": {
+      "kind": "staged",
+      "ossieName": "gasp_cost_of_partner_acquisition",
+      "stagedDataset": "gasp_staged_gasp_cost_of_partner_acquisition",
+      "reason": "period bound in filter"
+    },
+    "partner_lifetime_value": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_lifetime_value",
+      "stagedDataset": "gasp_staged_gasp_partner_lifetime_value",
+      "reason": "at period_start"
+    },
+    "partner_roi": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_roi",
+      "stagedDataset": "gasp_staged_gasp_partner_roi",
+      "reason": "period bound in filter"
+    },
+    "resellers": {
+      "kind": "notComputable",
+      "reason": "A partner-type grouping that applies existing metrics per type (key metric revenue per reseller), not a single formula."
+    },
+    "referral_partners": {
+      "kind": "notComputable",
+      "reason": "A partner-type grouping that applies existing metrics per type (key metric referrals per partner), not a single formula."
+    },
+    "technology_partners_integrations": {
+      "kind": "notComputable",
+      "reason": "A partner-type grouping that applies existing metrics per type (key metric customers using integration), not a single formula."
+    },
+    "system_integrators_sis": {
+      "kind": "notComputable",
+      "reason": "A partner-type grouping that applies existing metrics per type (key metric implementations delivered), not a single formula."
+    },
+    "managed_service_providers_msps": {
+      "kind": "notComputable",
+      "reason": "A partner-type grouping that applies existing metrics per type (key metric seats under management), not a single formula."
+    },
+    "marketplace_revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_marketplace_revenue",
+      "stagedDataset": "gasp_staged_gasp_marketplace_revenue",
+      "reason": "period bound in filter"
+    },
+    "marketplace_as_of_revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_marketplace_as_of_revenue",
+      "stagedDataset": "gasp_staged_gasp_marketplace_as_of_revenue",
+      "reason": "period bound in filter"
+    },
+    "marketplace_listings_performance": {
+      "kind": "notComputable",
+      "reason": "A set of listing measures (views, trial starts, conversions, ratings) with no single formula."
+    },
+    "pipeline_value": {
+      "kind": "direct",
+      "ossieName": "gasp_pipeline_value"
+    },
+    "pipeline_value:unweighted": {
+      "kind": "direct",
+      "ossieName": "gasp_pipeline_value_unweighted"
+    },
+    "pipeline_coverage": {
+      "kind": "direct",
+      "ossieName": "gasp_pipeline_coverage"
+    },
+    "pipeline_velocity": {
+      "kind": "staged",
+      "ossieName": "gasp_pipeline_velocity",
+      "stagedDataset": "gasp_staged_gasp_pipeline_velocity",
+      "reason": "period bound in filter"
+    },
+    "win_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_win_rate",
+      "stagedDataset": "gasp_staged_gasp_win_rate",
+      "reason": "period bound in filter"
+    },
+    "lead_to_opportunity_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_lead_to_opportunity_rate",
+      "stagedDataset": "gasp_staged_gasp_lead_to_opportunity_rate",
+      "reason": "period bound in filter"
+    },
+    "opportunity_to_close_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_opportunity_to_close_rate",
+      "stagedDataset": "gasp_staged_gasp_opportunity_to_close_rate",
+      "reason": "period bound in filter"
+    },
+    "acv": {
+      "kind": "direct",
+      "ossieName": "gasp_acv"
+    },
+    "average_deal_size": {
+      "kind": "staged",
+      "ossieName": "gasp_average_deal_size",
+      "stagedDataset": "gasp_staged_gasp_average_deal_size",
+      "reason": "period bound in filter"
+    },
+    "sales_cycle": {
+      "kind": "staged",
+      "ossieName": "gasp_sales_cycle",
+      "stagedDataset": "gasp_staged_gasp_sales_cycle",
+      "reason": "period bound in filter"
+    },
+    "sales_cycle:average": {
+      "kind": "staged",
+      "ossieName": "gasp_sales_cycle_average",
+      "stagedDataset": "gasp_staged_gasp_sales_cycle_average",
+      "reason": "period bound in filter"
+    },
+    "quota_attainment": {
+      "kind": "direct",
+      "ossieName": "gasp_quota_attainment"
+    },
+    "quota_attainment:mean_of_reps": {
+      "kind": "direct",
+      "ossieName": "gasp_quota_attainment_mean_of_reps"
+    },
+    "revenue_per_rep": {
+      "kind": "direct",
+      "ossieName": "gasp_revenue_per_rep"
+    },
+    "ramp_time": {
+      "kind": "direct",
+      "ossieName": "gasp_ramp_time"
+    },
+    "activity_metrics_diagnostic": {
+      "kind": "notComputable",
+      "reason": "A diagnostic family of activity counts (calls, emails, meetings, demos) with no single formula."
+    },
+    "services_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_services_revenue"
+    },
+    "services_as_of_total_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_services_as_of_total_revenue"
+    },
+    "services_attach_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_services_attach_rate",
+      "stagedDataset": "gasp_staged_gasp_services_attach_rate",
+      "reason": "period bound in filter"
+    },
+    "average_services_deal_size": {
+      "kind": "direct",
+      "ossieName": "gasp_average_services_deal_size"
+    },
+    "services_backlog": {
+      "kind": "staged",
+      "ossieName": "gasp_services_backlog",
+      "stagedDataset": "gasp_staged_gasp_services_backlog",
+      "reason": "to_date"
+    },
+    "services_gross_margin": {
+      "kind": "direct",
+      "ossieName": "gasp_services_gross_margin"
+    },
+    "project_margin": {
+      "kind": "staged",
+      "ossieName": "gasp_project_margin",
+      "stagedDataset": "gasp_staged_gasp_project_margin",
+      "reason": "period bound in filter"
+    },
+    "realization_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_realization_rate"
+    },
+    "write_off_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_write_off_rate"
+    },
+    "billable_utilization": {
+      "kind": "direct",
+      "ossieName": "gasp_billable_utilization"
+    },
+    "total_utilization": {
+      "kind": "direct",
+      "ossieName": "gasp_total_utilization"
+    },
+    "bench_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_bench_rate"
+    },
+    "capacity": {
+      "kind": "direct",
+      "ossieName": "gasp_capacity"
+    },
+    "capacity_utilization": {
+      "kind": "direct",
+      "ossieName": "gasp_capacity_utilization"
+    },
+    "on_time_delivery": {
+      "kind": "staged",
+      "ossieName": "gasp_on_time_delivery",
+      "stagedDataset": "gasp_staged_gasp_on_time_delivery",
+      "reason": "period bound in filter"
+    },
+    "on_budget_delivery": {
+      "kind": "staged",
+      "ossieName": "gasp_on_budget_delivery",
+      "stagedDataset": "gasp_staged_gasp_on_budget_delivery",
+      "reason": "period bound in filter"
+    },
+    "scope_change_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_scope_change_rate"
+    },
+    "project_duration_accuracy": {
+      "kind": "staged",
+      "ossieName": "gasp_project_duration_accuracy",
+      "stagedDataset": "gasp_staged_gasp_project_duration_accuracy",
+      "reason": "period bound in filter"
+    },
+    "project_csat": {
+      "kind": "direct",
+      "ossieName": "gasp_project_csat"
+    },
+    "project_nps": {
+      "kind": "direct",
+      "ossieName": "gasp_project_nps"
+    },
+    "rework_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_rework_rate"
+    },
+    "reference_ability": {
+      "kind": "staged",
+      "ossieName": "gasp_reference_ability",
+      "stagedDataset": "gasp_staged_gasp_reference_ability",
+      "reason": "period bound in filter"
+    },
+    "revenue_per_consultant": {
+      "kind": "direct",
+      "ossieName": "gasp_revenue_per_consultant"
+    },
+    "projects_per_consultant": {
+      "kind": "staged",
+      "ossieName": "gasp_projects_per_consultant",
+      "stagedDataset": "gasp_staged_gasp_projects_per_consultant",
+      "reason": "period bound in filter"
+    },
+    "average_project_duration": {
+      "kind": "staged",
+      "ossieName": "gasp_average_project_duration",
+      "stagedDataset": "gasp_staged_gasp_average_project_duration",
+      "reason": "period bound in filter"
+    },
+    "services_pipeline": {
+      "kind": "direct",
+      "ossieName": "gasp_services_pipeline"
+    },
+    "services_win_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_services_win_rate",
+      "stagedDataset": "gasp_staged_gasp_services_win_rate",
+      "reason": "period bound in filter"
+    },
+    "time_to_start": {
+      "kind": "staged",
+      "ossieName": "gasp_time_to_start",
+      "stagedDataset": "gasp_staged_gasp_time_to_start",
+      "reason": "period bound in filter"
+    },
+    "ticket_volume": {
+      "kind": "direct",
+      "ossieName": "gasp_ticket_volume"
+    },
+    "tickets_per_customer": {
+      "kind": "direct",
+      "ossieName": "gasp_tickets_per_customer"
+    },
+    "ticket_backlog": {
+      "kind": "staged",
+      "ossieName": "gasp_ticket_backlog",
+      "stagedDataset": "gasp_staged_gasp_ticket_backlog",
+      "reason": "to_date"
+    },
+    "ticket_distribution_by_type": {
+      "kind": "notComputable",
+      "reason": "A categorical breakdown of ticket volume by type with no scalar formula."
+    },
+    "frt": {
+      "kind": "direct",
+      "ossieName": "gasp_frt"
+    },
+    "first_response_sla_adherence": {
+      "kind": "direct",
+      "ossieName": "gasp_first_response_sla_adherence"
+    },
+    "resolution_time_time_to_resolution": {
+      "kind": "direct",
+      "ossieName": "gasp_resolution_time_time_to_resolution"
+    },
+    "first_contact_resolution_fcr": {
+      "kind": "direct",
+      "ossieName": "gasp_first_contact_resolution_fcr"
+    },
+    "resolution_sla_adherence": {
+      "kind": "direct",
+      "ossieName": "gasp_resolution_sla_adherence"
+    },
+    "reopen_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_reopen_rate"
+    },
+    "csat": {
+      "kind": "direct",
+      "ossieName": "gasp_csat"
+    },
+    "customer_effort_score_ces": {
+      "kind": "direct",
+      "ossieName": "gasp_customer_effort_score_ces"
+    },
+    "customer_effort_score_ces:percent": {
+      "kind": "direct",
+      "ossieName": "gasp_customer_effort_score_ces_percent"
+    },
+    "tickets_per_agent": {
+      "kind": "direct",
+      "ossieName": "gasp_tickets_per_agent"
+    },
+    "cost_per_ticket": {
+      "kind": "direct",
+      "ossieName": "gasp_cost_per_ticket"
+    },
+    "self_service_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_self_service_rate"
+    },
+    "logo_retention_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_logo_retention_rate",
+      "stagedDataset": "gasp_staged_gasp_logo_retention_rate",
+      "reason": "at period_start"
+    },
+    "logo_retention_rate:customer_counts": {
+      "kind": "staged",
+      "ossieName": "gasp_logo_retention_rate_customer_counts",
+      "stagedDataset": "gasp_staged_gasp_logo_retention_rate_customer_counts",
+      "reason": "at period_start"
+    },
+    "health_score": {
+      "kind": "notComputable",
+      "reason": "A weighted composite of 5 to 10 business-chosen indicators with weights calibrated to each company's churn data, so no single canonical formula exists."
+    },
+    "health_score_coverage": {
+      "kind": "direct",
+      "ossieName": "gasp_health_score_coverage"
+    },
+    "at_risk_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_at_risk_rate"
+    },
+    "at_risk_rate:entered_at_risk": {
+      "kind": "staged",
+      "ossieName": "gasp_at_risk_rate_entered_at_risk",
+      "stagedDataset": "gasp_staged_gasp_at_risk_rate_entered_at_risk",
+      "reason": "at period_start"
+    },
+    "qbr_completion": {
+      "kind": "direct",
+      "ossieName": "gasp_qbr_completion"
+    },
+    "executive_sponsor_coverage": {
+      "kind": "direct",
+      "ossieName": "gasp_executive_sponsor_coverage"
+    },
+    "contact_coverage": {
+      "kind": "direct",
+      "ossieName": "gasp_contact_coverage"
+    },
+    "expansion_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_expansion_rate",
+      "stagedDataset": "gasp_staged_gasp_expansion_rate",
+      "reason": "at period_start"
+    },
+    "upsell_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_upsell_rate",
+      "stagedDataset": "gasp_staged_gasp_upsell_rate",
+      "reason": "at period_start"
+    },
+    "cross_sell_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_cross_sell_rate",
+      "stagedDataset": "gasp_staged_gasp_cross_sell_rate",
+      "reason": "at period_start"
+    },
+    "renewal_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_renewal_rate",
+      "stagedDataset": "gasp_staged_gasp_renewal_rate",
+      "reason": "period bound in filter"
+    },
+    "renewal_rate:by_value": {
+      "kind": "staged",
+      "ossieName": "gasp_renewal_rate_by_value",
+      "stagedDataset": "gasp_staged_gasp_renewal_rate_by_value",
+      "reason": "period bound in filter"
+    },
+    "renewal_forecast_accuracy": {
+      "kind": "staged",
+      "ossieName": "gasp_renewal_forecast_accuracy",
+      "stagedDataset": "gasp_staged_gasp_renewal_forecast_accuracy",
+      "reason": "period bound in filter"
+    },
+    "days_to_renewal": {
+      "kind": "direct",
+      "ossieName": "gasp_days_to_renewal"
+    },
+    "accounts_per_csm": {
+      "kind": "direct",
+      "ossieName": "gasp_accounts_per_csm"
+    },
+    "arr_per_csm": {
+      "kind": "direct",
+      "ossieName": "gasp_arr_per_csm"
+    },
+    "pipeline_hygiene_score": {
+      "kind": "direct",
+      "ossieName": "gasp_pipeline_hygiene_score"
+    },
+    "forecast_accuracy": {
+      "kind": "direct",
+      "ossieName": "gasp_forecast_accuracy"
+    },
+    "commit_accuracy": {
+      "kind": "staged",
+      "ossieName": "gasp_commit_accuracy",
+      "stagedDataset": "gasp_staged_gasp_commit_accuracy",
+      "reason": "period bound in filter"
+    },
+    "stage_conversion_rates": {
+      "kind": "direct",
+      "ossieName": "gasp_stage_conversion_rates"
+    },
+    "quote_volume": {
+      "kind": "staged",
+      "ossieName": "gasp_quote_volume",
+      "stagedDataset": "gasp_staged_gasp_quote_volume",
+      "reason": "period bound in filter"
+    },
+    "quote_to_order_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_quote_to_order_rate",
+      "stagedDataset": "gasp_staged_gasp_quote_to_order_rate",
+      "reason": "period bound in filter"
+    },
+    "quote_cycle_time": {
+      "kind": "staged",
+      "ossieName": "gasp_quote_cycle_time",
+      "stagedDataset": "gasp_staged_gasp_quote_cycle_time",
+      "reason": "period bound in filter"
+    },
+    "quote_accuracy": {
+      "kind": "staged",
+      "ossieName": "gasp_quote_accuracy",
+      "stagedDataset": "gasp_staged_gasp_quote_accuracy",
+      "reason": "period bound in filter"
+    },
+    "discount_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_discount_rate",
+      "stagedDataset": "gasp_staged_gasp_discount_rate",
+      "reason": "period bound in filter"
+    },
+    "order_to_activation_time": {
+      "kind": "staged",
+      "ossieName": "gasp_order_to_activation_time",
+      "stagedDataset": "gasp_staged_gasp_order_to_activation_time",
+      "reason": "period bound in filter"
+    },
+    "order_processing_time": {
+      "kind": "staged",
+      "ossieName": "gasp_order_processing_time",
+      "stagedDataset": "gasp_staged_gasp_order_processing_time",
+      "reason": "period bound in filter"
+    },
+    "order_error_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_order_error_rate",
+      "stagedDataset": "gasp_staged_gasp_order_error_rate",
+      "reason": "period bound in filter"
+    },
+    "billing_accuracy": {
+      "kind": "staged",
+      "ossieName": "gasp_billing_accuracy",
+      "stagedDataset": "gasp_staged_gasp_billing_accuracy",
+      "reason": "period bound in filter"
+    },
+    "invoice_cycle_time": {
+      "kind": "staged",
+      "ossieName": "gasp_invoice_cycle_time",
+      "stagedDataset": "gasp_staged_gasp_invoice_cycle_time",
+      "reason": "period bound in filter"
+    },
+    "billing_disputes": {
+      "kind": "staged",
+      "ossieName": "gasp_billing_disputes",
+      "stagedDataset": "gasp_staged_gasp_billing_disputes",
+      "reason": "period bound in filter"
+    },
+    "credit_memo_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_credit_memo_rate",
+      "stagedDataset": "gasp_staged_gasp_credit_memo_rate",
+      "reason": "period bound in filter"
+    },
+    "dso": {
+      "kind": "staged",
+      "ossieName": "gasp_dso",
+      "stagedDataset": "gasp_staged_gasp_dso",
+      "reason": "period_days"
+    },
+    "collection_effectiveness_index_cei": {
+      "kind": "staged",
+      "ossieName": "gasp_collection_effectiveness_index_cei",
+      "stagedDataset": "gasp_staged_gasp_collection_effectiveness_index_cei",
+      "reason": "at period_start"
+    },
+    "aging_buckets": {
+      "kind": "direct",
+      "ossieName": "gasp_aging_buckets"
+    },
+    "aging_buckets:days_31_60": {
+      "kind": "direct",
+      "ossieName": "gasp_aging_buckets_days_31_60"
+    },
+    "aging_buckets:days_61_90": {
+      "kind": "direct",
+      "ossieName": "gasp_aging_buckets_days_61_90"
+    },
+    "aging_buckets:days_90_plus": {
+      "kind": "direct",
+      "ossieName": "gasp_aging_buckets_days_90_plus"
+    },
+    "bad_debt_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_bad_debt_rate"
+    },
+    "payment_method_distribution": {
+      "kind": "staged",
+      "ossieName": "gasp_payment_method_distribution",
+      "stagedDataset": "gasp_staged_gasp_payment_method_distribution",
+      "reason": "period bound in filter"
+    },
+    "payment_method_distribution:ach": {
+      "kind": "staged",
+      "ossieName": "gasp_payment_method_distribution_ach",
+      "stagedDataset": "gasp_staged_gasp_payment_method_distribution_ach",
+      "reason": "period bound in filter"
+    },
+    "payment_method_distribution:wire": {
+      "kind": "staged",
+      "ossieName": "gasp_payment_method_distribution_wire",
+      "stagedDataset": "gasp_staged_gasp_payment_method_distribution_wire",
+      "reason": "period bound in filter"
+    },
+    "payment_method_distribution:check": {
+      "kind": "staged",
+      "ossieName": "gasp_payment_method_distribution_check",
+      "stagedDataset": "gasp_staged_gasp_payment_method_distribution_check",
+      "reason": "period bound in filter"
+    },
+    "recognized_vs_billed": {
+      "kind": "direct",
+      "ossieName": "gasp_recognized_vs_billed"
+    },
+    "deferred_revenue_balance": {
+      "kind": "staged",
+      "ossieName": "gasp_deferred_revenue_balance",
+      "stagedDataset": "gasp_staged_gasp_deferred_revenue_balance",
+      "reason": "to_date"
+    },
+    "unbilled_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_unbilled_revenue"
+    },
+    "revenue_recognition_accuracy": {
+      "kind": "direct",
+      "ossieName": "gasp_revenue_recognition_accuracy"
+    },
+    "renewal_notification_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_renewal_notification_rate",
+      "stagedDataset": "gasp_staged_gasp_renewal_notification_rate",
+      "reason": "period bound in filter"
+    },
+    "auto_renewal_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_auto_renewal_rate",
+      "stagedDataset": "gasp_staged_gasp_auto_renewal_rate",
+      "reason": "period bound in filter"
+    },
+    "renewal_processing_time": {
+      "kind": "staged",
+      "ossieName": "gasp_renewal_processing_time",
+      "stagedDataset": "gasp_staged_gasp_renewal_processing_time",
+      "reason": "period bound in filter"
+    },
+    "system_sync_accuracy": {
+      "kind": "direct",
+      "ossieName": "gasp_system_sync_accuracy"
+    },
+    "data_completeness": {
+      "kind": "direct",
+      "ossieName": "gasp_data_completeness"
+    },
+    "daily_active_users_dau": {
+      "kind": "staged",
+      "ossieName": "gasp_daily_active_users_dau",
+      "stagedDataset": "gasp_staged_gasp_daily_active_users_dau",
+      "reason": "window"
+    },
+    "weekly_active_users_wau": {
+      "kind": "staged",
+      "ossieName": "gasp_weekly_active_users_wau",
+      "stagedDataset": "gasp_staged_gasp_weekly_active_users_wau",
+      "reason": "window"
+    },
+    "monthly_active_users_mau": {
+      "kind": "staged",
+      "ossieName": "gasp_monthly_active_users_mau",
+      "stagedDataset": "gasp_staged_gasp_monthly_active_users_mau",
+      "reason": "window"
+    },
+    "dau_mau": {
+      "kind": "staged",
+      "ossieName": "gasp_dau_mau",
+      "stagedDataset": "gasp_staged_gasp_dau_mau",
+      "reason": "window"
+    },
+    "waumau_ratio": {
+      "kind": "staged",
+      "ossieName": "gasp_waumau_ratio",
+      "stagedDataset": "gasp_staged_gasp_waumau_ratio",
+      "reason": "window"
+    },
+    "active_accounts": {
+      "kind": "direct",
+      "ossieName": "gasp_active_accounts"
+    },
+    "activation_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_activation_rate",
+      "stagedDataset": "gasp_staged_gasp_activation_rate",
+      "reason": "period bound in filter"
+    },
+    "feature_adoption": {
+      "kind": "direct",
+      "ossieName": "gasp_feature_adoption"
+    },
+    "core_feature_adoption": {
+      "kind": "direct",
+      "ossieName": "gasp_core_feature_adoption"
+    },
+    "feature_depth": {
+      "kind": "direct",
+      "ossieName": "gasp_feature_depth"
+    },
+    "time_to_feature_adoption": {
+      "kind": "staged",
+      "ossieName": "gasp_time_to_feature_adoption",
+      "stagedDataset": "gasp_staged_gasp_time_to_feature_adoption",
+      "reason": "period bound in filter"
+    },
+    "breadth_of_adoption": {
+      "kind": "direct",
+      "ossieName": "gasp_breadth_of_adoption"
+    },
+    "session_frequency": {
+      "kind": "direct",
+      "ossieName": "gasp_session_frequency"
+    },
+    "session_duration": {
+      "kind": "direct",
+      "ossieName": "gasp_session_duration"
+    },
+    "time_in_product": {
+      "kind": "direct",
+      "ossieName": "gasp_time_in_product"
+    },
+    "actions_per_session": {
+      "kind": "direct",
+      "ossieName": "gasp_actions_per_session"
+    },
+    "pqas": {
+      "kind": "direct",
+      "ossieName": "gasp_pqas"
+    },
+    "user_retention_day_n": {
+      "kind": "staged",
+      "ossieName": "gasp_user_retention_day_n",
+      "stagedDataset": "gasp_staged_gasp_user_retention_day_n",
+      "reason": "all_time"
+    },
+    "cohort_retention": {
+      "kind": "staged",
+      "ossieName": "gasp_cohort_retention",
+      "stagedDataset": "gasp_staged_gasp_cohort_retention",
+      "reason": "all_time"
+    },
+    "resurrection_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_resurrection_rate",
+      "stagedDataset": "gasp_staged_gasp_resurrection_rate",
+      "reason": "at period_start"
+    },
+    "release_frequency": {
+      "kind": "direct",
+      "ossieName": "gasp_release_frequency"
+    },
+    "feature_delivery_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_feature_delivery_rate",
+      "stagedDataset": "gasp_staged_gasp_feature_delivery_rate",
+      "reason": "period bound in filter"
+    },
+    "roadmap_completion": {
+      "kind": "direct",
+      "ossieName": "gasp_roadmap_completion"
+    },
+    "time_to_market": {
+      "kind": "staged",
+      "ossieName": "gasp_time_to_market",
+      "stagedDataset": "gasp_staged_gasp_time_to_market",
+      "reason": "period bound in filter"
+    },
+    "error_rate_user_facing": {
+      "kind": "direct",
+      "ossieName": "gasp_error_rate_user_facing"
+    },
+    "bug_escape_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_bug_escape_rate"
+    },
+    "user_reported_issues": {
+      "kind": "direct",
+      "ossieName": "gasp_user_reported_issues"
+    },
+    "feature_request_volume": {
+      "kind": "direct",
+      "ossieName": "gasp_feature_request_volume"
+    },
+    "uptime": {
+      "kind": "staged",
+      "ossieName": "gasp_uptime",
+      "stagedDataset": "gasp_staged_gasp_uptime",
+      "reason": "period_days"
+    },
+    "sla_adherence": {
+      "kind": "direct",
+      "ossieName": "gasp_sla_adherence"
+    },
+    "error_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_error_rate"
+    },
+    "latency_response_time": {
+      "kind": "direct",
+      "ossieName": "gasp_latency_response_time"
+    },
+    "latency_response_time:p50": {
+      "kind": "direct",
+      "ossieName": "gasp_latency_response_time_p50"
+    },
+    "latency_response_time:p99": {
+      "kind": "direct",
+      "ossieName": "gasp_latency_response_time_p99"
+    },
+    "incident_count": {
+      "kind": "direct",
+      "ossieName": "gasp_incident_count"
+    },
+    "mean_time_to_detect_mttd": {
+      "kind": "direct",
+      "ossieName": "gasp_mean_time_to_detect_mttd"
+    },
+    "mean_time_to_acknowledge_mtta": {
+      "kind": "direct",
+      "ossieName": "gasp_mean_time_to_acknowledge_mtta"
+    },
+    "mttr": {
+      "kind": "direct",
+      "ossieName": "gasp_mttr"
+    },
+    "change_failure_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_change_failure_rate"
+    },
+    "deployment_frequency": {
+      "kind": "direct",
+      "ossieName": "gasp_deployment_frequency"
+    },
+    "lead_time_for_changes": {
+      "kind": "direct",
+      "ossieName": "gasp_lead_time_for_changes"
+    },
+    "mean_time_to_recovery_mttr": {
+      "kind": "direct",
+      "ossieName": "gasp_mean_time_to_recovery_mttr"
+    },
+    "infrastructure_utilization": {
+      "kind": "direct",
+      "ossieName": "gasp_infrastructure_utilization"
+    },
+    "infrastructure_cost_per_customer": {
+      "kind": "direct",
+      "ossieName": "gasp_infrastructure_cost_per_customer"
+    },
+    "headroom": {
+      "kind": "direct",
+      "ossieName": "gasp_headroom"
+    },
+    "vulnerability_count": {
+      "kind": "direct",
+      "ossieName": "gasp_vulnerability_count"
+    },
+    "time_to_patch": {
+      "kind": "staged",
+      "ossieName": "gasp_time_to_patch",
+      "stagedDataset": "gasp_staged_gasp_time_to_patch",
+      "reason": "period bound in filter"
+    },
+    "security_incident_count": {
+      "kind": "direct",
+      "ossieName": "gasp_security_incident_count"
+    },
+    "revenue_gaap": {
+      "kind": "direct",
+      "ossieName": "gasp_revenue_gaap"
+    },
+    "bookings": {
+      "kind": "direct",
+      "ossieName": "gasp_bookings"
+    },
+    "bookings:new": {
+      "kind": "direct",
+      "ossieName": "gasp_bookings_new"
+    },
+    "bookings:renewal": {
+      "kind": "direct",
+      "ossieName": "gasp_bookings_renewal"
+    },
+    "bookings:expansion": {
+      "kind": "direct",
+      "ossieName": "gasp_bookings_expansion"
+    },
+    "billings": {
+      "kind": "staged",
+      "ossieName": "gasp_billings",
+      "stagedDataset": "gasp_staged_gasp_billings",
+      "reason": "period bound in filter"
+    },
+    "arr_mrr": {
+      "kind": "notComputable",
+      "reason": "Cross-reference entry that points to the ARR and MRR definitions in Core, which carry the formulas."
+    },
+    "revenue_per_employee": {
+      "kind": "direct",
+      "ossieName": "gasp_revenue_per_employee"
+    },
+    "operating_margin": {
+      "kind": "direct",
+      "ossieName": "gasp_operating_margin"
+    },
+    "ebitda_margin": {
+      "kind": "direct",
+      "ossieName": "gasp_ebitda_margin"
+    },
+    "net_income_margin": {
+      "kind": "direct",
+      "ossieName": "gasp_net_income_margin"
+    },
+    "burn_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_burn_rate",
+      "stagedDataset": "gasp_staged_gasp_burn_rate",
+      "reason": "at period_start"
+    },
+    "cash_runway": {
+      "kind": "staged",
+      "ossieName": "gasp_cash_runway",
+      "stagedDataset": "gasp_staged_gasp_cash_runway",
+      "reason": "at period_start"
+    },
+    "fcf": {
+      "kind": "direct",
+      "ossieName": "gasp_fcf"
+    },
+    "free_cash_flow_margin": {
+      "kind": "direct",
+      "ossieName": "gasp_free_cash_flow_margin"
+    },
+    "magic_number": {
+      "kind": "staged",
+      "ossieName": "gasp_magic_number",
+      "stagedDataset": "gasp_staged_gasp_magic_number",
+      "reason": "lag"
+    },
+    "burn_multiple": {
+      "kind": "staged",
+      "ossieName": "gasp_burn_multiple",
+      "stagedDataset": "gasp_staged_gasp_burn_multiple",
+      "reason": "at period_start"
+    },
+    "opex_ratio": {
+      "kind": "direct",
+      "ossieName": "gasp_opex_ratio"
+    },
+    "sm_as_of_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_sm_as_of_revenue"
+    },
+    "rd_as_of_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_rd_as_of_revenue"
+    },
+    "ga_as_of_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_ga_as_of_revenue"
+    },
+    "collection_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_collection_rate",
+      "stagedDataset": "gasp_staged_gasp_collection_rate",
+      "reason": "period bound in filter"
+    },
+    "ttfv": {
+      "kind": "direct",
+      "ossieName": "gasp_ttfv"
+    },
+    "time_to_go_live": {
+      "kind": "direct",
+      "ossieName": "gasp_time_to_go_live"
+    },
+    "time_to_full_adoption": {
+      "kind": "direct",
+      "ossieName": "gasp_time_to_full_adoption"
+    },
+    "onboarding_duration": {
+      "kind": "staged",
+      "ossieName": "gasp_onboarding_duration",
+      "stagedDataset": "gasp_staged_gasp_onboarding_duration",
+      "reason": "period bound in filter"
+    },
+    "onboarding_completion": {
+      "kind": "staged",
+      "ossieName": "gasp_onboarding_completion",
+      "stagedDataset": "gasp_staged_gasp_onboarding_completion",
+      "reason": "period bound in filter"
+    },
+    "on_time_completion_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_on_time_completion_rate",
+      "stagedDataset": "gasp_staged_gasp_on_time_completion_rate",
+      "reason": "period bound in filter"
+    },
+    "onboarding_engagement_score": {
+      "kind": "notComputable",
+      "reason": "Weighted average of engagement indicators (attendance, responsiveness, task completion, logins) whose weights the markdown does not define."
+    },
+    "session_attendance_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_session_attendance_rate"
+    },
+    "task_completion_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_task_completion_rate"
+    },
+    "onboarding_csat": {
+      "kind": "direct",
+      "ossieName": "gasp_onboarding_csat"
+    },
+    "onboarding_nps": {
+      "kind": "direct",
+      "ossieName": "gasp_onboarding_nps"
+    },
+    "implementation_quality_score": {
+      "kind": "notComputable",
+      "reason": "Assessment built from qualitative components (configuration accuracy, data quality, integration health, user setup) with no stated formula or weights."
+    },
+    "onboardings_per_resource": {
+      "kind": "staged",
+      "ossieName": "gasp_onboardings_per_resource",
+      "stagedDataset": "gasp_staged_gasp_onboardings_per_resource",
+      "reason": "period bound in filter"
+    },
+    "cost_per_onboarding": {
+      "kind": "staged",
+      "ossieName": "gasp_cost_per_onboarding",
+      "stagedDataset": "gasp_staged_gasp_cost_per_onboarding",
+      "reason": "period bound in filter"
+    },
+    "time_spent_per_onboarding": {
+      "kind": "staged",
+      "ossieName": "gasp_time_spent_per_onboarding",
+      "stagedDataset": "gasp_staged_gasp_time_spent_per_onboarding",
+      "reason": "period bound in filter"
+    },
+    "day_30_retention_post_onboarding": {
+      "kind": "direct",
+      "ossieName": "gasp_day_30_retention_post_onboarding"
+    },
+    "onboarding_cohort_churn": {
+      "kind": "notComputable",
+      "reason": "A segmentation analysis of churn by onboarding duration, completeness and engagement, not a single formula."
+    },
+    "feature_adoption_at_go_live": {
+      "kind": "direct",
+      "ossieName": "gasp_feature_adoption_at_go_live"
+    },
+    "total_headcount": {
+      "kind": "direct",
+      "ossieName": "gasp_total_headcount"
+    },
+    "headcount_growth_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_headcount_growth_rate",
+      "stagedDataset": "gasp_staged_gasp_headcount_growth_rate",
+      "reason": "at period_start"
+    },
+    "headcount_by_department": {
+      "kind": "direct",
+      "ossieName": "gasp_headcount_by_department"
+    },
+    "employee_turnover": {
+      "kind": "staged",
+      "ossieName": "gasp_employee_turnover",
+      "stagedDataset": "gasp_staged_gasp_employee_turnover",
+      "reason": "at period_start"
+    },
+    "voluntary_turnover_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_voluntary_turnover_rate",
+      "stagedDataset": "gasp_staged_gasp_voluntary_turnover_rate",
+      "reason": "at period_start"
+    },
+    "involuntary_turnover_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_involuntary_turnover_rate",
+      "stagedDataset": "gasp_staged_gasp_involuntary_turnover_rate",
+      "reason": "at period_start"
+    },
+    "regrettable_turnover": {
+      "kind": "staged",
+      "ossieName": "gasp_regrettable_turnover",
+      "stagedDataset": "gasp_staged_gasp_regrettable_turnover",
+      "reason": "at period_start"
+    },
+    "average_tenure": {
+      "kind": "direct",
+      "ossieName": "gasp_average_tenure"
+    },
+    "day_90_turnover": {
+      "kind": "staged",
+      "ossieName": "gasp_day_90_turnover",
+      "stagedDataset": "gasp_staged_gasp_day_90_turnover",
+      "reason": "period bound in filter"
+    },
+    "enps": {
+      "kind": "direct",
+      "ossieName": "gasp_enps"
+    },
+    "engagement_score": {
+      "kind": "direct",
+      "ossieName": "gasp_engagement_score"
+    },
+    "survey_participation_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_survey_participation_rate"
+    },
+    "open_positions": {
+      "kind": "direct",
+      "ossieName": "gasp_open_positions"
+    },
+    "time_to_fill": {
+      "kind": "staged",
+      "ossieName": "gasp_time_to_fill",
+      "stagedDataset": "gasp_staged_gasp_time_to_fill",
+      "reason": "period bound in filter"
+    },
+    "time_to_hire": {
+      "kind": "staged",
+      "ossieName": "gasp_time_to_hire",
+      "stagedDataset": "gasp_staged_gasp_time_to_hire",
+      "reason": "period bound in filter"
+    },
+    "offer_acceptance_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_offer_acceptance_rate"
+    },
+    "quality_of_hire": {
+      "kind": "direct",
+      "ossieName": "gasp_quality_of_hire"
+    },
+    "cost_per_hire": {
+      "kind": "staged",
+      "ossieName": "gasp_cost_per_hire",
+      "stagedDataset": "gasp_staged_gasp_cost_per_hire",
+      "reason": "period bound in filter"
+    },
+    "source_of_hire": {
+      "kind": "notComputable",
+      "reason": "A distribution of hires by recruiting channel, with no single formula."
+    },
+    "compa_ratio": {
+      "kind": "direct",
+      "ossieName": "gasp_compa_ratio"
+    },
+    "pay_equity_ratio": {
+      "kind": "direct",
+      "ossieName": "gasp_pay_equity_ratio"
+    },
+    "diversity_representation": {
+      "kind": "direct",
+      "ossieName": "gasp_diversity_representation"
+    },
+    "diversity_in_leadership": {
+      "kind": "direct",
+      "ossieName": "gasp_diversity_in_leadership"
+    },
+    "diversity_hiring_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_diversity_hiring_rate",
+      "stagedDataset": "gasp_staged_gasp_diversity_hiring_rate",
+      "reason": "period bound in filter"
+    },
+    "visitors": {
+      "kind": "direct",
+      "ossieName": "gasp_visitors"
+    },
+    "visitor_to_lead_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_visitor_to_lead_rate",
+      "stagedDataset": "gasp_staged_gasp_visitor_to_lead_rate",
+      "reason": "period bound in filter"
+    },
+    "leads": {
+      "kind": "staged",
+      "ossieName": "gasp_leads",
+      "stagedDataset": "gasp_staged_gasp_leads",
+      "reason": "period bound in filter"
+    },
+    "mqls": {
+      "kind": "staged",
+      "ossieName": "gasp_mqls",
+      "stagedDataset": "gasp_staged_gasp_mqls",
+      "reason": "period bound in filter"
+    },
+    "lead_to_mql_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_lead_to_mql_rate",
+      "stagedDataset": "gasp_staged_gasp_lead_to_mql_rate",
+      "reason": "period bound in filter"
+    },
+    "sqls": {
+      "kind": "staged",
+      "ossieName": "gasp_sqls",
+      "stagedDataset": "gasp_staged_gasp_sqls",
+      "reason": "period bound in filter"
+    },
+    "mql_to_sql_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_mql_to_sql_rate",
+      "stagedDataset": "gasp_staged_gasp_mql_to_sql_rate",
+      "reason": "period bound in filter"
+    },
+    "sql_to_opportunity_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_sql_to_opportunity_rate",
+      "stagedDataset": "gasp_staged_gasp_sql_to_opportunity_rate",
+      "reason": "period bound in filter"
+    },
+    "lvr": {
+      "kind": "staged",
+      "ossieName": "gasp_lvr",
+      "stagedDataset": "gasp_staged_gasp_lvr",
+      "reason": "lag"
+    },
+    "marketing_cac": {
+      "kind": "direct",
+      "ossieName": "gasp_marketing_cac"
+    },
+    "cac_by_channel": {
+      "kind": "direct",
+      "ossieName": "gasp_cac_by_channel"
+    },
+    "cpl": {
+      "kind": "staged",
+      "ossieName": "gasp_cpl",
+      "stagedDataset": "gasp_staged_gasp_cpl",
+      "reason": "period bound in filter"
+    },
+    "cost_per_mql": {
+      "kind": "staged",
+      "ossieName": "gasp_cost_per_mql",
+      "stagedDataset": "gasp_staged_gasp_cost_per_mql",
+      "reason": "period bound in filter"
+    },
+    "marketing_sourced_pipeline": {
+      "kind": "direct",
+      "ossieName": "gasp_marketing_sourced_pipeline"
+    },
+    "marketing_sourced_revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_marketing_sourced_revenue",
+      "stagedDataset": "gasp_staged_gasp_marketing_sourced_revenue",
+      "reason": "period bound in filter"
+    },
+    "marketing_influenced_pipelinerevenue": {
+      "kind": "direct",
+      "ossieName": "gasp_marketing_influenced_pipelinerevenue"
+    },
+    "marketing_influenced_pipelinerevenue:revenue": {
+      "kind": "staged",
+      "ossieName": "gasp_marketing_influenced_pipelinerevenue_revenue",
+      "stagedDataset": "gasp_staged_gasp_marketing_influenced_pipelinerevenue_revenue",
+      "reason": "period bound in filter"
+    },
+    "organic_traffic": {
+      "kind": "direct",
+      "ossieName": "gasp_organic_traffic"
+    },
+    "paid_media_efficiency_roas": {
+      "kind": "staged",
+      "ossieName": "gasp_paid_media_efficiency_roas",
+      "stagedDataset": "gasp_staged_gasp_paid_media_efficiency_roas",
+      "reason": "period bound in filter"
+    },
+    "email_metrics": {
+      "kind": "notComputable",
+      "reason": "A family of six email rate formulas (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single metric."
+    },
+    "content_performance": {
+      "kind": "notComputable",
+      "reason": "A family of content measures (downloads, engagement rate, content-to-MQL) with no single metric."
+    },
+    "brand_awareness": {
+      "kind": "notComputable",
+      "reason": "Survey-based or search volume proxy with no defined formula."
+    },
+    "share_of_voice": {
+      "kind": "direct",
+      "ossieName": "gasp_share_of_voice"
+    },
+    "nps_marketing_context": {
+      "kind": "direct",
+      "ossieName": "gasp_nps_marketing_context"
+    },
+    "onboarding_milestone_completion_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_onboarding_milestone_completion_rate",
+      "stagedDataset": "gasp_staged_gasp_onboarding_milestone_completion_rate",
+      "reason": "period bound in filter"
+    },
+    "professional_services_milestone_completion_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_professional_services_milestone_completion_rate",
+      "stagedDataset": "gasp_staged_gasp_professional_services_milestone_completion_rate",
+      "reason": "period bound in filter"
+    },
+    "support_escalation_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_support_escalation_rate"
+    },
+    "professional_services_escalation_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_professional_services_escalation_rate"
+    },
+    "product_activation_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_product_activation_rate",
+      "stagedDataset": "gasp_staged_gasp_product_activation_rate",
+      "reason": "period bound in filter"
+    }
+  }
+}
