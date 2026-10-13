@@ -108,7 +108,7 @@ export interface OntologyEntity {
   level: string;
 }
 
-/** A structured formula input — reference to another metric or a field */
+/** A structured formula input: a reference to another metric or a field */
 export interface FormulaInput {
   ref: string;
   /** numerator | denominator | addend | subtrahend | base | component */

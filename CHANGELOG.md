@@ -2,7 +2,15 @@
 
 Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package follows [semver](https://semver.org/). Changes to the standard's content are listed under the package version that first shipped them, since the package bundles the standard. `DECISIONS.md` has the reasoning behind each rule.
 
-## [1.14.0] - Unreleased
+## [1.14.1] - Unreleased
+
+### Changed
+- Tool descriptions and output headers use colons in place of em dashes (`# NRR: relationships`, `# Coverage gap: 3 metrics`, `## Path 1: 4 steps`), as does the Cypher export header.
+- The Operational signal type description drops its Oxford comma (`taxonomy.json`).
+- The "Key metrics at this level" lines in `definitions.md` name the standard's own metrics (Logo Churn Rate, License Utilization, Revenue Churn Rate) in place of informal names.
+- `overview.md` lists the CEL, ATL, signal type taxonomy, `formulas.json` and `ontology.json` among the standard's documents, describes the formulas as a compiled grammar with declared breakdowns, and tells adopters to document a local variant beside the canonical formula and record the data difference in the adapter's field `transform` and `notes`. `relationships.md` writes LTV over Revenue Churn Rate and gains a "Reading the Map" section on edge types, the no-two-way-edges rule and why baseline inputs end driver traversal.
+
+## [1.14.0] - 2026-10-13
 
 Includes everything listed under 1.13.0, which was prepared but not published.
 
@@ -16,10 +24,13 @@ Includes everything listed under 1.13.0, which was prepared but not published.
 - `segment` is a dimension field on revenue, contract and amendment events and on the customer and subscription snapshots. MRR, ARR, NRR, GRR, logo and revenue churn, the four MRR movements, ARPA and the health metrics break down by segment.
 - Share-of-total breakdowns can be declared (`{ "field": ..., "total": true }`): CAC and Opex Ratio by cost centre.
 - New breakdowns by payment status (Billings, Billing Disputes) and lead stage (Leads). 40 named breakdowns in all.
+- `application_date` on the employee snapshot, read by Time to Hire (application to start). `marketplace` is a `channel` value, read by Marketplace Revenue.
+- `GOVERNANCE.md`, `CONTRIBUTING.md` and this changelog in the public repository.
 
 ### Changed
 - Headcount by Department is retired as a page. Total Headcount carries the department breakdown and the old URL redirects to it.
 - The `tier` field is retired. Use `plan_id` for pricing tier and `segment` for customer segment.
+- The prose of about forty metrics now matches its canonical formula where the two had drifted (populations, periods, bases), and the framework documents say which events carry `expansion_classification` (expansion, contraction and reactivation) and that the canonical CAC, ARR, LTV, LTV:CAC, CAC Payback and Gross Margin equal their Market forms.
 
 ### Fixed
 - Period filters on timestamp columns dropped rows dated on the last day of the period after midnight, in every dialect. The upper bound is now the start of the following day. Mean Time to Resolve (MTTR) and incident counts on the test fixture moved as a result.

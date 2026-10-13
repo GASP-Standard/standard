@@ -13,13 +13,13 @@ The SaaS data model is built on a three-level hierarchy. All metrics must be und
 ### Customer (Account, Organization)
 A distinct billing entity with one or more subscriptions. The "who" of your business relationship.
 - **Attributes:** Legal entity, billing contact, payment methods, contract terms
-- **Key metrics at this level:** Logo count, Logo churn rate, Customer LTV, NPS
+- **Key metrics at this level:** Logo Churn Rate, LTV, ARPA, NPS
 - **Industry equivalents:** Account (Stripe, Zuora, Salesforce), Organization (many B2B tools)
 
 ### Subscription (Contract, Agreement)
 A billable agreement between a customer and your product, with defined terms, pricing and status. The "what and when" of the relationship.
 - **Attributes:** Plan/tier, term (monthly/annual/multi-year), status, billing schedule
-- **Key metrics at this level:** MRR, ARR, Subscription churn, Plan distribution
+- **Key metrics at this level:** MRR, ARR, Churned MRR, Revenue Churn Rate
 - **Industry equivalents:** Subscription (Stripe, Chargebee), Contract (Salesforce CPQ)
 
 ### License (Entitlement, Access, Quota)
@@ -28,7 +28,7 @@ A specific capability, quantity or configuration granted by a subscription. The 
   - **Feature Gates.** Binary access (on/off): SSO, API access, advanced analytics
   - **Quantity Limits.** Numeric caps: seats, storage, API calls
   - **Configuration.** Behavioral parameters: data retention, SLA tier
-- **Key metrics at this level:** Seat utilization, Feature adoption, Usage vs quota
+- **Key metrics at this level:** License Utilization, Feature Adoption Rate, Core Feature Adoption
 - **Industry equivalents:** Entitlements (Stripe), Licenses (Salesforce, Microsoft), Rate Plan Charges (Zuora)
 
 ### Hierarchy Principles

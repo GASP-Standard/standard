@@ -5,6 +5,25 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-13] Site copy that restates the standard is generated where it can be and audited where it cannot
+**Decision:** Three rules for the website. (1) Anything on a page that is the output of a tool or a value from the graph is generated at build time: the adapter validation report, the NRR data requirement table and now the homepage `infer_drivers` demo all come from `src/lib/tool-examples.ts` calling the built MCP server. (2) The TWIN Modifier reads its nodes and edges from `relationships.json`; the two edges the simulator needs that the graph lacks are listed with a reason each and tested, and its baseline is computed from a sample company with the canonical formulas rather than typed. (3) Prose that describes capabilities (tools, grammar, dialects, breakdowns, governance, the Ossie export) has no guard, so a change to any of those is followed by a re-read of the seven surfaces named in `CLAUDE.md`. The tagline is one phrase, "The open standard for SaaS metrics"; the access-control page is labelled "Access Governance" and project governance is linked from the footer.
+
+**Context:** A four-way read-only audit after the day's grammar, compiler and governance work found about 120 stale or wrong claims on the site, all in prose the count tests do not reach. Three kinds recurred: hand-pasted tool output that the graph rules had invalidated (the NRR driver list still named Net New MRR), capability descriptions written before dialects, breakdowns and the Ossie export existed, and a few claims that were never true (tiers "generate" row-level security policies; the twin "reads your warehouse"). The TWIN Modifier claimed to be a subset of the graph while carrying six edges the graph lacked and a baseline whose NRR did not follow from its own components.
+
+**Alternatives considered:**
+- **Guard prose with more regex tests.** Rejected: the counts test already shows the limit of that; a claim about what `validate_adapter` reports has no stable string to match.
+- **Keep the TWIN model hand-curated and relabel it "simplified".** Rejected by the owner: a simulator that disagrees with the graph on the same page that links the graph teaches the wrong model.
+- **Drop the "one fictional company" claim on the dashboard instead of realigning.** Rejected: the Board and Executive views were two companies with an impossible CAC ordering; realigning the Executive view to the dual-lens operating values was a morning's work. The department views stay at their old scale and are listed in the backlog as a modelling decision.
+
+**Consequences:**
+- `driverExample()` depends on `buildContext` and `inferDrivers` from `gasp-wiki-mcp/build/traversal.js`; a signature change there breaks the homepage build, which is the point.
+- `consistency.test.ts` imports `twin-model.ts` and checks node metadata against the graph and that every extra edge has a reason; the old text-matching tests were vacuous.
+- 1.14.1 is a patch for the MCP output headers (colons for em dashes) and the two markdown documents in the bundle.
+- The metric, definition and department pages render the computable definition, data requirements, access classification and counts from the bundle through `src/lib/computable-definition.ts` (shipped 2026-10-14), so the fourth kind of drift, a page that omits what the standard carries, is closed for metric pages.
+- The demo dashboard has a parameter record, `src/data/dashboard-company.json`; every view was rebuilt around one company (2026-10-14). The formulas forced two visible changes: CAC Payback is 41 months (1 / (LTV:CAC × monthly churn) with LTV:CAC 4.8 and churn 0.5%), and a company at Rule of 40 42 is cash positive, so the Burn Rate tile became Free Cash Flow.
+
+---
+
 ## [2026-10-13] GASP is governed in the open by one named maintainer, and stale documents are archived rather than deleted
 **Decision:** The public mirror carries `GOVERNANCE.md` (one maintainer, how a change is decided, what counts as a breaking change to the canon, how a second maintainer is added, what happens if the maintainer is unavailable, the relationship to Apache Ossie), `CONTRIBUTING.md` and a `CHANGELOG.md` kept per MCP release. Documents that describe work already done or superseded (the GASP-DL proposal, the TWIN Modifier plan, the homepage wireframes, the 2026-10-12 audit and its recheck) move to `docs/history/` with an index, and the interop spec moves to `docs/ossie-interop-spec.md` at v0.4, written as an individual contributor's plan.
 

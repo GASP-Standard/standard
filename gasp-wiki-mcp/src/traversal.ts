@@ -211,7 +211,7 @@ function makeStep(edge: RelationshipEdge, ctx: InternalContext): PathStep {
  * gets a direction (consistent with the observed movement) and an attenuation
  * score. Multiple paths to the same upstream collapse to the highest score.
  *
- * Only metric nodes are returned as candidates — entity/concept nodes appear
+ * Only metric nodes are returned as candidates; entity/concept nodes appear
  * in paths but aren't ranked as drivers.
  */
 export function inferDrivers(
@@ -405,7 +405,7 @@ export interface CoverageGapResult {
 }
 
 /**
- * Diagnose coverage of a metric set. Operates on the metric subgraph only —
+ * Diagnose coverage of a metric set. Operates on the metric subgraph only;
  * entities and concepts are ignored.
  *
  * - upstreamMissing: metrics with at least one outgoing edge into the set,

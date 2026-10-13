@@ -4,22 +4,22 @@
 
 **GAAP for SaaS.**
 
-Just as Generally Accepted Accounting Principles standardized financial reporting for both management and investors, the GASP Standard establishes consensus definitions for SaaS metrics. Each metric gets one definition and one way to calculate it.
+Generally Accepted Accounting Principles standardised financial reporting for management and investors alike. The GASP Standard does the same for SaaS metrics, with one consensus definition per metric and one way to calculate it.
 
 ---
 
 ## Foundation
 
-The GASP Standard provides canonical definitions for SaaS metrics across all departments, informed by industry best practices from sources like the [SaaS Metrics Standards Board](https://www.saasmetricsboard.com/), SaaS Capital, KeyBanc and others.
+The GASP Standard provides canonical definitions for SaaS metrics across all departments, drawing on published work from the [SaaS Metrics Standards Board](https://www.saasmetricsboard.com/), SaaS Capital, KeyBanc and others.
 
 **The standard includes:**
 - Core financial metrics (ARR, NRR, GRR, CAC, etc.) with precise formulas and benchmarks
 - Operational metrics across all departments (Support, Engineering, Product, HR, etc.)
 - Relationships between metrics showing cause and effect
-- The One Page. A standard view of business health
+- This overview and the [metrics index](https://gaspwiki.com/v1/metrics), which together give the standard view of business health
 - Practical implementation guidance
 
-Where industry consensus exists, we follow it. Where gaps exist, we define using practitioner input and published research.
+We follow industry consensus where it exists and fill the gaps from practitioner input and published research.
 
 ---
 
@@ -34,21 +34,21 @@ The GASP Standard writes down how the industry already measures performance: a c
 ## What This Standard Provides
 
 - **Canonical definitions** for every metric, from the ops review to the board room
-- **Exact formulas** with a single calculation per metric
+- **Exact formulas**, one calculation per metric, written in a machine-readable grammar. Each compiles to SQL in four dialects (Postgres, Snowflake, BigQuery and Databricks) and ships as Apache Ossie files. Breakdowns such as by segment or by plan are declared on the metric itself
 - **Industry benchmarks** for context
 - **Relationships** between metrics, showing how they move together
-- **The One Page**, the standard view of business health
+- **The [metrics index](https://gaspwiki.com/v1/metrics)**, every metric by department with the Core Metrics as the view of business health
 
-It is opinionated by design. Adopt the definitions as written.
+The standard is opinionated on purpose and expects you to adopt the definitions as written.
 
 ---
 
 ## From Ops Dashboard to Board Deck
 
-Most SaaS metrics frameworks serve either operators or investors. The GASP Standard serves both. The dual-lens framework provides two forms for key metrics, Operating (O) and Market (M), computed from the same underlying data via the [Commercial Event Ledger](cel.md) and [Attribution Taxonomy Layer](atl.md).
+Most SaaS metrics frameworks are written for operators or for investors. The GASP Standard serves both through its dual-lens framework: key metrics have two forms, Operating (O) and Market (M), computed from the same underlying data through the [Commercial Event Ledger](cel.md) and [Attribution Taxonomy Layer](atl.md).
 
-- **O-form** metrics reflect the internal economic truth: what ops teams need to run the business
-- **M-form** metrics match investor-comparable definitions: what boards and investors benchmark against peers
+- **O-form** metrics reflect the internal economics, the numbers ops teams run the business on
+- **M-form** metrics follow investor-comparable definitions, the numbers boards and investors benchmark against peers
 
 Both forms come from the same events, so nobody has to keep a spreadsheet reconciling the ops number with the board number.
 
@@ -56,26 +56,26 @@ Both forms come from the same events, so nobody has to keep a spreadsheet reconc
 
 ## Scope
 
-**This standard covers:** Subscription-based SaaS with recurring revenue. The universal building blocks that apply to all SaaS businesses.
+**This standard covers:** Subscription-based SaaS with recurring revenue. It defines the building blocks every SaaS business shares.
 
 **This standard does not cover:**
 - **Pure consumption pricing**: metered revenue with no contracted commitment. MRR and ARR exclude usage fees that are not contractually guaranteed, while usage that meets or exceeds a contracted commitment counts as expansion (the ATL `usage_realisation` tag)
 - **Implementation edge cases**: downstream concerns for individual businesses
 - **Industry-specific variations**: vertical SaaS may have additional metrics
 
-The goal is foundational metrics that any SaaS business can adopt. Daily is the atomic unit; weekly, monthly and annual views are derived.
+The aim is a foundation any SaaS business can adopt. Daily is the atomic unit, with weekly, monthly and annual views derived from it.
 
 ---
 
 ## Principles
 
-1. **Consensus over custom.** These definitions reflect industry standard practice. Your business is not special enough to need different definitions. Where you must deviate, record the variant in your adapter and leave the canonical formula as it is, so the two can be reconciled.
+1. **Consensus over custom.** These definitions reflect industry standard practice. Your business is not special enough to need different definitions. Where you must deviate, keep the canonical formula as it is and document your variant beside it, using the adapter's field `transform` and `notes` to record how your data differs, so the two can be reconciled.
 
 2. **Precision over flexibility.** Each metric has one canonical formula, never "it depends." Where a metric has Operating and Market forms, the standard declares both beside the canonical formula.
 
-3. **Outcomes over activity.** We measure what matters to the business, not what's easy to track.
+3. **Outcomes over activity.** We pick metrics for what they say about the business rather than for how easy they are to track.
 
-4. **Connection over isolation.** Metrics exist in relationship to each other. Understanding the system matters more than any single number.
+4. **Connection over isolation.** Metrics move together. The standard records how each one feeds the others, since a single number makes most sense read next to the metrics that move it.
 
 ---
 
@@ -95,7 +95,11 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 |----------|---------|
 | [Definitions](definitions.md) | Canonical definitions for all terms, the source of truth |
 | [Relationships](relationships.md) | How metrics connect and influence each other |
-| [The One Page](https://gaspwiki.com/v1/overview) | Standard view of business health |
+| [Commercial Event Ledger (CEL)](cel.md) | The atomic event layer behind the revenue, retention and cost metrics |
+| [Attribution Taxonomy Layer (ATL)](atl.md) | The event tags that separate the Operating and Market forms |
+| [Signal Type Taxonomy](taxonomy.json) | The four signal types (outcome, leading, efficiency and operational) and each metric's classification |
+| [Formulas](formulas.json) | The canonical formula for every metric in the GASP formula grammar, with forms, variants and breakdowns |
+| [Ontology](ontology.json) | Entities, concepts, datasets and canonical fields, with temporal semantics, access-control recommendations and validation rules |
 
 ---
 
@@ -119,17 +123,9 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 ---
 
-## Metric Categories
+## Signal Types
 
-| Category | What it covers |
-|----------|----------------|
-| Revenue | Money coming in: MRR, ARR, growth, expansion, contraction |
-| Retention | Customers staying: churn, NRR, GRR |
-| Acquisition | Customers arriving: CAC, conversion, pipeline |
-| Engagement | Customers using: adoption, stickiness, health |
-| Efficiency | Doing more with less: margins, payback, LTV:CAC |
-| Operations | Running the business: support, uptime, delivery |
-| People | The team: retention, engagement, capacity |
+Every metric carries one primary signal type of four: outcome, leading, efficiency or operational. [taxonomy.json](taxonomy.json) defines each type and classifies every metric; the site renders it at [gaspwiki.com/v1/taxonomy](https://gaspwiki.com/v1/taxonomy).
 
 ---
 
@@ -137,8 +133,8 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 ```
                     ┌─────────────────┐
-                    │  Business Health │
-                    │     (Score)      │
+                    │  Core Metrics   │
+                    │ business health │
                     └────────┬────────┘
                              │
         ┌────────────────────┼────────────────────┐
@@ -163,12 +159,12 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 ## How to Use This Standard
 
-1. **Read the Core Metrics first.** Understand the numbers that define business health.
+1. **Read the Core Metrics first.** They are the numbers that define business health.
 
 2. **Map your data sources.** For each metric, identify where the input data lives in your systems.
 
-3. **Implement the canonical formulas as defined.** If your business needs a local variant, document it in your adapter and keep the canonical formula unchanged.
+3. **Implement the canonical formulas as defined.** If your business needs a local variant, keep the canonical formula unchanged, document the variant beside it and record how your data differs in the adapter's field `transform` and `notes`.
 
-4. **Use the One Page.** It puts the Core Metrics side by side as the standard view of business health.
+4. **Start from the [metrics index](https://gaspwiki.com/v1/metrics).** The [Core Metrics](metrics/core.md) give the standard view of business health.
 
-5. **Investigate with Departmental Metrics.** When something is off, drill into the relevant domain.
+5. **Investigate with Departmental Metrics.** When a core number is off, drill into the department behind it.

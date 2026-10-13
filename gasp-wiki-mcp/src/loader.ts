@@ -114,7 +114,7 @@ export function loadStandard(): StandardData {
   try {
     taxonomy = JSON.parse(readFileSync(taxonomyPath, "utf-8"));
   } catch {
-    // taxonomy.json not yet created — default to operational
+    // taxonomy.json not yet created: default to operational
   }
 
   // Merge signal types into metrics
@@ -152,7 +152,7 @@ export function loadStandard(): StandardData {
 
   // Enrich cross-reference stubs with canonical content fields.
   //
-  // Some metrics intentionally appear in multiple department files — e.g. NRR
+  // Some metrics intentionally appear in multiple department files, e.g. NRR
   // is defined canonically in core.md and listed as a "See [Core](core.md#...)"
   // stub in customer-success.md. Per-department records are needed to drive
   // department-scoped routes (e.g. /v1/metrics/customer-success/...), but
@@ -187,7 +187,7 @@ export function loadStandard(): StandardData {
     if (!m.commonMistakes?.length && canon.commonMistakes) m.commonMistakes = [...canon.commonMistakes];
     if (!m.sources?.length) m.sources = [...canon.sources];
     if (!m.aliases?.length) m.aliases = [...canon.aliases];
-    // dualLens and dualLensNote are intentionally NOT enriched — they are a
+    // dualLens and dualLensNote are intentionally NOT enriched: they are a
     // Core-only construct (asserted by data-integrity tests). Consumers that
     // need dual-lens content should resolve via slug to the Core record.
   }

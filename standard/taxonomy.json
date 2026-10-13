@@ -7,7 +7,7 @@
     },
     "leading": {
       "label": "Leading",
-      "description": "A signal that predicts an outcome before it materializes. Changing this today changes an outcome next quarter."
+      "description": "A signal that predicts an outcome before it materialises. Changing this today changes an outcome next quarter."
     },
     "efficiency": {
       "label": "Efficiency",
@@ -15,7 +15,7 @@
     },
     "operational": {
       "label": "Operational",
-      "description": "A volume, velocity, or process metric you manage day-to-day. The machinery of the business."
+      "description": "A volume, velocity or process metric you manage day-to-day. The machinery of the business."
     }
   },
   "classifications": {

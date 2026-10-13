@@ -220,7 +220,7 @@ function extractFormulas(text: string): string[] {
   return formulas;
 }
 
-/** Extract benchmarks section — everything after **Benchmarks until next field */
+/** Extract benchmarks section: everything after **Benchmarks until next field */
 function extractBenchmarks(text: string): string | null {
   const pattern =
     /\*\*Benchmarks[^*]*\*\*\s*([\s\S]*?)(?=\n\*\*[A-Z]|\n##|\n---|\n\*\*Sources|$)/;
@@ -264,7 +264,7 @@ function extractSources(text: string): string[] {
 
 /**
  * Extract a field value from a dual-lens subsection.
- * Terminates at next bold field (**X), code fence, or #### heading — not at \n\n.
+ * Terminates at next bold field (**X), code fence, or #### heading, not at \n\n.
  */
 function extractSubsectionField(text: string, fieldName: string): string {
   const fence = "\\`\\`\\`";
@@ -288,9 +288,9 @@ function extractFirstCodeBlock(text: string): string | null {
  * Parse dual-lens content from a metric's raw markdown.
  * Returns { dualLens, dualLensNote }.
  *
- * Pattern 1 — Standard O/M: #### Operating Form: ... / #### Market Form: ... / #### Bridge:
- * Pattern 2 — Shared Churn:  #### Dual-Lens: ... with **Operating Form:** / **Market Form:** bold labels
- * Pattern 3 — Note only:     #### Dual-Lens Note
+ * Pattern 1: Standard O/M: #### Operating Form: ... / #### Market Form: ... / #### Bridge:
+ * Pattern 2: Shared Churn:  #### Dual-Lens: ... with **Operating Form:** / **Market Form:** bold labels
+ * Pattern 3: Note only:     #### Dual-Lens Note
  */
 function parseDualLens(raw: string): { dualLens: DualLens | null; dualLensNote: string | null } {
   // --- Pattern 3: Note only ---

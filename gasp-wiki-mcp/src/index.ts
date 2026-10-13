@@ -46,7 +46,7 @@ try {
   }
 }
 
-// Background version check — non-blocking, stderr only
+// Background version check: non-blocking, stderr only
 const VERSION_URL = "https://gaspwiki.com/api/standard-version.json";
 (async () => {
   try {
@@ -67,7 +67,7 @@ const VERSION_URL = "https://gaspwiki.com/api/standard-version.json";
       );
     }
   } catch {
-    // Offline or gaspwiki.com unreachable — silently ignore
+    // Offline or gaspwiki.com unreachable: silently ignore
   }
 })();
 
@@ -438,7 +438,7 @@ server.tool(
     }
 
     const parts: string[] = [
-      `# ${node.label} — Relationships\n`,
+      `# ${node.label}: relationships\n`,
       `**Description:** ${node.description}`,
       `**Category:** ${node.category}`,
       `**Level:** ${node.level}\n`,
@@ -452,7 +452,7 @@ server.tool(
     if (upDrivers.length > 0) {
       parts.push("## Upstream (what drives this metric)");
       for (const r of upDrivers) {
-        parts.push(`- **${r.node.label}** (${r.type}) — ${r.node.description}`);
+        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
       }
       parts.push("");
     } else {
@@ -462,7 +462,7 @@ server.tool(
     if (measuredBy.length > 0) {
       parts.push("## Measured by (metrics that measure this)");
       for (const r of measuredBy) {
-        parts.push(`- **${r.node.label}** (${r.type}) — ${r.node.description}`);
+        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
       }
       parts.push("");
     }
@@ -470,7 +470,7 @@ server.tool(
     if (downDriven.length > 0) {
       parts.push("## Downstream (what this metric drives)");
       for (const r of downDriven) {
-        parts.push(`- **${r.node.label}** (${r.type}) — ${r.node.description}`);
+        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
       }
     } else {
       parts.push("## Downstream\nNo downstream metrics (this is a leaf metric).");
@@ -479,7 +479,7 @@ server.tool(
     if (measures.length > 0) {
       parts.push("\n## Measures (what this metric measures)");
       for (const r of measures) {
-        parts.push(`- **${r.node.label}** (${r.type}) — ${r.node.description}`);
+        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
       }
     }
 
@@ -684,7 +684,7 @@ server.tool(
 // --- Tool 9: infer_drivers ---
 server.tool(
   "infer_drivers",
-  "Diagnose what could explain an observed metric movement. Walks the GASP relationship graph in reverse and ranks upstream metrics whose movement (in the inferred direction) is consistent with the observation. Returns ranked candidates with full path and per-step edge classifications. Structural reasoning, not numeric forecasting — scores are attenuation products, not magnitude estimates. Compose with explain_path to scrutinise a chain or coverage_gap to check whether a candidate is being measured. For counterfactual 'what if' simulation, use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier instead.",
+  "Diagnose what could explain an observed metric movement. Walks the GASP relationship graph in reverse and ranks upstream metrics whose movement (in the inferred direction) is consistent with the observation. Returns ranked candidates with full path and per-step edge classifications. Structural reasoning, not numeric forecasting: scores are attenuation products, not magnitude estimates. Compose with explain_path to scrutinise a chain or coverage_gap to check whether a candidate is being measured. For counterfactual 'what if' simulation, use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier instead.",
   {
     metric: z.string().describe("Metric name, abbreviation, or graph id (e.g. 'ARR', 'NRR', 'arr')"),
     direction: z.enum(["up", "down"]).describe("Observed direction of movement"),
@@ -697,7 +697,7 @@ server.tool(
     }
     if (!traversalCtx.metricNodeIds.has(node.id)) {
       return {
-        content: [{ type: "text" as const, text: `"${node.label}" is not a metric node — infer_drivers operates on metrics only. Try get_relationships for entity/concept nodes.` }],
+        content: [{ type: "text" as const, text: `"${node.label}" is not a metric node. infer_drivers operates on metrics only. Try get_relationships for entity/concept nodes.` }],
       };
     }
 
@@ -712,7 +712,7 @@ server.tool(
 
     const arrow = (d: 1 | -1) => (d === 1 ? "↑" : "↓");
     const parts: string[] = [
-      `# ${node.label} ${arrow(observedDirection as 1 | -1)} — Candidate drivers (${candidates.length})\n`,
+      `# ${node.label} ${arrow(observedDirection as 1 | -1)}: candidate drivers (${candidates.length})\n`,
       `_Structural reasoning, not numeric forecasting. Scores are attenuation products (0–1) along the chain; they rank candidates but do not estimate magnitudes._\n`,
       `| # | Driver | Implied direction | Score | Path |`,
       `|---|--------|------------------|-------|------|`,
@@ -760,19 +760,19 @@ server.tool(
     }
 
     const parts: string[] = [
-      `# ${fromNode.label} → ${toNode.label} — ${paths.length} path${paths.length === 1 ? "" : "s"}\n`,
+      `# ${fromNode.label} → ${toNode.label}: ${paths.length} path${paths.length === 1 ? "" : "s"}\n`,
     ];
 
     for (let i = 0; i < paths.length; i++) {
       const p = paths[i];
-      parts.push(`## Path ${i + 1} — ${p.path.length} step${p.path.length === 1 ? "" : "s"}, score ${p.score.toFixed(3)}, end direction ${p.direction === 1 ? "↑" : "↓"}`);
+      parts.push(`## Path ${i + 1}: ${p.path.length} step${p.path.length === 1 ? "" : "s"}, score ${p.score.toFixed(3)}, end direction ${p.direction === 1 ? "↑" : "↓"}`);
       parts.push(`Classifications: ${renderClassifications(p.path)}\n`);
       for (let j = 0; j < p.path.length; j++) {
         const s = p.path[j];
         const flip = s.directionFlip ? " (↓ inverts direction)" : "";
         const fromLabel = traversalCtx.nodeById.get(s.from)?.label ?? s.from;
         const toLabel = traversalCtx.nodeById.get(s.to)?.label ?? s.to;
-        parts.push(`${j + 1}. **${fromLabel}** → **${toLabel}** — \`${s.edgeType}\` (${s.classification}, attenuation ${s.attenuation.toFixed(2)})${flip}`);
+        parts.push(`${j + 1}. **${fromLabel}** → **${toLabel}**: \`${s.edgeType}\` (${s.classification}, attenuation ${s.attenuation.toFixed(2)})${flip}`);
       }
       parts.push("");
     }
@@ -784,7 +784,7 @@ server.tool(
 // --- Tool 11: coverage_gap ---
 server.tool(
   "coverage_gap",
-  "Audit a metric set against the GASP relationship graph. Returns three groups: upstream_missing (one-hop drivers not in the set), downstream_missing (one-hop downstream metrics not in the set), and disconnected (in-graph metrics with no path of any length to/from the set). Operates on metric nodes only — entities and concepts are ignored. Use to identify gaps before instrumenting a dashboard, then compose with infer_drivers or explain_path to investigate specific candidates.",
+  "Audit a metric set against the GASP relationship graph. Returns three groups: upstream_missing (one-hop drivers not in the set), downstream_missing (one-hop downstream metrics not in the set), and disconnected (in-graph metrics with no path of any length to/from the set). Operates on metric nodes only; entities and concepts are ignored. Use to identify gaps before instrumenting a dashboard, then compose with infer_drivers or explain_path to investigate specific candidates.",
   {
     metrics: z.array(z.string()).min(1).describe("Metric names, abbreviations, or graph ids (e.g. ['ARR', 'NRR', 'CAC'])"),
   },
@@ -814,7 +814,7 @@ server.tool(
       ids.length === 0 ? "_(none)_" : ids.map((id) => `- ${labelOf(id)} (\`${id}\`)`).join("\n");
 
     const parts: string[] = [
-      `# Coverage gap — ${resolved.length} metric${resolved.length === 1 ? "" : "s"}\n`,
+      `# Coverage gap: ${resolved.length} metric${resolved.length === 1 ? "" : "s"}\n`,
       `**Tracked:** ${resolved.map((id) => `${labelOf(id)} (\`${id}\`)`).join(", ")}`,
     ];
     if (unresolved.length > 0) {

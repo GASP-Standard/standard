@@ -152,7 +152,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
   const sourcedFrom = ont.fields!.flatMap((f) => (f.sources ?? []).map((s) => [f.id, s] as const));
   const belongs = ont.fields!.flatMap((f) => (f.datasets ?? []).map((d) => [f.id, d] as const));
   L.push("// ═══════════════════════════════════════════════════════════════",
-    "// GASP Standard — SaaS Metric Knowledge Graph (Full Ontology)",
+    "// GASP Standard: SaaS Metric Knowledge Graph (Full Ontology)",
     "// Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive`",
     "// ═══════════════════════════════════════════════════════════════", "//",
     `// Nodes: ${metricNodes.length} Metrics, ${ont.entities.length} Entities, ${ont.concepts!.length} Concepts, ${Object.keys(ont.datasets!).length} Datasets, ${ont.fields!.length} Fields, ${ont.sourceCategories!.length} Source Categories`,
