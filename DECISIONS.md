@@ -5,6 +5,73 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-13] A breakdown dimension may be a bucketed expression
+**Decision:** A breakdown has a third shape beside a field and a field with `total`: `{ "expression": <grammar expression over one dataset's fields>, "buckets": { "<label>": [lo, hi], ... }, "total"?: true }`. The labels are the domain, the bounds are inclusive and `hi` may be null for an open top bucket, and each grouped aggregate is correlated through a `CASE` over the expression. Ranges may not overlap and the expression's fields must live on every grouped aggregate's dataset. Aging Buckets becomes one entry-level breakdown over invoice age with four buckets and a whole-balance denominator, in place of a main formula plus three variants. The Ossie export stages a bucketed breakdown (reason `bucket`).
+
+**Context:** Aging Buckets was the one metric left outside the breakdown pattern after the sweep, because its dimension is computed from two dates rather than read from a column. Encoding the buckets as variants meant four formulas that had to agree on boundaries by hand, and an agent asking for the 61 to 90 day share had to know the variant name.
+
+**Alternatives considered:**
+- **Keep variants.** Rejected: boundaries drift and the pattern is wrong for a dimension.
+- **Add an `invoice_age_bucket` column to the invoice dataset.** Rejected: it is derivable, and derivable columns are a mapping obligation for no information.
+- **Arbitrary SQL expressions as dimensions.** Rejected: the expression is in the GASP grammar, over fields the compiler can tag with their dataset, so adapters still fill every placeholder.
+
+**Consequences:**
+- The breakdown value in `formulas.json` is a discriminated shape: string, `{field}`, or `{expression, buckets}`. `get_formula` prints the buckets.
+- `get_data_requirements` takes a `breakdown` argument, matching `generate_query`.
+
+---
+
+## [2026-10-13] A slice is a breakdown, not a metric; segment is a field on the revenue tables; share-of-total breakdowns are declared
+**Decision:** Three rulings on slicing. (1) Headcount by Department is retired as a metric page: its formula was Total Headcount's, and Total Headcount now carries the `by_department` breakdown and the typical-shares table. The old URL redirects to Total Headcount. The rule: a slice of a metric is a breakdown of that metric, never a page of its own. (2) `segment` is a string dimension field carried on `revenue_event`, `contract_event`, `amendment_event`, `customer` and `subscription`, denormalised onto the events on purpose so that MRR, NRR, GRR, logo churn and the MRR movements slice by segment without a join. It is the field behind the existing Segment concept. The `tier` field ("pricing tier or segment") is retired; pricing tier is what `plan_id` is for. (3) A named breakdown may declare `{ "field": ..., "total": true }`, which keeps whole any aggregate whose dataset lacks the field. That is the author saying the slice is share-of-total (CAC and Opex Ratio by cost centre); without it, a missing field is still a compile error. Breakdowns by plan or product name are not added: the ids are what adapters join on and the Ossie export carries the relationships that give the names.
+
+**Context:** After the breakdown sweep, the slices operators ask for most (retention and churn by segment) were blocked because churn and revenue movements are events and the only segment-like field lived on the customer snapshot. CAC by cost centre is a decomposition of the numerator over the whole denominator, which the no-silent-ungrouping rule correctly refused to infer. Headcount by Department had become a duplicate the moment Total Headcount gained a breakdown.
+
+**Alternatives considered:**
+- **Copy `tier` onto the event tables.** Rejected: the field conflated pricing tier and customer segment; the concept the graph already names is Segment.
+- **Infer share-of-total when the field is missing.** Rejected again: the earlier decision stands, the author declares it.
+- **Keep Headcount by Department as a breakdown-only metric page.** Rejected: one rule is easier to hold than two, and the URL is served by a redirect.
+- **Group by the key and look the plan or product name up from its catalogue.** Rejected for now: it is a join in all but name, and nothing asked for it.
+
+**Consequences:**
+- 300 metrics again. `public/_redirects` carries the first retired-page redirect; add there when another page is retired.
+- Adopters map one `segment` column on five tables. The fixture sets it per customer in a post-pass so the PRNG sequence does not move.
+- `by_segment` breakdowns on the retention and movement metrics; the three `by_tier` breakdowns become `by_segment`.
+
+---
+
+## [2026-10-13] Health Score is the portfolio average of the upstream composite, and named breakdowns are the standard way to slice
+**Decision:** `health_score` is computable: the average `composite_score` of active customers at period end, with a named breakdown by tier. The composite itself is built by the customer success platform from the organisation's chosen indicators; `customer-success.md` publishes a reference weighting (usage 35, engagement 25, support 20, commercial 20) labelled as a starting point. Twenty-one named breakdowns are added where a metric is naturally sliced by a field that lives on every dataset its grouped aggregates read, with a one-sentence reason in each entry's notes. The `period_start` field keeps its name beside the `period_start` keyword because `field.period_start` is unambiguous and the name is accurate.
+
+**Context:** Health Score was the one graph metric with no formula, which left At-Risk Rate reading a `composite_score` that the standard refused to define. A default weighting as canon was rejected on 2026-10-12 because weights are calibrated to each company's churn data; the portfolio average sidesteps that while making the metric queryable. The dimension fields declared by the ontology had no consumer until breakdowns existed.
+
+**Alternatives considered:**
+- **Encode the reference weighting as the formula.** Rejected: it would make a company's calibrated score non-canonical.
+- **Add tier, cost centre and the like to the datasets that lack them so every slice compiles.** Rejected for now: a field on a dataset is a mapping obligation for every adopter; the blocked slices are listed in TODO.md with the field each needs.
+
+**Consequences:**
+- 274 computable formulas, 15 not computable. `headcount_by_department` now duplicates `total_headcount` by department and is queued for retirement.
+- Executed tests pin Incident Count by severity and Ticket Volume by ticket type against the fixture rows.
+
+---
+
+## [2026-10-13] Webfonts load with font-display optional
+**Decision:** Inter Variable and JetBrains Mono are declared in `gasp-wiki-frontend/src/styles/fonts.css`, copied from the fontsource packages with `font-display: optional` in place of `swap`. The preload of the latin Inter file stays. If the font is cached or arrives inside the browser's short block window it is used; otherwise the system font stays for that page view and nothing re-renders.
+
+**Context:** After the client bundle split the dashboard's mobile Largest Contentful Paint was still 3.2s with zero blocking time. The LCP element was a text paragraph and 2.7s of its time was render delay: with `swap`, the browser paints the fallback and then repaints when Inter lands, and the repaint is the LCP candidate Lighthouse records. The owner chose speed over a guaranteed first-visit webfont.
+
+**Alternatives considered:**
+- **Keep swap and accept the score.** Rejected by the owner.
+- **A smaller static subset instead of the variable font.** Would shorten the swap but not remove the repaint; can still be done on top.
+- **Inline the latin face as a data URI.** Rejected: 48 KB on every page's critical path.
+
+**Consequences:**
+- First visits on slow connections see the system sans and mono fonts. Repeat visits and fast connections see Inter. The design tokens' fallback stack is what renders in that case, so check headings and tiles against it.
+- Measured after the change (Lighthouse mobile, local build): dashboard LCP 3.2s to 2.7s with FCP 1.3s, homepage LCP 2.3s. Removing the preload made no difference, so it stays. The dashboard's remaining render delay is not the font and not JavaScript (blocking time is zero, the HTML is 112 KB); it is left in the backlog.
+- `fonts.css` is a copy; regenerate it from `node_modules` when the fontsource packages update (the header comment says how).
+- `scripts/gen-dept-data.mjs` is retired in the same session: `dashboard-mock.json` is maintained by hand and the script wrote an older shape. The owner deletes the file; nothing imports it.
+
+---
+
 ## [2026-10-13] Every entity has a logical table, and seat utilisation is a metric
 **Decision:** License, Plan, Product and Contact get datasets. `contact` (one row per named person at an account, with a role and an engaged flag) replaces the two pre-aggregated workaround columns on the customer snapshot, so Contact Coverage counts engaged contacts and Executive Sponsor Coverage counts accounts with an engaged contact whose role is executive sponsor. `plan` carries the catalogue and `subscription` gains `plan_id`; `product` carries the catalogue and `license` (one row per entitlement a subscription grants, with the product, seats purchased and seats assigned) links to it. A new Customer Success metric, License Utilization (seats assigned over seats purchased on active licenses), reads the license table, with a named breakdown by product; MRR gains a named breakdown by plan. The standard has 301 metrics.
 

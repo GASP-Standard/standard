@@ -86,6 +86,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{RevenueEvent} has {PriorMrr}"
+      - name: segment
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+        roles:
+          - concept: SegmentValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{RevenueEvent} has {SegmentValue}"
       - name: subscription_id
         description: Subscription identifier
         roles:
@@ -238,6 +245,13 @@ ontology:
         multiplicity: OneToOne
         verbalizes:
           - "{ContractEvent} is identified by {EventId}"
+      - name: segment
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+        roles:
+          - concept: SegmentValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{ContractEvent} has {SegmentValue}"
       - name: subscription_id
         description: Subscription identifier
         roles:
@@ -314,6 +328,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{AmendmentEvent} has {MrrChange}"
+      - name: segment
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+        roles:
+          - concept: SegmentValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{AmendmentEvent} has {SegmentValue}"
       - name: subscription_id
         description: Subscription identifier
         roles:
@@ -466,14 +487,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Customer} on {Date} has {QbrDue}"
-      - name: tier
-        description: Pricing tier or segment
+      - name: segment
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
         roles:
           - concept: Date
-          - concept: Tier
+          - concept: SegmentValue
         multiplicity: ManyToOne
         verbalizes:
-          - "{Customer} on {Date} has {Tier}"
+          - "{Customer} on {Date} has {SegmentValue}"
       - name: upgrade_eligible
         description: Customer is on a plan with an upgrade path
         roles:
@@ -796,6 +817,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Subscription} on {Date} has {Renewed}"
+      - name: segment
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+        roles:
+          - concept: Date
+          - concept: SegmentValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {SegmentValue}"
       - name: subscription_id
         description: Subscription identifier
         roles:
@@ -951,7 +980,7 @@ ontology:
         verbalizes:
           - "{Opportunity} is identified by {OpportunityId}"
       - name: opportunity_stage
-        description: Opportunity stage
+        description: Sales stage of an opportunity, or of a partner's registered deal
         roles:
           - concept: Date
           - concept: OpportunityStage
@@ -3104,6 +3133,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{DealRegistration} belongs to {Opportunity}"
+      - name: opportunity_stage
+        description: Sales stage of an opportunity, or of a partner's registered deal
+        roles:
+          - concept: Date
+          - concept: OpportunityStage
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{DealRegistration} on {Date} has {OpportunityStage}"
       - name: partner_id
         description: Partner identifier
         roles:
@@ -3127,14 +3164,6 @@ ontology:
         multiplicity: OneToOne
         verbalizes:
           - "{DealRegistration} is identified by {RegistrationId}"
-      - name: registration_stage
-        description: Stage of the registered deal
-        roles:
-          - concept: Date
-          - concept: RegistrationStage
-        multiplicity: ManyToOne
-        verbalizes:
-          - "{DealRegistration} on {Date} has {RegistrationStage}"
       - name: converts_to
         description: An approved deal registration is linked to the opportunity it protects. Partner-sourced pipeline is read through this link.
         roles:
@@ -3185,7 +3214,7 @@ ontology:
     description: Pipeline. The aggregate weighted value of active opportunities. Represents potential future bookings at various probability stages.
   - concept: Segment
     type: EntityType
-    description: Segment. A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison.
+    description: Segment. A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison. Recorded in the segment field, which revenue, contract and amendment events carry as of the event and the customer and subscription snapshots carry as of the snapshot.
   - concept: Tcv
     type: EntityType
     description: TCV (Total Contract Value). The total value of a contract over its full term, including one-time fees and multi-year commitments. Distinct from Bookings (period-attributable) and ACV (annualized).
@@ -3815,7 +3844,7 @@ ontology:
       - String
   - concept: OpportunityStage
     type: ValueType
-    description: Opportunity stage
+    description: Sales stage of an opportunity, or of a partner's registered deal
     extends:
       - String
     requires:
@@ -3977,13 +4006,6 @@ ontology:
     description: Partner deal registration identifier
     extends:
       - String
-  - concept: RegistrationStage
-    type: ValueType
-    description: Stage of the registered deal
-    extends:
-      - String
-    requires:
-      - RegistrationStage == 'qualification' OR RegistrationStage == 'discovery' OR RegistrationStage == 'proposal' OR RegistrationStage == 'negotiation' OR RegistrationStage == 'closed_won' OR RegistrationStage == 'closed_lost'
   - concept: ReleaseId
     type: ValueType
     description: Release identifier
@@ -4123,6 +4145,11 @@ ontology:
     description: Session identifier
     extends:
       - String
+  - concept: SegmentValue
+    type: ValueType
+    description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+    extends:
+      - String
   - concept: Severity
     type: ValueType
     description: Incident severity
@@ -4229,11 +4256,6 @@ ontology:
       - String
     requires:
       - TicketType == 'how_to' OR TicketType == 'bug' OR TicketType == 'billing' OR TicketType == 'account' OR TicketType == 'feature_request' OR TicketType == 'other'
-  - concept: Tier
-    type: ValueType
-    description: Pricing tier or segment
-    extends:
-      - String
   - concept: TimeEntryType
     type: ValueType
     description: Billable or non-billable category

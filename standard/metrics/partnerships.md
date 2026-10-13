@@ -72,6 +72,8 @@ A recruited partner becomes active once productive: a first deal registered or c
 Partner Churn = Partners churned in period / Active partners at start of period × 100
 ```
 
+Partner Churn Rate is reported per partner tier.
+
 **What it tells you:** Partner program health and competitiveness.
 
 ---

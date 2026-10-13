@@ -60,7 +60,8 @@
     "contact": "gasp_contacts",
     "plan": "gasp_plans",
     "product": "gasp_products",
-    "license": "gasp_licenses"
+    "license": "gasp_licenses",
+    "lifecycle_event": "gasp_lifecycle_events"
   },
   "mappings": [
     {
@@ -367,6 +368,11 @@
     },
     {
       "gaspField": "customer_id",
+      "dataset": "lifecycle_event",
+      "warehouseRef": "gasp_lifecycle_events.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
       "dataset": "customer",
       "warehouseRef": "gasp_customers.customer_id"
     },
@@ -527,6 +533,11 @@
     },
     {
       "gaspField": "event_date",
+      "dataset": "lifecycle_event",
+      "warehouseRef": "gasp_lifecycle_events.event_date"
+    },
+    {
+      "gaspField": "event_date",
       "dataset": "product_event",
       "warehouseRef": "gasp_product_events.occurred_on"
     },
@@ -549,6 +560,11 @@
       "gaspField": "event_id",
       "dataset": "amendment_event",
       "warehouseRef": "gasp_amendment_events.event_id"
+    },
+    {
+      "gaspField": "event_id",
+      "dataset": "lifecycle_event",
+      "warehouseRef": "gasp_lifecycle_events.event_id"
     },
     {
       "gaspField": "event_id",
@@ -907,6 +923,10 @@
       "warehouseRef": "gasp_revenue_events.new_mrr"
     },
     {
+      "gaspField": "new_state",
+      "warehouseRef": "gasp_lifecycle_events.new_state"
+    },
+    {
       "gaspField": "nps_score",
       "warehouseRef": "gasp_survey_responses.nps_score"
     },
@@ -975,7 +995,13 @@
     },
     {
       "gaspField": "opportunity_stage",
+      "dataset": "opportunity",
       "warehouseRef": "gasp_opportunities.opportunity_stage"
+    },
+    {
+      "gaspField": "opportunity_stage",
+      "dataset": "deal_registration",
+      "warehouseRef": "gasp_deal_registrations.opportunity_stage"
     },
     {
       "gaspField": "order_completed_at",
@@ -1136,6 +1162,10 @@
       "warehouseRef": "gasp_revenue_events.prior_mrr"
     },
     {
+      "gaspField": "prior_state",
+      "warehouseRef": "gasp_lifecycle_events.prior_state"
+    },
+    {
       "gaspField": "product_event_type",
       "warehouseRef": "gasp_product_events.product_event_type"
     },
@@ -1254,10 +1284,6 @@
     {
       "gaspField": "registration_id",
       "warehouseRef": "gasp_deal_registrations.registration_id"
-    },
-    {
-      "gaspField": "registration_stage",
-      "warehouseRef": "gasp_deal_registrations.registration_stage"
     },
     {
       "gaspField": "release_date",
@@ -1420,6 +1446,31 @@
     {
       "gaspField": "session_id",
       "warehouseRef": "gasp_product_events.session_id"
+    },
+    {
+      "gaspField": "segment",
+      "dataset": "revenue_event",
+      "warehouseRef": "gasp_revenue_events.segment"
+    },
+    {
+      "gaspField": "segment",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.segment"
+    },
+    {
+      "gaspField": "segment",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.segment"
+    },
+    {
+      "gaspField": "segment",
+      "dataset": "customer",
+      "warehouseRef": "gasp_customers.segment"
+    },
+    {
+      "gaspField": "segment",
+      "dataset": "subscription",
+      "warehouseRef": "gasp_subscriptions.segment"
     },
     {
       "gaspField": "severity",
@@ -1585,6 +1636,10 @@
       "warehouseRef": "gasp_incidents.started_at"
     },
     {
+      "gaspField": "state_category",
+      "warehouseRef": "gasp_lifecycle_events.state_category"
+    },
+    {
       "gaspField": "steps_completed",
       "warehouseRef": "gasp_onboardings.steps_completed"
     },
@@ -1675,10 +1730,6 @@
     {
       "gaspField": "ticket_type",
       "warehouseRef": "gasp_tickets.ticket_type"
-    },
-    {
-      "gaspField": "tier",
-      "warehouseRef": "gasp_customers.tier"
     },
     {
       "gaspField": "time_entry_type",

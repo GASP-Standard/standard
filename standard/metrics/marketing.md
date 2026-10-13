@@ -64,7 +64,7 @@ Visitor-to-Lead = Leads captured / Visitors × 100
 Leads = Total new leads captured in period
 ```
 
-Break down by source: organic, paid, referral, direct, events.
+Leads are reported per lead source, such as organic, paid, referral, direct and events, and per lead stage as of period end.
 
 ---
 
@@ -88,6 +88,8 @@ Break down by source: organic, paid, referral, direct, events.
 MQLs = Leads meeting MQL criteria in period
 ```
 
+MQLs are reported per lead source.
+
 **What it tells you:** Volume of potentially sales-ready prospects.
 
 **Key distinction:** MQLs show engagement but not confirmed buying intent. SQLs pass sales qualification (BANT: Budget, Authority, Need, Timeline).
@@ -106,6 +108,8 @@ MQLs = Leads meeting MQL criteria in period
 ```
 Lead-to-MQL = MQLs / Total leads × 100
 ```
+
+Lead-to-MQL Rate is reported per lead source.
 
 **Benchmarks:**
 - Below 15%: Low quality leads or strict MQL criteria
@@ -136,6 +140,8 @@ SQLs = MQLs accepted by sales in period
 ```
 MQL-to-SQL = SQLs / MQLs × 100
 ```
+
+MQL-to-SQL Rate is reported per lead source.
 
 **Benchmarks:**
 - Overall average (all industries): ~13%

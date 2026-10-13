@@ -38,6 +38,8 @@ Or simply:
 Logo Retention Rate = 100% - Logo Churn Rate
 ```
 
+Logo Retention Rate is reported per customer segment.
+
 **What it tells you:** Customer retention independent of revenue. Are you keeping relationships?
 
 ---
@@ -50,8 +52,11 @@ Logo Retention Rate = 100% - Logo Churn Rate
 
 **Formula:**
 ```
-Health Score = Weighted average of health indicators
+Health Score (per account) = Weighted average of health indicators, scaled 0 to 100
+Health Score (portfolio) = Average health score of active customers at period end
 ```
+
+The per-account composite is built upstream and lands on the customer record as one score from 0 to 100. The portfolio Health Score is the average of that score across active customers, reported for the whole base and per customer segment.
 
 **Core indicators (choose 5-10):**
 | Indicator | Typical Weight | What it measures |
@@ -65,6 +70,15 @@ Health Score = Weighted average of health indicators
 | Onboarding completion | 5-10% | Did they fully onboard? |
 
 **Important:** Weights should be customized based on correlation with actual churn in your business. Usage and adoption typically carry the most weight. Segment customers (by size, industry, lifecycle stage) for more accurate scoring.
+
+**Reference weighting (a starting point, not canon):** for a team building its first score. The weights are yours: replace them once you can test each signal against your own churn.
+
+| Signal group | Reference weight | What it covers |
+|--------------|------------------|----------------|
+| Usage | 35% | Frequency and depth of product use, including adoption of key features |
+| Engagement | 25% | Responsiveness to outreach, QBR attendance and an engaged executive sponsor |
+| Support | 20% | Ticket volume trend, escalations and support sentiment |
+| Commercial | 20% | Payment health, renewal status and expansion or contraction history |
 
 **Scoring:**
 - 0-40: At risk (red)
@@ -91,6 +105,8 @@ Health Score = Weighted average of health indicators
 Health Score Coverage = Customers with health score / Total customers × 100
 ```
 
+Health Score Coverage is reported per customer segment.
+
 **Target:** 100% of managed accounts, or all accounts above a revenue threshold.
 
 **What it tells you:** Whether you have visibility into customer health.
@@ -105,6 +121,8 @@ Health Score Coverage = Customers with health score / Total customers × 100
 ```
 At-Risk Rate = Customers with health score < 40 / Total scored customers × 100
 ```
+
+At-Risk Customer Rate is reported per customer segment.
 
 **Variant `entered_at_risk`:** the share of customers active at period start that entered the `at_risk` state in the period. The `state_category = 'at_risk'` transition is the leading indicator of churn, and this variant measures it.
 
@@ -190,6 +208,8 @@ Expansion Rate = Expansion MRR / Beginning MRR × 100
 - Growth stage ($1M-$20M ARR): 20-30% from expansion
 - Scale stage ($20M+ ARR): 35%+ from expansion
 - Mature ($200M+ ARR): Up to 66% from expansion
+
+Expansion Revenue Rate is reported per customer segment.
 
 **What it tells you:** Are you growing existing customers? As companies mature, expansion becomes the dominant growth driver.
 

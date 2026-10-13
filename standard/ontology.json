@@ -418,6 +418,7 @@
       "expansion_mrr",
       "expansion_rate",
       "grr",
+      "health_score",
       "health_score_coverage",
       "infrastructure_cost_per_customer",
       "logo_churn_rate",
@@ -592,7 +593,6 @@
       "diversity_in_leadership",
       "diversity_representation",
       "employee_turnover",
-      "headcount_by_department",
       "headcount_growth_rate",
       "involuntary_turnover_rate",
       "pay_equity_ratio",
@@ -1128,7 +1128,7 @@
         "other"
       ],
       "description": "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity",
-      "metricCount": 4
+      "metricCount": 5
     },
     {
       "id": "close_date",
@@ -1192,7 +1192,7 @@
         "cs_platform"
       ],
       "description": "Health score on a 0 to 100 scale",
-      "metricCount": 2
+      "metricCount": 3
     },
     {
       "id": "consultant_id",
@@ -1305,7 +1305,7 @@
         "general"
       ],
       "description": "Department or team that incurred the cost",
-      "metricCount": 3
+      "metricCount": 5
     },
     {
       "id": "cost_function",
@@ -1470,7 +1470,7 @@
         "dormant"
       ],
       "description": "Customer lifecycle status; active means at least one active subscription",
-      "metricCount": 17
+      "metricCount": 18
     },
     {
       "id": "deflections",
@@ -1507,7 +1507,7 @@
       ],
       "dimension": true,
       "description": "Department",
-      "metricCount": 0
+      "metricCount": 3
     },
     {
       "id": "deploy_date",
@@ -1594,7 +1594,7 @@
         "survey_tool"
       ],
       "description": "Employee identifier",
-      "metricCount": 14
+      "metricCount": 13
     },
     {
       "id": "employee_status",
@@ -1611,7 +1611,7 @@
         "terminated"
       ],
       "description": "Employment status",
-      "metricCount": 11
+      "metricCount": 10
     },
     {
       "id": "engagement_score",
@@ -2106,7 +2106,7 @@
         "other"
       ],
       "description": "Recruiting channel the employee was hired through",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "hours",
@@ -2176,7 +2176,7 @@
         "data"
       ],
       "description": "Incident category",
-      "metricCount": 1
+      "metricCount": 3
     },
     {
       "id": "includes_services",
@@ -2413,7 +2413,7 @@
       ],
       "dimension": true,
       "description": "Lead source",
-      "metricCount": 0
+      "metricCount": 4
     },
     {
       "id": "lead_stage",
@@ -2434,7 +2434,7 @@
       ],
       "dimension": true,
       "description": "Lead funnel stage",
-      "metricCount": 0
+      "metricCount": 1
     },
     {
       "id": "lifecycle_attribution",
@@ -2815,10 +2815,12 @@
       "id": "opportunity_stage",
       "type": "enum",
       "datasets": [
-        "opportunity"
+        "opportunity",
+        "deal_registration"
       ],
       "sources": [
-        "crm"
+        "crm",
+        "partner_management"
       ],
       "values": [
         "qualification",
@@ -2828,8 +2830,8 @@
         "closed_won",
         "closed_lost"
       ],
-      "description": "Opportunity stage",
-      "metricCount": 29
+      "description": "Sales stage of an opportunity, or of a partner's registered deal",
+      "metricCount": 31
     },
     {
       "id": "order_completed_at",
@@ -2987,7 +2989,7 @@
         "platinum"
       ],
       "description": "Partner programme tier",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "patched_at",
@@ -3049,7 +3051,7 @@
       ],
       "dimension": true,
       "description": "Payment status",
-      "metricCount": 0
+      "metricCount": 2
     },
     {
       "id": "performance_rating",
@@ -3417,27 +3419,6 @@
         "partner_management"
       ],
       "description": "Partner deal registration identifier",
-      "metricCount": 2
-    },
-    {
-      "id": "registration_stage",
-      "type": "enum",
-      "datasets": [
-        "deal_registration"
-      ],
-      "sources": [
-        "partner_management",
-        "crm"
-      ],
-      "values": [
-        "qualification",
-        "discovery",
-        "proposal",
-        "negotiation",
-        "closed_won",
-        "closed_lost"
-      ],
-      "description": "Stage of the registered deal",
       "metricCount": 2
     },
     {
@@ -3859,6 +3840,24 @@
       "metricCount": 2
     },
     {
+      "id": "segment",
+      "type": "string",
+      "datasets": [
+        "revenue_event",
+        "contract_event",
+        "amendment_event",
+        "customer",
+        "subscription"
+      ],
+      "sources": [
+        "crm",
+        "billing"
+      ],
+      "dimension": true,
+      "description": "Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.",
+      "metricCount": 16
+    },
+    {
       "id": "severity",
       "type": "enum",
       "datasets": [
@@ -3875,7 +3874,7 @@
       ],
       "dimension": true,
       "description": "Incident severity",
-      "metricCount": 0
+      "metricCount": 2
     },
     {
       "id": "signup_date",
@@ -4243,21 +4242,7 @@
         "other"
       ],
       "description": "Ticket category the agent or the help desk assigns",
-      "metricCount": 1
-    },
-    {
-      "id": "tier",
-      "type": "string",
-      "datasets": [
-        "customer"
-      ],
-      "sources": [
-        "billing",
-        "crm"
-      ],
-      "dimension": true,
-      "description": "Pricing tier or segment",
-      "metricCount": 0
+      "metricCount": 3
     },
     {
       "id": "time_entry_type",
@@ -5145,7 +5130,6 @@
     "feature_adoption_at_go_live": "Feature Adoption",
     "total_headcount": "Headcount",
     "headcount_growth_rate": "Headcount",
-    "headcount_by_department": "Headcount",
     "employee_turnover": "Retention",
     "voluntary_turnover_rate": "Retention",
     "involuntary_turnover_rate": "Retention",
@@ -7362,7 +7346,7 @@
     {
       "id": "segment",
       "label": "Segment",
-      "definition": "A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison.",
+      "definition": "A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison. Recorded in the segment field, which revenue, contract and amendment events carry as of the event and the customer and subscription snapshots carry as of the snapshot.",
       "provenance": "Common GTM segmentation practice"
     },
     {
@@ -7788,6 +7772,15 @@
         "subscription_status"
       ],
       "adjustedVariant": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
+    },
+    "health_score": {
+      "expression": "avg(field.composite_score where field.customer_status = 'active') at period_end",
+      "inputs": [],
+      "fields": [
+        "composite_score",
+        "customer_status",
+        "snapshot_date"
+      ]
     },
     "logo_churn_rate": {
       "expression": "count_distinct(field.customer_id where field.event_type = 'churn') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",

@@ -314,6 +314,8 @@ ATL tags are the mechanism that distinguishes Operating (O) from Market (M) metr
 | **LTV** | Contribution margin (includes implementation, onboarding costs) | Gross margin (COGS only) |
 | **Churn** | Revenue churn: MRR-weighted churned and contraction MRR | Logo-based: binary churned/active |
 | **ARR** | Durable ARR: excludes recontracting, pricing_adjustment (trailing 12 months, customers active at period end) | Contracted ARR: all recurring revenue |
+| **LTV:CAC** | LTV-O over CAC-O (contribution margin; gtm, implementation and onboarding cost) | LTV-M over CAC-M (gross margin; gtm cost only) |
+| **CAC Payback** | CAC-O over ARPA × GM-O | CAC-M over ARPA × GM-M |
 
 The full inclusion/exclusion rules for each dual-lens Core metric are specified as `ATL Inclusion` lines in the O/M subsections of [Core Metrics](metrics/core.md). Rule of 40 has no separate O/M form and needs none. The ATL dimensions defined here are the building blocks for those rules.
 

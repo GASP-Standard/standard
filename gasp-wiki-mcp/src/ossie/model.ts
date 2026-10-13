@@ -191,7 +191,7 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
           fields: [
             { name: "period_start", expression: sql("period_start"), dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
             { name: "period_end", expression: sql("period_end"), datatype: "Date", description: "Last day of the reporting period" },
-            ...(breakdown && bf ? [{ name: breakdown, expression: sql(breakdown), datatype: ossieDataType(bf.type), description: bf.description ?? breakdown }] : []),
+            ...(breakdown ? [{ name: breakdown, expression: sql(breakdown), datatype: bf ? ossieDataType(bf.type) : "String" as const, description: bf?.description ?? `Bucket label of ${label}` }] : []),
             { name: "value", expression: sql("value"), datatype: "Decimal", description: `${label}${qualifier} for the period${breakdown ? ` and ${breakdown}` : ""}` },
           ],
           custom_extensions: gasp({ staged: true, for: name, reason: emission.reason }),

@@ -231,6 +231,8 @@ Measured in calendar days. A business-day count reads lower when the interval sp
 Dispute Rate = Invoices disputed / Total invoices × 100
 ```
 
+Billing Disputes are reported per payment status as of period end.
+
 **Target:** <1%
 
 **What it tells you:** Invoice accuracy and customer alignment.
@@ -303,6 +305,8 @@ CEI = (Beginning AR + Credit sales - Ending AR) / (Beginning AR + Credit sales -
 ```
 Bucket % = AR in bucket / Total AR × 100
 ```
+
+Aging Buckets is reported per bucket: one share for each age bucket, each over the whole outstanding balance, so the shares sum to 100%. Age is the days from invoice date to the period end, and bounds are inclusive.
 
 **Targets:**
 - Current: >80%

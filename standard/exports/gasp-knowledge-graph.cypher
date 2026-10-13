@@ -3,8 +3,8 @@
 // Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive`
 // ═══════════════════════════════════════════════════════════════
 //
-// Nodes: 60 Metrics, 28 Entities, 7 Concepts, 51 Datasets, 264 Fields, 22 Source Categories
-// Edges: 79 metric relationships, 70 MEASURES, 30 entity/concept relationships, 385 BELONGS_TO, 352 SOURCED_FROM
+// Nodes: 60 Metrics, 28 Entities, 7 Concepts, 51 Datasets, 263 Fields, 22 Source Categories
+// Edges: 82 metric relationships, 71 MEASURES, 30 entity/concept relationships, 389 BELONGS_TO, 351 SOURCED_FROM
 //
 // Relationship types (metric signal): DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES
 // Relationship types (entity): OWNS, GRANTS, PARENT_OF, PRICED_BY, CONVERTS_TO, SUBMITS, ENGAGES_VIA, MANAGES, SOURCES, SERVES, REPRESENTED_BY, GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS, BELONGS_TO
@@ -44,7 +44,7 @@ CREATE (:Metric {id: 'pipeline_coverage', name: 'Pipeline Coverage', department:
 CREATE (:Metric {id: 'win_rate', name: 'Win Rate', department: 'Sales', signalType: 'efficiency', level: 3, definition: 'The percentage of qualified opportunities that close as won.', formula: 'count(field.opportunity_id where field.opportunity_stage = \'closed_won\' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in (\'closed_won\', \'closed_lost\') and in_period(field.close_date))', url: 'https://gaspwiki.com/v1/metrics/sales/win-rate', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'acv', name: 'ACV', department: 'Sales', signalType: 'outcome', level: 3, definition: 'The annualized value of a contract, normalizing multi-year deals to a single year. Also used to describe average deal size when aggregated.', formula: 'avg(field.acv where field.contract_event_type = \'new_contract\')', url: 'https://gaspwiki.com/v1/metrics/sales/acv-annual-contract-value', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'quota_attainment', name: 'Quota Attainment', department: 'Sales', signalType: 'outcome', level: 3, definition: 'The percentage of quota achieved by a rep or team.', formula: 'sum(field.closed_revenue) / sum(field.quota)', url: 'https://gaspwiki.com/v1/metrics/sales/quota-attainment', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'health_score', name: 'Customer Health Score', department: 'Customer Success', signalType: 'leading', level: 3, definition: 'A composite score predicting likelihood of retention or churn.', formula: 'Health Score = Weighted average of health indicators', url: 'https://gaspwiki.com/v1/metrics/customer-success/customer-health-score', grain: 'Weekly snapshot', frequency: 'Weekly', period: 'week'});
+CREATE (:Metric {id: 'health_score', name: 'Customer Health Score', department: 'Customer Success', signalType: 'leading', level: 3, definition: 'A composite score predicting likelihood of retention or churn.', formula: 'avg(field.composite_score where field.customer_status = \'active\') at period_end', url: 'https://gaspwiki.com/v1/metrics/customer-success/customer-health-score', grain: 'Weekly snapshot', frequency: 'Weekly', period: 'week'});
 CREATE (:Metric {id: 'expansion_rate', name: 'Expansion Revenue Rate', department: 'Customer Success', signalType: 'outcome', level: 3, definition: 'Expansion MRR as a percentage of beginning MRR.', formula: 'metric.expansion_mrr / metric.mrr at period_start', url: 'https://gaspwiki.com/v1/metrics/customer-success/expansion-revenue-rate', grain: 'Per event, aggregate monthly', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'renewal_rate', name: 'Renewal Rate', department: 'Customer Success', signalType: 'outcome', level: 3, definition: 'The percentage of contracts renewed at term.', formula: 'count_distinct(field.subscription_id where field.renewed = true and in_period(field.contract_end)) / count_distinct(field.subscription_id where in_period(field.contract_end))', url: 'https://gaspwiki.com/v1/metrics/customer-success/renewal-rate', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'at_risk_rate', name: 'At-Risk Customer Rate', department: 'Customer Success', signalType: 'leading', level: 3, definition: 'The percentage of customers flagged as at-risk.', formula: 'count_distinct(field.customer_id where field.composite_score < 40) / count_distinct(field.customer_id where field.composite_score is not null)', url: 'https://gaspwiki.com/v1/metrics/customer-success/at-risk-customer-rate', grain: 'Weekly snapshot', frequency: 'Weekly', period: 'week'});
@@ -114,7 +114,7 @@ CREATE (:Concept {id: 'bookings', name: 'Bookings', definition: 'The total value
 CREATE (:Concept {id: 'cogs', name: 'COGS', definition: 'Cost of Goods Sold: the direct cost of delivering the product, infrastructure only (hosting, compute, payment processing, delivery software). Support, success engineering, implementation and onboarding are subtracted in Gross Margin\'s Operating form, not in COGS. Subtracted from revenue in Gross Margin.'});
 CREATE (:Concept {id: 'cohort', name: 'Cohort', definition: 'A time-bound grouping of customers by acquisition period. Used for retention and expansion analysis to isolate vintage effects.'});
 CREATE (:Concept {id: 'pipeline', name: 'Pipeline', definition: 'The aggregate weighted value of active opportunities. Represents potential future bookings at various probability stages.'});
-CREATE (:Concept {id: 'segment', name: 'Segment', definition: 'A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison.'});
+CREATE (:Concept {id: 'segment', name: 'Segment', definition: 'A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison. Recorded in the segment field, which revenue, contract and amendment events carry as of the event and the customer and subscription snapshots carry as of the snapshot.'});
 CREATE (:Concept {id: 'tcv', name: 'TCV (Total Contract Value)', definition: 'The total value of a contract over its full term, including one-time fees and multi-year commitments. Distinct from Bookings (period-attributable) and ACV (annualized).'});
 
 // ─── Source Category Nodes (22) ──────────────
@@ -194,7 +194,7 @@ CREATE (:Dataset {id: 'partner_activity', name: 'Partner activity', kind: 'event
 CREATE (:Dataset {id: 'deal_registration', name: 'Partner deal registration', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'registration_id'});
 CREATE (:Dataset {id: 'forecast', name: 'Revenue forecast', kind: 'fact', dateField: 'period_start', keyField: 'period_start'});
 
-// ─── Field Nodes (264) ─────────────────────────────
+// ─── Field Nodes (263) ─────────────────────────────
 CREATE (:Field {id: 'accounts_receivable', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'acknowledged_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'acquisition_date', type: 'date', metricCount: 1});
@@ -223,19 +223,19 @@ CREATE (:Field {id: 'cash_balance', type: 'decimal', metricCount: 3});
 CREATE (:Field {id: 'certification_status', type: 'enum', metricCount: 1, values: 'none|in_progress|certified|expired'});
 CREATE (:Field {id: 'ces_score', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'change_nature', type: 'enum', metricCount: 2, values: 'permanent|temporary|scheduled_reversal'});
-CREATE (:Field {id: 'channel', type: 'enum', metricCount: 4, values: 'paid_ads|organic_search|email|events|content|referral|direct|other'});
+CREATE (:Field {id: 'channel', type: 'enum', metricCount: 5, values: 'paid_ads|organic_search|email|events|content|referral|direct|other'});
 CREATE (:Field {id: 'close_date', type: 'date', metricCount: 27});
 CREATE (:Field {id: 'close_date_valid', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'closed_revenue', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'committed_at', type: 'timestamp', metricCount: 1});
-CREATE (:Field {id: 'composite_score', type: 'decimal', metricCount: 2});
+CREATE (:Field {id: 'composite_score', type: 'decimal', metricCount: 3});
 CREATE (:Field {id: 'consultant_id', type: 'string', metricCount: 3});
 CREATE (:Field {id: 'contract_end', type: 'date', metricCount: 6});
 CREATE (:Field {id: 'contract_event_type', type: 'enum', metricCount: 2, values: 'new_contract|renewal|amendment|cancellation'});
 CREATE (:Field {id: 'contract_start', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'core_features_adopted', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'cost', type: 'decimal', metricCount: 22});
-CREATE (:Field {id: 'cost_centre', type: 'enum', metricCount: 3, values: 'marketing|sales|customer_success|support|engineering|product|finance|people|services|partnerships|general'});
+CREATE (:Field {id: 'cost_centre', type: 'enum', metricCount: 5, values: 'marketing|sales|customer_success|support|engineering|product|finance|people|services|partnerships|general'});
 CREATE (:Field {id: 'cost_function', type: 'enum', metricCount: 22, values: 'gtm|implementation|onboarding|infrastructure|support|success_engineering|account_management|research_development|general_administrative|services_delivery|recruiting|partner_program|partner_commission'});
 CREATE (:Field {id: 'cost_type', type: 'enum', metricCount: 0, values: 'personnel|software|services|infrastructure|other'});
 CREATE (:Field {id: 'created_at', type: 'timestamp', metricCount: 17});
@@ -244,18 +244,18 @@ CREATE (:Field {id: 'criteria_met', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'csm_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'currency', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'customer_id', type: 'string', metricCount: 26});
-CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 17, values: 'trial|active|churned|dormant'});
+CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 18, values: 'trial|active|churned|dormant'});
 CREATE (:Field {id: 'deflections', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'deliverable_id', type: 'string', metricCount: 1});
-CREATE (:Field {id: 'department', type: 'string', metricCount: 0});
+CREATE (:Field {id: 'department', type: 'string', metricCount: 3});
 CREATE (:Field {id: 'deploy_date', type: 'timestamp', metricCount: 3});
 CREATE (:Field {id: 'deployment_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'detected_at', type: 'timestamp', metricCount: 2});
 CREATE (:Field {id: 'discovered_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'downtime_minutes', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'ebitda', type: 'decimal', metricCount: 2});
-CREATE (:Field {id: 'employee_id', type: 'string', metricCount: 14});
-CREATE (:Field {id: 'employee_status', type: 'enum', metricCount: 11, values: 'active|on_leave|terminated'});
+CREATE (:Field {id: 'employee_id', type: 'string', metricCount: 13});
+CREATE (:Field {id: 'employee_status', type: 'enum', metricCount: 10, values: 'active|on_leave|terminated'});
 CREATE (:Field {id: 'engagement_score', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'entry_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'entry_id', type: 'string', metricCount: 0});
@@ -289,12 +289,12 @@ CREATE (:Field {id: 'license_status', type: 'enum', metricCount: 1, values: 'act
 CREATE (:Field {id: 'seats_purchased', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'seats_assigned', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'hire_date', type: 'date', metricCount: 8});
-CREATE (:Field {id: 'hire_source', type: 'enum', metricCount: 1, values: 'referral|inbound|sourced|agency|internal|campus|other'});
+CREATE (:Field {id: 'hire_source', type: 'enum', metricCount: 2, values: 'referral|inbound|sourced|agency|internal|campus|other'});
 CREATE (:Field {id: 'hours', type: 'decimal', metricCount: 3});
 CREATE (:Field {id: 'hours_actual', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'hours_budgeted', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'incident_id', type: 'string', metricCount: 3});
-CREATE (:Field {id: 'incident_type', type: 'enum', metricCount: 1, values: 'availability|performance|security|data'});
+CREATE (:Field {id: 'incident_type', type: 'enum', metricCount: 3, values: 'availability|performance|security|data'});
 CREATE (:Field {id: 'includes_services', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'invoice_amount', type: 'decimal', metricCount: 4});
 CREATE (:Field {id: 'invoice_corrected', type: 'boolean', metricCount: 1});
@@ -311,8 +311,8 @@ CREATE (:Field {id: 'job_level', type: 'enum', metricCount: 1, values: 'individu
 CREATE (:Field {id: 'last_active_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'lead_created_date', type: 'date', metricCount: 5});
 CREATE (:Field {id: 'lead_id', type: 'string', metricCount: 11});
-CREATE (:Field {id: 'lead_source', type: 'string', metricCount: 0});
-CREATE (:Field {id: 'lead_stage', type: 'enum', metricCount: 0, values: 'lead|mql|sql|opportunity|disqualified'});
+CREATE (:Field {id: 'lead_source', type: 'string', metricCount: 4});
+CREATE (:Field {id: 'lead_stage', type: 'enum', metricCount: 1, values: 'lead|mql|sql|opportunity|disqualified'});
 CREATE (:Field {id: 'lifecycle_attribution', type: 'enum', metricCount: 0, values: 'acquisition|activation|retention|expansion|reactivation|servicing'});
 CREATE (:Field {id: 'list_price', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'market_midpoint', type: 'decimal', metricCount: 1});
@@ -341,7 +341,7 @@ CREATE (:Field {id: 'operating_cash_flow', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'opportunity_amount', type: 'decimal', metricCount: 22});
 CREATE (:Field {id: 'opportunity_created_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'opportunity_id', type: 'string', metricCount: 15});
-CREATE (:Field {id: 'opportunity_stage', type: 'enum', metricCount: 29, values: 'qualification|discovery|proposal|negotiation|closed_won|closed_lost'});
+CREATE (:Field {id: 'opportunity_stage', type: 'enum', metricCount: 31, values: 'qualification|discovery|proposal|negotiation|closed_won|closed_lost'});
 CREATE (:Field {id: 'order_completed_at', type: 'timestamp', metricCount: 3});
 CREATE (:Field {id: 'order_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'order_received_at', type: 'timestamp', metricCount: 1});
@@ -352,11 +352,11 @@ CREATE (:Field {id: 'partner_id', type: 'string', metricCount: 11});
 CREATE (:Field {id: 'partner_recruited_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'partner_sourced', type: 'boolean', metricCount: 8});
 CREATE (:Field {id: 'partner_status', type: 'enum', metricCount: 6, values: 'recruited|active|churned'});
-CREATE (:Field {id: 'partner_tier', type: 'enum', metricCount: 1, values: 'registered|silver|gold|platinum'});
+CREATE (:Field {id: 'partner_tier', type: 'enum', metricCount: 2, values: 'registered|silver|gold|platinum'});
 CREATE (:Field {id: 'patched_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'payment_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'payment_method', type: 'enum', metricCount: 1, values: 'credit_card|ach|wire|check|other'});
-CREATE (:Field {id: 'payment_status', type: 'enum', metricCount: 0, values: 'paid|unpaid|partial|written_off'});
+CREATE (:Field {id: 'payment_status', type: 'enum', metricCount: 2, values: 'paid|unpaid|partial|written_off'});
 CREATE (:Field {id: 'performance_rating', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'period_start', type: 'date', metricCount: 51});
 CREATE (:Field {id: 'planned_date', type: 'date', metricCount: 2});
@@ -385,7 +385,6 @@ CREATE (:Field {id: 'recovery_time', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'referenceable', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'registration_date', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'registration_id', type: 'string', metricCount: 2});
-CREATE (:Field {id: 'registration_stage', type: 'enum', metricCount: 2, values: 'qualification|discovery|proposal|negotiation|closed_won|closed_lost'});
 CREATE (:Field {id: 'release_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'release_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'renewal_amount', type: 'decimal', metricCount: 2});
@@ -419,7 +418,8 @@ CREATE (:Field {id: 'scope_changed', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'service_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'session_duration', type: 'integer', metricCount: 2});
 CREATE (:Field {id: 'session_id', type: 'string', metricCount: 2});
-CREATE (:Field {id: 'severity', type: 'enum', metricCount: 0, values: 'sev1|sev2|sev3|sev4'});
+CREATE (:Field {id: 'segment', type: 'string', metricCount: 16});
+CREATE (:Field {id: 'severity', type: 'enum', metricCount: 2, values: 'sev1|sev2|sev3|sev4'});
 CREATE (:Field {id: 'signup_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'sla_met', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'snapshot_date', type: 'date', metricCount: 169});
@@ -443,8 +443,7 @@ CREATE (:Field {id: 'termination_date', type: 'date', metricCount: 5});
 CREATE (:Field {id: 'termination_type', type: 'enum', metricCount: 3, values: 'voluntary|involuntary'});
 CREATE (:Field {id: 'ticket_id', type: 'string', metricCount: 12});
 CREATE (:Field {id: 'ticket_status', type: 'enum', metricCount: 3, values: 'open|pending|resolved|closed'});
-CREATE (:Field {id: 'ticket_type', type: 'enum', metricCount: 1, values: 'how_to|bug|billing|account|feature_request|other'});
-CREATE (:Field {id: 'tier', type: 'string', metricCount: 0});
+CREATE (:Field {id: 'ticket_type', type: 'enum', metricCount: 3, values: 'how_to|bug|billing|account|feature_request|other'});
 CREATE (:Field {id: 'time_entry_type', type: 'enum', metricCount: 2, values: 'billable|training|pre_sales|internal'});
 CREATE (:Field {id: 'traffic_source', type: 'enum', metricCount: 1, values: 'organic_search|paid_search|paid_social|social|email|referral|direct|other'});
 CREATE (:Field {id: 'training_completed', type: 'boolean', metricCount: 1});
@@ -460,7 +459,7 @@ CREATE (:Field {id: 'vulnerability_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'vulnerability_status', type: 'enum', metricCount: 1, values: 'open|patched|accepted'});
 CREATE (:Field {id: 'written_off_hours', type: 'decimal', metricCount: 1});
 
-// ─── Metric Relationships (79) ──────────────────
+// ─── Metric Relationships (82) ──────────────────
 MATCH (a:Metric {id: 'net_new_mrr'}), (b:Metric {id: 'mrr'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'mqls'}), (b:Metric {id: 'sqls'})
@@ -543,6 +542,12 @@ MATCH (a:Metric {id: 'operating_margin'}), (b:Metric {id: 'fcf'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'burn_rate'}), (b:Metric {id: 'fcf'})
 CREATE (a)-[:REDUCES]->(b);
+MATCH (a:Metric {id: 'mrr'}), (b:Metric {id: 'burn_rate'})
+CREATE (a)-[:REDUCES]->(b);
+MATCH (a:Metric {id: 'gross_margin'}), (b:Metric {id: 'burn_rate'})
+CREATE (a)-[:REDUCES]->(b);
+MATCH (a:Metric {id: 'deployment_frequency'}), (b:Metric {id: 'mttr'})
+CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'dso'}), (b:Metric {id: 'fcf'})
 CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'forecast_accuracy'}), (b:Metric {id: 'pipeline_coverage'})
@@ -620,7 +625,7 @@ CREATE (a)-[:COMPONENT_OF]->(b);
 MATCH (a:Metric {id: 'ticket_volume'}), (b:Metric {id: 'self_service_rate'})
 CREATE (a)-[:COMPONENT_OF]->(b);
 
-// ─── MEASURES Edges (70) ──────────────────────────
+// ─── MEASURES Edges (71) ──────────────────────────
 MATCH (m:Metric {id: 'activation_rate'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'acv'}), (e:Entity {id: 'customer'})
@@ -642,6 +647,8 @@ CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'expansion_rate'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'grr'}), (e:Entity {id: 'customer'})
+CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'health_score'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'logo_churn_rate'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
@@ -762,7 +769,7 @@ CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'self_service_rate'}), (e:Entity {id: 'kb_article'})
 CREATE (m)-[:MEASURES]->(e);
 
-// ─── BELONGS_TO Edges (385) ─────────────────────────────
+// ─── BELONGS_TO Edges (389) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (d:Dataset {id: 'balance_sheet'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'acknowledged_at'}), (d:Dataset {id: 'incident'})
@@ -1183,6 +1190,8 @@ MATCH (f:Field {id: 'opportunity_id'}), (d:Dataset {id: 'deal_registration'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'opportunity_stage'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'opportunity_stage'}), (d:Dataset {id: 'deal_registration'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'order_completed_at'}), (d:Dataset {id: 'order'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'order_id'}), (d:Dataset {id: 'order'})
@@ -1311,8 +1320,6 @@ MATCH (f:Field {id: 'registration_date'}), (d:Dataset {id: 'deal_registration'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'registration_id'}), (d:Dataset {id: 'deal_registration'})
 CREATE (f)-[:BELONGS_TO]->(d);
-MATCH (f:Field {id: 'registration_stage'}), (d:Dataset {id: 'deal_registration'})
-CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'release_date'}), (d:Dataset {id: 'release'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'release_date'}), (d:Dataset {id: 'feature'})
@@ -1388,6 +1395,16 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'session_duration'}), (d:Dataset {id: 'product_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'session_id'}), (d:Dataset {id: 'product_event'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'segment'}), (d:Dataset {id: 'revenue_event'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'segment'}), (d:Dataset {id: 'contract_event'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'segment'}), (d:Dataset {id: 'amendment_event'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'segment'}), (d:Dataset {id: 'customer'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'segment'}), (d:Dataset {id: 'subscription'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'severity'}), (d:Dataset {id: 'incident'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1501,8 +1518,6 @@ MATCH (f:Field {id: 'ticket_status'}), (d:Dataset {id: 'ticket'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'ticket_type'}), (d:Dataset {id: 'ticket'})
 CREATE (f)-[:BELONGS_TO]->(d);
-MATCH (f:Field {id: 'tier'}), (d:Dataset {id: 'customer'})
-CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'time_entry_type'}), (d:Dataset {id: 'time_entry'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'traffic_source'}), (d:Dataset {id: 'web_traffic'})
@@ -1534,7 +1549,7 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'written_off_hours'}), (d:Dataset {id: 'time_entry'})
 CREATE (f)-[:BELONGS_TO]->(d);
 
-// ─── SOURCED_FROM Edges (352) ─────────────────────────────
+// ─── SOURCED_FROM Edges (351) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'finance'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'billing'})
@@ -1951,6 +1966,8 @@ MATCH (f:Field {id: 'opportunity_id'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'opportunity_stage'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'opportunity_stage'}), (s:SourceCategory {id: 'partner_management'})
+CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'order_completed_at'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'order_id'}), (s:SourceCategory {id: 'billing'})
@@ -2063,10 +2080,6 @@ MATCH (f:Field {id: 'registration_date'}), (s:SourceCategory {id: 'partner_manag
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'registration_id'}), (s:SourceCategory {id: 'partner_management'})
 CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'registration_stage'}), (s:SourceCategory {id: 'partner_management'})
-CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'registration_stage'}), (s:SourceCategory {id: 'crm'})
-CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'release_date'}), (s:SourceCategory {id: 'cicd'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'release_id'}), (s:SourceCategory {id: 'cicd'})
@@ -2145,6 +2158,10 @@ MATCH (f:Field {id: 'session_duration'}), (s:SourceCategory {id: 'product_analyt
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'session_id'}), (s:SourceCategory {id: 'product_analytics'})
 CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'segment'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'segment'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'severity'}), (s:SourceCategory {id: 'incident_management'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'signup_date'}), (s:SourceCategory {id: 'product_analytics'})
@@ -2202,10 +2219,6 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'ticket_status'}), (s:SourceCategory {id: 'help_desk'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'ticket_type'}), (s:SourceCategory {id: 'help_desk'})
-CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'tier'}), (s:SourceCategory {id: 'billing'})
-CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'tier'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'time_entry_type'}), (s:SourceCategory {id: 'psa'})
 CREATE (f)-[:SOURCED_FROM]->(s);

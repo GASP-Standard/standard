@@ -5,6 +5,7 @@ import {
   inferDrivers,
   findPaths,
   coverageGap,
+  noDriversMessage,
 } from "../src/traversal.js";
 import type { StandardData } from "../src/types.js";
 
@@ -239,5 +240,23 @@ describe("baseline inputs", () => {
 
   it("coverage_gap lists the baseline input as a direct upstream of NRR", () => {
     expect(coverageGap(new Set(["nrr"]), ctx).upstreamMissing).toContain("mrr");
+  });
+});
+
+describe("metrics with few upstream edges", () => {
+  it("Burn Rate has MRR and Gross Margin as drivers, both raised to bring burn down", () => {
+    const c = inferDrivers("burn_rate", -1, ctx);
+    for (const id of ["mrr", "gross_margin"]) expect(c.find((x) => x.id === id)?.direction, id).toBe(1);
+  });
+
+  it("MTTR has Deployment Frequency as a driver, raised to bring MTTR down", () => {
+    expect(inferDrivers("mttr", -1, ctx).find((x) => x.id === "deployment_frequency")?.direction).toBe(1);
+  });
+
+  it("says in words when a metric has no upstream drivers in the graph", () => {
+    const iso = buildContext([{ id: "lonely", label: "Lonely" } as any, { id: "other", label: "Other" } as any], [{ source: "lonely", target: "other", type: "drives" }], data.ontology);
+    expect(inferDrivers("lonely", 1, iso)).toEqual([]);
+    expect(noDriversMessage("lonely", iso)).toBe("No upstream drivers in the graph: no edge leads into Lonely, so the graph cannot say what moves it.");
+    expect(noDriversMessage("burn_rate", ctx)).toContain("within the traversal depth limit");
   });
 });

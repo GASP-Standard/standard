@@ -49,6 +49,7 @@ A change in recurring revenue. This is the primary input for MRR, ARR, NRR, GRR 
 | `new_mrr` | `decimal` | MRR after this event |
 | `expansion_classification` | `enum` (expansion and contraction only) | `same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`. See [ATL](atl.md#expansion-classification). The NRR and ARR forms read it. |
 | `change_nature` | `enum` (optional) | `permanent` (default), `temporary`, `scheduled_reversal`. See [Change Nature](#change-nature). |
+| `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
 
 ---
 
@@ -86,6 +87,7 @@ A contractual milestone. Primary input for bookings, renewal rate and contract-l
 | `tcv` | `decimal` | Total contract value |
 | `acv` | `decimal` | Annual contract value |
 | `currency` | `string` | ISO 4217 currency code |
+| `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
 
 ---
 
@@ -106,6 +108,7 @@ A mid-term change to an existing subscription. Distinct from `Contract_Event` be
 | `prior_quantity` | `integer` (nullable) | Seat/unit count before (if applicable) |
 | `new_quantity` | `integer` (nullable) | Seat/unit count after (if applicable) |
 | `change_nature` | `enum` (optional) | `permanent` (default), `temporary`, `scheduled_reversal`. See [Change Nature](#change-nature). |
+| `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
 
 ---
 
@@ -126,6 +129,10 @@ A change in customer lifecycle status. Primary input for health scores, onboardi
 ### Pairing rule: amendments that change MRR
 
 Any `Amendment_Event` that changes MRR also writes a `Revenue_Event` carrying the `mrr_change`, the `event_type` (`expansion` or `contraction`) and the `expansion_classification`. The amendment row keeps the contract detail (plan, quantity, amendment type). The two are distinct facts about one commercial action, so NRR, ARR and the other revenue metrics read `Revenue_Event` and still see mid-term expansion such as seat adds and `new_module` upsells.
+
+### Segment on events
+
+`segment` is a dimension for slicing metrics, not an ATL tag: it says which kind of customer an event belongs to, not what the event means. It is denormalised onto `Revenue_Event`, `Contract_Event` and `Amendment_Event` on purpose, as of the event date, so NRR, churn and the MRR movements group by segment without a join and a customer that moves from SMB to Mid-Market keeps its earlier events in SMB. The customer and subscription snapshots carry the current value on each snapshot date. Pricing tier is the plan (`plan_id`), not the segment.
 
 ---
 

@@ -269,6 +269,56 @@ describe("distinct pairs, total() and breakdowns", () => {
       .toThrow("reads dataset 'cost_event', which has no ticket_type field");
   });
 
+  it("compiles a breakdown in total mode: grouped where the dataset carries the field, whole elsewhere", () => {
+    const withCentre = { ...fields, cost_centre: { id: "cost_centre", type: "enum", datasets: ["cost_event"], values: ["marketing", "sales"] } };
+    const formulas: Record<string, MetricFormula> = {
+      spend: { formula: "sum(field.cost) / count(field.ticket_id)", unit: "currency", breakdowns: { by_centre: { field: "field.cost_centre", total: true }, strict: "field.cost_centre" } },
+    };
+    const ctx = { fields: withCentre, datasets, formulas };
+    const c = compileMetric("spend", ctx, "by_centre");
+    expect(c.breakdown).toEqual({ field: "cost_centre", total: true });
+    expect(c.sql.match(/= _d\.cost_centre/g)).toHaveLength(1);
+    expect(c.sql).toBe(
+      "SELECT _d.cost_centre AS cost_centre, (CAST((SELECT SUM({{cost@cost_event}}) FROM {{_table:cost_event}} WHERE {{event_date@cost_event}} >= {{_period_start}} AND {{event_date@cost_event}} <= {{_period_end}} AND {{cost_centre@cost_event}} = _d.cost_centre) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}}), 0)) AS spend\n" +
+      "FROM (SELECT 'marketing' AS cost_centre UNION ALL SELECT 'sales' AS cost_centre) _d",
+    );
+    // Without total mode the ungrouped aggregate is an error naming it.
+    expect(() => compileMetric("spend", ctx, "strict")).toThrow("count() over field.ticket_id reads dataset 'ticket', which has no cost_centre field");
+    // The same shape works on the entry-level breakdown, and a malformed object is rejected.
+    expect(compileMetric("spend", { ...ctx, formulas: { spend: { ...formulas.spend, breakdown: { field: "field.cost_centre", total: true } } } }).breakdown).toEqual({ field: "cost_centre", total: true });
+    expect(() => compileMetric("spend", { ...ctx, formulas: { spend: { ...formulas.spend, breakdowns: { bad: { field: "field.cost_centre", total: "yes" } as any } } } }, "bad")).toThrow("boolean");
+  });
+
+  it("compiles a bucketed breakdown over a per-row expression, with literal labels and a CASE on grouped aggregates only", () => {
+    const withAge = { ...fields, closed_at: { id: "closed_at", type: "date", datasets: ["ticket"] }, opened_on: { id: "opened_on", type: "date", datasets: ["ticket"] } };
+    const buckets = { fast: [0, 2], slow: [3, null] } as Record<string, [number, number | null]>;
+    const formulas: Record<string, MetricFormula> = {
+      share: { formula: "count(field.ticket_id) / total(count(field.ticket_id))", unit: "percent", breakdown: { expression: "field.closed_at - field.opened_on", buckets } },
+      spend: { formula: "count(field.ticket_id) / sum(field.cost)", unit: "ratio", breakdowns: { by_age: { expression: "field.closed_at - field.opened_on", buckets, total: true }, strict: { expression: "field.closed_at - field.opened_on", buckets } } },
+    };
+    const ctx = { fields: withAge, datasets, formulas };
+    const c = compileMetric("share", ctx);
+    expect(c.breakdown).toEqual({ field: "bucket", expression: "field.closed_at - field.opened_on", buckets });
+    expect(c.fields).toEqual(expect.arrayContaining(["closed_at", "opened_on"]));
+    const window = "{{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}}";
+    expect(c.sql).toBe(
+      `SELECT _d.bucket AS bucket, (CAST((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE ${window} AND CASE WHEN ({{closed_at@ticket}} - {{opened_on@ticket}}) BETWEEN 0 AND 2 THEN 'fast' WHEN ({{closed_at@ticket}} - {{opened_on@ticket}}) >= 3 THEN 'slow' END = _d.bucket) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE ${window}), 0)) AS share\n` +
+      "FROM (SELECT 'fast' AS bucket UNION ALL SELECT 'slow' AS bucket) _d",
+    );
+    // A named bucketed breakdown takes its name as the column; total mode keeps the cost aggregate whole.
+    const named = compileMetric("spend", ctx, "by_age");
+    expect(named.breakdown?.field).toBe("by_age");
+    expect(named.sql.match(/END = _d\.by_age/g)).toHaveLength(1);
+    expect(() => compileMetric("spend", ctx, "strict")).toThrow("sum() over field.cost reads dataset 'cost_event', which has no closed_at, opened_on field");
+    const bad = (b: any) => () => compileMetric("share", { ...ctx, formulas: { share: { ...formulas.share, breakdown: b } } });
+    expect(bad({ expression: "field.closed_at - field.opened_on", buckets: { a: [0, 5], b: [5, null] } })).toThrow("overlap");
+    expect(bad({ expression: "field.closed_at - field.opened_on", buckets: { a: [0, null], b: [5, 9] } })).toThrow("overlap");
+    expect(bad({ expression: "field.closed_at - field.opened_on", buckets: { a: [0, 5], A: [6, 9] } })).toThrow("unique");
+    expect(bad({ expression: "field.closed_at - field.cost", buckets: { a: [0, 5] } })).toThrow("different datasets");
+    expect(bad({ expression: "sum(field.cost)", buckets: { a: [0, 5] } })).toThrow("per-row expression");
+    expect(bad({ expression: "field.closed_at - field.opened_on", buckets: { a: [5, 1] } })).toThrow("hi below lo");
+  });
+
   it("rejects total() outside a breakdown, also through a metric reference", () => {
     expect(() => compile("count(field.ticket_id) / total(count(field.ticket_id))")).toThrow("total() outside a breakdown");
     expect(() => compile("metric.share * 2", undefined, { share: { formula: "count(field.ticket_id) / total(metric.volume)", unit: "percent", breakdown: "field.ticket_type" } }))

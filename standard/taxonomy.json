@@ -509,9 +509,6 @@
     "people::headcount-growth-rate": {
       "primary": "operational"
     },
-    "people::headcount-by-department": {
-      "primary": "operational"
-    },
     "people::revenue-per-employee": {
       "primary": "outcome",
       "secondary": "efficiency"

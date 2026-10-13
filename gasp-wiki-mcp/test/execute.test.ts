@@ -1,12 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
-import { fillTemplate } from "../src/tools.js";
-import {
-  generateFixture, buildAdapter, datasetFields, columnName, addDays, TABLES, START, END, type Row,
-} from "./fixture/generate.js";
+import { buildAdapter, addDays, START, END, type Row } from "./fixture/generate.js";
+import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate } from "./fixture-db.js";
 
 // Runs the compiled SQL. The fixture (test/fixture) is loaded into an in-process
 // Postgres, every template is filled from the fixture's per-dataset adapter and
@@ -14,45 +10,14 @@ import {
 // computed in plain TypeScript over the same rows. The expected values never go through the compiler or the filler.
 
 const data = loadStandard();
-const fixture = generateFixture();
-const adapter = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "fixture", "adapter.json"), "utf-8"));
 let db: PGlite;
 
-const PG_TYPES: Record<string, string> = { date: "DATE", timestamp: "TIMESTAMP", decimal: "NUMERIC", integer: "INTEGER", boolean: "BOOLEAN" };
-const literal = (v: Row[string]) =>
-  v === null || v === undefined ? "NULL" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`;
-
-beforeAll(async () => {
-  db = new PGlite();
-  for (const [ds, table] of Object.entries(TABLES)) {
-    const fields = datasetFields(ds);
-    const cols = fields.map((f) => columnName(ds, f.id));
-    await db.exec(`CREATE TABLE ${table} (${fields.map((f, i) => `${cols[i]} ${PG_TYPES[f.type] ?? "TEXT"}`).join(", ")})`);
-    const rows = fixture.tables[ds];
-    for (let i = 0; i < rows.length; i += 1000) {
-      const values = rows.slice(i, i + 1000).map((r) => `(${fields.map((f) => literal(r[f.id])).join(", ")})`);
-      await db.exec(`INSERT INTO ${table} (${cols.join(", ")}) VALUES ${values.join(", ")}`);
-    }
-  }
-}, 120_000);
+beforeAll(async () => { db = await fixtureDb(); }, 120_000);
 
 afterAll(async () => { await db?.close(); });
 
-function fill(id: string) {
-  const template = data.queryTemplates[id];
-  if (!template) throw new Error(`no template for ${id}`);
-  return fillTemplate(template, adapter, data);
-}
-
-function bind(sql: string, start: string, end: string): string {
-  return sql.replace(/:period_start\b/g, `DATE '${start}'`).replace(/:period_end\b/g, `DATE '${end}'`);
-}
-
-async function run(id: string, start: string, end: string): Promise<number | null> {
-  const res = await db.query<Record<string, unknown>>(bind(fill(id).sql, start, end));
-  const v = Object.values(res.rows[0])[0];
-  return v === null || v === undefined ? null : Number(v);
-}
+const fill = (id: string) => fillFor(data, id);
+const run = (id: string, start: string, end: string) => runTemplate(db, data, id, start, end);
 
 /** A breakdown template's rows: dimension value → metric value. */
 async function runBreakdown(id: string, start: string, end: string): Promise<Record<string, number | null>> {
@@ -141,6 +106,20 @@ describe("fixture", () => {
     expect(qualifyingUsers(END, END)).toBe(5);
     expect(qualifyingUsers(addDays(END, -6), END)).toBe(12);
     expect(qualifyingUsers(addDays(END, -29), END)).toBe(21);
+  });
+});
+
+describe("fixture lifecycle events", () => {
+  it("has one state change per acquisition, churn and reactivation in the revenue stories, loaded as a table", async () => {
+    const transitions = T.revenue_event.filter((r) => ["new", "churn", "reactivation"].includes(String(r.event_type)));
+    const rows = T.lifecycle_event;
+    expect(rows.length).toBe(transitions.length);
+    const key = (r: Row) => `${r.customer_id} ${r.event_date}`;
+    expect(rows.map(key).sort()).toEqual(transitions.map(key).sort());
+    const c05 = rows.filter((r) => r.customer_id === "c05").map((r) => [r.prior_state, r.new_state, r.state_category]);
+    expect(c05).toEqual([["trial", "active", "activation"], ["active", "churned", "churned"], ["churned", "active", "reactivated"]]);
+    const res = await db.query<{ n: number }>("SELECT COUNT(*)::int AS n FROM gasp_lifecycle_events");
+    expect(res.rows[0].n).toBe(rows.length);
   });
 });
 
@@ -378,13 +357,30 @@ describe("hand-computed metric values, extended datasets", () => {
 describe("breakdowns", () => {
   it("every breakdown template returns one row per declared value", async () => {
     const ids = Object.keys(data.queryTemplates).filter((id) => data.queryTemplates[id].breakdown);
-    expect(ids.sort()).toEqual(["cac_by_channel", "partner_tier_distribution", "payment_method_distribution", "source_of_hire", "ticket_distribution_by_type"]);
+    expect(ids.sort()).toEqual(["aging_buckets", "cac_by_channel", "partner_tier_distribution", "payment_method_distribution", "source_of_hire", "ticket_distribution_by_type"]);
     for (const id of ids) {
-      const field = data.ontology!.fields!.find((f) => f.id === data.queryTemplates[id].breakdown!.field)!;
+      const b = data.queryTemplates[id].breakdown!;
+      const values = b.buckets ? Object.keys(b.buckets) : data.ontology!.fields!.find((f) => f.id === b.field)!.values!;
       const rows = await runBreakdown(id, ...JUNE);
-      expect(Object.keys(rows).sort(), id).toEqual([...field.values!].sort());
+      expect(Object.keys(rows).sort(), id).toEqual([...values].sort());
       expect(Object.values(rows).some((v) => v !== null), id).toBe(true);
     }
+  });
+
+  it("Aging Buckets, June: each bucket's share of the 2026-06-30 outstanding balance matches the story rows, and the shares sum to 1", async () => {
+    const open = snapshot("invoice", END).filter((r) => r.outstanding_amount !== null);
+    const age = (r: Row) => Math.round((Date.parse(String(r.snapshot_date)) - Date.parse(String(r.invoice_date))) / 86400000);
+    const total = sum(open, "outstanding_amount");
+    const expected: Record<string, number> = {
+      current: sum(open.filter((r) => age(r) >= 0 && age(r) <= 30), "outstanding_amount") / total,
+      days_31_60: sum(open.filter((r) => age(r) >= 31 && age(r) <= 60), "outstanding_amount") / total,
+      days_61_90: sum(open.filter((r) => age(r) >= 61 && age(r) <= 90), "outstanding_amount") / total,
+      days_90_plus: sum(open.filter((r) => age(r) >= 91), "outstanding_amount") / total,
+    };
+    expect(total).toBeGreaterThan(0);
+    const rows = await runBreakdown("aging_buckets", ...JUNE);
+    for (const [bucket, share] of Object.entries(expected)) expect(rows[bucket] ?? 0, bucket).toBeCloseTo(share, 10);
+    expect(Object.values(rows).reduce((s, v) => s + (v ?? 0), 0)).toBeCloseTo(1, 10);
   });
 
   it("Ticket Distribution by Type, June: shares match the story rows and sum to 1", async () => {
@@ -404,5 +400,91 @@ describe("breakdowns", () => {
     expect(rows.paid_ads).toBeCloseTo(spend / won.length, 6);
     // Email and events campaigns spend with no deal won through them: no value.
     expect(rows.email).toBeNull();
+  });
+});
+
+// Named breakdowns (formulas.json `breakdowns`) compile the main formula grouped by the field.
+describe("named breakdowns", () => {
+  async function runNamed(id: string, name: string, start: string, end: string): Promise<Record<string, number | null>> {
+    const { compileMetric } = await import("../src/compile.js");
+    const { fillTemplate } = await import("../src/tools.js");
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
+    const c = compileMetric(id, ctx, name);
+    const template = { ...data.queryTemplates[id], fields: c.fields, datasets: c.datasets, parameterizedQuery: c.sql, placeholders: c.placeholders, breakdown: c.breakdown };
+    const res = await db.query<Record<string, unknown>>(bind(fillTemplate(template, adapter, data).sql, start, end));
+    const field = c.breakdown!.field;
+    return Object.fromEntries(res.rows.map((r) => [String(r[field]), r[id] === null || r[id] === undefined ? null : Number(r[id])]));
+  }
+
+  it("every named breakdown runs and returns at least one value for H1", async () => {
+    for (const [id, f] of Object.entries(data.formulas!)) {
+      for (const name of Object.keys(f.breakdowns ?? {})) {
+        const rows = await runNamed(id, name, ...H1);
+        expect(Object.keys(rows).length, `${id}:${name}`).toBeGreaterThan(0);
+        expect(Object.values(rows).some((v) => v !== null), `${id}:${name}`).toBe(true);
+      }
+    }
+  });
+
+  it("Incident Count by severity, H1: one row per severity, counts match the story rows and sum to the total", async () => {
+    const h1 = T.incident.filter((r) => between(r.started_at, ...H1));
+    const rows = await runNamed("incident_count", "by_severity", ...H1);
+    expect(Object.keys(rows).sort()).toEqual(["sev1", "sev2", "sev3", "sev4"]);
+    expect(rows).toEqual({ sev1: 3, sev2: 3, sev3: 3, sev4: 3 });
+    for (const [sev, n] of Object.entries(rows)) expect(n, sev).toBe(distinct(h1.filter((r) => r.severity === sev), "incident_id"));
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(await run("incident_count", ...H1));
+  });
+
+  it("Ticket Volume by ticket type, June: counts match the story rows and sum to the total", async () => {
+    const june = T.ticket.filter((r) => between(r.created_at, ...JUNE));
+    const rows = await runNamed("ticket_volume", "by_ticket_type", ...JUNE);
+    for (const [type, n] of Object.entries(rows)) expect(n ?? 0, type).toBe(distinct(june.filter((r) => r.ticket_type === type), "ticket_id"));
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(june.length);
+  });
+
+  it("MRR by segment, June: each row matches the subscription snapshot and the rows sum to MRR", async () => {
+    const rows = await runNamed("mrr", "by_segment", ...JUNE);
+    const bySegment = (seg: string) => sum(snapshot("subscription", END).filter((r) => r.subscription_status === "active" && r.segment === seg), "mrr");
+    expect(rows).toEqual({ smb: 13400, mid_market: 5800, enterprise: 5000 });
+    for (const [seg, v] of Object.entries(rows)) expect(v, seg).toBe(bySegment(seg));
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(await run("mrr", ...JUNE));
+  });
+
+  it("Logo Churn Rate by segment, Q2: one row per segment present, each churned over active at period start", async () => {
+    const rows = await runNamed("logo_churn_rate", "by_segment", ...Q2);
+    const present = [...new Set(T.revenue_event.map((r) => r.segment))].map(String).sort();
+    expect(Object.keys(rows).sort()).toEqual(present);
+    expect(present).toEqual(["enterprise", "mid_market", "smb"]);
+    for (const seg of present) {
+      const churned = distinct(revenueEvents(...Q2, "churn").filter((r) => r.segment === seg), "customer_id");
+      const active = activeCustomersOn(Q2[0]).filter((r) => r.segment === seg).length;
+      expect(rows[seg], seg).toBeCloseTo(churned / active, 10);
+    }
+  });
+
+  it("Billings by payment status, H1: each row matches the period-end invoice snapshot and the rows sum to Billings", async () => {
+    const rows = await runNamed("billings", "by_payment_status", ...H1);
+    const billed = snapshot("invoice", END).filter((r) => between(r.invoice_date, ...H1));
+    for (const [status, v] of Object.entries(rows)) expect(v ?? 0, status).toBeCloseTo(sum(billed.filter((r) => r.payment_status === status), "invoice_amount"), 6);
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBeCloseTo((await run("billings", ...H1))!, 6);
+    expect(Object.values(rows).filter((v) => v !== null).length).toBeGreaterThan(1);
+  });
+
+  it("Leads by lead stage, H1: each row matches the period-end lead snapshot and the rows sum to Leads", async () => {
+    const rows = await runNamed("leads", "by_lead_stage", ...H1);
+    const created = snapshot("lead", END).filter((r) => between(r.lead_created_date, ...H1));
+    for (const [stage, v] of Object.entries(rows)) expect(v ?? 0, stage).toBe(distinct(created.filter((r) => r.lead_stage === stage), "lead_id"));
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(await run("leads", ...H1));
+    expect(Object.values(rows).filter((v) => v !== null && v > 0).length).toBeGreaterThan(1);
+  });
+
+  it("CAC by cost centre, June (total mode): marketing and sales rows over all new customers sum to CAC", async () => {
+    const rows = await runNamed("cac", "by_cost_centre", ...JUNE);
+    const newCustomers = distinct(revenueEvents(...JUNE, "new"), "customer_id");
+    const gtm = (centre: string) => sum(T.cost_event.filter((r) => between(r.event_date, ...JUNE) && r.cost_function === "gtm" && r.cost_centre === centre), "cost");
+    expect([gtm("marketing"), gtm("sales"), newCustomers]).toEqual([3800, 2600, 2]);
+    expect(rows.marketing).toBeCloseTo(3800 / 2, 6);
+    expect(rows.sales).toBeCloseTo(2600 / 2, 6);
+    expect((rows.marketing ?? 0) + (rows.sales ?? 0)).toBeCloseTo((await run("cac", ...JUNE))!, 6);
   });
 });

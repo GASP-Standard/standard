@@ -34,6 +34,8 @@
  * `period_days` is the length of the reporting period in days. `to_date` makes an
  * aggregate cumulative from the start of history to period_end (balances).
  * A bare `period_start` / `period_end` is the period boundary as a date value.
+ * `field.period_start` is a different thing: the date column of fact datasets
+ * (the start of the period a fact row covers), always written with its prefix.
  * `at` takes a snapshot at a period boundary; an outer `at` overrides an inner one.
  * `window` replaces the period filter of an event or fact aggregate with a
  * trailing window (DAU is the 1 day, WAU the 7 days, MAU the 30 days ending at

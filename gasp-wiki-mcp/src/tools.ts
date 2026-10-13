@@ -5,7 +5,9 @@
  */
 import { metricFormulaId, closestNames } from "./loader.js";
 import { metricUrl } from "./urls.js";
-import type { StandardData, Metric, Definition, QueryTemplate, DataRequirement } from "./types.js";
+import { enumFilters, formatFilters } from "./filters.js";
+import { compileMetric, exampleSql, type CompileContext } from "./compile.js";
+import type { StandardData, Metric, Definition, QueryTemplate, DataRequirement, BreakdownSpec } from "./types.js";
 import Ajv2020Module from "ajv/dist/2020.js";
 import type { ValidateFunction, ErrorObject } from "ajv";
 
@@ -46,14 +48,23 @@ export function formatCanonicalFormula(data: StandardData, metric: Metric): stri
     return parts;
   }
   parts.push("```\n" + f.formula + "\n```", `**Unit:** ${f.unit}${f.unit === "percent" ? " (the formula yields an unscaled ratio)" : ""}`);
+  const totalMode = " (total mode: other aggregates stay whole)";
+  const bucketText = (b: Record<string, [number, number | null]>) =>
+    Object.entries(b).map(([label, [lo, hi]]) => `\`${label}\` ${hi === null ? `${lo} and over` : `${lo} to ${hi}`}`).join(", ");
+  /** Field and description of a breakdown spec; `column` names a bucketed breakdown's output column. */
+  const spec = (b: BreakdownSpec, column: string) => {
+    if (typeof b === "string") return { field: b.replace(/^field\./, ""), total: false, text: `\`${b.replace(/^field\./, "")}\`` };
+    if ("expression" in b) return { field: column, total: b.total === true, text: `buckets of \`${b.expression}\` (column \`${column}\`, inclusive bounds): ${bucketText(b.buckets)}` };
+    return { field: b.field.replace(/^field\./, ""), total: b.total === true, text: `\`${b.field.replace(/^field\./, "")}\`` };
+  };
   if (f.breakdown) {
-    const field = f.breakdown.replace(/^field\./, "");
-    parts.push(`**Breakdown by:** \`${field}\`. The formula is computed once per ${field} value, one row per value; aggregates under total() read the whole population.`);
+    const { field, total, text } = spec(f.breakdown, "bucket");
+    parts.push(`**Breakdown by:** ${text}${total ? totalMode : ""}. The formula is computed once per ${field} value, one row per value; aggregates under total() read the whole population.`);
   }
   if (f.forms) for (const [k, v] of Object.entries(f.forms)) parts.push(`**${k === "O" ? "Operating form (O)" : "Market form (M)"}:**`, "```\n" + v + "\n```");
   if (f.variants) for (const [k, v] of Object.entries(f.variants)) parts.push(`**Variant \`${k}\`:**`, "```\n" + v + "\n```");
   if (f.breakdowns && Object.keys(f.breakdowns).length) {
-    const list = Object.entries(f.breakdowns).map(([k, v]) => `\`${k}\` by \`${v.replace(/^field\./, "")}\``).join(", ");
+    const list = Object.entries(f.breakdowns).map(([k, v]) => { const s = spec(v, k); return `\`${k}\` by ${s.text}${s.total ? totalMode : ""}`; }).join(", ");
     parts.push(`**Breakdowns:** ${list}. Each computes the main formula once per value of its field, one row per value.`);
   }
   if (f.notes) parts.push(`**Notes:** ${f.notes}`);
@@ -63,9 +74,17 @@ export function formatCanonicalFormula(data: StandardData, metric: Metric): stri
   const staged = " (cohort or prior-period comparison; a staged dataset helps)";
   const fieldList = (xs: string[]) => xs.map((x) => `\`${x}\``).join(", ");
   if (dr) parts.push(`**Reads fields:** ${fieldList(dr.fields)}`, `**Datasets:** ${dr.datasets.join(", ")}${dr.staged ? staged : ""}`);
+  // Enum filters per form, so forms that read the same fields show where they differ.
+  const filterCtx = { fields: Object.fromEntries((data.ontology?.fields ?? []).map((x) => [x.id, x])), formulas: data.formulas ?? {} };
+  const formFilters = Object.fromEntries(Object.entries(f.forms ?? {}).map(([k, v]) => [k, formatFilters(enumFilters(v, filterCtx))]));
   for (const [k, r] of Object.entries(dr?.forms ?? {})) {
     if (!r) continue;
     parts.push(`**${k === "O" ? "Operating form (O)" : "Market form (M)"} reads fields:** ${fieldList(r.fields)}`, `**${k} form datasets:** ${r.datasets.join(", ")}${r.staged ? staged : ""}`);
+    if (formFilters[k]) parts.push(`**${k} form filters:** ${formFilters[k]}`);
+  }
+  if (f.forms && Object.keys(f.forms).length) {
+    const main = formatFilters(enumFilters(f.formula!, filterCtx));
+    if (main && Object.values(formFilters).every((x) => x !== main)) parts.push(`**Main formula filters:** ${main}`);
   }
   return parts;
 }
@@ -175,6 +194,58 @@ export function fillTemplate(template: QueryTemplate, adapter: Adapter, data: St
   }
   sql = sql.split("{{_period_start}}").join(":period_start").split("{{_period_end}}").join(":period_end");
   return { sql, mapped: used, missingFields, missingTables, conflicts: r.conflicts.filter((c) => template.datasets.some((d) => c.includes(`\`${d}\``))) };
+}
+
+/**
+ * The query template of a named breakdown (`breakdowns` on the formula entry,
+ * for example MRR `by_plan`), compiled on demand from the loaded data: the
+ * main formula grouped by the breakdown's field, one row per value. Grain,
+ * frequency and source come from the metric's own template. Returns an error
+ * message for an unknown name, listing the declared breakdowns.
+ */
+/**
+ * The data requirement of a named breakdown: the metric's own requirement with
+ * the fields, datasets, placeholders and example SQL of the breakdown's compiled
+ * query (the dimension included; one row per value). Rejects an unknown name
+ * with the declared list, as breakdownTemplate does.
+ */
+export function breakdownRequirement(data: StandardData, id: string, name: string): { requirement: DataRequirement } | { error: string } {
+  const base = data.dataRequirements.find((d) => d.formulaId === id);
+  const b = breakdownTemplate(data, id, name);
+  if ("error" in b) return b;
+  if (!base) return { error: `${id} has no data requirements.` };
+  const t = b.template;
+  const types = new Map((data.ontology?.fields ?? []).map((x) => [x.id, x.type === "enum" ? "string" : x.type]));
+  const { forms: _forms, ...rest } = base;
+  return {
+    requirement: {
+      ...rest, metric: `${base.metric}, breakdown ${name}`, fields: t.fields, datasets: t.datasets, placeholders: t.placeholders, staged: t.staged,
+      fieldTypes: Object.fromEntries(t.fields.map((f) => [f, types.get(f) ?? "string"])),
+      exampleQuery: exampleSql(t.parameterizedQuery), ...(t.breakdown ? { breakdown: t.breakdown } : {}),
+    },
+  };
+}
+
+export function breakdownTemplate(data: StandardData, id: string, name: string): { template: QueryTemplate } | { error: string } {
+  const f = data.formulas?.[id];
+  const base = data.queryTemplates?.[id];
+  const declared = Object.keys(f?.breakdowns ?? {});
+  if (!f || !base || !f.breakdowns?.[name]) {
+    const list = declared.length ? `Declared breakdowns: ${declared.map((d) => `\`${d}\``).join(", ")}.` : "It declares no named breakdowns.";
+    return { error: `${base?.metric ?? id} has no breakdown named \`${name}\`. ${list}` };
+  }
+  const ctx: CompileContext = {
+    fields: Object.fromEntries((data.ontology?.fields ?? []).map((x) => [x.id, x])),
+    datasets: data.ontology?.datasets ?? {},
+    formulas: data.formulas!,
+  };
+  const c = compileMetric(id, ctx, name);
+  return {
+    template: {
+      ...base, fields: c.fields, datasets: c.datasets, sourceTable: c.datasets.length === 1 ? c.datasets[0] : null,
+      parameterizedQuery: c.sql, staged: c.staged, placeholders: c.placeholders, ...(c.breakdown ? { breakdown: c.breakdown } : {}),
+    },
+  };
 }
 
 const schemaValidators = new WeakMap<object, ValidateFunction>();

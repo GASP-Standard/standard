@@ -82,6 +82,7 @@ export const TABLES: Record<string, string> = {
   plan: "gasp_plans",
   product: "gasp_products",
   license: "gasp_licenses",
+  lifecycle_event: "gasp_lifecycle_events",
 };
 
 /**
@@ -500,7 +501,18 @@ export function generateFixture(): Fixture {
   }
 
   generateExtensions(t);
+  for (const ds of SEGMENT_DATASETS) for (const r of t[ds] ?? []) r.segment = segmentOf(r.customer_id as string | null);
   return { tables: t };
+}
+
+/** The datasets that carry `segment`; a post-pass sets it from customer_id so no PRNG draw moves. */
+const SEGMENT_DATASETS = ["revenue_event", "contract_event", "amendment_event", "customer", "subscription"];
+const SEGMENTS = ["enterprise", "smb", "mid_market"];
+
+/** Deterministic segment by customer number: c01 smb, c02 mid_market, c03 enterprise, c04 smb and so on. */
+export function segmentOf(customer: string | null): string | null {
+  const n = customer?.match(/^c(\d+)$/)?.[1];
+  return n === undefined ? null : SEGMENTS[Number(n) % 3];
 }
 
 /** Renewal fields of a subscription on a day: set for the contracts in RENEWALS, empty otherwise. */
@@ -818,7 +830,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
   for (const [i, r] of registrations.entries()) {
     const id = `dr${pad(i + 1)}`;
     daily("deal_registration", id, r.registered, { registration_id: id, partner_id: r.partner, registration_date: r.registered, close_date: r.close, opportunity_id: r.opp }, (d) => ({
-      registration_stage: r.outcome !== "open" && d >= r.close ? r.outcome : STAGES[Math.min(3, Math.floor(daysBetween(r.registered, d) / 10))],
+      opportunity_stage: r.outcome !== "open" && d >= r.close ? r.outcome : STAGES[Math.min(3, Math.floor(daysBetween(r.registered, d) / 10))],
     }));
   }
   for (const [mi, month] of MONTHS.entries()) {
@@ -1081,6 +1093,24 @@ function generateExtensions(t: Record<string, Row[]>): void {
     for (const [k, [role, engaged]] of roles.entries()) {
       const id = `ct_${c}_${k + 1}`;
       daily("contact", id, CUSTOMER_STORIES[c][0].date, { contact_id: id, customer_id: c, contact_role: role, contact_engaged: engaged });
+    }
+  }
+
+  // lifecycle events: one Lifecycle_State_Change per customer_status transition in the
+  // revenue stories (trial to active on acquisition, active to churned on churn, churned
+  // to active on reactivation). Every value comes from the story, so no PRNG draw.
+  const TRANSITIONS: Partial<Record<Movement["type"], [prior: string, next: string, category: string]>> = {
+    new: ["trial", "active", "activation"], churn: ["active", "churned", "churned"], reactivation: ["churned", "active", "reactivated"],
+  };
+  let lsc = 0;
+  for (const c of [...CUSTOMERS, ...Object.keys(PRIOR_CUSTOMERS)]) {
+    for (const m of storyOf(c)) {
+      const tr = TRANSITIONS[m.type];
+      if (!tr) continue;
+      lsc++;
+      t.lifecycle_event.push(row("lifecycle_event", `lsc${lsc}`, {
+        event_id: `lsc${pad(lsc)}`, event_date: m.date, customer_id: c, prior_state: tr[0], new_state: tr[1], state_category: tr[2],
+      }));
     }
   }
 }

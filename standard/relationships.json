@@ -691,7 +691,8 @@
       "id": "concept_segment",
       "label": "Segment",
       "nodeType": "concept",
-      "level": 0
+      "level": 0,
+      "definition": "segment"
     },
     {
       "id": "concept_tcv",
@@ -906,6 +907,21 @@
     {
       "source": "burn_rate",
       "target": "fcf",
+      "type": "reduces"
+    },
+    {
+      "source": "mrr",
+      "target": "burn_rate",
+      "type": "reduces"
+    },
+    {
+      "source": "gross_margin",
+      "target": "burn_rate",
+      "type": "reduces"
+    },
+    {
+      "source": "deployment_frequency",
+      "target": "mttr",
       "type": "reduces"
     },
     {
@@ -1150,6 +1166,11 @@
     },
     {
       "source": "grr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "health_score",
       "target": "entity_customer",
       "type": "measures"
     },

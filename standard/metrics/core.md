@@ -38,6 +38,8 @@ MRR contribution = Annual Contract Value / 12
 - Subscription/contract value for each customer
 - Contract term (monthly/annual)
 
+MRR is reported per plan and per customer segment.
+
 **What it tells you:** The current run rate of your recurring revenue engine.
 
 **Important:** MRR is a business insights metric, not a GAAP/FASB accounting term. It is representative of, but not identical to, recognized revenue.
@@ -74,6 +76,8 @@ ARR = MRR × 12
 ```
 
 **Include:** Same inclusions/exclusions as MRR, annualized.
+
+ARR is reported per customer segment.
 
 **What it tells you:** The scale of the business on an annual basis. Used for valuation, planning and investor reporting.
 
@@ -137,6 +141,8 @@ ARR-M = ARR-O + TTM_Pricing_Adjustment_MRR × 12 + TTM_Recontracting_MRR × 12
 ARPA = MRR / Active Customers
 ```
 
+ARPA is reported per customer segment.
+
 **What it tells you:** The average value of a customer on a monthly basis. Used in LTV and CAC Payback calculations.
 
 **Note:** Some companies use ARPU (Average Revenue Per User) for user-based pricing. ARPA is account-level; ARPU is user-level.
@@ -174,6 +180,8 @@ New MRR = Sum of (first month MRR from customers acquired this period)
 
 **Example:** 5 new customers × $60/month plan = $300 New MRR
 
+New MRR is reported per customer segment.
+
 **What it tells you:** The output of your acquisition engine.
 
 **Sources:** [Drivetrain](https://www.drivetrain.ai/strategic-finance-glossary/mrr-in-saas), [SaaS Academy](https://www.saasacademy.com/blog/what-is-mrr)
@@ -190,6 +198,8 @@ Expansion MRR = Sum of (MRR increase from existing customers this period)
 ```
 
 **Includes:** Upsells, cross-sells, add-ons, seat expansion, plan upgrades
+
+Expansion MRR is reported per customer segment.
 
 **What it tells you:** Your ability to grow revenue without acquiring new customers. The most efficient growth.
 
@@ -208,6 +218,8 @@ Expansion MRR = Sum of (MRR increase from existing customers this period)
 Churned MRR = Sum of (MRR from customers who churned this period)
 ```
 
+Churned MRR is reported per customer segment.
+
 **What it tells you:** The leakage in your revenue bucket from customer attrition.
 
 **Sources:** [Drivetrain](https://www.drivetrain.ai/strategic-finance-glossary/mrr-in-saas), [Baremetrics](https://baremetrics.com/academy/saas-calculate-mrr)
@@ -224,6 +236,8 @@ Contraction MRR = Sum of (MRR decrease from existing customers who remain active
 ```
 
 **Includes:** Plan downgrades, removed seats, dropped add-ons
+
+Contraction MRR is reported per customer segment.
 
 **What it tells you:** Revenue pressure from customers reducing usage/commitment.
 
@@ -367,6 +381,8 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 - Mid-market: 105-115% typical
 - Enterprise: 115-125% typical
 
+NRR is reported per customer segment, each snapshot and event counting in the segment it carries.
+
 **What it tells you:** Can you grow without adding new customers? NRR is a critical indicator of SaaS sustainability because it measures whether your existing customer base is expanding or contracting. High NRR reduces dependence on new customer acquisition for growth.
 
 **Common mistakes:**
@@ -472,6 +488,8 @@ GRR = Sum of min(Beginning MRR, Current MRR) per customer / Beginning MRR × 100
 - Mid-market/Enterprise: 90%+ is good
 - High ACV Enterprise: 95%+ expected
 
+GRR is reported per customer segment, each snapshot and event counting in the segment it carries.
+
 **What it tells you:** The baseline health of your customer relationships, independent of upsell. Investors examine GRR alongside NRR because strong expansion can mask high churn.
 
 **Sources:**
@@ -513,6 +531,8 @@ Logo Churn Rate = Customers lost in period / Customers at start of period × 100
 - Mid-market: 1-2% monthly typical
 - Enterprise: <1% monthly expected
 
+Logo Churn Rate is reported per customer segment.
+
 **What it tells you:** How many customers are leaving, regardless of their value. Important for understanding customer experience separate from revenue impact.
 
 **Logo vs Revenue Churn:** Logo churn counts customers equally. Revenue churn weights by value. Losing a few high-value customers may show low logo churn but high revenue churn.
@@ -541,6 +561,8 @@ This is gross revenue churn - it measures losses only, without netting against e
 - <2%: Good
 - 2-5%: Average
 - >5%: High (average annual churn ~4.9% for B2B SaaS)
+
+Revenue Churn Rate is reported per customer segment.
 
 **What it tells you:** The revenue impact of churn. If revenue churn is lower than logo churn, you're losing smaller customers (often acceptable). If higher, you're losing larger customers (concerning).
 
@@ -648,6 +670,8 @@ CAC = (Sales + Marketing spend in period) / New customers acquired in period
 - General overhead (unless investor requires)
 
 **Allocation:** If a salesperson splits time between new and existing customers (e.g., 70/30), allocate only the acquisition portion (70%) to CAC.
+
+**By cost centre:** CAC can also be reported per cost centre, over all new customers: each row divides that centre's acquisition spend by every new customer in the period, so the rows sum to CAC.
 
 **Timing:** For long sales cycles, consider lagged CAC: spend from 60-90 days ago / customers acquired today.
 
@@ -808,6 +832,44 @@ Express as ratio (e.g., "3:1" or "3.0x").
 - [SaaS Capital: LTV/CAC Benchmarks](https://www.saas-capital.com/blog-posts/ltv-to-cac-ratio/)
 - [Corporate Finance Institute: LTV/CAC](https://corporatefinanceinstitute.com/resources/valuation/ltv-cac-ratio/)
 
+#### Operating Form: Contribution LTV:CAC (LTV:CAC-O)
+
+LTV:CAC-O divides Contribution LTV by Fully Loaded CAC. Both sides carry the cost of making a customer productive: the numerator loses the variable service costs over the lifetime and the denominator gains implementation and onboarding.
+
+**CEL Source:** `Revenue_Event`, `Cost_Event`
+**ATL Inclusion for costs:** LTV-O margin costs (`infrastructure`, `support`, `success_engineering`, `implementation`, `onboarding`); CAC-O costs (`gtm`, `implementation`, `onboarding`)
+
+**Formula:**
+```
+LTV:CAC-O = LTV-O / CAC-O
+```
+
+**What it tells you:** The return on acquisition spend after every variable cost of acquiring and serving a customer. The ratio to use for pricing, packaging and services investment decisions.
+
+#### Market Form: Gross Margin LTV:CAC (LTV:CAC-M)
+
+LTV:CAC-M divides Gross Margin LTV by GTM CAC. This is the ratio investors benchmark and the form the 3:1 threshold above assumes.
+
+**CEL Source:** `Revenue_Event`, `Cost_Event`
+**ATL Inclusion for costs:** LTV-M margin costs (`infrastructure` only); CAC-M costs (`gtm` only)
+
+**Formula:**
+```
+LTV:CAC-M = LTV-M / CAC-M
+```
+
+**What it tells you:** The investor-comparable unit economics ratio reported to the board and in fundraising materials.
+
+#### Bridge: LTV:CAC-O ↔ LTV:CAC-M
+
+**Reconciliation:**
+```
+LTV:CAC-O = LTV:CAC-M × (LTV-O / LTV-M) × (CAC-M / CAC-O)
+```
+The two factors are the Contribution Leakage on the LTV side and the Activation Delta on the CAC side.
+
+**Diagnostic:** The gap between LTV:CAC-M and LTV:CAC-O shows how much of the headline ratio depends on human delivery costs that S&M-based benchmarks leave out. A business at 3:1 on the market form and well under 2:1 on the operating form is buying growth with services effort. Report LTV:CAC-M for comparability and manage to LTV:CAC-O.
+
 ---
 
 ### CAC Payback Period
@@ -840,6 +902,44 @@ Result in months.
 - [Wall Street Prep: CAC Payback Period](https://www.wallstreetprep.com/knowledge/cac-payback-period/)
 - [Maxio: CAC Payback](https://www.maxio.com/saaspedia/cac-payback)
 - [Corporate Finance Institute: CAC Payback Period](https://corporatefinanceinstitute.com/resources/valuation/cac-payback-period/)
+
+#### Operating Form: Fully Loaded CAC Payback (CAC Payback-O)
+
+CAC Payback-O recovers Fully Loaded CAC from contribution margin. Implementation and onboarding cost raise the amount to recover and variable service costs lower the monthly margin that recovers it.
+
+**CEL Source:** `Revenue_Event`, `Cost_Event`
+**ATL Inclusion for costs:** CAC-O costs (`gtm`, `implementation`, `onboarding`); GM-O costs (`infrastructure`, `support`, `success_engineering`, `implementation`, `onboarding`)
+
+**Formula:**
+```
+CAC Payback-O = CAC-O / (ARPA × GM-O)
+```
+
+**What it tells you:** How long a customer really takes to pay back everything spent to win and activate it. The number for cash planning.
+
+#### Market Form: GTM CAC Payback (CAC Payback-M)
+
+CAC Payback-M recovers GTM CAC from SaaS gross margin. It matches the payback period Benchmarkit and KeyBanc report and the benchmarks above.
+
+**CEL Source:** `Revenue_Event`, `Cost_Event`
+**ATL Inclusion for costs:** CAC-M costs (`gtm` only); GM-M costs (`infrastructure` only)
+
+**Formula:**
+```
+CAC Payback-M = CAC-M / (ARPA × GM-M)
+```
+
+**What it tells you:** The investor-comparable payback period used in benchmarks and board reporting.
+
+#### Bridge: CAC Payback-O ↔ CAC Payback-M
+
+**Reconciliation:**
+```
+CAC Payback-O = CAC Payback-M × (CAC-O / CAC-M) × (GM-M / GM-O)
+```
+ARPA is the same in both forms, so the gap comes from the Activation Delta and the Services Drag alone.
+
+**Diagnostic:** A payback that looks healthy on the market form and runs months longer on the operating form means activation and service costs are tying up cash the S&M view does not show. The ratio CAC-O / CAC-M isolates the acquisition side; GM-M / GM-O isolates the delivery side.
 
 ---
 

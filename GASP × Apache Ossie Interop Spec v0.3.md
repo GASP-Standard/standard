@@ -24,9 +24,9 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 |  | Apache Ossie (incubating) | GASP |
 | --- | --- | --- |
 | What it is | Vendor-neutral spec for semantic models and ontology | Canonical SaaS metric standard |
-| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `custom_extensions` | 301 metrics, 92 definitions, 264 canonical fields in 51 datasets, 28 entities, 7 concepts, 22 source categories |
+| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `custom_extensions` | 300 metrics, 93 definitions, 263 canonical fields in 51 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL) | GASP formula grammar (warehouse-agnostic) plus 269 query templates compiled from the formulas |
-| Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 95 nodes and 179 edges across 21 edge types |
+| Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 95 nodes and 183 edges across 21 edge types |
 | Spec version | 0.1.1 released; 0.2.0.dev0 in development | v1 |
 | Governance | ASF Incubator: public lists, discussion-and-vote, three working groups (Metric Language, Catalog, Ontology) | One maintainer (Gareth O'Shea) |
 | License | Apache 2.0 | Content CC BY 4.0, code Apache 2.0 |
@@ -42,8 +42,8 @@ GASP today serves a company that already has a clean, modelled warehouse and wan
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines five immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 301 metrics, 92 definitions, 12 MCP tools |
-| Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 301 metrics covered (273 formulas, 16 marked not computable with reasons), parsed and resolved by the test suite |
+| Canonical definitions agents can read | Strong | 300 metrics, 93 definitions, 12 MCP tools |
+| Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 300 metrics covered (273 formulas, 15 marked not computable with reasons), parsed and resolved by the test suite |
 | Starting from raw data | Missing | The MCP has no warehouse access and returns SQL only |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform, and scores coverage per metric against the fields its formula needs. No value-distribution, key or freshness checks yet |
 | Ownership enforced | Strong | `validate_adapter` flags every covered metric that has no owner in `metricOwners` |
@@ -59,7 +59,7 @@ GASP today serves a company that already has a clean, modelled warehouse and wan
 
 - The source repository is private, so the "Code under Apache 2.0" link returns 404 and the npm package declares no repository. An open-source claim to the Ossie community needs a public repo.
 - Site counts are derived from the data build and guarded by tests (fixed 2026-10-12).
-- Depth is uneven: 273 of 301 metrics have data requirements (compiled from formulas), 11 have common-mistakes notes and Core O/M inclusion rules are marked as planned.
+- Depth is uneven: 273 of 300 metrics have data requirements (compiled from formulas), 11 have common-mistakes notes and Core O/M inclusion rules are marked as planned.
 - The field vocabulary needed reconciling before the ontology document is published, because Ossie `ValueType` concepts make the vocabulary public. It had near-duplicates, fields that were really metrics (`arr`, `cac`, `ltv`) and CEL field names that differed from ontology field names. Canon decisions made 2026-10-12 settled the naming, and the canonical ids now live in `ontology.json` `fields`: CEL names win (`customer_id`, `event_type`, `cost` with `cost_function` and `cost_type`, `contract_event_type`, `amendment_type`) and ATL values are lowercase snake_case.
 
 ## Goals, non-goals and success metrics
@@ -308,7 +308,7 @@ About 16 weeks to launch, with community engagement from week 1 so upstream revi
 | Phase | Weeks | Work | Gate |
 | --- | --- | --- | --- |
 | 0. Hygiene | 1–2 | Done: MCP deploy prepared (1.11.1 built and dry-run clean), field vocabulary reconciled. Published 2026-10-13 (npm 1.12.0, push, deploy, secrets audit). Remaining: the public mirror repository and its token | Mirror public and linked from gaspwiki.com and npm |
-| 1. Canon | 2–6 | Formulas, field vocabulary and enum values are done (289 formula entries, 264 fields, 51 datasets, CEL names adopted). Spike and exporters done 2026-10-13 (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`). Remaining: raw-source mappings; synthetic dataset growth; P0 PR and community intro; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks, in CI once CI exists |
+| 1. Canon | 2–6 | Formulas, field vocabulary and enum values are done (288 formula entries, 263 fields, 51 datasets, CEL names adopted). Spike and exporters done 2026-10-13 (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`). Remaining: raw-source mappings; synthetic dataset growth; P0 PR and community intro; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks, in CI once CI exists |
 | 2. Native model | 6–10 | Mapping format and `validate_mapping`; metric compiler and staged datasets; reference model PR; DuckDB demo | Reference model PR open; compiled Core runs in DuckDB |
 | 3. Drift and on-ramp | 10–16 | Drift scorer; profiler; CEL source templates (Stripe, Salesforce first); readiness checks and fix plan; P1 to P4 drafted | Drift report on a public vendor example; synthetic data reaches L4 |
 | Launch | 16+ | Ecosystem card, "GASP for Ossie" page, blog, community talk | Reference model merged |

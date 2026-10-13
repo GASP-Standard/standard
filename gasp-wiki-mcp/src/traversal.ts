@@ -297,6 +297,18 @@ export function inferDrivers(
   });
 }
 
+/**
+ * What to say when inferDrivers returns nothing: either the graph has no edge
+ * into the metric at all, or every chain falls below the score or depth limit.
+ */
+export function noDriversMessage(metricId: string, ctx: InternalContext): string {
+  const label = ctx.nodeById.get(metricId)?.label ?? metricId;
+  if ((ctx.edgesByTarget.get(metricId) ?? []).length === 0) {
+    return `No upstream drivers in the graph: no edge leads into ${label}, so the graph cannot say what moves it.`;
+  }
+  return `No upstream drivers of ${label} found within the traversal depth limit.`;
+}
+
 // ---------------------------------------------------------------------------
 // Public API: explain_path
 // ---------------------------------------------------------------------------

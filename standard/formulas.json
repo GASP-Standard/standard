@@ -6,9 +6,10 @@
       "formula": "sum(field.mrr where field.subscription_status = 'active') at period_end",
       "unit": "currency",
       "breakdowns": {
-        "by_plan": "field.plan_id"
+        "by_plan": "field.plan_id",
+        "by_segment": "field.segment"
       },
-      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage. by_plan returns one row per plan the subscriptions are priced by."
+      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage. by_plan returns one row per plan the subscriptions are priced by. by_segment returns one row per customer segment, read from the subscription snapshot at period end."
     },
     "arr": {
       "formula": "metric.mrr * 12",
@@ -17,11 +18,18 @@
         "O": "(metric.mrr - window(sum(field.mrr_change where field.expansion_classification in ('pricing_adjustment', 'recontracting')), 12 month)) * 12 over cohort(field.customer_id, period_end)",
         "M": "metric.mrr * 12"
       },
-      "notes": "ARR-M equals this formula. ARR-O subtracts the MRR change tagged pricing_adjustment or recontracting in the trailing 12 months for customers active at period end, so ARR-M minus ARR-O is the Durability Gap (core.md), a growth decomposition measured over the trailing year."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "ARR-M equals this formula. ARR-O subtracts the MRR change tagged pricing_adjustment or recontracting in the trailing 12 months for customers active at period end, so ARR-M minus ARR-O is the Durability Gap (core.md), a growth decomposition measured over the trailing year. by_segment returns one row per customer segment through MRR."
     },
     "arpa": {
       "formula": "metric.mrr / count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
-      "unit": "currency"
+      "unit": "currency",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment, since a blended ARPA across SMB and enterprise describes neither."
     },
     "mrr_growth_rate": {
       "formula": "(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)",
@@ -29,21 +37,35 @@
     },
     "new_mrr": {
       "formula": "sum(field.mrr_change where field.event_type = 'new')",
-      "unit": "currency"
+      "unit": "currency",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment, which shows where new business lands."
     },
     "expansion_mrr": {
       "formula": "sum(field.mrr_change where field.event_type = 'expansion')",
-      "unit": "currency"
+      "unit": "currency",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment, which shows where expansion comes from."
     },
     "churned_mrr": {
       "formula": "-sum(field.mrr_change where field.event_type = 'churn')",
       "unit": "currency",
-      "notes": "Churn events carry a negative mrr_change; the metric reports a positive amount."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Churn events carry a negative mrr_change; the metric reports a positive amount. by_segment returns one row per customer segment, so churn concentrated in one segment is visible."
     },
     "contraction_mrr": {
       "formula": "-sum(field.mrr_change where field.event_type = 'contraction')",
       "unit": "currency",
-      "notes": "Contraction events carry a negative mrr_change; the metric reports a positive amount."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Contraction events carry a negative mrr_change; the metric reports a positive amount. by_segment returns one row per customer segment, so downgrades concentrated in one segment are visible."
     },
     "carry_mrr": {
       "formula": "metric.mrr at period_start - metric.churned_mrr - metric.contraction_mrr",
@@ -66,7 +88,10 @@
       "variants": {
         "adjusted": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
       },
-      "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each snapshot and event counts in the segment it carries."
     },
     "grr": {
       "formula": "(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
@@ -75,15 +100,26 @@
         "per_customer": "sum(min(field.mrr_end, field.mrr_start)) / sum(field.mrr_start) over cohort(field.customer_id, period_start)",
         "adjusted": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
       },
-      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each snapshot and event counts in the segment it carries."
     },
     "logo_churn_rate": {
       "formula": "count_distinct(field.customer_id where field.event_type = 'churn') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment, since SMB logos usually churn at several times the enterprise rate."
     },
     "revenue_churn_rate": {
       "formula": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment, so churn concentrated in one segment is visible."
     },
     "nps": {
       "formula": "(count(field.nps_score where field.survey_type = 'customer' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'customer' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'customer') * 100",
@@ -97,7 +133,13 @@
         "O": "(sum(field.cost where field.cost_function = 'gtm') + sum(field.cost where field.cost_function in ('implementation', 'onboarding'))) / count_distinct(field.customer_id where field.event_type = 'new')",
         "M": "sum(field.cost where field.cost_function = 'gtm') / count_distinct(field.customer_id where field.event_type = 'new')"
       },
-      "notes": "GTM cost is ATL cost_function gtm (sales and marketing). CAC-O adds implementation and onboarding cost per the ATL bridge."
+      "breakdowns": {
+        "by_cost_centre": {
+          "field": "field.cost_centre",
+          "total": true
+        }
+      },
+      "notes": "GTM cost is ATL cost_function gtm (sales and marketing). CAC-O adds implementation and onboarding cost per the ATL bridge. by_cost_centre slices GTM cost by cost centre; the denominator stays the whole population of new customers, so the rows sum to CAC."
     },
     "ltv": {
       "formula": "metric.arpa * metric.gross_margin / metric.revenue_churn_rate",
@@ -110,11 +152,19 @@
     },
     "ltv_cac_ratio": {
       "formula": "metric.ltv / metric.cac",
-      "unit": "ratio"
+      "unit": "ratio",
+      "forms": {
+        "O": "metric.ltv.O / metric.cac.O",
+        "M": "metric.ltv.M / metric.cac.M"
+      }
     },
     "cac_payback": {
       "formula": "metric.cac / (metric.arpa * metric.gross_margin)",
-      "unit": "months"
+      "unit": "months",
+      "forms": {
+        "O": "metric.cac.O / (metric.arpa * metric.gross_margin.O)",
+        "M": "metric.cac.M / (metric.arpa * metric.gross_margin.M)"
+      }
     },
     "gross_margin": {
       "formula": "(sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure')) / sum(field.revenue)",
@@ -148,7 +198,10 @@
     "partner_churn_rate": {
       "formula": "count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start",
       "unit": "percent",
-      "notes": "Partners with a churn date in the period over partners active at period start."
+      "breakdowns": {
+        "by_partner_tier": "field.partner_tier"
+      },
+      "notes": "Partners with a churn date in the period over partners active at period start. by_partner_tier returns one row per partner tier, which tests whether tier benefits retain partners."
     },
     "partner_sourced_revenue": {
       "formula": "sum(field.opportunity_amount where field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
@@ -178,7 +231,7 @@
       "unit": "count"
     },
     "deal_registration_to_close_rate": {
-      "formula": "count_distinct(field.registration_id where field.registration_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.registration_id where in_period(field.registration_date))",
+      "formula": "count_distinct(field.registration_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.registration_id where in_period(field.registration_date))",
       "unit": "percent",
       "notes": "Registrations closed won in the period over registrations submitted in the period."
     },
@@ -191,7 +244,7 @@
       "unit": "currency"
     },
     "partner_sales_cycle": {
-      "formula": "median(field.close_date - field.registration_date where field.registration_stage = 'closed_won' and in_period(field.close_date))",
+      "formula": "median(field.close_date - field.registration_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "days",
       "notes": "Registered deals only; measured from registration to close on the deal registration record."
     },
@@ -281,7 +334,10 @@
     "win_rate": {
       "formula": "count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in ('closed_won', 'closed_lost') and in_period(field.close_date))",
       "unit": "percent",
-      "notes": "Excludes open deals and deals disqualified before the qualified stage."
+      "breakdowns": {
+        "by_channel": "field.channel"
+      },
+      "notes": "Excludes open deals and deals disqualified before the qualified stage. by_channel returns one row per acquisition channel the opportunities came through, the comparison behind channel budget decisions."
     },
     "lead_to_opportunity_rate": {
       "formula": "count_distinct(field.opportunity_id where in_period(field.opportunity_created_date)) / count_distinct(field.lead_id where in_period(field.lead_created_date))",
@@ -464,7 +520,10 @@
     "ticket_volume": {
       "formula": "count_distinct(field.ticket_id)",
       "unit": "count",
-      "notes": "Tickets created in period. Ticket Distribution by Type (ticket_distribution_by_type) breaks it down by field.ticket_type."
+      "breakdowns": {
+        "by_ticket_type": "field.ticket_type"
+      },
+      "notes": "Tickets created in period. by_ticket_type returns the count of each type for staffing; Ticket Distribution by Type (ticket_distribution_by_type) is the share."
     },
     "tickets_per_customer": {
       "formula": "metric.ticket_volume / count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
@@ -492,7 +551,10 @@
     "resolution_time_time_to_resolution": {
       "formula": "(median(field.resolved_at - field.created_at)) * 24",
       "unit": "hours",
-      "notes": "Computed over resolved tickets."
+      "breakdowns": {
+        "by_ticket_type": "field.ticket_type"
+      },
+      "notes": "Computed over resolved tickets. by_ticket_type returns one row per ticket type, since a bug waits on engineering and a how-to question does not."
     },
     "first_contact_resolution_fcr": {
       "formula": "count_distinct(field.ticket_id where field.resolved_first_contact = true) / count_distinct(field.ticket_id)",
@@ -538,15 +600,27 @@
       "unit": "percent",
       "variants": {
         "customer_counts": "(count_distinct(field.customer_id where field.customer_status = 'active') at period_end - count_distinct(field.customer_id where field.event_type = 'new')) / count_distinct(field.customer_id where field.customer_status = 'active') at period_start"
-      }
+      },
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment through Logo Churn Rate."
     },
     "health_score": {
-      "notComputable": "A weighted composite of 5 to 10 business-chosen indicators with weights calibrated to each company's churn data, so no single canonical formula exists."
+      "formula": "avg(field.composite_score where field.customer_status = 'active') at period_end",
+      "unit": "score",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "The portfolio average of the composite score (0 to 100) across customers active at period end. The composite is built upstream from usage, engagement, support and commercial signals with weights calibrated to the company's own churn data; customer-success.md gives a reference weighting as a starting point. by_segment returns one row per customer segment, since a healthy average can hide a weak enterprise segment."
     },
     "health_score_coverage": {
       "formula": "count_distinct(field.customer_id where field.composite_score is not null) / count_distinct(field.customer_id where field.customer_status = 'active')",
       "unit": "percent",
-      "notes": "Denominator is active accounts. Restrict to managed accounts or a revenue threshold by filtering the population."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Denominator is active accounts. Restrict to managed accounts or a revenue threshold by filtering the population. by_segment returns one row per customer segment, since coverage is usually required for enterprise accounts first."
     },
     "at_risk_rate": {
       "formula": "count_distinct(field.customer_id where field.composite_score < 40) / count_distinct(field.customer_id where field.composite_score is not null)",
@@ -554,7 +628,10 @@
       "variants": {
         "entered_at_risk": "count_distinct(field.customer_id where field.state_category = 'at_risk') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start"
       },
-      "notes": "Health scores run 0 to 100; below 40 is at risk. Variant entered_at_risk is the flow: the share of customers active at period start who moved into the at_risk lifecycle state during the period (cel.md Lifecycle_State_Change)."
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Health scores run 0 to 100; below 40 is at risk. Variant entered_at_risk is the flow: the share of customers active at period start who moved into the at_risk lifecycle state during the period (cel.md Lifecycle_State_Change). by_segment returns one row per customer segment, so risk in the segment that carries the most revenue is visible on its own."
     },
     "qbr_completion": {
       "formula": "count_distinct(field.customer_id where field.qbr_completed = true) / count_distinct(field.customer_id where field.qbr_due = true)",
@@ -573,7 +650,11 @@
     },
     "expansion_rate": {
       "formula": "metric.expansion_mrr / metric.mrr at period_start",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "by_segment returns one row per customer segment, since expansion headroom differs by segment."
     },
     "license_utilization": {
       "formula": "sum(field.seats_assigned where field.license_status = 'active') / sum(field.seats_purchased where field.license_status = 'active')",
@@ -680,7 +761,11 @@
     },
     "billing_disputes": {
       "formula": "count_distinct(field.invoice_id where in_period(field.invoice_date) and field.invoice_disputed = true) / count_distinct(field.invoice_id where in_period(field.invoice_date))",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_payment_status": "field.payment_status"
+      },
+      "notes": "by_payment_status returns one row per payment status as of period end, since a dispute rate concentrated in unpaid invoices points at collections."
     },
     "credit_memo_rate": {
       "formula": "count_distinct(field.invoice_id where in_period(field.invoice_date) and field.credit_memo_count > 0) / count_distinct(field.invoice_id where in_period(field.invoice_date))",
@@ -697,14 +782,30 @@
       "notes": "Billings stand in for credit sales. Current AR is receivables aged 30 days or less."
     },
     "aging_buckets": {
-      "formula": "sum(field.outstanding_amount where (field.snapshot_date - field.invoice_date) <= 30) / sum(field.outstanding_amount)",
+      "formula": "sum(field.outstanding_amount) / total(sum(field.outstanding_amount))",
       "unit": "percent",
-      "variants": {
-        "days_31_60": "sum(field.outstanding_amount where (field.snapshot_date - field.invoice_date) > 30 and (field.snapshot_date - field.invoice_date) <= 60) / sum(field.outstanding_amount)",
-        "days_61_90": "sum(field.outstanding_amount where (field.snapshot_date - field.invoice_date) > 60 and (field.snapshot_date - field.invoice_date) <= 90) / sum(field.outstanding_amount)",
-        "days_90_plus": "sum(field.outstanding_amount where (field.snapshot_date - field.invoice_date) > 90) / sum(field.outstanding_amount)"
+      "breakdown": {
+        "expression": "field.snapshot_date - field.invoice_date",
+        "buckets": {
+          "current": [
+            0,
+            30
+          ],
+          "days_31_60": [
+            31,
+            60
+          ],
+          "days_61_90": [
+            61,
+            90
+          ],
+          "days_90_plus": [
+            91,
+            null
+          ]
+        }
       },
-      "notes": "Main formula is the current bucket (0 to 30 days). Evaluate at period end."
+      "notes": "Reported per age bucket: outstanding amount on invoices whose age (days from invoice date to the period-end snapshot) falls in the bucket over the whole outstanding balance. Evaluate at period end."
     },
     "bad_debt_rate": {
       "formula": "sum(field.bad_debt_expense) / metric.revenue_gaap",
@@ -917,7 +1018,11 @@
     "incident_count": {
       "formula": "count_distinct(field.incident_id)",
       "unit": "count",
-      "notes": "Categorised by severity (SEV1 to SEV3)."
+      "breakdowns": {
+        "by_severity": "field.severity",
+        "by_incident_type": "field.incident_type"
+      },
+      "notes": "by_severity returns one row per severity (sev1 to sev4), because a month of sev4 noise and a month with one sev1 outage call for different responses. by_incident_type splits availability, performance, security and data incidents, which have different owners."
     },
     "mean_time_to_detect_mttd": {
       "formula": "(avg(field.detected_at - field.started_at)) * 1440",
@@ -932,7 +1037,11 @@
     "mttr": {
       "formula": "(avg(field.resolved_at - field.started_at)) * 1440",
       "unit": "minutes",
-      "notes": "Resolution time minus incident start time, in minutes."
+      "breakdowns": {
+        "by_severity": "field.severity",
+        "by_incident_type": "field.incident_type"
+      },
+      "notes": "Resolution time minus incident start time, in minutes. by_severity returns one row per severity because resolution targets are set per severity and a blended mean hides a slow sev1. by_incident_type separates incidents whose resolution paths differ, such as a security incident and a performance regression."
     },
     "change_failure_rate": {
       "formula": "count_distinct(field.deployment_id where field.incident_id is not null) / count_distinct(field.deployment_id)",
@@ -998,7 +1107,11 @@
     },
     "billings": {
       "formula": "sum(field.invoice_amount where in_period(field.invoice_date))",
-      "unit": "currency"
+      "unit": "currency",
+      "breakdowns": {
+        "by_payment_status": "field.payment_status"
+      },
+      "notes": "by_payment_status returns one row per payment status as of period end, so finance sees how much of the period's billing is paid, unpaid, partly paid or written off."
     },
     "revenue_per_employee": {
       "formula": "metric.arr / metric.total_headcount",
@@ -1047,7 +1160,13 @@
     "opex_ratio": {
       "formula": "sum(field.cost where field.cost_function != 'infrastructure') / metric.revenue_gaap",
       "unit": "percent",
-      "notes": "Operating expenses are all costs outside COGS (cost_function infrastructure)."
+      "breakdowns": {
+        "by_cost_centre": {
+          "field": "field.cost_centre",
+          "total": true
+        }
+      },
+      "notes": "Operating expenses are all costs outside COGS (cost_function infrastructure). by_cost_centre slices operating expenses by cost centre; the denominator stays the whole population of revenue, so the rows sum to the ratio."
     },
     "sm_as_of_revenue": {
       "formula": "sum(field.cost where field.cost_function = 'gtm') / metric.revenue_gaap",
@@ -1145,25 +1264,30 @@
     "total_headcount": {
       "formula": "count_distinct(field.employee_id where field.employee_status = 'active') at period_end",
       "unit": "count",
-      "notes": "Includes full-time and part-time employees. Contractors are tracked separately."
+      "breakdowns": {
+        "by_department": "field.department"
+      },
+      "notes": "Includes full-time and part-time employees. Contractors are tracked separately. by_department returns the active headcount of each department at period end."
     },
     "headcount_growth_rate": {
       "formula": "(metric.total_headcount at period_end - metric.total_headcount at period_start) / metric.total_headcount at period_start",
       "unit": "percent"
     },
-    "headcount_by_department": {
-      "formula": "count_distinct(field.employee_id where field.employee_status = 'active') at period_end",
-      "unit": "count",
-      "notes": "Grouped by field.department. Share of headcount is each department count / metric.total_headcount."
-    },
     "employee_turnover": {
       "formula": "count_distinct(field.employee_id where field.termination_date >= period_start and field.termination_date <= period_end) / ((metric.total_headcount at period_start + metric.total_headcount at period_end) / 2)",
       "unit": "percent",
-      "notes": "Calculate monthly or annually. Annualize for comparability. Average headcount is the mean of start and end headcount."
+      "breakdowns": {
+        "by_department": "field.department"
+      },
+      "notes": "Calculate monthly or annually. Annualize for comparability. Average headcount is the mean of start and end headcount. by_department returns one row per department: leavers and both headcounts are counted within the department, so attrition concentrated in one team shows."
     },
     "voluntary_turnover_rate": {
       "formula": "count_distinct(field.employee_id where field.termination_type = 'voluntary' and in_period(field.termination_date)) / ((metric.total_headcount at period_start + metric.total_headcount at period_end) / 2)",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_department": "field.department"
+      },
+      "notes": "by_department returns one row per department, the slice that points at a team or a manager when resignations cluster."
     },
     "involuntary_turnover_rate": {
       "formula": "count_distinct(field.employee_id where field.termination_type = 'involuntary' and in_period(field.termination_date)) / ((metric.total_headcount at period_start + metric.total_headcount at period_end) / 2)",
@@ -1182,7 +1306,10 @@
     "day_90_turnover": {
       "formula": "count_distinct(field.employee_id where field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)",
       "unit": "percent",
-      "notes": "Cohort is new hires in the period. 90 days approximated as 3 months of tenure."
+      "breakdowns": {
+        "by_hire_source": "field.hire_source"
+      },
+      "notes": "Cohort is new hires in the period. 90 days approximated as 3 months of tenure. by_hire_source returns one row per hiring source, which shows the channels that bring hires who leave inside 90 days."
     },
     "enps": {
       "formula": "(count(field.nps_score where field.survey_type = 'employee' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'employee' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'employee') * 100",
@@ -1267,15 +1394,27 @@
     "leads": {
       "formula": "count_distinct(field.lead_id where in_period(field.lead_created_date))",
       "unit": "count",
-      "notes": "New leads captured in the period. Break down by field.lead_source."
+      "breakdowns": {
+        "by_lead_source": "field.lead_source",
+        "by_lead_stage": "field.lead_stage"
+      },
+      "notes": "New leads captured in the period. by_lead_source returns one row per lead source. by_lead_stage returns one row per stage at period end of the period's new leads, which shows how far the intake has progressed."
     },
     "mqls": {
       "formula": "count_distinct(field.lead_id where in_period(field.mql_date))",
-      "unit": "count"
+      "unit": "count",
+      "breakdowns": {
+        "by_lead_source": "field.lead_source"
+      },
+      "notes": "by_lead_source returns one row per lead source, the slice marketing budgets are set against."
     },
     "lead_to_mql_rate": {
       "formula": "metric.mqls / metric.leads",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_lead_source": "field.lead_source"
+      },
+      "notes": "by_lead_source returns one row per lead source with both counts taken within the source, so a source that brings volume but little qualified interest shows."
     },
     "sqls": {
       "formula": "count_distinct(field.lead_id where in_period(field.sql_date))",
@@ -1284,7 +1423,11 @@
     },
     "mql_to_sql_rate": {
       "formula": "metric.sqls / metric.mqls",
-      "unit": "percent"
+      "unit": "percent",
+      "breakdowns": {
+        "by_lead_source": "field.lead_source"
+      },
+      "notes": "by_lead_source returns one row per lead source, which shows where sales rejects marketing's leads."
     },
     "sql_to_opportunity_rate": {
       "formula": "count_distinct(field.opportunity_id where in_period(field.opportunity_created_date)) / metric.sqls",

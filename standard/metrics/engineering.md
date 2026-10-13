@@ -97,10 +97,13 @@ Always report P95 or P99, not averages (averages hide tail latency).
 Incident Count = Total incidents reported
 ```
 
+Incident Count is reported per severity and per incident type (availability, performance, security and data).
+
 Categorize by severity:
 - SEV1/P1: Critical, full outage
 - SEV2/P2: Major, significant degradation
 - SEV3/P3: Minor, limited impact
+- SEV4/P4: Cosmetic, no customer impact
 
 **What it tells you:** System stability. Trend matters.
 
@@ -144,6 +147,8 @@ MTTA = Average of (Acknowledgment time - Alert time)
 ```
 MTTR = Average of (Resolution time - Incident start time)
 ```
+
+MTTR is reported per severity and per incident type, since resolution targets differ by severity.
 
 **Benchmarks:**
 - SEV1: < 1 hour

@@ -11,12 +11,12 @@ beforeAll(() => {
 });
 
 describe("data integrity", () => {
-  it("loads 301 metrics", () => {
-    expect(data.metrics).toHaveLength(301);
+  it("loads 300 metrics", () => {
+    expect(data.metrics).toHaveLength(300);
   });
 
-  it("loads 92 definitions (80 SaaS domain + 12 GASP framework)", () => {
-    expect(data.definitions).toHaveLength(92);
+  it("loads 93 definitions (80 SaaS domain + 13 GASP framework)", () => {
+    expect(data.definitions).toHaveLength(93);
   });
 
   it("loads 95 relationship nodes (60 metrics + 28 entities + 7 concepts)", () => {
@@ -97,9 +97,9 @@ describe("data integrity", () => {
 });
 
 describe("dual-lens integrity", () => {
-  it("exactly 6 metrics have dualLens", () => {
+  it("exactly 8 metrics have dualLens", () => {
     const withDualLens = data.metrics.filter((m) => m.dualLens !== null);
-    expect(withDualLens.length).toBe(6);
+    expect(withDualLens.length).toBe(8);
   });
 
   it("exactly 2 metrics have dualLensNote", () => {
@@ -117,7 +117,9 @@ describe("dual-lens integrity", () => {
     const expected = [
       "ARR (Annual Recurring Revenue)",
       "CAC (Customer Acquisition Cost)",
+      "CAC Payback Period",
       "Gross Margin",
+      "LTV:CAC Ratio",
       "LTV (Customer Lifetime Value)",
       "Net Revenue Retention (NRR)",
       "Revenue Churn Rate",

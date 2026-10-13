@@ -110,6 +110,8 @@ Result is revenue per day (or per period).
 Win Rate = Deals Won / (Deals Won + Deals Lost) × 100
 ```
 
+Win Rate is reported per acquisition channel.
+
 Exclude open deals and deals disqualified before reaching qualified stage.
 
 **Overall Benchmarks:**

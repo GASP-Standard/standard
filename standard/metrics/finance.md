@@ -48,6 +48,8 @@ Bookings = Sum of total contract value for deals signed in period
 Billings = Total invoiced amount in period
 ```
 
+Billings are reported per payment status (paid, unpaid, partial, written off) as of period end.
+
 **What it tells you:** Cash coming in (or expected).
 
 ---
@@ -279,6 +281,8 @@ Burn Multiple = Net burn / Net new ARR
 ```
 Opex Ratio = Operating expenses / Revenue × 100
 ```
+
+Opex Ratio can also be reported per cost centre, over all revenue: each row divides that centre's operating expenses by total revenue, so the rows sum to the Opex Ratio.
 
 ---
 

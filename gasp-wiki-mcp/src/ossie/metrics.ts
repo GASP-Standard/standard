@@ -39,7 +39,7 @@ export interface EmitContext {
 }
 
 /** Why a formula needs a staged dataset, highest priority first (the first that applies is reported). */
-export const STAGED_REASONS = ["cohort", "lag", "window", "all_time", "distinct pair", "total", "to_date", "at period_start", "period bound in filter", "period bound", "period_days"] as const;
+export const STAGED_REASONS = ["cohort", "lag", "window", "all_time", "distinct pair", "bucket", "total", "to_date", "at period_start", "period bound in filter", "period bound", "period_days"] as const;
 export type StagedReason = (typeof STAGED_REASONS)[number];
 
 export type Emission =
@@ -62,10 +62,23 @@ export function formulaSource(f: MetricFormula, variant?: string): string | unde
   return (f.forms as Record<string, string> | undefined)?.[variant] ?? f.variants?.[variant] ?? (f.breakdowns?.[variant] !== undefined ? f.formula : undefined);
 }
 
+/**
+ * The breakdown of an entry expression (a named breakdown, else the entry-level
+ * one): its output column (the field id, or a bucketed breakdown's column) and
+ * total mode. `buckets` is set for a bucketed breakdown.
+ */
+export function breakdownSpecOf(f: MetricFormula, variant?: string): { field: string; total: boolean; buckets?: string[] } | undefined {
+  const named = variant && !(f.forms as Record<string, string> | undefined)?.[variant] && !f.variants?.[variant] ? f.breakdowns?.[variant] : undefined;
+  const spec = named ?? f.breakdown;
+  if (spec === undefined) return undefined;
+  if (typeof spec === "string") return { field: spec.replace(/^field\./, ""), total: false };
+  if ("expression" in spec) return { field: named !== undefined ? variant! : "bucket", total: spec.total === true, buckets: Object.keys(spec.buckets ?? {}) };
+  return { field: spec.field.replace(/^field\./, ""), total: spec.total === true };
+}
+
 /** The breakdown field id of an entry expression: a named breakdown's field, else the entry-level breakdown. */
 export function breakdownOf(f: MetricFormula, variant?: string): string | undefined {
-  const named = variant && !(f.forms as Record<string, string> | undefined)?.[variant] && !f.variants?.[variant] ? f.breakdowns?.[variant] : undefined;
-  return (named ?? f.breakdown)?.replace(/^field\./, "");
+  return breakdownSpecOf(f, variant)?.field;
 }
 
 /** The first notComputable reason reachable from a formula through metric refs, if any. */
@@ -115,6 +128,11 @@ export function emitMetric(id: string, ctx: EmitContext, variant?: string): Emis
   if (nc) return { kind: "notComputable", reason: nc };
   const e = new Emitter(ctx);
   const expression = e.formula(parseFormula(src), { toDate: false, path: [id] });
+  // A breakdown in total mode keeps some aggregates whole: two populations, like total().
+  const bd = breakdownSpecOf(f, variant);
+  if (bd?.total) e.reasons.add("total");
+  // A bucketed breakdown groups by a CASE over a per-row expression: no Ossie dimension expresses it.
+  if (bd?.buckets) e.reasons.add("bucket");
   if (e.reasons.size) {
     const reasons = STAGED_REASONS.filter((r) => e.reasons.has(r));
     return { kind: "staged", reason: reasons[0], reasons };

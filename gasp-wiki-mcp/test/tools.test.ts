@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { loadStandard, resolveNode, resolveNodeResult, findDefinition, getRelationships, search, metricFormulaId, isMetricStub } from "../src/loader.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement } from "../src/tools.js";
+import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement } from "../src/tools.js";
+import { enumFilters, formatFilters } from "../src/filters.js";
 import { compileMetric, exampleSql, interval } from "../src/compile.js";
 
 // Every lookup resolves by exact match or says not found. A substring guess
@@ -263,6 +264,69 @@ describe("get_formula forms", () => {
   });
 });
 
+describe("get_formula form filters", () => {
+  const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), formulas: data.formulas! };
+  const filtersOf = (id: string, form: "O" | "M") => enumFilters(data.formulas![id].forms![form], ctx);
+  const values = (id: string, form: "O" | "M", field: string) => filtersOf(id, form).find((f) => f.field === field)?.include ?? [];
+  const text = (name: string) => {
+    const r = resolveMetric(data, name);
+    if (r.kind !== "metric") throw new Error(`${name} did not resolve`);
+    return formatCanonicalFormula(data, r.metric).join("\n");
+  };
+
+  it("CAC: the O form lists implementation and onboarding, the M form does not", () => {
+    expect(values("cac", "O", "cost_function")).toEqual(["gtm", "implementation", "onboarding"]);
+    expect(values("cac", "M", "cost_function")).toEqual(["gtm"]);
+    const t = text("CAC");
+    expect(t).toContain("**O form filters:** cost_function in (gtm, implementation, onboarding); event_type = new");
+    expect(t).toContain("**M form filters:** cost_function = gtm; event_type = new");
+  });
+
+  it("LTV: forms read the same fields and differ in the cost filters reached through metric.gross_margin.O", () => {
+    const r = resolveMetric(data, "LTV");
+    if (r.kind !== "metric") throw new Error("LTV did not resolve");
+    const dr = data.dataRequirements.find((d) => d.formulaId === "ltv")!;
+    expect(dr.forms!.O!.fields).toEqual(dr.forms!.M!.fields);
+    expect(values("ltv", "O", "cost_function")).toEqual(["implementation", "infrastructure", "onboarding", "success_engineering", "support"]);
+    expect(values("ltv", "M", "cost_function")).toEqual(["infrastructure"]);
+    // Filters inside referenced metrics (arpa, revenue_churn_rate) are collected too.
+    expect(values("ltv", "M", "event_type")).toEqual(["churn", "contraction"]);
+    const t = text("LTV");
+    expect(t).toMatch(/\*\*O form filters:\*\* cost_function in \(implementation, infrastructure, onboarding, success_engineering, support\)/);
+    expect(t).toMatch(/\*\*M form filters:\*\* cost_function = infrastructure;/);
+    // The main formula equals the M form, so it gets no line of its own.
+    expect(t).not.toContain("**Main formula filters:**");
+  });
+
+  it("collects != and not in as exclusions, and prints the main formula when it differs from every form", () => {
+    expect(formatFilters(enumFilters("sum(field.cost where field.cost_function != 'gtm' and field.cost_function not in ('support', 'onboarding'))", ctx)))
+      .toBe("cost_function not in (gtm, onboarding, support)");
+    expect(text("NRR")).toContain("**Main formula filters:**");
+  });
+});
+
+describe("generate_query named breakdown", () => {
+  const adapter = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "fixture", "adapter.json"), "utf-8"));
+
+  it("MRR by_plan fills every placeholder from the fixture adapter and groups by plan_id", () => {
+    const b = breakdownTemplate(data, "mrr", "by_plan");
+    if ("error" in b) throw new Error(b.error);
+    expect(b.template.breakdown).toEqual({ field: "plan_id" });
+    const r = fillTemplate(b.template, adapter, data);
+    expect(r.missingFields).toEqual([]);
+    expect(r.missingTables).toEqual([]);
+    expect(r.sql).not.toContain("{{");
+    expect(r.sql).toContain("_d.plan_id");
+  });
+
+  it("rejects an unknown name with the declared breakdowns", () => {
+    const b = breakdownTemplate(data, "mrr", "by_region");
+    expect("error" in b && b.error).toMatch(/no breakdown named `by_region`\. Declared breakdowns: `by_plan`/);
+    const none = breakdownTemplate(data, "magic_number", "by_plan");
+    expect("error" in none && none.error).toMatch(/declares no named breakdowns/);
+  });
+});
+
 describe("get_formula breakdown", () => {
   it("shows the breakdown line for Ticket Distribution by Type, and requirements say one row per value", () => {
     const r = resolveMetric(data, "Ticket Distribution by Type");
@@ -278,6 +342,35 @@ describe("get_formula breakdown", () => {
   });
 });
 
+describe("bucketed breakdowns and get_data_requirements breakdown", () => {
+  it("get_formula prints Aging Buckets' buckets", () => {
+    const r = resolveMetric(data, "Aging Buckets");
+    if (r.kind !== "metric") throw new Error("Aging Buckets did not resolve");
+    const text = formatCanonicalFormula(data, r.metric).join("\n");
+    expect(text).toContain("**Breakdown by:** buckets of `field.snapshot_date - field.invoice_date` (column `bucket`, inclusive bounds): `current` 0 to 30, `days_31_60` 31 to 60, `days_61_90` 61 to 90, `days_90_plus` 91 and over");
+  });
+
+  it("breakdownRequirement compiles a named breakdown's requirement and rejects an unknown name", () => {
+    const b = breakdownRequirement(data, "mrr", "by_plan");
+    if ("error" in b) throw new Error(b.error);
+    expect(b.requirement.fields).toContain("plan_id");
+    expect(b.requirement.breakdown).toEqual({ field: "plan_id" });
+    expect(b.requirement.exampleQuery).toContain("_d.plan_id");
+    expect(b.requirement.fieldTypes.plan_id).toBeDefined();
+    expect(formatDataRequirement(b.requirement)).toContain("The query returns one row per `plan_id` value.");
+    const bad = breakdownRequirement(data, "mrr", "by_region");
+    expect("error" in bad && bad.error).toMatch(/no breakdown named `by_region`\. Declared breakdowns: `by_plan`/);
+  });
+});
+
+describe("get_formula total-mode breakdowns", () => {
+  it("prints the total mode on CAC's by_cost_centre breakdown", () => {
+    const r = resolveMetric(data, "CAC (Customer Acquisition Cost)");
+    if (r.kind !== "metric") throw new Error("CAC did not resolve");
+    expect(formatCanonicalFormula(data, r.metric).join("\n")).toContain("`by_cost_centre` by `cost_centre` (total mode: other aggregates stay whole)");
+  });
+});
+
 describe("get_formula named breakdowns", () => {
   it("lists named breakdowns on a Breakdowns line", () => {
     const r = resolveMetric(data, "Ticket Volume");
@@ -286,7 +379,8 @@ describe("get_formula named breakdowns", () => {
     const withNamed = { ...data, formulas: { ...data.formulas!, [id]: { ...data.formulas![id], breakdowns: { by_type: "field.ticket_type" } } } };
     const text = formatCanonicalFormula(withNamed, r.metric).join("\n");
     expect(text).toContain("**Breakdowns:** `by_type` by `ticket_type`");
-    expect(formatCanonicalFormula(data, r.metric).join("\n")).not.toContain("**Breakdowns:**");
+    const withNone = { ...data, formulas: { ...data.formulas!, [id]: { ...data.formulas![id], breakdowns: undefined } } };
+    expect(formatCanonicalFormula(withNone, r.metric).join("\n")).not.toContain("**Breakdowns:**");
   });
 });
 

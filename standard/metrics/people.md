@@ -15,8 +15,20 @@ Metrics for measuring workforce health, engagement and organizational effectiven
 Headcount = Total active employees at end of period
 ```
 
+Total Headcount is reported per department (the `by_department` breakdown). Share of headcount is each department's count over the total.
+
 Include: Full-time, part-time employees
 Exclude: Contractors (track separately)
+
+**Typical shares by department for SaaS:**
+| Department | % of Headcount |
+|------------|----------------|
+| Engineering | 25-35% |
+| Sales | 20-30% |
+| Customer Success/Support | 15-25% |
+| Marketing | 5-10% |
+| G&A (Finance, HR, Legal, Ops) | 10-15% |
+| Product | 5-10% |
 
 ---
 
@@ -30,24 +42,6 @@ Growth Rate = (Headcount end - Headcount start) / Headcount start × 100
 ```
 
 **What it tells you:** Organizational scaling velocity.
-
----
-
-### Headcount by Department
-
-**Definition:** Distribution of employees across functions.
-
-**Typical breakdown for SaaS:**
-| Department | % of Headcount |
-|------------|----------------|
-| Engineering | 25-35% |
-| Sales | 20-30% |
-| Customer Success/Support | 15-25% |
-| Marketing | 5-10% |
-| G&A (Finance, HR, Legal, Ops) | 10-15% |
-| Product | 5-10% |
-
-**What it tells you:** Resource allocation and organizational structure.
 
 ---
 
@@ -67,6 +61,8 @@ See [Finance](finance.md#revenue-per-employee) for the canonical definition: ARR
 ```
 Turnover Rate = Employees departed / Average headcount × 100
 ```
+
+Employee Turnover Rate is reported per department, with leavers and headcount counted within each department.
 
 Calculate monthly or annually. Annualize for comparability.
 
@@ -93,6 +89,8 @@ Calculate monthly or annually. Annualize for comparability.
 ```
 Voluntary Turnover = Voluntary departures / Average headcount × 100
 ```
+
+Voluntary Turnover Rate is reported per department.
 
 **What it tells you:** Employee satisfaction and competitiveness of employment.
 
@@ -149,6 +147,8 @@ Measured in months or years.
 ```
 90-Day Turnover = Departures within 90 days / New hires × 100
 ```
+
+90-Day Turnover is reported per hiring source.
 
 **Benchmarks:**
 - Below 5%: Good onboarding and hiring

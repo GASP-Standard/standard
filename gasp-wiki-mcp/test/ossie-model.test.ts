@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,7 @@ import { emitMetric } from "../src/ossie/metrics.js";
 import type { MetricFormula } from "../src/types.js";
 import { metricName } from "../src/ossie/names.js";
 import { OSSIE_DIALECT, GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
+import { fixtureDb, addOssieViews, scalar, runTemplate } from "./fixture-db.js";
 
 // The Ossie semantic model exporter: every GASP dataset, field and formula
 // expression lands in the model, direct metrics are plain OSSIE_SQL_2026
@@ -286,6 +287,16 @@ describe("Ossie model: metrics", () => {
     expect(namedStaged.coverage["ticket_volume:by_type"]).toMatchObject({ kind: "staged", reason: "to_date" });
     expect(namedStaged.model.datasets.find((d) => d.name === "gasp_staged_gasp_ticket_volume_by_type")!.primary_key).toEqual(["period_start", "ticket_type"]);
     expect(namedStaged.model.datasets.find((d) => d.name === "gasp_staged_gasp_ticket_volume")!.primary_key).toEqual(["period_start"]);
+    // A named breakdown in total mode is staged like total(): CAC by cost centre.
+    expect(coverage["cac:by_cost_centre"]).toMatchObject({ kind: "staged", reason: "total" });
+    expect(ext(metricByName.get("gasp_cac_by_cost_centre")!)).toMatchObject({ gasp_id: "cac", variant: "by_cost_centre", gasp_breakdown: "cost_centre" });
+    expect(byName.get("gasp_staged_gasp_cac_by_cost_centre")!.primary_key).toEqual(["period_start", "cost_centre"]);
+    // Aging Buckets groups by a computed dimension: staged with reason bucket, one row per period and bucket label.
+    expect(coverage.aging_buckets).toMatchObject({ kind: "staged", reason: "bucket" });
+    const aging = byName.get("gasp_staged_gasp_aging_buckets")!;
+    expect(aging.primary_key).toEqual(["period_start", "bucket"]);
+    expect(aging.fields!.find((x) => x.name === "bucket")!.datatype).toBe("String");
+    expect(ext(metricByName.get("gasp_aging_buckets")!).gasp_breakdown).toBe("bucket");
     // Ticket Distribution by Type uses total(): staged, one row per period and ticket type.
     expect(coverage.ticket_distribution_by_type).toMatchObject({ kind: "staged", reason: "total" });
     const ds = byName.get("gasp_staged_gasp_ticket_distribution_by_type")!;
@@ -323,12 +334,19 @@ describe("Ossie model: staged sources run", () => {
     await db.exec("INSERT INTO gasp.period_spine VALUES ('2026-01-01', '2026-01-31'), ('2026-02-01', '2026-02-28')");
     const failures: string[] = [];
     const values = new Map(ontology.fields!.map((f) => [f.id, f.values?.length ?? 0]));
+    // A bucketed breakdown has one row per period and bucket label.
+    const bucketCounts = new Map<string, number>();
+    for (const [id, f] of Object.entries(data.formulas!)) {
+      for (const [variant, b] of [[undefined, f.breakdown], ...Object.entries(f.breakdowns ?? {})] as Array<[string | undefined, any]>) {
+        if (b && typeof b === "object" && "expression" in b) bucketCounts.set(stagedDatasetName(metricName(id, variant)), Object.keys(b.buckets).length);
+      }
+    }
     for (const ds of model.datasets.filter((d): d is OssieDataset => d.name.startsWith("gasp_staged_"))) {
       try {
         const res = await db.query(ds.source);
         // A breakdown on an enum field has one row per period and declared value.
         const bf = ds.primary_key!.find((k) => k !== "period_start");
-        const expected = bf ? 2 * values.get(bf)! : 2;
+        const expected = bf ? 2 * (bucketCounts.get(ds.name) ?? values.get(bf)!) : 2;
         if (res.rows.length !== expected) failures.push(`${ds.name}: ${res.rows.length} rows, expected ${expected}`);
       } catch (e) {
         failures.push(`${ds.name}: ${(e as Error).message}`);
@@ -336,6 +354,67 @@ describe("Ossie model: staged sources run", () => {
     }
     expect(failures).toEqual([]);
   }, 60_000);
+});
+
+describe("Ossie model: values match the compiled templates on the fixture, June 2026", () => {
+  // The same rows execute.test.ts runs the templates on, exposed as gasp.<dataset>
+  // views under GASP field names, plus a one-period spine for the staged sources.
+  let db: PGlite;
+  const [start, end] = ["2026-06-01", "2026-06-30"];
+  beforeAll(async () => {
+    db = await fixtureDb();
+    await addOssieViews(db);
+    await db.exec(`CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE); INSERT INTO gasp.period_spine VALUES ('${start}', '${end}')`);
+  }, 120_000);
+  afterAll(async () => { await db?.close(); });
+
+  /**
+   * OSSIE_SQL_2026 to Postgres: DATEDIFF(second, a, b) becomes EXTRACT(EPOCH FROM (b - a)),
+   * the only construct these metrics use that PGlite lacks.
+   */
+  const toPostgres = (sql: string) =>
+    sql.replace(/DATEDIFF\(second, ([a-z_.]+), ([a-z_.]+)\)/g, "EXTRACT(EPOCH FROM ($2 - $1))");
+
+  /**
+   * A direct metric over one dataset: its expression aggregates the dataset's rows
+   * for the period, which the query layer selects (snapshot rows on the period end,
+   * event and fact rows dated in the period).
+   */
+  async function direct(id: string): Promise<number | null> {
+    const c = coverage[id];
+    if (c?.kind !== "direct") throw new Error(`${id} is ${c?.kind}, not direct`);
+    const e = expr(c.ossieName)!;
+    const datasets = [...new Set([...e.matchAll(/\b([a-z_][a-z0-9_]*)\.[a-z_][a-z0-9_]*\b/g)].map((m) => m[1]))];
+    expect(datasets, id).toHaveLength(1);
+    const ds = gaspDatasets[datasets[0]];
+    const where = ds.kind === "snapshot" ? `"${ds.date}" = DATE '${end}'` : `"${ds.date}" >= DATE '${start}' AND "${ds.date}" <= DATE '${end}'`;
+    return scalar(db, `SELECT ${toPostgres(e)} FROM (SELECT * FROM gasp."${datasets[0]}" WHERE ${where}) AS ${datasets[0]}`);
+  }
+
+  /** A staged metric: its staged dataset's value for the June row of the spine. */
+  async function staged(id: string): Promise<number | null> {
+    const c = coverage[id];
+    if (c?.kind !== "staged") throw new Error(`${id} is ${c?.kind}, not staged`);
+    const source = byName.get(c.stagedDataset)!.source;
+    return scalar(db, `SELECT value FROM (${source}) s WHERE period_start = DATE '${start}'`);
+  }
+
+  for (const id of ["mrr", "arr", "license_utilization", "realization_rate", "mttr"]) {
+    it(`direct: ${id}`, async () => {
+      const expected = await runTemplate(db, data, id, start, end);
+      expect(expected, id).not.toBeNull();
+      expect(await direct(id)).toBeCloseTo(expected!, 9);
+    });
+  }
+
+  // Win Rate and Project Margin filter a snapshot by a date in the period, so the exporter stages them.
+  for (const id of ["nrr", "logo_churn_rate", "dau_mau", "win_rate", "project_margin"]) {
+    it(`staged: ${id}`, async () => {
+      const expected = await runTemplate(db, data, id, start, end);
+      expect(expected, id).not.toBeNull();
+      expect(await staged(id)).toBeCloseTo(expected!, 9);
+    });
+  }
 });
 
 describe("Ossie model: upstream validator", () => {

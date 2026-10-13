@@ -32,9 +32,16 @@
  * (no VALUES clause, which BigQuery lacks), else the distinct non-null values
  * on the dataset keyed by the field, else on the first dataset the formula
  * reads that carries it.
+ *
+ * A bucketed breakdown ({ expression, buckets }) groups by a per-row expression
+ * instead of a field: the domain is the bucket labels, the column is the
+ * breakdown name (or `bucket`), and each grouped aggregate gains
+ *   AND CASE WHEN <expr> BETWEEN lo AND hi THEN '<label>' ... END = _d.<column>
+ * (an open top bucket is `>= lo`). The expression's fields must all live on
+ * the dataset of every grouped aggregate.
  */
-import { parseFormula, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
-import type { MetricFormula, OntologyDataset, OntologyField } from "./types.js";
+import { parseFormula, hasAggregate, hasMetric, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
+import type { BreakdownSpec, MetricFormula, OntologyDataset, OntologyField } from "./types.js";
 
 export interface CompileContext {
   fields: Record<string, OntologyField>;
@@ -53,8 +60,22 @@ export interface Compiled {
   metricRefs: string[];
   /** Uses cohort or lag, so it cannot run as one Ossie aggregate */
   staged: boolean;
-  /** Set when the entry declares a breakdown: the SQL returns one row per value of the field */
-  breakdown?: { field: string };
+  /**
+   * Set when the entry declares a breakdown: the SQL returns one row per value of
+   * `field`, the output column. For a bucketed breakdown `field` is the column
+   * name (the breakdown name, or `bucket`) and `buckets` lists the labels.
+   */
+  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]> };
+}
+
+/** A checked breakdown: a field, or a bucketed per-row expression, and the total mode. */
+export interface ResolvedBreakdown {
+  /** The output column: the field id, or the bucket column name */
+  column: string;
+  field?: string;
+  expression?: { src: string; node: Node; fields: string[] };
+  buckets?: Array<{ label: string; lo: number; hi: number | null }>;
+  total: boolean;
 }
 
 export class CompileError extends Error {}
@@ -72,8 +93,8 @@ interface Scope {
   dataset?: string;
   /** metric ids on the current path, to catch cycles */
   path: string[];
-  /** The breakdown field: aggregates are grouped by it unless under total() */
-  breakdown?: string;
+  /** The breakdown: aggregates are grouped by it unless under total() (or, in total mode, unless their dataset lacks it) */
+  breakdown?: ResolvedBreakdown;
   /** Under total(): aggregates read the whole population */
   total?: boolean;
 }
@@ -93,12 +114,12 @@ export function compileMetric(id: string, ctx: CompileContext, variant?: string)
   const src = named !== undefined ? f.formula : variant ? (f.forms as any)?.[variant] ?? f.variants?.[variant] : f.formula;
   if (!src) throw new CompileError(f.notComputable ? `'${id}' is not computable: ${f.notComputable}` : `'${id}' has no ${variant ?? "formula"}`);
   const ref = named ?? f.breakdown;
-  const breakdown = ref === undefined ? undefined : breakdownField(ref, ctx, named !== undefined ? `${id}:${variant}` : id);
+  const spec = ref === undefined ? undefined : resolveBreakdown(ref, ctx, named !== undefined ? `${id}:${variant}` : id, named !== undefined ? variant : undefined);
   const c = new Compiler(ctx);
-  const body = c.formula(parseFormula(src), { toDate: false, shift: [], path: [id], breakdown });
+  const body = c.formula(parseFormula(src), { toDate: false, shift: [], path: [id], breakdown: spec });
   const alias = id.replace(/[^a-z0-9_]/gi, "_");
-  const sql = breakdown
-    ? `SELECT _d.${breakdown} AS ${breakdown}, ${body} AS ${alias}\nFROM (${c.domain(breakdown)}) _d`
+  const sql = spec
+    ? `SELECT _d.${spec.column} AS ${spec.column}, ${body} AS ${alias}\nFROM (${c.domain(spec)}) _d`
     : `SELECT ${body} AS ${alias}`;
   return {
     sql,
@@ -107,8 +128,72 @@ export function compileMetric(id: string, ctx: CompileContext, variant?: string)
     datasets: [...c.datasets].sort(),
     metricRefs: [...c.metricRefs].sort(),
     staged: c.staged,
-    ...(breakdown ? { breakdown: { field: breakdown } } : {}),
+    ...(spec ? { breakdown: {
+      field: spec.column,
+      ...(spec.total ? { total: true } : {}),
+      ...(spec.expression ? { expression: spec.expression.src, buckets: Object.fromEntries(spec.buckets!.map((b) => [b.label, [b.lo, b.hi] as [number, number | null]])) } : {}),
+    } } : {}),
   };
+}
+
+const bareFields = (n: Node, out = new Set<string>()): Set<string> => {
+  switch (n.kind) {
+    case "field": out.add(n.id); break;
+    case "binary": case "logic": case "compare": bareFields(n.left, out); bareFields(n.right, out); break;
+    case "scalar": n.args.forEach((a) => bareFields(a, out)); break;
+    case "neg": case "not": case "isnull": bareFields(n.arg, out); break;
+    case "in": bareFields(n.arg, out); n.values.forEach((v) => bareFields(v, out)); break;
+  }
+  return out;
+};
+
+/**
+ * A breakdown spec checked against the ontology: "field.<id>", { field, total },
+ * or { expression, buckets, total }. `name` is the named breakdown's name, which
+ * becomes a bucketed breakdown's column (else `bucket`).
+ */
+export function resolveBreakdown(ref: BreakdownSpec, ctx: Pick<CompileContext, "fields" | "datasets">, id = "formula", name?: string): ResolvedBreakdown {
+  if (ref && typeof ref === "object" && "expression" in ref) {
+    const extra = Object.keys(ref).filter((k) => !["expression", "buckets", "total"].includes(k));
+    if (extra.length || typeof ref.expression !== "string" || (ref.total !== undefined && typeof ref.total !== "boolean"))
+      throw new CompileError(`'${id}' bucketed breakdown takes only a string "expression", "buckets" and a boolean "total"`);
+    let node: Node;
+    try { node = parseFormula(ref.expression).expr; } catch (e) { throw new CompileError(`'${id}' breakdown expression: ${(e as Error).message}`); }
+    if (hasAggregate(node) || hasMetric(node)) throw new CompileError(`'${id}' breakdown expression must be a per-row expression over fields, with no aggregate or metric`);
+    const fields = [...bareFields(node)];
+    if (!fields.length) throw new CompileError(`'${id}' breakdown expression reads no field`);
+    for (const fid of fields) if (!ctx.fields[fid]) throw new CompileError(`'${id}' breakdown expression names unknown field 'field.${fid}'`);
+    const shared = fields.map((fid) => ctx.fields[fid].datasets ?? []).reduce((a, b) => a.filter((x) => b.includes(x)));
+    if (!shared.length) throw new CompileError(`'${id}' breakdown expression mixes fields from different datasets: ${fields.join(", ")}`);
+    if (!ref.buckets || typeof ref.buckets !== "object" || !Object.keys(ref.buckets).length) throw new CompileError(`'${id}' bucketed breakdown needs at least one bucket`);
+    const buckets = Object.entries(ref.buckets).map(([label, range]) => {
+      if (!/^[A-Za-z0-9_]+$/.test(label)) throw new CompileError(`'${id}' bucket label '${label}' must be letters, digits and underscores`);
+      if (!Array.isArray(range) || range.length !== 2 || typeof range[0] !== "number" || !(range[1] === null || typeof range[1] === "number"))
+        throw new CompileError(`'${id}' bucket '${label}' must be [lo, hi] with a number lo and a number or null hi`);
+      if (range[1] !== null && range[1] < range[0]) throw new CompileError(`'${id}' bucket '${label}' has hi below lo`);
+      return { label, lo: range[0], hi: range[1] as number | null };
+    });
+    if (new Set(buckets.map((b) => b.label.toLowerCase())).size !== buckets.length) throw new CompileError(`'${id}' bucket labels must be unique`);
+    const sorted = [...buckets].sort((a, b) => a.lo - b.lo);
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      if (prev.hi === null || sorted[i].lo <= prev.hi) throw new CompileError(`'${id}' buckets '${prev.label}' and '${sorted[i].label}' overlap (bounds are inclusive)`);
+    }
+    const column = name ?? "bucket";
+    if (!/^[a-z_][a-z0-9_]*$/i.test(column)) throw new CompileError(`'${id}' bucket column '${column}' is not an identifier`);
+    return { column, expression: { src: ref.expression, node, fields }, buckets, total: ref.total === true };
+  }
+  const s = breakdownSpec(ref as Exclude<BreakdownSpec, { expression: string }>, ctx, id);
+  return { column: s.field, field: s.field, total: s.total };
+}
+
+/** A breakdown spec (string or { field, total }) as a checked field id and total mode. */
+export function breakdownSpec(ref: Exclude<BreakdownSpec, { expression: string }>, ctx: Pick<CompileContext, "fields">, id = "formula"): { field: string; total: boolean } {
+  if (typeof ref === "string") return { field: breakdownField(ref, ctx, id), total: false };
+  if (!ref || typeof ref !== "object" || typeof ref.field !== "string") throw new CompileError(`'${id}' breakdown must be "field.<id>" or { "field": "field.<id>", "total": true }`);
+  const extra = Object.keys(ref).filter((k) => k !== "field" && k !== "total");
+  if (extra.length || (ref.total !== undefined && typeof ref.total !== "boolean")) throw new CompileError(`'${id}' breakdown object takes only "field" and a boolean "total"`);
+  return { field: breakdownField(ref.field, ctx, id), total: ref.total === true };
 }
 
 /** The field id of an entry's `breakdown` ("field.<id>"), checked against the ontology. */
@@ -267,11 +352,16 @@ class Compiler {
     if (!meta) throw new CompileError(`Unknown dataset '${ds}'`);
     this.datasets.add(ds);
     const s: Scope = { ...scope, dataset: ds };
-    const grouped = !!scope.breakdown && !scope.total;
-    if (grouped && !(this.ctx.fields[scope.breakdown!]?.datasets ?? []).includes(ds)) {
+    const bd = scope.breakdown;
+    const needs = bd ? (bd.field ? [bd.field] : bd.expression!.fields) : [];
+    const missing = needs.filter((x) => !(this.ctx.fields[x]?.datasets ?? []).includes(ds));
+    // In total mode the author declared that aggregates without the dimension stay whole.
+    const grouped = !!bd && !scope.total && (missing.length === 0 || !bd.total);
+    if (grouped && missing.length) {
       const fn = n.kind === "agg" ? n.fn : "percentile";
+      const what = bd!.field ? `field.${bd!.field}` : `${bd!.column} (${bd!.expression!.src})`;
       throw new CompileError(
-        `Breakdown by field.${scope.breakdown}: ${fn}() over ${ids.map((x) => `field.${x}`).join(", ")} reads dataset '${ds}', which has no ${scope.breakdown} field. Wrap the aggregate in total() or add the field to '${ds}'`,
+        `Breakdown by ${what}: ${fn}() over ${ids.map((x) => `field.${x}`).join(", ")} reads dataset '${ds}', which has no ${missing.join(", ")} field. Wrap the aggregate in total() or add the field to '${ds}'`,
       );
     }
     const inner = this.expr(n.arg, s);
@@ -301,7 +391,12 @@ class Compiler {
       where.push(`${date} >= ${this.bound("period_start", scope)}`, `${date} <= ${this.bound("period_end", scope)}`);
     }
     if (n.where) where.push(this.expr(n.where, s));
-    if (grouped) where.push(`${this.ph(scope.breakdown!, ds)} = _d.${scope.breakdown}`);
+    if (grouped && bd!.field) where.push(`${this.ph(bd!.field, ds)} = _d.${bd!.column}`);
+    if (grouped && bd!.expression) {
+      const e = this.expr(bd!.expression.node, { ...s, breakdown: undefined });
+      const whens = bd!.buckets!.map((b) => `WHEN ${e} ${b.hi === null ? `>= ${b.lo}` : `BETWEEN ${b.lo} AND ${b.hi}`} THEN '${b.label}'`);
+      where.push(`CASE ${whens.join(" ")} END = _d.${bd!.column}`);
+    }
     if (scope.cohort && (this.ctx.fields[scope.cohort.key]?.datasets ?? []).includes(ds)) {
       const key = scope.cohort.key;
       const keyDs = Object.entries(this.ctx.datasets).find(([, d]) => d.key === key)?.[0];
@@ -320,8 +415,10 @@ class Compiler {
     return `(SELECT ${agg} FROM {{_table:${ds}}}${where.length ? ` WHERE ${where.join(" AND ")}` : ""})`;
   }
 
-  /** The rows a breakdown iterates: enum values as literals, else the field's distinct values on one dataset. */
-  domain(field: string): string {
+  /** The rows a breakdown iterates: bucket labels or enum values as literals, else the field's distinct values on one dataset. */
+  domain(bd: ResolvedBreakdown): string {
+    if (bd.buckets) return bd.buckets.map((b) => `SELECT '${b.label}' AS ${bd.column}`).join(" UNION ALL ");
+    const field = bd.field!;
     const f = this.ctx.fields[field];
     if (f.values?.length) return f.values.map((v) => `SELECT '${v.replace(/'/g, "''")}' AS ${field}`).join(" UNION ALL ");
     const carriers = f.datasets ?? [];

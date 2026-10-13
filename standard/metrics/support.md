@@ -17,6 +17,8 @@ Metrics for measuring support team performance and customer service quality.
 Ticket Volume = Count of tickets created in period
 ```
 
+Ticket Volume is reported per ticket type.
+
 Track by channel: email, chat, phone, self-service.
 
 **What it tells you:** Support demand. Trend matters more than absolute number.
@@ -131,6 +133,8 @@ FRT SLA Adherence = Tickets meeting FRT target / Total tickets × 100
 ```
 Resolution Time = Median of (Resolution timestamp - Ticket created timestamp)
 ```
+
+Resolution Time is reported per ticket type.
 
 **Benchmarks:**
 - Simple issues: < 4 hours

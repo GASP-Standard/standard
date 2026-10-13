@@ -18,11 +18,12 @@ import {
   inferDrivers,
   findPaths,
   coverageGap,
+  noDriversMessage,
   type PathStep,
   type TraversalCandidate,
 } from "./traversal.js";
 import { SITE, metricUrl, definitionUrl, resolveDocLink } from "./urls.js";
-import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement } from "./tools.js";
+import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement, breakdownTemplate, breakdownRequirement } from "./tools.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import type { StandardData, RelationshipNode, Definition, Metric } from "./types.js";
@@ -363,7 +364,7 @@ server.tool(
 // --- Tool 3: get_formula ---
 server.tool(
   "get_formula",
-  "Get the canonical formula for a GASP Standard metric: the machine-readable GASP grammar formula with its unit, operating and market forms and named variants, the metrics, fields and datasets it and each form read, plus the formula as written in the standard.",
+  "Get the canonical formula for a GASP Standard metric: the machine-readable GASP grammar formula with its unit, operating and market forms and named variants, the metrics, fields and datasets it and each form read, the enum filters each form applies (so forms reading the same fields show where they differ), plus the formula as written in the standard.",
   { metric: z.string().describe("Metric name, abbreviation or formula id (e.g. 'NRR', 'LTV', 'CAC Payback'). A name several departments use returns the candidates to choose from.") },
   async ({ metric: name }) => {
     const resolved = resolveMetric(data, name);
@@ -493,7 +494,7 @@ server.tool(
 // --- Tool 5: get_data_requirements ---
 server.tool(
   "get_data_requirements",
-  "Get the data requirements for implementing a GASP Standard metric or department dashboard: each field the canonical formula reads with its type and the GASP dataset it is read from, whether the metric needs a staged dataset (cohort or prior-period comparison), reporting grain, source system, page URL and example SQL. The metric resolves exactly as in lookup_metric (name, abbreviation, alias or formula id); a name several departments use lists the candidates unless department picks one. Department is an exact name, case-insensitive.",
+  "Get the data requirements for implementing a GASP Standard metric or department dashboard: each field the canonical formula reads with its type and the GASP dataset it is read from, whether the metric needs a staged dataset (cohort or prior-period comparison), reporting grain, source system, page URL and example SQL. The metric resolves exactly as in lookup_metric (name, abbreviation, alias or formula id); a name several departments use lists the candidates unless department picks one. Department is an exact name, case-insensitive. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get that breakdown's requirement: its fields include the dimension and the example SQL returns one row per value.",
   {
     metric: z
       .string()
@@ -505,8 +506,9 @@ server.tool(
       .describe(
         "Exact department name (e.g. 'Sales', 'Engineering', 'Customer Success'). Alone it lists the department's requirements; with metric it picks between metrics that share a name."
       ),
+    breakdown: z.string().optional().describe("Name of a named breakdown the metric declares (e.g. 'by_plan' on MRR); needs metric. The requirement then covers the breakdown's query, one row per value."),
   },
-  async ({ metric, department }) => {
+  async ({ metric, department, breakdown }) => {
     const all = data.dataRequirements || [];
     const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
     let dept: string | undefined;
@@ -532,6 +534,13 @@ server.tool(
         const why = f?.notComputable ? `it has no single formula: ${f.notComputable}` : "it has no canonical formula yet";
         return text(`${resolved.metric.name} (${resolved.metric.department}, ${metricUrl(resolved.metric)}) has no data requirements: ${why}.`);
       }
+      if (breakdown) {
+        const b = breakdownRequirement(data, id, breakdown);
+        if ("error" in b) return text(b.error);
+        filtered = [b.requirement];
+      }
+    } else if (breakdown) {
+      return text("breakdown needs metric: name the metric whose breakdown you want (e.g. metric 'MRR', breakdown 'by_plan').");
     }
 
     if (filtered.length === 0) {
@@ -601,12 +610,13 @@ server.tool(
 // --- Tool 7: generate_query ---
 server.tool(
   "generate_query",
-  "Generate SQL for a GASP metric from your adapter. The query is compiled from the metric's canonical formula: one scalar subquery per aggregate, each on the warehouse table you mapped to that GASP dataset, with :period_start and :period_end parameters. Fields you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from.",
+  "Generate SQL for a GASP metric from your adapter. The query is compiled from the metric's canonical formula: one scalar subquery per aggregate, each on the warehouse table you mapped to that GASP dataset, with :period_start and :period_end parameters. Fields you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get one row per value of its field.",
   {
     metric: z.string().describe("Metric name or abbreviation (e.g. 'NRR', 'CAC', 'Pipeline Value', 'ARR')"),
     adapter: z.string().describe("Your GASP adapter JSON string (see validate_adapter)"),
+    breakdown: z.string().optional().describe("Name of a named breakdown the metric declares (e.g. 'by_plan' on MRR). The query returns one row per value of the breakdown's field."),
   },
-  async ({ metric: metricName, adapter: adapterJson }) => {
+  async ({ metric: metricName, adapter: adapterJson, breakdown }) => {
     const resolved = resolveMetric(data, metricName);
     if (resolved.kind === "ambiguous") {
       return { content: [{ type: "text" as const, text: formatAmbiguous(data, metricName, resolved.candidates) }] };
@@ -620,11 +630,16 @@ server.tool(
       return { content: [{ type: "text" as const, text: 'Adapter must have a "mappings" array. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json' }] };
     }
     const id = metricFormulaId(data, resolved.metric);
-    const template = data.queryTemplates?.[id];
+    let template = data.queryTemplates?.[id];
     if (!template) {
       const f = data.formulas?.[id];
       const why = f?.notComputable ? `It has no single formula: ${f.notComputable}` : "It has no canonical formula yet.";
       return { content: [{ type: "text" as const, text: `${resolved.metric.name} cannot be compiled to SQL. ${why}` }] };
+    }
+    if (breakdown) {
+      const b = breakdownTemplate(data, id, breakdown);
+      if ("error" in b) return { content: [{ type: "text" as const, text: b.error }] };
+      template = b.template;
     }
     const r = fillTemplate(template, adapter, data);
     const parts: string[] = [
@@ -632,7 +647,7 @@ server.tool(
       `**Warehouse:** ${adapter.warehouse || "not specified"}`, `**Datasets:** ${template.datasets.join(", ")}`, `**Grain:** ${template.grain}`,
       `**Fields mapped:** ${r.mapped.length} / ${template.placeholders.length} (field and dataset pairs)`,
     ];
-    if (template.breakdown) parts.push(`**Breakdown:** the query returns one row per \`${template.breakdown.field}\` value.`);
+    if (template.breakdown) parts.push(`**Breakdown${breakdown ? ` \`${breakdown}\`` : ""}:** the query returns one row per \`${template.breakdown.field}\` value.`);
     if (template.staged) parts.push("**Note:** this metric uses a cohort or a prior-period comparison; the query is correct but each aggregate re-reads the table. A staged dataset makes it cheaper.");
     if (r.missingFields.length) parts.push(`**Unmapped fields (left as placeholders):** \`${r.missingFields.join("\`, \`")}\``);
     if (r.missingTables.length) parts.push(`**Datasets with no table:** ${r.missingTables.join(", ")}. Add them under \"datasets\" in the adapter or map a field from each.`);
@@ -684,7 +699,7 @@ server.tool(
 
     if (candidates.length === 0) {
       return {
-        content: [{ type: "text" as const, text: `# ${node.label} ${dirStr}\n\nNo upstream candidates found within the traversal depth limit.` }],
+        content: [{ type: "text" as const, text: `# ${node.label} ${dirStr}\n\n${noDriversMessage(node.id, traversalCtx)}` }],
       };
     }
 

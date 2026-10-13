@@ -69,7 +69,7 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 ## Principles
 
-1. **Consensus over custom.** These definitions reflect industry standard practice. Your business is not special enough to need different definitions.
+1. **Consensus over custom.** These definitions reflect industry standard practice. Your business is not special enough to need different definitions. Where you must deviate, record the variant in your adapter and leave the canonical formula as it is, so the two can be reconciled.
 
 2. **Precision over flexibility.** Each metric has one formula. Not "it depends."
 

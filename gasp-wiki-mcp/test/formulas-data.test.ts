@@ -3,8 +3,27 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadStandard, metricFormulaId, isMetricStub } from "../src/loader.js";
 import { parseFormula, analyzeFormula, validateFormula } from "../src/formula.js";
-import { compileMetric } from "../src/compile.js";
-import type { StandardData, MetricFormula, OntologyData } from "../src/types.js";
+import { compileMetric, resolveBreakdown } from "../src/compile.js";
+import type { StandardData, MetricFormula, OntologyData, BreakdownSpec } from "../src/types.js";
+
+/** The "field.<id>" reference of a field breakdown spec; undefined for a bucketed spec or a wrong shape. */
+const breakdownRef = (b: BreakdownSpec): string | undefined => {
+  if (typeof b === "string") return b;
+  if (!b || typeof b !== "object" || !("field" in b) || typeof b.field !== "string") return undefined;
+  if (Object.keys(b).some((k) => k !== "field" && k !== "total") || (b.total !== undefined && typeof b.total !== "boolean")) return undefined;
+  return b.field;
+};
+const isBucketed = (b: BreakdownSpec): b is Extract<BreakdownSpec, { expression: string }> => !!b && typeof b === "object" && "expression" in b;
+/** The output column a breakdown compiles to: the field id, or a bucketed breakdown's name (`bucket` at entry level). */
+const columnOf = (b: BreakdownSpec, name?: string): string | undefined => (isBucketed(b) ? name ?? "bucket" : breakdownRef(b)?.slice(6));
+/** Shape problems of a breakdown spec: the field exists, or the bucketed form passes the compiler's checks. */
+const specProblem = (b: BreakdownSpec, fields: Set<string>, ctx: { fields: Record<string, any>; datasets: Record<string, any> }, name?: string): string | undefined => {
+  if (isBucketed(b)) {
+    try { resolveBreakdown(b, ctx, "check", name); return undefined; } catch (e) { return (e as Error).message; }
+  }
+  const r = breakdownRef(b);
+  return r && r.startsWith("field.") && fields.has(r.slice(6)) ? undefined : `want "field.<id>", { "field": "field.<id>", "total": true } or { "expression", "buckets", "total" }`;
+};
 
 // standard/formulas.json is the canonical, machine-readable formula layer.
 // Every expression must parse, resolve against the ontology, and agree with
@@ -97,7 +116,13 @@ describe("formulas.json", () => {
 
   it("references every field at least once, except keys, dates, CEL ledger fields and dimensions", () => {
     const used = new Set(entries.flatMap(([, f]) => expressions(f).flatMap(([, src]) => analyzeFormula(parseFormula(src)).fieldRefs)));
-    for (const [, f] of entries) if (f.breakdown) used.add(f.breakdown.replace(/^field\./, ""));
+    for (const [, f] of entries) {
+      for (const b of [f.breakdown, ...Object.values(f.breakdowns ?? {})]) {
+        if (b === undefined) continue;
+        if (isBucketed(b)) analyzeFormula(parseFormula(b.expression)).fieldRefs.forEach((x) => used.add(x));
+        else used.add((breakdownRef(b) ?? "").replace(/^field\./, ""));
+      }
+    }
     const ds = data.ontology!.datasets!;
     const structural = (f: NonNullable<OntologyData["fields"]>[number]) =>
       f.dimension || f.id === "currency" || (f.datasets ?? []).some((d) => ds[d]?.key === f.id || ds[d]?.date === f.id || !!ds[d]?.cel);
@@ -148,16 +173,19 @@ describe("temporal semantics", () => {
 describe("breakdowns", () => {
   it("names an existing field, as field.<id>, in every breakdown", () => {
     const fields = new Set(data.ontology!.fields!.map((f) => f.id));
-    const bad = entries.filter(([, f]) => f.breakdown !== undefined && !(f.breakdown.startsWith("field.") && fields.has(f.breakdown.slice(6))));
-    expect(bad.map(([id, f]) => `${id}: ${f.breakdown}`)).toEqual([]);
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets! };
+    const bad = entries.filter(([, f]) => f.breakdown !== undefined && specProblem(f.breakdown, fields, ctx));
+    expect(bad.map(([id, f]) => `${id}: ${JSON.stringify(f.breakdown)}: ${specProblem(f.breakdown!, fields, ctx)}`)).toEqual([]);
   });
 
   it("names an existing field, as field.<id>, in every named breakdown, and no name clashes with a form or variant", () => {
     const fields = new Set(data.ontology!.fields!.map((f) => f.id));
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets! };
     const bad: string[] = [];
     for (const [id, f] of entries) {
-      for (const [name, ref] of Object.entries(f.breakdowns ?? {})) {
-        if (!(ref.startsWith("field.") && fields.has(ref.slice(6)))) bad.push(`${id}.breakdowns.${name}: ${ref}`);
+      for (const [name, spec] of Object.entries(f.breakdowns ?? {})) {
+        const problem = specProblem(spec, fields, ctx, name);
+        if (problem) bad.push(`${id}.breakdowns.${name}: ${JSON.stringify(spec)}: ${problem}`);
         if ((f.forms as Record<string, string> | undefined)?.[name] || f.variants?.[name]) bad.push(`${id}.breakdowns.${name}: clashes with a form or variant`);
         if (!f.formula) bad.push(`${id}.breakdowns.${name}: entry has no main formula`);
       }
@@ -169,10 +197,10 @@ describe("breakdowns", () => {
     const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
     const failures: string[] = [];
     for (const [id, f] of entries) {
-      for (const [name, ref] of Object.entries(f.breakdowns ?? {})) {
+      for (const [name, spec] of Object.entries(f.breakdowns ?? {})) {
         try {
           const c = compileMetric(id, ctx, name);
-          if (c.breakdown?.field !== ref.slice(6)) failures.push(`${id}:${name}: compiled breakdown ${c.breakdown?.field}`);
+          if (c.breakdown?.field !== columnOf(spec, name)) failures.push(`${id}:${name}: compiled breakdown ${c.breakdown?.field}`);
         } catch (e) {
           failures.push(`${id}:${name}: ${(e as Error).message}`);
         }
@@ -189,9 +217,10 @@ describe("breakdowns", () => {
     for (const [id, f] of breakdowns) {
       try {
         const c = compileMetric(id, ctx);
-        const field = f.breakdown!.slice(6);
+        const field = columnOf(f.breakdown!)!;
         if (c.breakdown?.field !== field) failures.push(`${id}: compiled breakdown ${c.breakdown?.field}`);
-        if (!c.fields.includes(field)) failures.push(`${id}: ${field} not counted as read`);
+        const read = isBucketed(f.breakdown!) ? analyzeFormula(parseFormula(f.breakdown.expression)).fieldRefs : [field];
+        for (const x of read) if (!c.fields.includes(x)) failures.push(`${id}: ${x} not counted as read`);
         if (!c.sql.includes(`= _d.${field}`)) failures.push(`${id}: no aggregate grouped by ${field}`);
       } catch (e) {
         failures.push(`${id}: ${(e as Error).message}`);

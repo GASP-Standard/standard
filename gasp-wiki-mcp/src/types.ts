@@ -258,7 +258,8 @@ export interface DataRequirement {
   /** What each declared O or M form reads, following metric refs (and form refs) as the main formula does */
   forms?: Partial<Record<"O" | "M", FormRequirement>>;
   /** Set when the formula is broken down by a field: the query returns one row per value */
-  breakdown?: { field: string };
+  /** `field` is the output column: the breakdown field, or a bucketed breakdown's column with its `buckets` */
+  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]> };
 }
 
 /** The fields and datasets one O or M form of a formula reads */
@@ -284,7 +285,8 @@ export interface QueryTemplate {
   /** Every (field, dataset) pair the SQL reads, as "field@dataset"; the adapter maps each pair to a column */
   placeholders: string[];
   /** Set when the formula is broken down by a field: the query returns one row per value */
-  breakdown?: { field: string };
+  /** `field` is the output column: the breakdown field, or a bucketed breakdown's column with its `buckets` */
+  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]> };
 }
 
 /** Display unit for a formula result. Percent formulas compute unscaled ratios. */
@@ -308,13 +310,29 @@ export interface MetricFormula {
    * "field.<id>": the formula is computed once per value of that field. Every
    * aggregate not under total() is grouped by it (see src/formula.ts).
    */
-  breakdown?: string;
+  breakdown?: BreakdownSpec;
   /**
    * Named breakdowns, e.g. { "by_plan": "field.plan_id" }: each compiles the main
    * formula with that breakdown, addressed like a variant (compileMetric(id, ctx, "by_plan")).
    */
-  breakdowns?: Record<string, string>;
+  breakdowns?: Record<string, BreakdownSpec>;
 }
+
+/**
+ * A breakdown: "field.<id>", or { field: "field.<id>", total: true }. With
+ * `total`, an aggregate whose dataset lacks the field stays whole (share of
+ * total, such as cost by cost centre over all new customers) instead of being
+ * a compile error.
+ */
+export type BreakdownSpec =
+  | string
+  | { field: string; total?: boolean }
+  /**
+   * Bucketed: a per-row expression over fields of one dataset, cut into labelled
+   * inclusive ranges ([lo, hi], hi null for an open top bucket). The labels are
+   * the domain; the column is the breakdown name, or `bucket` at entry level.
+   */
+  | { expression: string; buckets: Record<string, [number, number | null]>; total?: boolean };
 
 /** The full loaded dataset */
 export interface StandardData {

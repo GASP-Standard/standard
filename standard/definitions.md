@@ -530,6 +530,11 @@ Optional CEL field that captures the intent behind a revenue movement. Does not 
 - **`scheduled_reversal`.** Reverses a prior `temporary` event.
 - **Reference:** [CEL change_nature](/v1/cel#change-nature)
 
+### Segment
+The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract and amendment events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. Segment is a dimension for slicing metrics, not an ATL tag, and plan carries pricing tier.
+- **Canonical definition:** [CEL segment](cel.md#segment-on-events)
+- **Used in:** Named `by_segment` breakdowns of MRR, ARR, NRR, GRR, the churn and movement metrics, ARPA and Health Score
+
 ### Structured Formula
 A decomposed representation of a metric's formula: explicit references to other metric nodes (with roles like numerator, denominator, addend) and the raw fields required. Enables agents to walk the dependency tree without parsing formula text.
 - **Reference:** ontology.json structuredFormulas in the GASP repository
