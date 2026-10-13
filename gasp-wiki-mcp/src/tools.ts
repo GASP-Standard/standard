@@ -7,6 +7,7 @@ import { metricFormulaId, closestNames } from "./loader.js";
 import { metricUrl } from "./urls.js";
 import { enumFilters, formatFilters } from "./filters.js";
 import { compileMetric, exampleSql, type CompileContext } from "./compile.js";
+import { DIALECTS, dialectOfWarehouse, type DialectName } from "./dialect.js";
 import type { StandardData, Metric, Definition, QueryTemplate, DataRequirement, BreakdownSpec } from "./types.js";
 import Ajv2020Module from "ajv/dist/2020.js";
 import type { ValidateFunction, ErrorObject } from "ajv";
@@ -209,9 +210,9 @@ export function fillTemplate(template: QueryTemplate, adapter: Adapter, data: St
  * query (the dimension included; one row per value). Rejects an unknown name
  * with the declared list, as breakdownTemplate does.
  */
-export function breakdownRequirement(data: StandardData, id: string, name: string): { requirement: DataRequirement } | { error: string } {
+export function breakdownRequirement(data: StandardData, id: string, name: string | undefined, dialect?: DialectName): { requirement: DataRequirement } | { error: string } {
   const base = data.dataRequirements.find((d) => d.formulaId === id);
-  const b = breakdownTemplate(data, id, name);
+  const b = breakdownTemplate(data, id, name, dialect);
   if ("error" in b) return b;
   if (!base) return { error: `${id} has no data requirements.` };
   const t = b.template;
@@ -219,25 +220,50 @@ export function breakdownRequirement(data: StandardData, id: string, name: strin
   const { forms: _forms, ...rest } = base;
   return {
     requirement: {
-      ...rest, metric: `${base.metric}, breakdown ${name}`, fields: t.fields, datasets: t.datasets, placeholders: t.placeholders, staged: t.staged,
+      ...(name ? rest : base), ...(name ? { metric: `${base.metric}, breakdown ${name}` } : {}),
+      fields: t.fields, datasets: t.datasets, placeholders: t.placeholders, staged: t.staged,
       fieldTypes: Object.fromEntries(t.fields.map((f) => [f, types.get(f) ?? "string"])),
       exampleQuery: exampleSql(t.parameterizedQuery), ...(t.breakdown ? { breakdown: t.breakdown } : {}),
     },
   };
 }
 
-export function breakdownTemplate(data: StandardData, id: string, name: string): { template: QueryTemplate } | { error: string } {
+/**
+ * The query template of a metric compiled on demand: a named breakdown (`name`)
+ * and/or a SQL dialect other than postgres (src/dialect.ts). With neither, the
+ * loaded template. Grain, frequency and source come from the metric's own template.
+ */
+/**
+ * The SQL dialect generate_query uses: the one asked for, else the adapter's
+ * `warehouse` when it names one (redshift and postgresql read as postgres),
+ * else postgres. `note` says which and why, for the tool output.
+ */
+export function chooseDialect(requested: string | undefined, warehouse: unknown): { dialect: DialectName; note: string } | { error: string } {
+  if (requested) {
+    const d = requested.trim().toLowerCase();
+    if (!(DIALECTS as readonly string[]).includes(d)) return { error: `Unknown SQL dialect \`${requested}\`. Use one of ${DIALECTS.join(", ")} (postgres also covers Redshift).` };
+    return { dialect: d as DialectName, note: `${d} (requested)` };
+  }
+  const fromWarehouse = dialectOfWarehouse(warehouse);
+  if (fromWarehouse) return { dialect: fromWarehouse, note: `${fromWarehouse} (from the adapter's warehouse \`${String(warehouse)}\`)` };
+  return { dialect: "postgres", note: `postgres (default${warehouse ? `; the adapter's warehouse \`${String(warehouse)}\` names no supported dialect` : ""})` };
+}
+
+export function breakdownTemplate(data: StandardData, id: string, name?: string, dialect: DialectName = "postgres"): { template: QueryTemplate } | { error: string } {
   const f = data.formulas?.[id];
   const base = data.queryTemplates?.[id];
   const declared = Object.keys(f?.breakdowns ?? {});
-  if (!f || !base || !f.breakdowns?.[name]) {
+  if (!f || !base || (name !== undefined && !f.breakdowns?.[name])) {
     const list = declared.length ? `Declared breakdowns: ${declared.map((d) => `\`${d}\``).join(", ")}.` : "It declares no named breakdowns.";
-    return { error: `${base?.metric ?? id} has no breakdown named \`${name}\`. ${list}` };
+    return { error: name !== undefined ? `${base?.metric ?? id} has no breakdown named \`${name}\`. ${list}` : `${id} has no query template.` };
   }
+  if (!(DIALECTS as readonly string[]).includes(dialect)) return { error: `Unknown SQL dialect \`${dialect}\`. Use one of ${DIALECTS.join(", ")} (postgres also covers Redshift).` };
+  if (name === undefined && dialect === "postgres") return { template: base };
   const ctx: CompileContext = {
     fields: Object.fromEntries((data.ontology?.fields ?? []).map((x) => [x.id, x])),
     datasets: data.ontology?.datasets ?? {},
     formulas: data.formulas!,
+    dialect,
   };
   const c = compileMetric(id, ctx, name);
   return {
@@ -434,7 +460,7 @@ export function formatDataRequirement(req: DataRequirement, url?: string): strin
   for (const field of req.fields) {
     for (const ds of datasetsOf.get(field) ?? ["unknown"]) parts.push(`| \`${field}\` | ${ds} | ${req.fieldTypes?.[field] || "unknown"} |`);
   }
-  if (req.breakdown) parts.push("", `The query returns one row per \`${req.breakdown.field}\` value.`);
+  if (req.breakdown) parts.push("", `The query returns one row per \`${req.breakdown.field}\` value${req.breakdown.via ? `, with its \`${req.breakdown.via.key}\` (read from ${req.breakdown.via.dataset})` : ""}.`);
   parts.push("", "**Example SQL:**", "```sql\n" + req.exampleQuery + "\n```\n");
   return parts.join("\n");
 }

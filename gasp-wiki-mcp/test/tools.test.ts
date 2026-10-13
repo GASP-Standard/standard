@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { loadStandard, resolveNode, resolveNodeResult, findDefinition, getRelationships, search, metricFormulaId, isMetricStub } from "../src/loader.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement } from "../src/tools.js";
+import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "../src/tools.js";
 import { enumFilters, formatFilters } from "../src/filters.js";
 import { compileMetric, exampleSql, interval } from "../src/compile.js";
 
@@ -308,10 +308,10 @@ describe("get_formula form filters", () => {
 describe("generate_query named breakdown", () => {
   const adapter = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "fixture", "adapter.json"), "utf-8"));
 
-  it("MRR by_plan fills every placeholder from the fixture adapter and groups by plan_id", () => {
+  it("MRR by_plan fills every placeholder from the fixture adapter and groups by plan_id, labelled by plan_name", () => {
     const b = breakdownTemplate(data, "mrr", "by_plan");
     if ("error" in b) throw new Error(b.error);
-    expect(b.template.breakdown).toEqual({ field: "plan_id" });
+    expect(b.template.breakdown).toEqual({ field: "plan_name", via: { dataset: "plan", key: "plan_id" } });
     const r = fillTemplate(b.template, adapter, data);
     expect(r.missingFields).toEqual([]);
     expect(r.missingTables).toEqual([]);
@@ -353,13 +353,39 @@ describe("bucketed breakdowns and get_data_requirements breakdown", () => {
   it("breakdownRequirement compiles a named breakdown's requirement and rejects an unknown name", () => {
     const b = breakdownRequirement(data, "mrr", "by_plan");
     if ("error" in b) throw new Error(b.error);
-    expect(b.requirement.fields).toContain("plan_id");
-    expect(b.requirement.breakdown).toEqual({ field: "plan_id" });
+    expect(b.requirement.fields).toEqual(expect.arrayContaining(["plan_id", "plan_name"]));
+    expect(b.requirement.breakdown).toEqual({ field: "plan_name", via: { dataset: "plan", key: "plan_id" } });
     expect(b.requirement.exampleQuery).toContain("_d.plan_id");
-    expect(b.requirement.fieldTypes.plan_id).toBeDefined();
-    expect(formatDataRequirement(b.requirement)).toContain("The query returns one row per `plan_id` value.");
+    expect(b.requirement.fieldTypes.plan_name).toBeDefined();
+    expect(formatDataRequirement(b.requirement)).toContain("The query returns one row per `plan_name` value, with its `plan_id` (read from plan).");
     const bad = breakdownRequirement(data, "mrr", "by_region");
     expect("error" in bad && bad.error).toMatch(/no breakdown named `by_region`\. Declared breakdowns: `by_plan`/);
+  });
+});
+
+describe("dialect argument", () => {
+  it("chooseDialect: the requested dialect, else the adapter's warehouse, else postgres", () => {
+    expect(chooseDialect("BigQuery", "snowflake")).toEqual({ dialect: "bigquery", note: "bigquery (requested)" });
+    expect(chooseDialect(undefined, "Snowflake")).toMatchObject({ dialect: "snowflake" });
+    expect(chooseDialect(undefined, "redshift")).toMatchObject({ dialect: "postgres", note: "postgres (from the adapter's warehouse `redshift`)" });
+    expect(chooseDialect(undefined, "oracle")).toMatchObject({ dialect: "postgres", note: "postgres (default; the adapter's warehouse `oracle` names no supported dialect)" });
+    expect(chooseDialect(undefined, undefined)).toEqual({ dialect: "postgres", note: "postgres (default)" });
+    expect(chooseDialect("oracle", undefined)).toMatchObject({ error: expect.stringContaining("Unknown SQL dialect `oracle`") });
+  });
+
+  it("breakdownTemplate and breakdownRequirement compile in the dialect, with or without a breakdown", () => {
+    const sf = breakdownTemplate(data, "dau_mau", undefined, "snowflake");
+    if ("error" in sf) throw new Error(sf.error);
+    expect(sf.template.parameterizedQuery).toContain("DATEADD(day, -");
+    expect(sf.template.parameterizedQuery).not.toContain("INTERVAL '");
+    expect(breakdownTemplate(data, "dau_mau")).toEqual({ template: data.queryTemplates!.dau_mau });
+    const bq = breakdownRequirement(data, "mrr", "by_plan", "bigquery");
+    if ("error" in bq) throw new Error(bq.error);
+    expect(bq.requirement.exampleQuery).toContain("_d.plan_name");
+    const req = breakdownRequirement(data, "mttr", undefined, "databricks");
+    if ("error" in req) throw new Error(req.error);
+    expect(req.requirement.exampleQuery).toContain("TIMESTAMPDIFF(SECOND");
+    expect(req.requirement.metric).toBe(data.dataRequirements.find((d) => d.formulaId === "mttr")!.metric);
   });
 });
 

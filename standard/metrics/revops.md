@@ -8,7 +8,7 @@ Metrics for measuring the revenue lifecycle from quote to cash collection.
 
 ### Pipeline Hygiene Score
 
-**Definition:** Quality assessment of pipeline data and process adherence.
+**Definition:** Quality assessment of pipeline data and process adherence across open opportunities.
 
 **Components:**
 - Opportunities with required fields complete
@@ -25,7 +25,7 @@ Each component scored as percentage meeting criteria.
 
 **Target:** >90%
 
-**What it tells you:** Can you trust your pipeline data?
+**What it tells you:** How far you can trust the pipeline data your forecast is built on.
 
 ---
 
@@ -44,7 +44,7 @@ Forecast Accuracy = 1 - |Forecasted - Actual| / Actual
 - 85-95%: Good
 - Above 95%: Excellent
 
-**What it tells you:** Predictability of revenue. Critical for planning.
+**What it tells you:** How predictable revenue is, which sets how much weight plans can put on the forecast.
 
 ---
 
@@ -80,7 +80,7 @@ Track for each stage transition.
 
 ### Quote Volume
 
-**Definition:** Number of quotes generated in a period.
+**Definition:** Number of quotes sent in a period.
 
 **Formula:**
 ```
@@ -136,7 +136,7 @@ Quote Accuracy = Quotes with no revision / Total quotes × 100
 
 ### Discount Rate
 
-**Definition:** Average discount applied to deals.
+**Definition:** Discount off list price across quotes sent in the period, weighted by list price.
 
 **Formula:**
 ```
@@ -271,13 +271,13 @@ DSO = (Accounts Receivable / Revenue) × Days in period
 - 45-60 days: Average
 - Above 60 days: Collection issues
 
-**Note:** Also defined in [Finance metrics](finance.md). Same definition.
+**Note:** [Finance metrics](finance.md) links here. This is the canonical definition.
 
 ---
 
 ### Collection Effectiveness Index (CEI)
 
-**Definition:** How effective collections are at collecting receivables.
+**Definition:** The share of collectible receivables actually collected in the period. Billings stand in for credit sales. Current AR is receivables aged 30 days or less.
 
 **Formula:**
 ```
@@ -306,13 +306,32 @@ CEI = (Beginning AR + Credit sales - Ending AR) / (Beginning AR + Credit sales -
 Bucket % = AR in bucket / Total AR × 100
 ```
 
-Aging Buckets is reported per bucket: one share for each age bucket, each over the whole outstanding balance, so the shares sum to 100%. Age is the days from invoice date to the period end, and bounds are inclusive.
+Aging Buckets is reported per bucket: one share for each age bucket, each over the whole outstanding balance, so the shares sum to 100%. Age is the days from invoice date to the period end. Bounds are inclusive, so the 90+ bucket starts at 91 days.
 
 **Targets:**
 - Current: >80%
 - 31-60: <15%
 - 61-90: <4%
 - 90+: <1%
+
+---
+
+### Accounts Receivable Balance
+
+**Definition:** Total amount outstanding on open invoices at period end.
+
+**Formula:**
+```
+AR Balance = Sum of outstanding amounts on open invoices at period end
+```
+
+**Population:** The invoice snapshot at period end, invoices with an outstanding amount above zero.
+
+Accounts Receivable Balance is reported per payment status (unpaid, partial and so on) as of period end.
+
+**Note:** AR Balance should reconcile to `balance_sheet.accounts_receivable`, which DSO reads. Differences are unapplied cash or write-offs.
+
+**What it tells you:** How much billed cash is still to be collected. The payment status breakdown shows how much of it sits in partly paid or written-off invoices.
 
 ---
 
@@ -337,7 +356,7 @@ Method share = Invoiced amount in period paid by the method / Invoiced amount in
 - Wire transfer
 - Check
 
-Payment Method Distribution is reported per method: one share for each method, and the shares sum to 100%.
+Payment Method Distribution is reported per method: one share for each method, with the shares summing to 100%.
 
 **What it tells you:** Collection risk and processing costs by method.
 
@@ -367,7 +386,7 @@ Recognized/Billed = Recognized revenue / Billed revenue
 Deferred Revenue = Cumulative billings - Cumulative recognized revenue
 ```
 
-**What it tells you:** Future revenue already billed and owed as service delivery.
+**What it tells you:** Revenue already billed that the company still owes in service.
 
 ---
 
@@ -380,7 +399,7 @@ Deferred Revenue = Cumulative billings - Cumulative recognized revenue
 Unbilled Revenue = Recognized revenue - Billed revenue (where recognition > billing)
 ```
 
-**What it tells you:** Revenue owed but not yet invoiced.
+**What it tells you:** Service already delivered that billing has to catch up on.
 
 ---
 
@@ -472,6 +491,7 @@ Completeness = Fields populated / Required fields × 100
 | Quote-to-Order Rate | Quote-to-Order | Sales process efficiency |
 | Billing Accuracy | Billing | Invoice reliability |
 | DSO | Collections | Cash collection speed |
+| AR Balance | Collections | Cash still to collect |
 | Bad Debt Rate | Collections | Collection effectiveness |
 | Deferred Revenue | Recognition | Future revenue liability |
 | Auto-Renewal Rate | Renewals | Process automation |

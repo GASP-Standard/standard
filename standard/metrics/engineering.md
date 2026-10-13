@@ -2,7 +2,7 @@
 
 Metrics for measuring platform health, reliability and engineering productivity.
 
-**DORA Framework:** Delivery metrics follow the [DORA (DevOps Research and Assessment)](https://dora.dev/) framework, the industry standard for measuring software delivery performance. DORA research shows that high-performing teams are 2x more likely to exceed profitability targets.
+**DORA Framework:** Delivery metrics follow the [DORA (DevOps Research and Assessment)](https://dora.dev/) framework, the research program behind the annual State of DevOps reports. DORA research shows that high-performing teams are 2x more likely to exceed profitability targets.
 
 ---
 
@@ -75,7 +75,7 @@ P95 Latency = 95th percentile response time
 P99 Latency = 99th percentile response time
 ```
 
-Always report P95 or P99, not averages (averages hide tail latency).
+GASP's canonical latency is P95, with P50 and P99 as variants. Report percentiles rather than averages, which hide tail latency.
 
 **Benchmarks (API):**
 - P50: < 100ms
@@ -105,7 +105,7 @@ Categorize by severity:
 - SEV3/P3: Minor, limited impact
 - SEV4/P4: Cosmetic, no customer impact
 
-**What it tells you:** System stability. Trend matters.
+**What it tells you:** System stability. Read the trend per severity, since one SEV1 outweighs a month of SEV4 noise.
 
 ---
 
@@ -126,7 +126,7 @@ MTTD = Average of (Detection time - Incident start time)
 
 ### Mean Time to Acknowledge (MTTA)
 
-**Definition:** Time from alert to human acknowledgment.
+**Definition:** Time from detection (the alert firing) to a person acknowledging the incident.
 
 **Formula:**
 ```
@@ -180,7 +180,7 @@ Change Failure Rate = Deployments causing incidents / Total deployments × 100
 
 ## Delivery Metrics (DORA)
 
-The four key DORA metrics measure software delivery performance. In 2024, DORA added a fifth metric (Rework Rate), though benchmarks are still emerging.
+The four key DORA metrics are Deployment Frequency, Lead Time for Changes, Mean Time to Recovery and Change Failure Rate (listed under Incident Metrics above). DORA added a fifth, Rework Rate, in 2024. GASP does not define it.
 
 **Sources:**
 - [DORA: Metrics Guide](https://dora.dev/guides/dora-metrics-four-keys/)
@@ -286,6 +286,8 @@ Cost per Customer = Total infrastructure cost / Active customers
 Headroom = (Max capacity - Current usage) / Max capacity × 100
 ```
 
+Headroom is the complement of Infrastructure Utilization (1 minus utilization).
+
 **Target:** Maintain 20-30% headroom for traffic spikes.
 
 ---
@@ -294,7 +296,7 @@ Headroom = (Max capacity - Current usage) / Max capacity × 100
 
 ### Vulnerability Count
 
-**Definition:** Number of known vulnerabilities in systems.
+**Definition:** Number of known vulnerabilities still open in your systems.
 
 **Categorize by severity:** Critical, High, Medium, Low
 
@@ -307,7 +309,7 @@ Headroom = (Max capacity - Current usage) / Max capacity × 100
 
 ### Time to Patch
 
-**Definition:** Time from vulnerability disclosure to patch deployment.
+**Definition:** Time from a vulnerability being discovered to its patch being deployed, for patches deployed in the period.
 
 **Formula:**
 ```

@@ -4,7 +4,7 @@
 
 **GAAP for SaaS.**
 
-Just as Generally Accepted Accounting Principles standardized financial reporting for both management and investors, the GASP Standard establishes consensus definitions for SaaS metrics. One set of definitions. One way to calculate. No ambiguity.
+Just as Generally Accepted Accounting Principles standardized financial reporting for both management and investors, the GASP Standard establishes consensus definitions for SaaS metrics. Each metric gets one definition and one way to calculate it.
 
 ---
 
@@ -25,21 +25,21 @@ Where industry consensus exists, we follow it. Where gaps exist, we define using
 
 ## The Problem
 
-Every SaaS company measures "churn" differently. Ask five companies for their NRR and you'll get five different formulas. Boards, investors and operators waste time debating definitions instead of acting on insights.
+Every SaaS company measures "churn" differently. Ask five companies for their NRR and you'll get five different formulas. Boards, investors and operators spend meetings arguing about definitions when they could be discussing the numbers.
 
-The GASP Standard ends this. It codifies how the industry actually measures performance - the consensus that already exists but hasn't been written down.
+The GASP Standard writes down how the industry already measures performance: a consensus that exists in practice but had not been recorded in one place.
 
 ---
 
 ## What This Standard Provides
 
-- **Canonical definitions** for every metric. Ops through board room
-- **Exact formulas** - no "it depends"
+- **Canonical definitions** for every metric, from the ops review to the board room
+- **Exact formulas** with a single calculation per metric
 - **Industry benchmarks** for context
-- **Relationships** between metrics - the system, not just the numbers
-- **The One Page** - the standard view of business health
+- **Relationships** between metrics, showing how they move together
+- **The One Page**, the standard view of business health
 
-It is opinionated by design. These are not suggestions. This is the standard.
+It is opinionated by design. Adopt the definitions as written.
 
 ---
 
@@ -50,7 +50,7 @@ Most SaaS metrics frameworks serve either operators or investors. The GASP Stand
 - **O-form** metrics reflect the internal economic truth: what ops teams need to run the business
 - **M-form** metrics match investor-comparable definitions: what boards and investors benchmark against peers
 
-One set of data. Two perspectives. No reconciliation spreadsheet.
+Both forms come from the same events, so nobody has to keep a spreadsheet reconciling the ops number with the board number.
 
 ---
 
@@ -59,9 +59,9 @@ One set of data. Two perspectives. No reconciliation spreadsheet.
 **This standard covers:** Subscription-based SaaS with recurring revenue. The universal building blocks that apply to all SaaS businesses.
 
 **This standard does not cover:**
-- **Usage-based/consumption pricing** - Product-specific, cannot be universalized
-- **Implementation edge cases** - Downstream concerns for individual businesses
-- **Industry-specific variations** - Vertical SaaS may have additional metrics
+- **Pure consumption pricing**: metered revenue with no contracted commitment. MRR and ARR exclude usage fees that are not contractually guaranteed, while usage that meets or exceeds a contracted commitment counts as expansion (the ATL `usage_realisation` tag)
+- **Implementation edge cases**: downstream concerns for individual businesses
+- **Industry-specific variations**: vertical SaaS may have additional metrics
 
 The goal is foundational metrics that any SaaS business can adopt. Daily is the atomic unit; weekly, monthly and annual views are derived.
 
@@ -71,7 +71,7 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 1. **Consensus over custom.** These definitions reflect industry standard practice. Your business is not special enough to need different definitions. Where you must deviate, record the variant in your adapter and leave the canonical formula as it is, so the two can be reconciled.
 
-2. **Precision over flexibility.** Each metric has one formula. Not "it depends."
+2. **Precision over flexibility.** Each metric has one canonical formula, never "it depends." Where a metric has Operating and Market forms, the standard declares both beside the canonical formula.
 
 3. **Outcomes over activity.** We measure what matters to the business, not what's easy to track.
 
@@ -93,9 +93,9 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 | Document | Purpose |
 |----------|---------|
-| [Definitions](definitions.md) | Canonical definitions for all terms - the source of truth |
+| [Definitions](definitions.md) | Canonical definitions for all terms, the source of truth |
 | [Relationships](relationships.md) | How metrics connect and influence each other |
-| [The One Page](../wireframes/one-page.md) | Standard view of business health |
+| [The One Page](https://gaspwiki.com/v1/overview) | Standard view of business health |
 
 ---
 
@@ -103,7 +103,7 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 | Department | File | Focus |
 |------------|------|-------|
-| **Core** | [core.md](metrics/core.md) | MRR, ARR, NRR, CAC, LTV - the fundamentals |
+| **Core** | [core.md](metrics/core.md) | MRR, ARR, NRR, CAC, LTV: the fundamentals |
 | **Sales** | [sales.md](metrics/sales.md) | Pipeline, win rate, quota, deal velocity |
 | **Marketing** | [marketing.md](metrics/marketing.md) | Funnel, MQLs, CAC, demand generation |
 | **Customer Success** | [customer-success.md](metrics/customer-success.md) | Health scores, retention, expansion |
@@ -167,8 +167,8 @@ The goal is foundational metrics that any SaaS business can adopt. Daily is the 
 
 2. **Map your data sources.** For each metric, identify where the input data lives in your systems.
 
-3. **Implement exactly as defined.** Do not modify formulas. Do not add caveats.
+3. **Implement the canonical formulas as defined.** If your business needs a local variant, document it in your adapter and keep the canonical formula unchanged.
 
-4. **Use the One Page.** Let the standard surface what matters.
+4. **Use the One Page.** It puts the Core Metrics side by side as the standard view of business health.
 
 5. **Investigate with Departmental Metrics.** When something is off, drill into the relevant domain.

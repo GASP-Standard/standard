@@ -702,6 +702,10 @@
       "warehouseRef": "gasp_licenses.assigned_seats"
     },
     {
+      "gaspField": "application_date",
+      "warehouseRef": "gasp_employees.application_date"
+    },
+    {
       "gaspField": "hire_date",
       "dataset": "sales_rep",
       "warehouseRef": "gasp_sales_reps.hire_date"

@@ -4,7 +4,7 @@ The tagging system that makes dual-lens metrics possible.
 
 Every event in the [Commercial Event Ledger (CEL)](cel.md) is an atomic fact: something happened, to someone, on a date, for an amount. But the same event can mean different things depending on which lens you apply. A $500/mo expansion might be organic seat growth (operating signal) or it might include a cross-module upsell (market-comparable signal). The ATL classifies events so that downstream metrics can include or exclude based on governed rules.
 
-ATL tags are not optional. Every CEL event must carry the tags appropriate to its event class. Without ATL, the CEL is just a ledger. With ATL, it becomes a semantic layer.
+Every CEL event carries the tags appropriate to its event class (see [Tagging Rules](#tagging-rules)). The tags are what metrics filter on: the Operating and Market forms of Customer Acquisition Cost (CAC) read the same cost events and differ only in which `cost_function` values they include.
 
 ---
 
@@ -15,7 +15,7 @@ ATL defines three orthogonal tag dimensions. Each dimension answers a different 
 | Dimension | Question | Applies to |
 |-----------|----------|------------|
 | **Lifecycle Attribution** | Where is this customer in their journey? | All event classes |
-| **Expansion Classification** | What kind of growth is this? | `Revenue_Event` (expansion/reactivation), `Amendment_Event` |
+| **Expansion Classification** | What kind of growth is this? | `Revenue_Event` (expansion/contraction/reactivation), `Amendment_Event` |
 | **Cost Function Attribution** | What commercial function incurred this cost? | `Cost_Event` |
 
 ---
@@ -49,9 +49,9 @@ Every CEL event receives exactly one lifecycle tag. This is the primary dimensio
 
 ## Expansion Classification
 
-Revenue growth and mid-term amendments are not all the same. A customer adding seats to the same product is fundamentally different from a customer buying a new module. This dimension captures that distinction.
+A customer adding seats to the product they already have is growing differently from a customer buying a new module; operators read the first as product pull and investors count both. This dimension records which kind of growth each event is.
 
-Applies to: `Revenue_Event` where `event_type` is `expansion` or `reactivation`, plus every `Amendment_Event` record.
+Applies to: `Revenue_Event` where `event_type` is `expansion`, `contraction` or `reactivation`, plus every `Amendment_Event` record. A price cut or a restructured contract that lowers MRR is a contraction tagged `pricing_adjustment` or `recontracting`. ARR-O reads those tags whatever the direction.
 
 ### Values
 
@@ -66,18 +66,18 @@ Applies to: `Revenue_Event` where `event_type` is `expansion` or `reactivation`,
 
 ### Why This Matters
 
-This is the dimension that makes NRR-O differ from NRR-M.
+Expansion classification separates the Operating form of Net Revenue Retention (NRR-O) from its Market form (NRR-M).
 
 - **NRR-O (Operating)** focuses on organic, durable expansion: `same_product` and `usage_realisation`. These signal product-market fit and natural customer growth.
 - **NRR-M (Market)** includes all expansion types because investor-comparable NRR counts everything that is not net-new logo acquisition.
 
-Without expansion classification, you cannot separate organic growth signals from commercial motion signals. Both are valid. They answer different questions.
+With expansion classification the same ledger reports organic growth apart from growth that came through new modules, new buying centres or pricing actions. Each number answers a different question.
 
 ---
 
 ## Cost Function Attribution
 
-Not all costs serve the same commercial purpose. S&M spend to acquire new logos is fundamentally different from implementation labour to onboard them. This dimension classifies costs by function.
+Sales and marketing (S&M) spend to win a logo and implementation labour to onboard it are both costs of getting a paying customer. Only the first appears in the CAC that investors benchmark, so this dimension classifies every cost by the function it serves.
 
 Applies to: all `Cost_Event` records.
 
@@ -103,18 +103,18 @@ Every cost event carries one `cost_function` value (Rule 3), so the enum covers 
 
 ### Why This Matters
 
-This is the dimension that makes CAC-O differ from CAC-M.
+Cost function attribution separates CAC-O from CAC-M.
 
 - **CAC-O (Operating)** includes all costs to make a customer productive: `gtm` + `implementation` + `onboarding`. This reflects the true economic cost of acquiring a revenue-generating customer.
 - **CAC-M (Market)** includes only `gtm` costs, matching the S&M-based CAC that investors use for benchmarking.
 
-Without cost function attribution, you cannot compute both perspectives from the same data. You end up maintaining two separate cost allocation models.
+Tagging each cost once lets both forms come from the same cost events, where a team without the tag ends up maintaining two separate cost allocation models.
 
 ---
 
 ## Tagging Rules
 
-Every CEL event must be tagged according to these rules. No exceptions.
+Every CEL event is tagged according to these rules.
 
 ### Rule 1: Every event gets a Lifecycle tag
 
@@ -122,7 +122,7 @@ All five event classes receive exactly one `lifecycle_attribution` tag.
 
 ### Rule 2: Revenue growth and amendments get an Expansion tag
 
-`Revenue_Event` records where `event_type` is `expansion` or `reactivation`, plus every `Amendment_Event` record, receive exactly one `expansion_classification` tag.
+`Revenue_Event` records where `event_type` is `expansion`, `contraction` or `reactivation`, plus every `Amendment_Event` record, receive exactly one `expansion_classification` tag.
 
 ### Rule 3: Cost events get a Cost Function tag
 
@@ -219,7 +219,7 @@ These examples show CEL events with their ATL tags applied.
   "event_class": "Cost_Event",
   "event_id": "cost-001",
   "event_date": "2026-02-05",
-  "cost_centre": "implementation",
+  "cost_centre": "services",
   "cost": 6000.00,
   "currency": "USD",
   "cost_type": "personnel",
@@ -305,7 +305,7 @@ WHERE lifecycle_attribution IN ('retention', 'expansion')
 
 ## How O/M Metrics Use ATL
 
-ATL tags are the mechanism that distinguishes Operating (O) from Market (M) metric forms. O-form metrics reflect internal economic reality. What ops teams use to run the business. M-form metrics match investor-comparable definitions. What boards and investors benchmark against peers. The pattern is consistent:
+ATL tags are the mechanism that distinguishes Operating (O) from Market (M) metric forms. O-form metrics reflect internal economic reality, the numbers ops teams use to run the business. M-form metrics match investor-comparable definitions, the numbers boards and investors benchmark against peers. The pattern is consistent:
 
 | Metric | Operating (O) Includes | Market (M) Includes |
 |--------|----------------------|-------------------|
@@ -323,6 +323,6 @@ The full inclusion/exclusion rules for each dual-lens Core metric are specified 
 
 ## Relationship to Existing Metrics
 
-The current GASP Standard defines metrics with Include/Exclude lists (e.g., CAC includes S&M + implementation costs. NRR excludes reactivation from some calculations). These existing definitions are implicitly the Operating (O) perspective. They represent the economic truth that internal operators need.
+Each dual-lens Core metric keeps one canonical formula. For CAC, ARR, LTV, LTV:CAC, CAC Payback and Gross Margin the canonical formula equals the Market (M) form. [Core Metrics](metrics/core.md) declares the Operating (O) and Market (M) forms beside each canonical formula, with a Bridge subsection that reconciles the two numbers.
 
-ATL does not replace those definitions. It provides the tagging vocabulary that makes it possible to *also* compute the Market (M) perspective from the same underlying events and to formally reconcile the two via a Translation Bridge.
+ATL supplies the tags both forms filter on, so the O form, the M form and the bridge between them all come from the same CEL events.

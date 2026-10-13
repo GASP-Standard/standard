@@ -50,7 +50,7 @@ Billings = Total invoiced amount in period
 
 Billings are reported per payment status (paid, unpaid, partial, written off) as of period end.
 
-**What it tells you:** Cash coming in (or expected).
+**What it tells you:** The cash the period's invoices should bring in. The payment status breakdown shows how much of it has arrived.
 
 ---
 
@@ -68,7 +68,7 @@ See [RevOps](revops.md#deferred-revenue-balance) for the canonical definition. D
 
 ### Revenue per Employee
 
-**Definition:** Total revenue divided by headcount.
+**Definition:** Annual Recurring Revenue (ARR) divided by total headcount.
 
 **Formula:**
 ```
@@ -81,7 +81,7 @@ Revenue per Employee = ARR / Total employees
 - $200K-$300K: Efficient
 - Above $300K: Highly efficient
 
-**What it tells you:** Overall company productivity.
+**What it tells you:** How much recurring revenue the company carries per person, a rough measure of overall productivity.
 
 ---
 

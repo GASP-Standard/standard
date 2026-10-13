@@ -6,10 +6,10 @@
       "formula": "sum(field.mrr where field.subscription_status = 'active') at period_end",
       "unit": "currency",
       "breakdowns": {
-        "by_plan": "field.plan_id",
+        "by_plan": "field.plan_name",
         "by_segment": "field.segment"
       },
-      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage. by_plan returns one row per plan the subscriptions are priced by. by_segment returns one row per customer segment, read from the subscription snapshot at period end."
+      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage. by_plan returns one row per plan the subscriptions are priced by, with the plan id and plan name: the name lives on the plan dataset and subscriptions reach it through plan_id. by_segment returns one row per customer segment, read from the subscription snapshot at period end."
     },
     "arr": {
       "formula": "metric.mrr * 12",
@@ -302,9 +302,9 @@
       "notComputable": "A partner-type grouping that applies existing metrics per type (key metric seats under management), not a single formula."
     },
     "marketplace_revenue": {
-      "formula": "sum(field.opportunity_amount where field.channel = 'referral' and field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
+      "formula": "sum(field.opportunity_amount where field.channel = 'marketplace' and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "currency",
-      "notes": "Marketplace deals are partner-sourced opportunities attributed to the marketplace listing. Tag them with channel referral and partner_sourced until a marketplace channel value is added."
+      "notes": "Closed-won opportunities transacted through a cloud marketplace listing (AWS, Azure and similar), identified by channel marketplace."
     },
     "marketplace_as_of_revenue": {
       "formula": "metric.marketplace_revenue / metric.revenue_gaap",
@@ -660,9 +660,9 @@
       "formula": "sum(field.seats_assigned where field.license_status = 'active') / sum(field.seats_purchased where field.license_status = 'active')",
       "unit": "percent",
       "breakdowns": {
-        "by_product": "field.product_id"
+        "by_product": "field.product_name"
       },
-      "notes": "Active licenses on the license snapshot at period end. Seats purchased is the entitlement the subscription grants; seats assigned is the number held by a named user. by_product returns one row per product the licenses cover."
+      "notes": "Active licenses on the license snapshot at period end. Seats purchased is the entitlement the subscription grants; seats assigned is the number held by a named user. by_product returns one row per product the licenses cover, with the product id and product name: the name lives on the product dataset and licenses reach it through product_id."
     },
     "upsell_rate": {
       "formula": "count_distinct(field.customer_id where field.amendment_type = 'upgrade') / count_distinct(field.customer_id where field.upgrade_eligible = true) at period_start",
@@ -806,6 +806,14 @@
         }
       },
       "notes": "Reported per age bucket: outstanding amount on invoices whose age (days from invoice date to the period-end snapshot) falls in the bucket over the whole outstanding balance. Evaluate at period end."
+    },
+    "accounts_receivable_balance": {
+      "formula": "sum(field.outstanding_amount where field.outstanding_amount > 0) at period_end",
+      "unit": "currency",
+      "breakdowns": {
+        "by_payment_status": "field.payment_status"
+      },
+      "notes": "Open invoices on the period-end invoice snapshot. Should reconcile to balance_sheet.accounts_receivable, which DSO reads; differences are unapplied cash or write-offs. by_payment_status returns one row per payment status as of period end, the split finance reviews when chasing collections."
     },
     "bad_debt_rate": {
       "formula": "sum(field.bad_debt_expense) / metric.revenue_gaap",
@@ -1336,9 +1344,9 @@
       "notes": "Days from job posted to offer accepted, per filled requisition."
     },
     "time_to_hire": {
-      "formula": "avg(field.hire_date - field.requisition_opened_date where in_period(field.hire_date))",
+      "formula": "avg(field.hire_date - field.application_date where in_period(field.hire_date))",
       "unit": "days",
-      "notes": "Days from candidate application to offer accepted, per hire."
+      "notes": "Days from the hired employee's application to their start date, per employee hired in the period. Time to Fill covers requisition opened to offer accepted."
     },
     "offer_acceptance_rate": {
       "formula": "count(field.requisition_id where field.offer_status = 'accepted') / count(field.requisition_id where field.offer_status in ('accepted', 'declined'))",

@@ -807,6 +807,9 @@
     "revops::aging-buckets": {
       "primary": "operational"
     },
+    "revops::accounts-receivable-balance": {
+      "primary": "operational"
+    },
     "revops::bad-debt-rate": {
       "primary": "operational"
     },

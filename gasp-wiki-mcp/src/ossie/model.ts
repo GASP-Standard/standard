@@ -12,6 +12,7 @@
  * the canonical field ids; an adopter's mapping replaces both.
  */
 import { compileMetric } from "../compile.js";
+import { OSSIE_DIALECT_OF, type DialectName } from "../dialect.js";
 import { metricFormulaId, isMetricStub } from "../loader.js";
 import { metricUrl } from "../urls.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
@@ -114,13 +115,20 @@ const fillReference = (s: string): string => {
  * The compiled SQL with every placeholder filled for the reference model, per
  * reporting period. A breakdown query (compile.ts) becomes one row per period
  * and dimension value: the spine crossed with the breakdown's domain, which
- * reads no period bound, so its correlated subqueries see both.
+ * reads no period bound, so its correlated subqueries see both. A breakdown
+ * reached through a key carries both the key and the label column.
  */
 export function stagedSource(compiledSql: string): string {
-  const b = /^SELECT _d\.(\w+) AS \w+, ([^\n]*) AS \w+\nFROM \(([^\n]*)\) _d$/.exec(compiledSql);
+  const b = /^SELECT ((?:_d\.\w+ AS \w+, )+)([^\n]*) AS \w+\nFROM \(([^\n]*)\) _d$/.exec(compiledSql);
   if (b) {
-    const [, field, scalar, domain] = b;
-    return `SELECT p.period_start, p.period_end, _d.${field} AS ${field}, (${fillReference(scalar)}) AS value FROM ${PERIOD_SPINE} p CROSS JOIN (${fillReference(domain)}) _d`;
+    const [, cols, scalar, domain] = b;
+    // A keyed dataset's snapshot domain reads the period end: carry its date out and join on it
+    // (portable, where a correlated derived table would need LATERAL).
+    const dated = /^(SELECT DISTINCT [^\n]*?) FROM (\{\{_table:\w+\}\}) WHERE (\{\{\w+@\w+\}\}) = \{\{_period_end\}\}$/.exec(domain);
+    const join = dated
+      ? `JOIN (${fillReference(`${dated[1]}, ${dated[3]} AS _period FROM ${dated[2]}`)}) _d ON _d._period = p.period_end`
+      : `CROSS JOIN (${fillReference(domain)}) _d`;
+    return `SELECT p.period_start, p.period_end, ${cols}(${fillReference(scalar)}) AS value FROM ${PERIOD_SPINE} p ${join}`;
   }
   const m = /^SELECT ([\s\S]*) AS \w+$/.exec(compiledSql);
   if (!m) throw new Error(`Unexpected compiled SQL shape: ${compiledSql.slice(0, 80)}`);
@@ -169,8 +177,13 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
       const qualifier = e.form ? `, ${FORM_LABEL[e.form]}` : e.named ? `, ${e.variant} breakdown` : e.variant ? `, ${e.variant} variant` : "";
       const instructions = [m ? `Canonical definition: ${metricUrl(m)}.` : ""];
       const breakdown = breakdownOf(f, e.variant);
+      // A breakdown reached through a key (plan_name on plan, via plan_id): the consumer joins to that dataset.
+      const via = breakdown ? compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas }, e.variant).breakdown?.via : undefined;
+      const dimension = breakdown && via ? `${via.dataset}.${breakdown}` : breakdown;
       if (breakdown) {
-        instructions.push(`Broken down by ${breakdown}: report one value per ${breakdown}${emission.kind === "direct" ? ` by grouping on the ${breakdown} field of each dataset the expression reads` : ""}.`);
+        instructions.push(via
+          ? `Broken down by ${dimension}: report one value per ${breakdown}${emission.kind === "direct" ? `, joining each dataset the expression reads to ${via.dataset} on ${via.key} (the model's relationship) and grouping on ${dimension}` : ""}.`
+          : `Broken down by ${breakdown}: report one value per ${breakdown}${emission.kind === "direct" ? ` by grouping on the ${breakdown} field of each dataset the expression reads` : ""}.`);
       }
       let expression: string;
       if (emission.kind === "direct") {
@@ -187,14 +200,22 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
           name: dsName,
           source: stagedSource(compiled.sql),
           description: `Staged dataset for ${name}: one row per reporting period${breakdown ? ` and ${breakdown} value` : ""} holding the metric value, computed by the GASP compiled query (needs ${emission.reasons.join(", ")}).`,
-          primary_key: breakdown ? ["period_start", breakdown] : ["period_start"],
+          primary_key: breakdown ? ["period_start", via ? via.key : breakdown] : ["period_start"],
           fields: [
             { name: "period_start", expression: sql("period_start"), dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
             { name: "period_end", expression: sql("period_end"), datatype: "Date", description: "Last day of the reporting period" },
+            ...(via ? [{ name: via.key, expression: sql(via.key), datatype: ossieDataType(ctx.fields[via.key]?.type ?? "string"), description: ctx.fields[via.key]?.description ?? via.key }] : []),
             ...(breakdown ? [{ name: breakdown, expression: sql(breakdown), datatype: bf ? ossieDataType(bf.type) : "String" as const, description: bf?.description ?? `Bucket label of ${label}` }] : []),
             { name: "value", expression: sql("value"), datatype: "Decimal", description: `${label}${qualifier} for the period${breakdown ? ` and ${breakdown}` : ""}` },
           ],
-          custom_extensions: gasp({ staged: true, for: name, reason: emission.reason }),
+          // Ossie's dataset `source` is one string, so the other dialects' sources travel here (docs/ossie-spike.md).
+          custom_extensions: gasp({
+            staged: true, for: name, reason: emission.reason,
+            source_dialect: "postgres",
+            sources: Object.fromEntries(Object.entries(OSSIE_DIALECT_OF).map(([d, ossie]) => [
+              ossie, stagedSource(compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas, dialect: d as DialectName }, e.variant).sql),
+            ])),
+          }),
         });
         expression = `SUM(${dsName}.value)`;
         coverage[e.key] = { kind: "staged", ossieName: name, stagedDataset: dsName, reason: emission.reason };
@@ -213,7 +234,7 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
           ...(e.variant && !e.form ? { variant: e.variant } : {}),
           unit: f.unit,
           formula: formulaSource(f, e.variant),
-          ...(breakdown ? { gasp_breakdown: breakdown } : {}),
+          ...(breakdown ? { gasp_breakdown: dimension } : {}),
           ...(emission.kind === "staged" ? { staged: true } : {}),
         }),
       });

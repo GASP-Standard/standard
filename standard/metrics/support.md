@@ -2,7 +2,7 @@
 
 Metrics for measuring support team performance and customer service quality.
 
-**Benchmark context:** B2B SaaS companies typically spend ~8% of ARR on support and success combined.
+**Benchmark context:** B2B SaaS companies typically spend ~8% of Annual Recurring Revenue (ARR) on support and success combined.
 
 ---
 
@@ -17,9 +17,7 @@ Metrics for measuring support team performance and customer service quality.
 Ticket Volume = Count of tickets created in period
 ```
 
-Ticket Volume is reported per ticket type.
-
-Track by channel: email, chat, phone, self-service.
+Ticket Volume is reported per ticket type. Teams that staff by channel (email, chat, phone) add that split from their help desk. Questions answered without a ticket are counted by Self-Service Rate instead.
 
 **What it tells you:** Support demand. Trend matters more than absolute number.
 
@@ -39,20 +37,20 @@ Tickets per Customer = Total tickets / Active customers
 - 0.5-1.0/month: Typical
 - Above 1.0/month: High touch, may indicate product issues
 
-**What it tells you:** Support burden relative to customer base. Rising ratio signals product or onboarding issues.
+**What it tells you:** Support burden relative to the customer base. A rising ratio usually points to product or onboarding issues.
 
 ---
 
 ### Ticket Backlog
 
-**Definition:** Number of open tickets awaiting resolution.
+**Definition:** Number of tickets open or pending at the end of the period.
 
 **Formula:**
 ```
 Backlog = Count of open tickets
 ```
 
-**What it tells you:** Current support debt. Should be stable or declining.
+**What it tells you:** Current support debt. It should hold steady or fall.
 
 ---
 
@@ -73,7 +71,7 @@ Type share = Tickets of the type created in period / Ticket Volume
 - Account issues
 - Other (including outage or incident related)
 
-Ticket Distribution by Type is reported per ticket type: one share for each type, and the shares sum to 100%.
+Ticket Distribution by Type is reported per ticket type: one share for each type, with the shares summing to 100%.
 
 **What it tells you:** What's driving support volume. High "how-to" suggests onboarding or documentation gaps.
 
@@ -163,7 +161,7 @@ FCR = Tickets resolved without reopening or follow-up / Total tickets × 100
 
 **Industry variation:** Retail/simple products achieve 73-75%. Complex tech support often 50-65%.
 
-**Impact:** FCR improvements reduce churn by up to 67% (research shows it's the #1 support driver of retention).
+**Impact:** FCR improvements reduce churn by up to 67%.
 
 **What it tells you:** Support efficiency and agent capability.
 
@@ -215,7 +213,7 @@ Reopen Rate = Tickets reopened / Tickets resolved × 100
 CSAT = Positive responses / Total responses × 100
 ```
 
-Typically 5-point or 3-point scale. "Positive" = top 1-2 ratings.
+GASP uses a 5-point scale and counts the top two ratings (4 and 5) as positive.
 
 **Benchmarks:**
 - Below 70%: Poor, requires immediate attention
@@ -253,7 +251,7 @@ Typically 5-point or 3-point scale. "Positive" = top 1-2 ratings.
 CES = Average rating on "How easy was it to resolve your issue?" (1-7 scale)
 ```
 
-Or as percentage (when using agree/disagree scale):
+Or as the percentage of respondents scoring 5 or above on the same 1-7 scale:
 ```
 CES % = Respondents who agree it was easy / Total respondents × 100
 ```
@@ -269,7 +267,7 @@ CES % = Respondents who agree it was easy / Total respondents × 100
 - 70-90%: Good
 - Above 90%: Excellent, strong position
 
-**Why CES matters:** CES is 1.8x more effective than CSAT at predicting customer loyalty. Reducing friction drives repeat business more than satisfaction.
+**Why CES matters:** CES is 1.8x more effective than CSAT at predicting customer loyalty, so cutting friction does more for repeat business than raising satisfaction.
 
 **What it tells you:** Support friction. Lower effort correlates with retention.
 
@@ -319,7 +317,7 @@ Tickets per Agent = Total tickets handled / Number of agents
 
 ### Cost per Ticket
 
-**Definition:** Total support cost divided by tickets handled.
+**Definition:** Total support cost divided by tickets resolved.
 
 **Formula:**
 ```
@@ -331,7 +329,7 @@ Cost per Ticket = Total support team cost / Total tickets resolved
 - Email: $5-15
 - Phone: $10-25
 
-**What it tells you:** Support efficiency. Target: decrease over time.
+**What it tells you:** Support efficiency. It should fall over time.
 
 ---
 
@@ -344,7 +342,7 @@ Cost per Ticket = Total support team cost / Total tickets resolved
 Self-Service Rate = Self-service resolutions / (Self-service + Tickets) × 100
 ```
 
-Requires tracking help center views, chatbot resolutions, etc.
+Self-service resolutions are deflections: help center or chatbot sessions that ended without a ticket. Raw help center views overstate the rate.
 
 **Benchmarks:**
 - Below 20%: Low self-service adoption

@@ -8,7 +8,7 @@ Metrics for measuring sales team performance and pipeline health.
 
 ### Pipeline Value
 
-**Definition:** Total value of all active sales opportunities.
+**Definition:** Total value of open sales opportunities, weighted by stage probability unless stated as unweighted.
 
 **Formula (weighted):**
 ```
@@ -81,16 +81,16 @@ Pipeline Velocity = (# Opportunities × Win Rate × Average Deal Size) / Sales C
 Result is revenue per day (or per period).
 
 **The four levers:**
-1. **Opportunities** - Number of qualified opportunities in pipeline
-2. **Win Rate** - Conversion rate from opportunity to close
-3. **Deal Size** - Average deal value (ACV)
-4. **Cycle Length** - Days from opportunity to close
+1. **Opportunities:** Number of open opportunities in pipeline
+2. **Win Rate:** Conversion rate from opportunity to close
+3. **Deal Size:** Average deal value
+4. **Cycle Length:** Days from opportunity to close
 
 **Example:** 50 opportunities × 35% win rate × $2,500 deal size ÷ 28 days = **$1,562/day**
 
 **What it tells you:** The theoretical throughput of your sales engine. Improving any component improves velocity.
 
-**How to use:** Identify which lever is the bottleneck. Not enough leads? Improve opportunities. Deals stuck in negotiation? Reduce cycle length.
+**How to use:** Find the lever that is holding velocity back. Too few opportunities points to lead generation; deals stuck in negotiation point to cycle length.
 
 **Sources:**
 - [HubSpot: Sales Velocity](https://blog.hubspot.com/sales/sales-velocity)
@@ -103,7 +103,7 @@ Result is revenue per day (or per period).
 
 ### Win Rate
 
-**Definition:** The percentage of qualified opportunities that close as won.
+**Definition:** The percentage of qualified opportunities closed in the period that were won.
 
 **Formula:**
 ```
@@ -138,7 +138,7 @@ Exclude open deals and deals disqualified before reaching qualified stage.
 - Not specifying stage (win rate from MQL vs SQL vs Qualified Opp will differ dramatically)
 - Comparing across deal sizes without adjusting expectations
 
-**Key insight:** Focus on improvement over time, not hitting arbitrary targets.
+**Key insight:** Track your own win rate over time. Benchmarks are a rough guide to where you sit.
 
 **Sources:**
 - [Walnut: B2B Benchmarks for SaaS Sales](https://www.walnut.io/blog/sales-tips/saas-and-b2b-sales-benchmarks-what-to-measure-and-how/)
@@ -176,7 +176,7 @@ Lead-to-Opportunity = Opportunities created / Leads received × 100
 Opportunity-to-Close = Closed Won / (Closed Won + Closed Lost) × 100
 ```
 
-**Note:** This is essentially Win Rate measured from the opportunity stage.
+**Note:** The GASP Standard computes it as Win Rate. The two names describe the same measure, taken from the qualified opportunity stage.
 
 **What it tells you:** AE effectiveness at converting qualified pipeline.
 
@@ -188,7 +188,7 @@ Opportunity-to-Close = Closed Won / (Closed Won + Closed Lost) × 100
 
 ### ACV (Annual Contract Value)
 
-**Definition:** The annualized value of a contract, normalizing multi-year deals to a single year. Also used to describe average deal size when aggregated.
+**Definition:** The annualized value of a contract, normalizing multi-year deals to a single year. Aggregated, it is the average ACV of new contracts signed in the period.
 
 **Formula (single contract):**
 ```
@@ -226,7 +226,7 @@ For monthly contracts, annualize: Monthly value × 12
 
 ### Average Deal Size
 
-**Definition:** The average total value of closed deals (total contract value, not annualized).
+**Definition:** The average total value of deals won in the period (total contract value, not annualized).
 
 **Formula:**
 ```
@@ -332,7 +332,7 @@ Or: Average of individual rep attainment rates.
 
 ### Revenue per Rep
 
-**Definition:** Total revenue generated divided by number of quota-carrying reps.
+**Definition:** New revenue closed in the period divided by the number of quota-carrying reps.
 
 **Formula:**
 ```
@@ -410,7 +410,7 @@ Measured in months.
 
 ### Activity Metrics (Diagnostic)
 
-These are inputs, not outcomes. Track for diagnostics, not reporting.
+These count sales inputs. Use them to diagnose a pipeline or conversion problem and keep them out of headline reporting.
 
 | Metric | Definition |
 |--------|------------|

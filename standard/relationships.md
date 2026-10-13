@@ -1,12 +1,12 @@
 # Metric Relationships
 
-How metrics connect and influence each other. This is the map.
+How metrics connect and influence each other, with the order to check them in when one moves.
 
 ---
 
 ## The Core Model
 
-Revenue is the outcome. Everything else drives it.
+Revenue is the outcome. Everything else drives it. The diagram starts from Annual Recurring Revenue (ARR) and the Monthly Recurring Revenue (MRR) movements that change it.
 
 ```
                                     ┌─────────────────┐
@@ -54,8 +54,10 @@ Revenue is the outcome. Everything else drives it.
 
 **Formula:**
 ```
-ARR Change = New MRR + Expansion MRR - Churned MRR - Contraction MRR
+Net New MRR = New MRR + Expansion MRR - Churned MRR - Contraction MRR
 ```
+
+ARR moves by twelve times Net New MRR, because ARR is MRR × 12.
 
 ---
 
@@ -113,7 +115,7 @@ Churned MRR = Customers × Churn Rate × Average Customer Value
 | Churn Timing | Contract length, renewal process, early warning |
 
 **Key relationships:**
-- Low NPS → higher churn (leading indicator by 3-6 months)
+- Low Net Promoter Score (NPS) → higher churn (leading indicator by 3-6 months)
 - Low health score → higher churn risk
 - High support tickets → potential churn signal
 - Poor onboarding → higher early churn
@@ -149,7 +151,7 @@ LTV = ARPA × Gross Margin / Churn Rate
 ```
 
 **What increases LTV:**
-- Higher ARPA (pricing, upsell)
+- Higher Average Revenue per Account (ARPA) from pricing and upsell
 - Better margins (lower COGS)
 - Lower churn (better retention)
 
@@ -171,6 +173,8 @@ CAC Payback (months) = CAC / (ARPA × Gross Margin)
 ---
 
 ## Retention Chain
+
+The retention chain runs from onboarding to Net Revenue Retention (NRR) and Gross Revenue Retention (GRR):
 
 ```
 Onboarding Quality
@@ -319,4 +323,4 @@ Pipeline Light
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Every department's metrics feed into this system. Understanding the connections is how you diagnose problems and identify opportunities.
+Every department's metrics feed into this system, so when an outcome moves, the diagram above shows which stage to check first.

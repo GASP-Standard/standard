@@ -1,6 +1,6 @@
 {
   "name": "gasp-standard-mcp",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "MCP server for the GASP Standard — SaaS metrics definitions, formulas, benchmarks, entity relationships, business model graph, access governance, and query generation",
   "type": "module",
   "license": "Apache-2.0",

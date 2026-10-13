@@ -607,12 +607,14 @@
       "revenue_per_employee",
       "revenue_per_rep",
       "source_of_hire",
+      "time_to_hire",
       "total_headcount",
       "total_utilization",
       "voluntary_turnover_rate",
       "write_off_rate"
     ],
     "invoice": [
+      "accounts_receivable_balance",
       "aging_buckets",
       "billing_accuracy",
       "billing_disputes",
@@ -706,8 +708,7 @@
     "requisition": [
       "offer_acceptance_rate",
       "open_positions",
-      "time_to_fill",
-      "time_to_hire"
+      "time_to_fill"
     ],
     "project_milestone": [
       "professional_services_milestone_completion_rate"
@@ -1124,6 +1125,7 @@
         "events",
         "content",
         "referral",
+        "marketplace",
         "direct",
         "other"
       ],
@@ -1958,7 +1960,7 @@
       ],
       "dimension": true,
       "description": "Plan display name (Starter, Pro, Enterprise)",
-      "metricCount": 0
+      "metricCount": 1
     },
     {
       "id": "billing_period",
@@ -2002,7 +2004,7 @@
       ],
       "dimension": true,
       "description": "Product display name",
-      "metricCount": 0
+      "metricCount": 1
     },
     {
       "id": "product_line",
@@ -2069,6 +2071,18 @@
         "product_analytics"
       ],
       "description": "Seats assigned to a named user",
+      "metricCount": 1
+    },
+    {
+      "id": "application_date",
+      "type": "date",
+      "datasets": [
+        "employee"
+      ],
+      "sources": [
+        "ats"
+      ],
+      "description": "Date the hired employee applied; the start of Time to Hire",
       "metricCount": 1
     },
     {
@@ -2879,7 +2893,7 @@
         "billing"
       ],
       "description": "Unpaid balance as of snapshot_date",
-      "metricCount": 2
+      "metricCount": 3
     },
     {
       "id": "partner_activity_type",
@@ -2954,7 +2968,7 @@
         "partner_management"
       ],
       "description": "Sourced by a partner",
-      "metricCount": 8
+      "metricCount": 6
     },
     {
       "id": "partner_status",
@@ -3051,7 +3065,7 @@
       ],
       "dimension": true,
       "description": "Payment status",
-      "metricCount": 2
+      "metricCount": 3
     },
     {
       "id": "performance_rating",
@@ -3593,7 +3607,7 @@
         "ats"
       ],
       "description": "Date the requisition opened",
-      "metricCount": 2
+      "metricCount": 1
     },
     {
       "id": "requisition_status",
@@ -3935,7 +3949,7 @@
         "derived"
       ],
       "description": "As-of date of the snapshot row",
-      "metricCount": 169
+      "metricCount": 170
     },
     {
       "id": "sql_date",
@@ -5035,6 +5049,7 @@
     "dso": "Collections",
     "collection_effectiveness_index_cei": "Collections",
     "aging_buckets": "Collections",
+    "accounts_receivable_balance": "Collections",
     "bad_debt_rate": "Margins",
     "payment_method_distribution": "Quote-to-Cash",
     "recognized_vs_billed": "Margins",

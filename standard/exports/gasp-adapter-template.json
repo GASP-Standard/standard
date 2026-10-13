@@ -396,6 +396,7 @@
         "events",
         "content",
         "referral",
+        "marketplace",
         "direct",
         "other"
       ],
@@ -420,6 +421,7 @@
         "events",
         "content",
         "referral",
+        "marketplace",
         "direct",
         "other"
       ],
@@ -2518,7 +2520,9 @@
       "type": "string",
       "warehouseRef": "",
       "source": "Billing",
-      "usedBy": []
+      "usedBy": [
+        "MRR (Monthly Recurring Revenue)"
+      ]
     },
     {
       "gaspField": "billing_period",
@@ -2557,7 +2561,9 @@
       "type": "string",
       "warehouseRef": "",
       "source": "Billing",
-      "usedBy": []
+      "usedBy": [
+        "License Utilization"
+      ]
     },
     {
       "gaspField": "product_line",
@@ -2603,6 +2609,15 @@
       "source": "Billing",
       "usedBy": [
         "License Utilization"
+      ]
+    },
+    {
+      "gaspField": "application_date",
+      "type": "date",
+      "warehouseRef": "",
+      "source": "ATS",
+      "usedBy": [
+        "Time to Hire"
       ]
     },
     {
@@ -3665,6 +3680,7 @@
       "warehouseRef": "",
       "source": "Billing",
       "usedBy": [
+        "Accounts Receivable Balance",
         "Aging Buckets",
         "Collection Effectiveness Index (CEI)"
       ]
@@ -3831,8 +3847,6 @@
       "source": "CRM",
       "usedBy": [
         "Channel Revenue Percentage",
-        "Marketplace Revenue",
-        "Marketplace as % of Revenue",
         "Partner Deal Size",
         "Partner Margin / Commission",
         "Partner ROI",
@@ -3921,6 +3935,7 @@
       ],
       "source": "Billing",
       "usedBy": [
+        "Accounts Receivable Balance",
         "Billing Disputes",
         "Billings"
       ]
@@ -5078,8 +5093,7 @@
       "warehouseRef": "",
       "source": "ATS",
       "usedBy": [
-        "Time to Fill",
-        "Time to Hire"
+        "Time to Fill"
       ]
     },
     {
@@ -5525,6 +5539,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -5703,6 +5718,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -5881,6 +5897,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -6059,6 +6076,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -6237,6 +6255,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -6415,6 +6434,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -6593,6 +6613,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -6771,6 +6792,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -6949,6 +6971,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -7127,6 +7150,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -7305,6 +7329,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -7483,6 +7508,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -7661,6 +7687,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -7839,6 +7866,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -8017,6 +8045,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -8195,6 +8224,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -8373,6 +8403,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -8551,6 +8582,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -8729,6 +8761,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -8907,6 +8940,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -9085,6 +9119,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -9263,6 +9298,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -9441,6 +9477,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -9619,6 +9656,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",
@@ -9797,6 +9835,7 @@
         "ARPA (Average Revenue Per Account)",
         "ARR (Annual Recurring Revenue)",
         "ARR per CSM",
+        "Accounts Receivable Balance",
         "Accounts per CSM",
         "Activation Rate",
         "Aging Buckets",

@@ -15,7 +15,7 @@ Metrics for measuring product usage, adoption and delivery.
 DAU = Count of unique users with qualifying activity in 24-hour period
 ```
 
-**Qualifying activity:** Defined per product. Must be intentional engagement, not passive (e.g., not just logging in, but performing a core action).
+**Qualifying activity:** A core action, defined per product, that the user chose to take. Logging in on its own does not qualify.
 
 **What it tells you:** Daily engagement level.
 
@@ -103,7 +103,7 @@ Active Accounts = Count of accounts with ≥1 active user in period
 
 ### Activation Rate
 
-**Definition:** Percentage of new users/accounts that reach the activation milestone.
+**Definition:** Percentage of users who signed up in the period that reached the activation milestone.
 
 **Formula:**
 ```
@@ -118,7 +118,7 @@ Activation Rate = Users reaching activation / New users × 100
 - 40-60%: Good
 - Above 60%: Strong activation
 
-**What it tells you:** Is the product delivering value to new users?
+**What it tells you:** Whether new users reach the product's core value, the first step to keeping them.
 
 ---
 
@@ -126,7 +126,7 @@ Activation Rate = Users reaching activation / New users × 100
 
 ### Feature Adoption Rate
 
-**Definition:** Percentage of users/accounts using a specific feature.
+**Definition:** Percentage of active users who used a specific feature in the period.
 
 **Formula:**
 ```
@@ -160,20 +160,20 @@ Define 3-5 "core" features that represent full product usage.
 
 ### Feature Depth
 
-**Definition:** How extensively users engage with features (not just whether they use them).
+**Definition:** How intensively users engage with features: average feature actions per user who used a feature in the period.
 
 **Formula:**
 ```
 Feature Depth = Average feature actions per user per period
 ```
 
-**What it tells you:** Intensity of usage, not just breadth.
+**What it tells you:** How heavily people use the features they have adopted, which breadth measures miss.
 
 ---
 
 ### Time to Feature Adoption
 
-**Definition:** Time from signup/activation to using a specific feature.
+**Definition:** Median time from signup to a user's first use of a specific feature, for users whose first use falls in the period.
 
 **Formula:**
 ```
@@ -195,7 +195,7 @@ Breadth = Distinct (account, feature) pairs used in period / Active accounts
 
 Each account counts each feature it used once, so the result is the average number of distinct features per active account.
 
-**What it tells you:** How much of the product is being utilized.
+**What it tells you:** How much of the product each account uses.
 
 ---
 
@@ -285,7 +285,7 @@ PQA = Accounts meeting product engagement threshold
 Day N Retention = Users active on day N / Users who signed up N days ago × 100
 ```
 
-Common intervals: Day 1, Day 7, Day 14, Day 30.
+Common intervals: Day 1, Day 7, Day 14, Day 30. The canonical formula reports Day 30 for users who signed up in the period.
 
 **Benchmarks (Day 30 for B2B SaaS):**
 - Below 20%: Poor
@@ -296,7 +296,7 @@ Common intervals: Day 1, Day 7, Day 14, Day 30.
 
 ### Cohort Retention
 
-**Definition:** Retention tracked by signup cohort over time.
+**Definition:** Retention tracked by signup cohort over time. The canonical formula reports week 8 for the period's signup cohort.
 
 **Formula:**
 ```
@@ -309,14 +309,14 @@ Cohort Retention (Week N) = Active users in week N / Users in cohort × 100
 
 ### Resurrection Rate
 
-**Definition:** Percentage of churned/dormant users who return.
+**Definition:** Percentage of users dormant at period start who returned in the period.
 
 **Formula:**
 ```
 Resurrection Rate = Reactivated users / Dormant users × 100
 ```
 
-**What it tells you:** Can you win back lost users?
+**What it tells you:** How many lapsed users you win back.
 
 ---
 
@@ -393,7 +393,7 @@ Error Rate = Error events / Total user actions × 100
 
 ### Bug Escape Rate
 
-**Definition:** Bugs found in production vs found in testing.
+**Definition:** Share of bugs found in production rather than caught in testing.
 
 **Formula:**
 ```

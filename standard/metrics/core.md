@@ -1,6 +1,6 @@
 # Core Business Metrics
 
-These are the metrics that define SaaS business health. Every SaaS business should track these.
+These metrics describe the health of a SaaS business. Every SaaS business should track them.
 
 **Foundation:** Core metric definitions follow industry consensus, informed by sources including the [SaaS Metrics Standards Board](https://www.saasmetricsboard.com/), SaaS Capital and KeyBanc.
 
@@ -38,7 +38,7 @@ MRR contribution = Annual Contract Value / 12
 - Subscription/contract value for each customer
 - Contract term (monthly/annual)
 
-MRR is reported per plan and per customer segment.
+MRR is reported per plan (by plan id and plan name) and per customer segment.
 
 **What it tells you:** The current run rate of your recurring revenue engine.
 
@@ -104,7 +104,7 @@ ARR-O = (MRR − TTM_Pricing_Adjustment_MRR − TTM_Recontracting_MRR) × 12
 ```
 Where TTM_Pricing_Adjustment_MRR and TTM_Recontracting_MRR are the MRR changes tagged with `expansion_classification` `pricing_adjustment` or `recontracting` in the trailing 12 months, counted for customers active at period end. MRR is the period-end MRR used by ARR-M. ARR-O is therefore a trailing twelve month measure. Stripping price rises out of ARR is a GASP construct rather than an industry convention; where price and volume are separated elsewhere, it is a growth decomposition over the period.
 
-**What it tells you:** The run rate of revenue driven by real customer adoption and organic expansion. The durable portion of ARR.
+**What it tells you:** The run rate of revenue that customers created by adopting and expanding, with price rises and recontracting taken out. It is the part of ARR most likely to last.
 
 #### Market Form: ARR-M
 
@@ -128,7 +128,7 @@ All MRR sources included.
 ARR-M = ARR-O + TTM_Pricing_Adjustment_MRR × 12 + TTM_Recontracting_MRR × 12
 ```
 
-**Diagnostic:** The delta (ARR-M − ARR-O) is the **Durability Gap.** Because ARR-O subtracts only the trailing 12 months of tagged MRR change for customers active at period end, the Durability Gap is a trailing-year growth decomposition. How much of reported ARR growth comes from mechanical pricing and contract changes rather than organic customer expansion. A growing gap signals ARR growth that may not be durable. Tracked implicitly by KeyBanc in their annual SaaS survey. Public SaaS companies report total ARR (ARR-M) while internal planning teams strip pricing actions to assess true product-led growth.
+**Diagnostic:** The delta (ARR-M − ARR-O) is the **Durability Gap.** Because ARR-O subtracts only the trailing 12 months of tagged MRR change for customers active at period end, the Durability Gap is a trailing-year growth decomposition: it shows how much of reported ARR growth came from pricing and contract changes rather than organic customer expansion. A growing gap means ARR growth that may not last. KeyBanc tracks it implicitly in its annual SaaS survey. Public SaaS companies report total ARR (ARR-M), while internal planning teams strip out pricing actions to see the growth the product earned.
 
 ---
 
@@ -201,7 +201,7 @@ Expansion MRR = Sum of (MRR increase from existing customers this period)
 
 Expansion MRR is reported per customer segment.
 
-**What it tells you:** Your ability to grow revenue without acquiring new customers. The most efficient growth.
+**What it tells you:** How much revenue you grow from customers you already have, which usually costs far less than winning new ones.
 
 **Key insight:** Expansion MRR rate should exceed churn rate for negative net churn.
 
@@ -247,7 +247,7 @@ Contraction MRR is reported per customer segment.
 
 ### Carry MRR
 
-**Definition:** MRR from existing customers that renewed at the same amount. No expansion, contraction or churn.
+**Definition:** The part of beginning MRR that existing customers kept paying in the period: beginning MRR less churned and contraction MRR, before any expansion.
 
 **Formula:**
 ```
@@ -256,9 +256,9 @@ Carry MRR = Beginning MRR - Churned MRR - Contraction MRR
 
 **Also known as:** Base MRR, Retained MRR, Renewal MRR
 
-**What it tells you:** The stable foundation of your revenue. High carry relative to beginning MRR means your base is healthy. Carry MRR expressed as a percentage of Beginning MRR equals GRR.
+**What it tells you:** How much of last period's revenue base is still in place. Carry MRR is Gross Revenue Retention (GRR) in dollar terms: divide it by beginning MRR and you get GRR.
 
-**Key insight:** Carry MRR is GRR in dollar terms. If carry is declining while expansion masks it, you have a retention problem hiding behind growth.
+**Key insight:** If carry is declining while expansion masks it, you have a retention problem hiding behind growth.
 
 **Sources:** [Baremetrics](https://baremetrics.com/academy/saas-calculate-mrr), [ChartMogul](https://chartmogul.com/blog/mrr-movements/)
 
@@ -276,7 +276,7 @@ Net New MRR = New MRR + Expansion MRR - Churned MRR - Contraction MRR
 **Example:**
 $50,000 starting + $2,500 new + $5,000 expansion - $1,000 churned - $500 contraction = $56,000 ending
 
-**What it tells you:** The bottom line of your revenue engine's performance. Positive = growing. Negative = shrinking.
+**What it tells you:** Whether MRR grew or shrank over the period and by how much, after every movement is counted.
 
 **Sources:** [Baremetrics](https://baremetrics.com/academy/saas-calculate-mrr), [Chargebee](https://www.chargebee.com/resources/glossaries/what-is-net-mrr-growth/)
 
@@ -347,7 +347,7 @@ The bundle discount ($100) is distributed proportionally across all items.
 
 **Calculation Methods:**
 
-Two methods are widely used. The **cohort method is preferred** for accuracy.
+Two methods are widely used. The **cohort method is preferred** because it keeps customers acquired during the period out by construction. The GASP Standard gets the same protection by running the formula method over the customers active at period start.
 
 **1. Cohort Method (Preferred):**
 Compare the MRR of a specific group of customers from one year ago to the MRR of those same customers today. New customers acquired during the period are excluded.
@@ -361,7 +361,7 @@ NRR = MRR of cohort today / MRR of same cohort 12 months ago × 100
 NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginning MRR × 100
 ```
 
-**Time period:** Typically measured annually. The GASP Standard recommends **trailing 12 months** for board/investor reporting, as it smooths seasonality.
+**Time period:** The GASP Standard measures NRR over the **trailing 12 months**, which smooths seasonality and is the basis boards and investors expect.
 
 **Annualization:** If calculating over a shorter period, annualize by raising to the appropriate power:
 - Monthly NRR annualized: `(Monthly NRR / 100) ^ 12 × 100`
@@ -383,7 +383,7 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 
 NRR is reported per customer segment, each snapshot and event counting in the segment it carries.
 
-**What it tells you:** Can you grow without adding new customers? NRR is a critical indicator of SaaS sustainability because it measures whether your existing customer base is expanding or contracting. High NRR reduces dependence on new customer acquisition for growth.
+**What it tells you:** Whether the customers you had a year ago are paying you more or less today. Above 100%, the existing base grows on its own and new customers add on top; below it, new sales first have to replace what the base lost.
 
 **Common mistakes:**
 - Calculating over inconsistent time periods
@@ -398,7 +398,7 @@ NRR is reported per customer segment, each snapshot and event counting in the se
 
 #### Operating Form: Cohort NRR (NRR-O)
 
-NRR-O uses the cohort method and includes only organic expansion. Growth from the same product and usage realisation. It excludes expansion from new modules, new buying centres, reactivation and pricing actions.
+NRR-O uses the cohort method and includes only organic expansion: growth on the same product and usage realisation. It excludes expansion from new modules, new buying centres, reactivation, recontracting and pricing actions.
 
 **CEL Source:** `Revenue_Event`
 **ATL Inclusion:**
@@ -411,7 +411,7 @@ NRR-O uses the cohort method and includes only organic expansion. Growth from th
 NRR-O = MRR of cohort today (organic only) / MRR of same cohort 12 months ago × 100
 ```
 
-**What it tells you:** True product-market fit signal. Are customers expanding because the product delivers more value, independent of commercial motion?
+**What it tells you:** Whether customers expand because the product gives them more value, with cross-sell, reactivation and pricing taken out. It is the closest NRR gets to a product-market fit signal.
 
 #### Market Form: Account NRR (NRR-M)
 
@@ -421,7 +421,7 @@ NRR-M uses the cohort method over the customers active at period start, the same
 **ATL Inclusion:**
 - All `expansion_classification` values included (`same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`)
 - `event_type` = `reactivation` included for customers in the period-start cohort
-- Excluded: `lifecycle_attribution` = `acquisition`, and reactivation of customers who had already churned before period start (new business)
+- Excluded: `lifecycle_attribution` = `acquisition`; reactivation of customers who had already churned before period start (new business)
 
 **Formula:**
 ```
@@ -442,7 +442,7 @@ NRR-M ≈ NRR-O + Reactivation + Cross-Module + New Buying Centre + Pricing Adju
 ```
 (Expressed as percentage-point contributions to the NRR rate.)
 
-**Diagnostic:** The delta (NRR-M − NRR-O) is the **Expansion Integrity Gap.** How much of reported NRR comes from commercial motion (cross-sell, reactivation, pricing) versus organic product expansion. A wide gap means NRR depends on sales execution rather than product-led growth. Not inherently bad, but the board should know which engine drives retention. SaaS Metrics Standards Board recommends the cohort method. Public SaaS companies report cohort-based NRR (NRR-M), so both forms use the cohort method and differ only in which expansion counts.
+**Diagnostic:** The delta (NRR-M − NRR-O) is the **Expansion Integrity Gap.** It shows how much of reported NRR comes from commercial motion (cross-sell, reactivation, pricing) rather than organic product expansion. A wide gap means NRR depends on sales execution more than product-led growth. That can be a sound strategy. The board should still know which one drives retention. SaaS Metrics Standards Board recommends the cohort method. Public SaaS companies report cohort-based NRR (NRR-M), so both forms use the cohort method and differ only in which expansion counts.
 
 ---
 
@@ -499,7 +499,7 @@ GRR is reported per customer segment, each snapshot and event counting in the se
 
 #### Dual-Lens Note
 
-GRR measures revenue retained from existing customers, excluding expansion. Because expansion is already stripped out, the Operating/Market distinction that drives dual-lens treatment for other metrics does not apply. There is no expansion classification to filter. GRR is GRR: the same calculation serves both internal planning and investor reporting. The existing definition is the standard for both lenses.
+GRR measures revenue retained from existing customers and leaves expansion out. The Operating and Market forms of other metrics differ in which expansion classifications they count, so GRR has nothing to filter. One calculation serves internal planning and investor reporting.
 
 ---
 
@@ -553,7 +553,7 @@ Logo Churn Rate is reported per customer segment.
 Revenue Churn Rate = (Churned MRR + Contraction MRR) / Beginning MRR × 100
 ```
 
-This is gross revenue churn - it measures losses only, without netting against expansion. This is the canonical formula because it isolates the leakage problem.
+This is gross revenue churn: it measures losses only, without netting against expansion. It is the canonical formula because it isolates the leakage.
 
 **Note:** "Net Revenue Churn" (which subtracts expansion) can be calculated but conflates two distinct dynamics. Use NRR for the net view instead.
 
@@ -581,7 +581,7 @@ MRR-weighted churn captures the economic impact of attrition. The formula is def
 
 **CEL Source:** `Revenue_Event` where `event_type` ∈ (`churn`, `contraction`)
 
-**What it tells you:** The operating metric because it reflects actual economic damage. Losing a $50K customer hits harder than losing a $500 customer.
+**What it tells you:** The economic damage of attrition, which is why it is the operating form. Losing a $50K customer hits harder than losing a $500 customer.
 
 **Market Form: Logo Churn Rate (Churn-M)**
 
@@ -589,12 +589,12 @@ Customer-count churn treats every logo equally. The formula is defined in the Lo
 
 **CEL Source:** `Revenue_Event` where `event_type` = `churn` (full churn only. Contraction is not logo churn)
 
-**What it tells you:** The market metric because it is simple, comparable and what investors benchmark.
+**What it tells you:** How many customers leave, counted the simple way investors benchmark, which is why it is the market form.
 
 **Bridge:** Revenue Churn and Logo Churn are not additive. One measures dollars, the other measures logos. The diagnostic compares the two signals:
 - **Churn-O high, Churn-M low →** Losing few but high-value customers (concentration risk)
 - **Churn-M high, Churn-O low →** Losing many small customers (long-tail churn)
-- The pattern tells you where to focus retention efforts and which customer segments need intervention.
+- Read the pattern by customer segment to see where retention work should go.
 
 ---
 
@@ -630,7 +630,7 @@ Passives are not included in the calculation.
 - 50-70: Excellent (top performers)
 - 70+: World class
 
-**What it tells you:** A leading indicator of retention and growth. NPS can signal churn risk before it manifests in revenue metrics, making it useful for early intervention. Bain & Company research links NPS to organic growth through referrals and reduced churn.
+**What it tells you:** A leading indicator of retention and growth. A falling NPS often shows churn risk before it reaches the revenue metrics, early enough to act. Bain & Company research links NPS to organic growth through referrals and reduced churn.
 
 **Common mistakes:**
 - Low response rates (<20% makes data unreliable)
@@ -696,7 +696,7 @@ CAC = (Sales + Marketing spend in period) / New customers acquired in period
 
 #### Operating Form: Fully Loaded CAC (CAC-O)
 
-CAC-O includes all costs to make a customer productive: go-to-market spend plus implementation and onboarding. It reflects the true economic cost of acquiring a revenue-generating customer. Implementation support during a trial or proof of concept is an activation cost: tag it `cost_function` = `implementation` and it counts in CAC-O and in the Activation Delta, outside the main CAC Include list.
+CAC-O includes all costs to make a customer productive: go-to-market spend plus implementation and onboarding. It is the full cost of turning a prospect into a customer who generates revenue. Implementation support during a trial or proof of concept is an activation cost: tag it `cost_function` = `implementation` and it counts in CAC-O and in the Activation Delta, outside the main CAC Include list.
 
 **CEL Source:** `Cost_Event`
 **ATL Inclusion:** `cost_function` ∈ (`gtm`, `implementation`, `onboarding`), the acquisition and activation lifecycle costs
@@ -706,7 +706,7 @@ CAC-O includes all costs to make a customer productive: go-to-market spend plus 
 CAC-O = Total Cost (Acquisition + Activation lifecycle) / New Customers Acquired
 ```
 
-**What it tells you:** The full investment required to get a customer generating value. The number you need for true unit economics.
+**What it tells you:** The full investment required to get a customer generating value. It is the CAC to use in unit economics.
 
 #### Market Form: GTM CAC (CAC-M)
 
@@ -729,13 +729,13 @@ CAC-M = S&M Spend / New Customers Acquired
 CAC-O = CAC-M + Implementation_Cost_per_Customer + Onboarding_Cost_per_Customer
 ```
 
-**Diagnostic:** The delta (CAC-O − CAC-M) is the **Activation Delta.** The hidden cost of making customers productive that does not show up in S&M-based benchmarks. A large Activation Delta signals that investor-comparable CAC understates true acquisition economics. Driven by implementation complexity, onboarding duration and services intensity. SaaS Metrics Standards Board defines the Blended CAC Ratio as S&M-only (CAC-M). SaaS Capital and a16z recommend tracking fully loaded CAC (CAC-O) alongside for unit economics.
+**Diagnostic:** The delta (CAC-O − CAC-M) is the **Activation Delta:** the cost of making customers productive, which S&M-based benchmarks leave out. A large Activation Delta means investor-comparable CAC understates what acquisition really costs. Implementation complexity, onboarding duration and services intensity drive it. SaaS Metrics Standards Board defines the Blended CAC Ratio as S&M-only (CAC-M). SaaS Capital and a16z recommend tracking fully loaded CAC (CAC-O) alongside for unit economics.
 
 ---
 
 ### LTV (Customer Lifetime Value)
 
-**Definition:** The total revenue (or profit) expected from a customer over their lifetime. Also known as CLV (Customer Lifetime Value) or CLTV.
+**Definition:** The gross profit expected from a customer over their lifetime. Also known as CLV (Customer Lifetime Value) or CLTV.
 
 **Formula:**
 ```
@@ -764,7 +764,7 @@ Where:
 
 #### Operating Form: Contribution LTV (LTV-O)
 
-LTV-O uses contribution margin. Revenue minus all variable costs including implementation, onboarding, support and customer success. It reflects the true profit contribution over a customer's lifetime.
+LTV-O uses contribution margin: revenue minus every variable cost, including implementation, onboarding, support and customer success. It is the profit a customer contributes over their lifetime.
 
 **CEL Source:** `Revenue_Event`, `Cost_Event`
 **ATL Inclusion for costs:** All variable `cost_function` values per customer
@@ -779,7 +779,7 @@ Where Contribution Margin = Revenue − COGS − Implementation − Onboarding �
 
 #### Market Form: Gross Margin LTV (LTV-M)
 
-LTV-M uses SaaS gross margin. Revenue minus COGS only. This is the formula already defined above and matches investor benchmarks (the 3:1 LTV:CAC threshold uses this form).
+LTV-M uses SaaS gross margin, revenue minus COGS only. This is the formula already defined above and matches investor benchmarks (the 3:1 LTV:CAC threshold uses this form).
 
 **CEL Source:** `Revenue_Event`, `Cost_Event`
 **ATL Inclusion for costs:** `cost_function` = `infrastructure` only (COGS)
@@ -801,7 +801,7 @@ LTV-M − LTV-O = Variable Service Costs per Customer × Customer Lifetime
 ```
 The gap is the lifetime profit consumed by variable service costs (implementation, onboarding, support, CS).
 
-**Diagnostic:** The delta (LTV-M − LTV-O) is the **Contribution Leakage.** The lifetime profit that gets consumed by variable service costs. Large leakage means the business model depends on services that erode unit economics, signalling opportunities for services productisation and self-serve onboarding. The canonical LTV formula in investor contexts uses gross margin (LTV-M). This is what a16z, Bessemer and SaaS Capital reference. Contribution margin LTV (LTV-O) is recommended by growth equity investors for deeper unit economics analysis.
+**Diagnostic:** The delta (LTV-M − LTV-O) is the **Contribution Leakage.** Large leakage means the business model depends on services that erode unit economics. It points to services that could be productised or onboarding that could be self-serve. The canonical LTV formula in investor contexts uses gross margin (LTV-M). This is what a16z, Bessemer and SaaS Capital reference. Contribution margin LTV (LTV-O) is recommended by growth equity investors for deeper unit economics analysis.
 
 ---
 
@@ -896,7 +896,7 @@ Result in months.
 - Mid-market: 14-18 months typical
 - Enterprise: 18-24 months typical (longer sales cycles)
 
-**What it tells you:** How quickly customers become profitable. Critical for cash management and determining sustainable growth rate.
+**What it tells you:** How many months of gross profit a new customer takes to repay what it cost to win. Payback sets how much cash growth ties up, so it limits how fast a company can grow on its own money.
 
 **Sources:**
 - [Wall Street Prep: CAC Payback Period](https://www.wallstreetprep.com/knowledge/cac-payback-period/)
@@ -990,7 +990,7 @@ The canonical Gross Margin is the Market Form (GM-M) below. Companies that alloc
 
 #### Operating Form: Contribution Margin (GM-O)
 
-Contribution Margin is revenue minus all variable costs per customer. It shows true per-customer profitability after all costs that scale with the customer base.
+Contribution Margin is revenue minus every variable cost of serving customers. It shows what each customer earns after the costs that grow with the customer base.
 
 **CEL Source:** `Revenue_Event`, `Cost_Event`
 **ATL Inclusion for costs:** `cost_function` ∈ (`infrastructure`, `support`, `success_engineering`, `implementation`, `onboarding`)
@@ -1001,11 +1001,11 @@ GM-O = (Revenue − COGS − Support − CS − Implementation − Onboarding) /
 ```
 Typical range: 50-70% for SaaS.
 
-**What it tells you:** The operating metric because it shows how much profit each customer actually generates after all variable delivery costs.
+**What it tells you:** How much profit each customer generates after every variable delivery cost, which is why it is the operating form.
 
 #### Market Form: SaaS Gross Margin (GM-M)
 
-SaaS Gross Margin is revenue minus COGS only. Hosting, infrastructure and payment processing. It matches financial statement reporting and investor benchmarks.
+SaaS Gross Margin is revenue minus COGS only (hosting, infrastructure and payment processing). It matches financial statement reporting and investor benchmarks.
 
 **CEL Source:** `Revenue_Event`, `Cost_Event`
 **ATL Inclusion for costs:** `cost_function` = `infrastructure`
@@ -1027,7 +1027,7 @@ Typical range: 70-85% for SaaS.
 GM-M = GM-O + (Support + CS + Implementation + Onboarding costs) / Revenue × 100
 ```
 
-**Diagnostic:** The delta (GM-M − GM-O) is the **Services Drag.** The cost of running a human-intensive customer operation. Declining delta over time signals increasing automation and self-serve adoption. SaaS Capital 2025 guidance on COGS allocation supports both approaches. VCs typically expect 70%+ SaaS gross margin (GM-M) while internal teams should track contribution margin (GM-O) for pricing and unit economics.
+**Diagnostic:** The delta (GM-M − GM-O) is the **Services Drag:** the cost of running a customer operation that depends on people. A delta that declines over time points to more automation and self-serve adoption. SaaS Capital 2025 guidance on COGS allocation supports both approaches. VCs typically expect 70%+ SaaS gross margin (GM-M) while internal teams should track contribution margin (GM-O) for pricing and unit economics.
 
 ---
 
@@ -1082,7 +1082,7 @@ The Rule of 40 is a composite metric. Its dual-lens behaviour is inherited from 
 - **Rule of 40-O** = ARR-O Growth Rate + Contribution Margin (GM-O)
 - **Rule of 40-M** = ARR-M Growth Rate + EBITDA Margin
 
-A company with 30% ARR growth and heavy implementation costs might report Rule of 40-M = 45 (healthy) while Rule of 40-O = 32 (below threshold). The gap reveals whether growth-profitability balance holds when true operating costs are included. No separate O/M inclusion rules are needed. Use the ARR and Gross Margin forms defined above.
+A company with 30% ARR growth and heavy implementation costs might report Rule of 40-M = 45 (healthy) while Rule of 40-O = 32 (below threshold). The gap shows whether the balance of growth and profitability holds once delivery costs are counted. No separate O/M inclusion rules are needed. Use the ARR and Gross Margin forms defined above.
 
 ---
 
@@ -1106,7 +1106,7 @@ A company with 30% ARR growth and heavy implementation costs might report Rule o
 
 ## Dual-Lens Reference
 
-The GASP Standard recognises that core metrics serve two audiences with different needs. Operating forms reflect internal economic truth. Market forms match investor-comparable benchmarks. Both derive from the same [Commercial Event Ledger](../cel.md) using [Attribution Taxonomy Layer](../atl.md) tags.
+Core metrics serve two audiences. Operating forms are what management runs the business on and market forms match the benchmarks investors compare against. Both derive from the same [Commercial Event Ledger](../cel.md) using [Attribution Taxonomy Layer](../atl.md) tags.
 
 | Metric | Operating (O) | Market (M) | Bridge Diagnostic |
 |--------|--------------|------------|-------------------|

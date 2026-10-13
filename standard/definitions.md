@@ -262,7 +262,7 @@ A defined time interval for measurement. Always specify:
 - Weekly
 - Monthly (calendar month)
 - Quarterly (calendar quarter)
-- Annual (trailing 12 months or calendar year - specify which)
+- Annual (trailing 12 months or calendar year; specify which)
 
 ### Cohort
 A group of customers/users defined by a shared characteristic, typically signup date.
@@ -288,8 +288,9 @@ Comparison to prior quarter.
 
 ### COGS (Cost of Goods Sold)
 Direct costs to deliver the product/service.
-- **SaaS COGS includes:** Hosting, support team, payment processing, third-party software
+- **SaaS COGS includes:** Hosting, compute, payment processing and third-party service costs (the ATL `infrastructure` cost function)
 - **SaaS COGS excludes:** Sales, marketing, R&D, G&A
+- **Support and success cost:** Outside COGS in Gross Margin. Contribution margin, the Operating form of Gross Margin (GM-O), subtracts it
 
 ### Operating Expenses (Opex)
 Costs of running the business (excluding COGS).
@@ -335,7 +336,7 @@ An unplanned interruption or degradation of service.
 ### MTTR (Mean Time to Resolve/Recover)
 Average time from incident start to resolution.
 - **Canonical definition:** [Engineering Metrics](metrics/engineering.md#mean-time-to-resolve-mttr)
-- **Note:** DORA uses "Mean Time to Recovery" - same concept
+- **Note:** DORA uses "Mean Time to Recovery" for the same concept
 
 ### Error Rate
 Percentage of requests resulting in errors.
@@ -376,7 +377,7 @@ Daily / Weekly / Monthly Active Users.
 - **Canonical definition:** [Product Metrics](metrics/product.md)
 
 ### Stickiness
-DAU/MAU ratio - how often users return.
+DAU/MAU ratio: how often users return.
 - **Canonical definition:** [Product Metrics](metrics/product.md#daumau-ratio-stickiness)
 
 ### Feature Adoption
@@ -393,7 +394,7 @@ Moment when new user experiences core product value.
 ## Time-Based Metrics
 
 ### TTFV (Time to First Value)
-Time from signup to achieving first meaningful value.
+Time from contract start to achieving first meaningful value.
 - **Canonical definition:** [Onboarding Metrics](metrics/onboarding.md#time-to-first-value-ttfv)
 
 ### FRT (First Response Time)
@@ -417,7 +418,7 @@ When reporting distributions:
 - **P95:** 95th percentile, use for "almost everyone" experience
 - **P99:** 99th percentile, use for tail/worst case
 
-**Never use averages** for latency or time metrics - outliers skew results.
+**Prefer percentiles to averages** for latency and time metrics, because outliers skew averages. MTTR keeps the mean its name declares.
 
 ---
 
@@ -476,28 +477,28 @@ Standard measurement frequencies by metric type. Always specify the period used.
 
 ## GASP Framework Terms
 
-The terms below describe the GASP standard itself. How metrics are classified, how events are captured, how access is scoped, how the twin is assembled. They are distinct from the SaaS business concepts above. You will see these terms in the MCP server output, the ontology, the adapter schema and the governance framework.
+The terms below describe the GASP Standard itself: how metrics are classified, how events are captured, how access is scoped and how the twin is assembled. They sit apart from the SaaS business concepts above. You will see these terms in the MCP server output, the ontology, the adapter schema and the governance framework.
 
 ### CEL (Commercial Event Ledger)
-The atomic, immutable event layer from which all GASP metrics derive. Every metric in the standard traces back to CEL events. If an event is not in the CEL, it does not exist for metric purposes.
+The atomic, immutable event layer from which the GASP revenue, retention and cost metrics derive. If a commercial event is not in the CEL, it does not exist for metric purposes. Operational metrics read the other datasets in the ontology.
 - **Canonical definition:** [CEL](cel.md#commercial-event-ledger-cel)
 - **Used in:** All revenue, retention and cost metrics
 
 ### ATL (Attribution Taxonomy Layer)
-The tagging layer that classifies CEL events by lifecycle stage, expansion type and cost function. ATL is what enables dual-lens metrics (Operating form vs Market form).
+The tagging layer that classifies CEL events by lifecycle stage, expansion type and cost function. ATL tags let each dual-lens metric compute its Operating form and its Market form from the same events.
 - **Canonical definition:** [ATL](atl.md#attribution-taxonomy-layer-atl)
-- **Used in:** Core metrics with dual-lens forms (ARR, NRR, CAC, LTV, Gross Margin, Churn)
+- **Used in:** Core metrics with dual-lens forms (ARR, NRR, CAC, LTV, LTV:CAC, CAC Payback, Gross Margin, Churn)
 
 ### Adapter
-The JSON mapping file that connects GASP's canonical field names to your warehouse columns. Each field declares its `schema.table.column` reference plus optional owners for the definition and the pipeline. The adapter is the only file a consuming organization writes.
+The JSON mapping file that connects GASP's canonical vocabulary to your warehouse: a table for each GASP dataset you have, a column (`schema.table.column`) for each field and optional owners for field data and metric definitions. The adapter is the only file a consuming organization writes.
 - **Reference:** [Adapter Guide](/v1/adapter)
 
 ### Digital Twin
-The combination of the GASP standard (metrics, relationships, ontology), your adapter (warehouse mapping) and an MCP server (agent access layer). Together they form a read-only semantic model of how a SaaS business operates. Agents read from the twin, not from source systems directly.
+The combination of the GASP standard (metrics, relationships, ontology), your adapter (warehouse mapping) and an MCP server (agent access layer). Together they form a read-only semantic model of how a SaaS business operates. Agents query the twin instead of the source systems.
 - **Reference:** [SaaS Digital Twin](/v1/digital-twin)
 
 ### Ontology
-The structured representation of GASP's entities, concepts, fields, source categories, temporal semantics and validation rules. The ontology sits below the metric layer and provides the canonical vocabulary that adapters, queries and agents reference.
+The structured representation of GASP's entities, concepts, fields, datasets, source categories, temporal semantics and validation rules. The ontology sits below the metric layer and provides the canonical vocabulary that adapters, queries and agents reference.
 - **Reference:** ontology.json in the GASP repository
 
 ### Signal Type
@@ -531,16 +532,16 @@ Optional CEL field that captures the intent behind a revenue movement. Does not 
 - **Reference:** [CEL change_nature](/v1/cel#change-nature)
 
 ### Segment
-The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract and amendment events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. Segment is a dimension for slicing metrics, not an ATL tag, and plan carries pricing tier.
+The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract and amendment events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. Segment is a dimension for slicing metrics rather than an ATL tag. Pricing tier lives on the plan.
 - **Canonical definition:** [CEL segment](cel.md#segment-on-events)
 - **Used in:** Named `by_segment` breakdowns of MRR, ARR, NRR, GRR, the churn and movement metrics, ARPA and Health Score
 
 ### Structured Formula
-A decomposed representation of a metric's formula: explicit references to other metric nodes (with roles like numerator, denominator, addend) and the raw fields required. Enables agents to walk the dependency tree without parsing formula text.
+A decomposed representation of a metric's canonical formula, derived from formulas.json: explicit references to other metric nodes (with roles like numerator, denominator, addend) and the raw fields required. Enables agents to walk the dependency tree without parsing formula text.
 - **Reference:** ontology.json structuredFormulas in the GASP repository
 
 ### Metric Owner
-The named team or person responsible for a metric definition in an organization's adapter. Ownership is a required adapter field. When a metric value is disputed, the owner resolves the dispute. GASP provides the canonical definition; the owner decides whether their organization follows it or deviates and documents any deviation.
+The named team or person responsible for a metric definition in an organization's adapter. The adapter schema recommends an owner for every metric you report and the validator lists metrics without one. When a metric value is disputed, the owner resolves the dispute. GASP provides the canonical definition; the owner decides whether their organization follows it or deviates and documents any deviation.
 - **Reference:** [Adapter Guide](/v1/adapter#metric-owners)
 
 ### Temporal Semantics
@@ -561,16 +562,16 @@ When data is missing:
 ## Benchmark Sources
 
 When benchmarks are cited in this standard, they are drawn from:
-- [SaaS Metrics Standards Board](https://www.saasmetricsboard.com/) - core metric definitions
-- [KeyBanc Capital Markets SaaS Survey](https://www.key.com/businesses-institutions/industry-expertise/saas-resources.html) - annual survey of private SaaS companies
-- [SaaS Capital](https://www.saas-capital.com/research/) - retention and growth benchmarks
-- [OpenView/High Alpha SaaS Benchmarks](https://www.highalpha.com/saas-benchmarks) - comprehensive annual report
-- [Benchmarkit](https://www.benchmarkit.ai/2025benchmarks) - CAC, payback, efficiency metrics
-- [Bessemer Cloud Index](https://cloudindex.bvp.com/) - public SaaS company performance tracking
-- [ICONIQ Growth](https://www.iconiqcapital.com/growth/insights) - SaaS scaling and efficiency research
-- [McKinsey](https://www.mckinsey.com/industries/technology-media-and-telecommunications/our-insights/saas-and-the-rule-of-40-keys-to-the-critical-value-creation-metric) - Rule of 40 analysis
-- [DORA State of DevOps Report](https://dora.dev/research/) - engineering metrics
-- [Gainsight](https://www.gainsight.com/resource/the-customer-success-index-2024/) - customer success metrics
-- [Mixpanel](https://mixpanel.com/benchmarks/) - product metrics
+- [SaaS Metrics Standards Board](https://www.saasmetricsboard.com/): core metric definitions
+- [KeyBanc Capital Markets SaaS Survey](https://www.key.com/businesses-institutions/industry-expertise/saas-resources.html): annual survey of private SaaS companies
+- [SaaS Capital](https://www.saas-capital.com/research/): retention and growth benchmarks
+- [OpenView/High Alpha SaaS Benchmarks](https://www.highalpha.com/saas-benchmarks): comprehensive annual report
+- [Benchmarkit](https://www.benchmarkit.ai/2025benchmarks): CAC, payback, efficiency metrics
+- [Bessemer Cloud Index](https://cloudindex.bvp.com/): public SaaS company performance tracking
+- [ICONIQ Growth](https://www.iconiqcapital.com/growth/insights): SaaS scaling and efficiency research
+- [McKinsey](https://www.mckinsey.com/industries/technology-media-and-telecommunications/our-insights/saas-and-the-rule-of-40-keys-to-the-critical-value-creation-metric): Rule of 40 analysis
+- [DORA State of DevOps Report](https://dora.dev/research/): engineering metrics
+- [Gainsight](https://www.gainsight.com/resource/the-customer-success-index-2024/): customer success metrics
+- [Mixpanel](https://mixpanel.com/benchmarks/): product metrics
 
 Benchmarks are general guidance. Your targets may differ based on business model, market and stage.

@@ -64,7 +64,7 @@ Visitor-to-Lead = Leads captured / Visitors × 100
 Leads = Total new leads captured in period
 ```
 
-Leads are reported per lead source, such as organic, paid, referral, direct and events, and per lead stage as of period end.
+Leads are reported per lead source (such as organic, paid, referral, direct and events) and per lead stage as of period end.
 
 ---
 
@@ -185,7 +185,7 @@ SQL-to-Opp = Opportunities created / SQLs × 100
 
 ### Lead Velocity Rate (LVR)
 
-**Definition:** Month-over-month growth in qualified leads. Considered by many to be the most important leading indicator in SaaS.
+**Definition:** Month-over-month growth in qualified leads (MQLs).
 
 **Formula:**
 ```
@@ -194,7 +194,7 @@ LVR = (Qualified leads this month - Qualified leads last month) / Qualified lead
 
 **Origin:** Popularized by Jason Lemkin (SaaStr), who calls it "the most important metric in SaaS" because it predicts future revenue 12-18 months out.
 
-**Why it matters:** Revenue is a lagging indicator (tells you about the past). LVR is real-time and predicts the future.
+**Why it matters:** Revenue reports deals that already closed. LVR moves months earlier, because this month's qualified leads become the pipeline that closes later.
 
 **Benchmarks (per Jason Lemkin):**
 - 10%/month: Target after $1M ARR
@@ -225,7 +225,7 @@ Marketing typically owns a portion of CAC (marketing spend / new customers).
 
 ### Marketing CAC
 
-**Definition:** Marketing-only portion of acquisition cost.
+**Definition:** Marketing-only portion of acquisition cost: go-to-market cost booked to the marketing cost centre, divided by all new customers in the period.
 
 **Formula:**
 ```
@@ -247,7 +247,7 @@ Channel CAC = Channel ad spend / Deals won in period via channel
 
 **Channels:** Paid ads, organic search, email, events, content, referral, direct and other.
 
-CAC by Channel is reported per channel: one value for each channel. Spend is campaign ad spend, which records its channel, and new customers are deals won in the period attributed to their first-touch channel. The cost ledger has no channel, so ledger cost cannot be split this way; Marketing CAC remains the total.
+CAC by Channel is reported per channel: one value for each channel. Spend is campaign ad spend, which records its channel. New customers are deals won in the period, attributed to their first-touch channel. The cost ledger has no channel, so ledger cost cannot be split this way; Marketing CAC remains the total.
 
 **What it tells you:** Which channels are most efficient.
 
@@ -365,7 +365,7 @@ Organic Traffic = Visitors where source = organic search
 
 ### Paid Media Efficiency (ROAS)
 
-**Definition:** Return on ad spend.
+**Definition:** Return on ad spend: closed won revenue from the paid ads channel in the period, divided by paid ad spend.
 
 **Formula:**
 ```

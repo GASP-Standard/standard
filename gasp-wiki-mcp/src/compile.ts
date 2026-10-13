@@ -19,6 +19,8 @@
  * at the period end. `all_time` drops it. `lag` shifts both bounds. `over cohort`
  * restricts every aggregate to keys present in the key's dataset at the point.
  * Intervals are emitted in units Postgres accepts (a quarter is 3 months).
+ * `ctx.dialect` picks another spelling for the warehouse-specific constructs
+ * (date shifts and differences, the double cast, percentiles): src/dialect.ts.
  *
  * A multi-argument count_distinct counts distinct tuples through a derived
  * table: (SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM t WHERE ...) _pairs).
@@ -33,6 +35,12 @@
  * on the dataset keyed by the field, else on the first dataset the formula
  * reads that carries it.
  *
+ * A breakdown field may live only on a dataset D keyed by K (plan_name on plan,
+ * keyed by plan_id): an aggregate whose dataset carries K but not the field
+ * correlates on `{{K@ds}} = _d.<K>`, the domain is D's (K, field) rows (at
+ * period end when D is a snapshot) and the result carries both columns:
+ *   SELECT _d.<K> AS <K>, _d.<field> AS <field>, <expr> AS <id> FROM (<domain>) _d
+ *
  * A bucketed breakdown ({ expression, buckets }) groups by a per-row expression
  * instead of a field: the domain is the bucket labels, the column is the
  * breakdown name (or `bucket`), and each grouped aggregate gains
@@ -41,12 +49,15 @@
  * the dataset of every grouped aggregate.
  */
 import { parseFormula, hasAggregate, hasMetric, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
+import { DIALECT, type Dialect, type DialectName } from "./dialect.js";
 import type { BreakdownSpec, MetricFormula, OntologyDataset, OntologyField } from "./types.js";
 
 export interface CompileContext {
   fields: Record<string, OntologyField>;
   datasets: Record<string, OntologyDataset>;
   formulas: Record<string, MetricFormula>;
+  /** SQL dialect of the output (src/dialect.ts); postgres when omitted */
+  dialect?: DialectName;
 }
 
 export interface Compiled {
@@ -65,7 +76,7 @@ export interface Compiled {
    * `field`, the output column. For a bucketed breakdown `field` is the column
    * name (the breakdown name, or `bucket`) and `buckets` lists the labels.
    */
-  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]> };
+  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]>; via?: { dataset: string; key: string } };
 }
 
 /** A checked breakdown: a field, or a bucketed per-row expression, and the total mode. */
@@ -118,8 +129,10 @@ export function compileMetric(id: string, ctx: CompileContext, variant?: string)
   const c = new Compiler(ctx);
   const body = c.formula(parseFormula(src), { toDate: false, shift: [], path: [id], breakdown: spec });
   const alias = id.replace(/[^a-z0-9_]/gi, "_");
+  const domain = spec ? c.domain(spec) : "";
+  const cols = c.via ? `_d.${c.via.key} AS ${c.via.key}, ` : "";
   const sql = spec
-    ? `SELECT _d.${spec.column} AS ${spec.column}, ${body} AS ${alias}\nFROM (${c.domain(spec)}) _d`
+    ? `SELECT ${cols}_d.${spec.column} AS ${spec.column}, ${body} AS ${alias}\nFROM (${domain}) _d`
     : `SELECT ${body} AS ${alias}`;
   return {
     sql,
@@ -132,6 +145,7 @@ export function compileMetric(id: string, ctx: CompileContext, variant?: string)
       field: spec.column,
       ...(spec.total ? { total: true } : {}),
       ...(spec.expression ? { expression: spec.expression.src, buckets: Object.fromEntries(spec.buckets!.map((b) => [b.label, [b.lo, b.hi] as [number, number | null]])) } : {}),
+      ...(c.via ? { via: c.via } : {}),
     } } : {}),
   };
 }
@@ -224,7 +238,13 @@ class Compiler {
   datasets = new Set<string>();
   metricRefs = new Set<string>();
   staged = false;
-  constructor(private ctx: CompileContext) {}
+  /** Set when a grouped aggregate reaches the breakdown field through a key: the dataset D carrying it and D's key */
+  via?: { dataset: string; key: string };
+  private d: Dialect;
+  constructor(private ctx: CompileContext) {
+    this.d = DIALECT[ctx.dialect ?? "postgres"];
+    if (!this.d) throw new CompileError(`Unknown SQL dialect '${ctx.dialect}' (use ${Object.keys(DIALECT).join(", ")})`);
+  }
 
   formula(f: Formula, scope: Scope): string {
     const s: Scope = f.cohort ? { ...scope, cohort: scope.cohort ?? f.cohort } : scope;
@@ -234,7 +254,7 @@ class Compiler {
 
   private bound(point: Point, scope: Scope): string {
     let b = `{{_period_${point === "period_start" ? "start" : "end"}}}`;
-    for (const sh of scope.shift) b = `(${b} - ${interval(sh.n, sh.unit)})`;
+    for (const sh of scope.shift) b = this.d.minus(b, sh.n, sh.unit);
     return b;
   }
 
@@ -264,7 +284,7 @@ class Compiler {
         if (!scope.dataset) throw new CompileError(`field.${n.id} outside an aggregate`);
         return this.ph(n.id, scope.dataset);
       case "period_bound": return this.bound(n.point, scope);
-      case "period_days": return `(${this.bound("period_end", scope)} - ${this.bound("period_start", scope)} + 1)`;
+      case "period_days": return this.d.periodDays(this.bound("period_end", scope), this.bound("period_start", scope));
       case "metric": return this.metric(n.id, scope, n.form);
       case "neg": return `(-${this.expr(n.arg, scope)})`;
       case "binary": {
@@ -272,17 +292,37 @@ class Compiler {
         const r = this.expr(n.right, scope);
         if (n.op === "-" && this.isTemporal(n.left) && this.isTemporal(n.right)) {
           const ts = [n.left, n.right].some((x) => x.kind === "field" && this.type(x.id) === "timestamp");
-          return ts ? `(EXTRACT(EPOCH FROM (${l} - ${r})) / 86400.0)` : `(${l} - ${r})`;
+          // A period bound against a timestamp is cast where the dialect needs it (BigQuery).
+          const asTs = (x: Node, sql: string) => (x.kind === "period_bound" ? this.d.toTimestamp(sql) : sql);
+          return ts ? `(${this.d.secondsBetween(asTs(n.left, l), asTs(n.right, r))} / 86400.0)` : this.d.daysBetween(l, r);
         }
         // Cast the numerator so COUNT / COUNT is not integer division (Postgres, Redshift, SQL Server).
-        if (n.op === "/") return n.right.kind === "number" ? `(CAST(${l} AS DOUBLE PRECISION) / ${r})` : `(CAST(${l} AS DOUBLE PRECISION) / NULLIF(${r}, 0))`;
+        if (n.op === "/") return n.right.kind === "number" ? `(${this.d.toDouble(l)} / ${r})` : `(${this.d.toDouble(l)} / NULLIF(${r}, 0))`;
         return `(${l} ${n.op} ${r})`;
       }
       case "scalar": {
         const fn = { min: "LEAST", max: "GREATEST", abs: "ABS", coalesce: "COALESCE" }[n.fn];
         return `${fn}(${n.args.map((a) => this.expr(a, scope)).join(", ")})`;
       }
-      case "compare": return `${this.expr(n.left, scope)} ${n.op === "!=" ? "<>" : n.op} ${this.expr(n.right, scope)}`;
+      case "compare": {
+        // A timestamp compared with a period bound (a date): the bound's whole day counts, so `<= end` is `< end + 1 day`.
+        const tsField = (x: Node) => x.kind === "field" && this.type(x.id) === "timestamp";
+        if ((tsField(n.left) && n.right.kind === "period_bound") || (tsField(n.right) && n.left.kind === "period_bound")) {
+          const flip = n.left.kind === "period_bound";
+          const col = this.expr(flip ? n.right : n.left, scope);
+          const b = this.expr(flip ? n.left : n.right, scope);
+          const op = flip ? ({ "<": ">", "<=": ">=", ">": "<", ">=": "<=", "=": "=", "!=": "!=" } as const)[n.op] : n.op;
+          const next = this.d.toTimestamp(this.d.plus(b, 1, "day"));
+          switch (op) {
+            case "<=": return `${col} < ${next}`;
+            case ">": return `${col} >= ${next}`;
+            case "<": case ">=": return `${col} ${op} ${this.d.toTimestamp(b)}`;
+            case "=": return `(${col} >= ${this.d.toTimestamp(b)} AND ${col} < ${next})`;
+            case "!=": return `NOT (${col} >= ${this.d.toTimestamp(b)} AND ${col} < ${next})`;
+          }
+        }
+        return `${this.expr(n.left, scope)} ${n.op === "!=" ? "<>" : n.op} ${this.expr(n.right, scope)}`;
+      }
       case "in": return `${this.expr(n.arg, scope)} ${n.negated ? "NOT IN" : "IN"} (${n.values.map((v) => this.expr(v, scope)).join(", ")})`;
       case "isnull": return `${this.expr(n.arg, scope)} IS ${n.negated ? "NOT " : ""}NULL`;
       case "logic": return `(${this.expr(n.left, scope)} ${n.op.toUpperCase()} ${this.expr(n.right, scope)})`;
@@ -313,6 +353,7 @@ class Compiler {
     inner.placeholders.forEach((x) => this.placeholders.add(x));
     inner.datasets.forEach((x) => this.datasets.add(x));
     inner.metricRefs.forEach((x) => this.metricRefs.add(x));
+    if (inner.via) this.useVia(inner.via);
     this.staged ||= inner.staged;
     return `(${body})`;
   }
@@ -355,43 +396,63 @@ class Compiler {
     const bd = scope.breakdown;
     const needs = bd ? (bd.field ? [bd.field] : bd.expression!.fields) : [];
     const missing = needs.filter((x) => !(this.ctx.fields[x]?.datasets ?? []).includes(ds));
+    // A field breakdown can reach a dataset without the field through the key of a dataset that has it.
+    // Only a foreign key counts (an `*_id` that is not this dataset's own key or date), as in the Ossie relationships:
+    // shared keys such as event_id are each dataset's own and never a join.
+    const keyedCarriers = (field: string) => (this.ctx.fields[field]?.datasets ?? [])
+      .filter((d) => { const k = this.ctx.datasets[d]?.key; return !!k && k !== field && k.endsWith("_id") && k !== meta.key && k !== meta.date; });
+    const viaCandidates = bd?.field && missing.length && !scope.total
+      ? keyedCarriers(bd.field).filter((d) => (this.ctx.fields[this.ctx.datasets[d].key]?.datasets ?? []).includes(ds))
+      : [];
+    const fn = n.kind === "agg" ? n.fn : "percentile";
+    if (viaCandidates.length > 1) {
+      throw new CompileError(`Breakdown by field.${bd!.field}: ${fn}() reads dataset '${ds}', which reaches the field through several keyed datasets (${viaCandidates.join(", ")}); add the field to '${ds}' or narrow the breakdown`);
+    }
+    const via = viaCandidates.length === 1 ? { dataset: viaCandidates[0], key: this.ctx.datasets[viaCandidates[0]].key } : undefined;
     // In total mode the author declared that aggregates without the dimension stay whole.
-    const grouped = !!bd && !scope.total && (missing.length === 0 || !bd.total);
-    if (grouped && missing.length) {
-      const fn = n.kind === "agg" ? n.fn : "percentile";
+    const grouped = !!bd && !scope.total && (missing.length === 0 || !!via || !bd.total);
+    if (grouped && missing.length && !via) {
       const what = bd!.field ? `field.${bd!.field}` : `${bd!.column} (${bd!.expression!.src})`;
+      const keys = bd!.field ? keyedCarriers(bd!.field).map((d) => `${this.ctx.datasets[d].key} (the key of ${d})`) : [];
       throw new CompileError(
-        `Breakdown by ${what}: ${fn}() over ${ids.map((x) => `field.${x}`).join(", ")} reads dataset '${ds}', which has no ${missing.join(", ")} field. Wrap the aggregate in total() or add the field to '${ds}'`,
+        `Breakdown by ${what}: ${fn}() over ${ids.map((x) => `field.${x}`).join(", ")} reads dataset '${ds}', which has no ${missing.join(", ")} field` +
+        (keys.length ? ` and no key to reach it: '${ds}' is missing ${keys.join(" or ")}` : "") +
+        `. Wrap the aggregate in total() or add the field to '${ds}'`,
       );
     }
+    if (grouped && via) this.useVia(via);
     const inner = this.expr(n.arg, s);
     const tuple = n.kind === "agg" && n.more?.length ? [inner, ...n.more.map((m) => this.expr(m, s))] : undefined;
     const agg =
-      n.kind === "percentile" ? `PERCENTILE_CONT(${n.p}) WITHIN GROUP (ORDER BY ${inner})`
+      n.kind === "percentile" ? this.d.percentile(n.p, inner)
       : n.fn === "count_distinct" ? `COUNT(DISTINCT ${inner})`
-      : n.fn === "median" ? `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${inner})`
+      : n.fn === "median" ? this.d.percentile(0.5, inner)
       : `${n.fn.toUpperCase()}(${inner})`;
 
     const where: string[] = [];
     const date = this.ph(meta.date, ds);
+    const ts = this.type(meta.date) === "timestamp";
     if (meta.kind === "snapshot") {
       if (scope.window || scope.allTime) throw new CompileError(`${scope.window ? "window" : "all_time"}() does not apply to the snapshot dataset '${ds}'`);
-      where.push(`${date} = ${this.bound(scope.point ?? "period_end", scope)}`);
+      where.push(this.onDay(date, this.bound(scope.point ?? "period_end", scope), ts));
     } else if (scope.allTime) {
       // The where clause bounds the rows itself (for example relative to another date field).
     } else if (scope.window) {
       const end = this.bound(scope.point ?? "period_end", scope);
-      where.push(`${date} > (${end} - ${interval(scope.window.n, scope.window.unit)})`, `${date} <= ${end}`);
+      // Dates: (end - n, end]. Timestamps: [end + 1 day - n, end + 1 day), so the whole first and last days count.
+      where.push(ts
+        ? `${date} >= ${this.d.toTimestamp(this.d.minus(this.d.plus(end, 1, "day"), scope.window.n, scope.window.unit))}`
+        : `${date} > ${this.d.minus(end, scope.window.n, scope.window.unit)}`, this.upTo(date, end, ts));
     } else if (scope.toDate) {
-      where.push(`${date} <= ${this.bound(scope.point ?? "period_end", scope)}`);
+      where.push(this.upTo(date, this.bound(scope.point ?? "period_end", scope), ts));
     } else if (scope.point) {
       // A point on an event or fact dataset reads as everything up to that point.
-      where.push(`${date} <= ${this.bound(scope.point, scope)}`);
+      where.push(this.upTo(date, this.bound(scope.point, scope), ts));
     } else {
-      where.push(`${date} >= ${this.bound("period_start", scope)}`, `${date} <= ${this.bound("period_end", scope)}`);
+      where.push(`${date} >= ${ts ? this.d.toTimestamp(this.bound("period_start", scope)) : this.bound("period_start", scope)}`, this.upTo(date, this.bound("period_end", scope), ts));
     }
     if (n.where) where.push(this.expr(n.where, s));
-    if (grouped && bd!.field) where.push(`${this.ph(bd!.field, ds)} = _d.${bd!.column}`);
+    if (grouped && bd!.field) where.push(via ? `${this.ph(via.key, ds)} = _d.${via.key}` : `${this.ph(bd!.field, ds)} = _d.${bd!.column}`);
     if (grouped && bd!.expression) {
       const e = this.expr(bd!.expression.node, { ...s, breakdown: undefined });
       const whens = bd!.buckets!.map((b) => `WHEN ${e} ${b.hi === null ? `>= ${b.lo}` : `BETWEEN ${b.lo} AND ${b.hi}`} THEN '${b.label}'`);
@@ -405,7 +466,7 @@ class Compiler {
       const kmeta = this.ctx.datasets[keyDs];
       const ks: Scope = { ...scope, dataset: keyDs };
       const active = kmeta.activeWhen ? ` AND ${this.expr(parseFormula(kmeta.activeWhen).expr, ks)}` : "";
-      where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.ph(kmeta.date, keyDs)} = ${this.bound(scope.cohort.point, { ...scope, shift: [] })}${active})`);
+      where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.onDay(this.ph(kmeta.date, keyDs), this.bound(scope.cohort.point, { ...scope, shift: [] }), this.type(kmeta.date) === "timestamp")}${active})`);
     }
     if (tuple) {
       // Distinct tuples: COUNT(DISTINCT a) ignores nulls, so a tuple with a null part is not counted either.
@@ -416,7 +477,31 @@ class Compiler {
   }
 
   /** The rows a breakdown iterates: bucket labels or enum values as literals, else the field's distinct values on one dataset. */
+  /** `col` on or before the date `b`: `<= b` for a date column, `< b + 1 day` for a timestamp (the whole last day counts). */
+  private upTo(col: string, b: string, ts: boolean): string {
+    return ts ? `${col} < ${this.d.toTimestamp(this.d.plus(b, 1, "day"))}` : `${col} <= ${b}`;
+  }
+
+  /** `col` on the date `b`: equality for a date column, the day's half-open range for a timestamp. */
+  private onDay(col: string, b: string, ts: boolean): string {
+    return ts ? `${col} >= ${this.d.toTimestamp(b)} AND ${col} < ${this.d.toTimestamp(this.d.plus(b, 1, "day"))}` : `${col} = ${b}`;
+  }
+
+  /** Record the keyed dataset a grouped aggregate reached the field through; every such aggregate must use the same one. */
+  useVia(via: { dataset: string; key: string }): void {
+    if (this.via && this.via.dataset !== via.dataset) throw new CompileError(`Breakdown reaches its field through two datasets (${this.via.dataset} and ${via.dataset}); add the field to one dataset`);
+    this.via = via;
+  }
+
   domain(bd: ResolvedBreakdown): string {
+    if (this.via) {
+      // (key, label) rows of the dataset carrying the field, as of the period end when it is a snapshot.
+      const { dataset: d, key } = this.via;
+      this.datasets.add(d);
+      const meta = this.ctx.datasets[d];
+      const at = meta.kind === "snapshot" ? ` WHERE ${this.ph(meta.date, d)} = {{_period_end}}` : "";
+      return `SELECT DISTINCT ${this.ph(key, d)} AS ${key}, ${this.ph(bd.field!, d)} AS ${bd.field} FROM {{_table:${d}}}${at}`;
+    }
     if (bd.buckets) return bd.buckets.map((b) => `SELECT '${b.label}' AS ${bd.column}`).join(" UNION ALL ");
     const field = bd.field!;
     const f = this.ctx.fields[field];

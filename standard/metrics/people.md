@@ -8,7 +8,7 @@ Metrics for measuring workforce health, engagement and organizational effectiven
 
 ### Total Headcount
 
-**Definition:** Total number of employees.
+**Definition:** Total number of active employees at the end of the period.
 
 **Formula:**
 ```
@@ -111,7 +111,7 @@ Involuntary Turnover = Involuntary departures / Average headcount × 100
 
 ### Regrettable Turnover
 
-**Definition:** Voluntary departures of high performers.
+**Definition:** Voluntary departures of high performers, as a share of the high performers employed at the start of the period.
 
 **Formula:**
 ```
@@ -120,7 +120,7 @@ Regrettable Turnover = High performer departures / Total high performers × 100
 
 **Target:** <5%
 
-**What it tells you:** Are you losing your best people?
+**What it tells you:** Whether you are losing your best people.
 
 ---
 
@@ -133,7 +133,7 @@ Regrettable Turnover = High performer departures / Total high performers × 100
 Average Tenure = Sum of employee tenure / Total employees
 ```
 
-Measured in months or years.
+Averaged over active employees at period end and reported in months.
 
 **What it tells you:** Workforce stability and institutional knowledge.
 
@@ -195,12 +195,14 @@ Based on: "How likely are you to recommend [company] as a place to work?" (0-10)
 
 **Definition:** Composite score from engagement survey.
 
-**Measurement:** Typically annual or quarterly survey covering:
+**Measurement:** Usually an annual or quarterly survey covering:
 - Job satisfaction
 - Manager relationship
 - Growth opportunities
 - Company direction
 - Work-life balance
+
+The canonical value is the average composite score across employee survey responses in the period.
 
 **Benchmarks:**
 - Below 60%: Low engagement
@@ -229,7 +231,7 @@ Participation Rate = Surveys completed / Surveys sent × 100
 
 ### Open Positions
 
-**Definition:** Number of unfilled roles.
+**Definition:** Number of open requisitions (unfilled roles) at the end of the period.
 
 **What it tells you:** Hiring backlog and growth plans.
 
@@ -237,7 +239,7 @@ Participation Rate = Surveys completed / Surveys sent × 100
 
 ### Time to Fill
 
-**Definition:** Days from job opening to accepted offer.
+**Definition:** Days from a requisition opening to it being filled with an accepted offer, for requisitions filled in the period.
 
 **Formula:**
 ```
@@ -254,11 +256,11 @@ Time to Fill = Average of (Offer accepted date - Job posted date)
 
 ### Time to Hire
 
-**Definition:** Days from candidate application to accepted offer.
+**Definition:** Days from the hired employee's application to their start date, for employees hired in the period.
 
 **Formula:**
 ```
-Time to Hire = Average of (Offer accepted date - Application date)
+Time to Hire = Average of (Start date - Application date)
 ```
 
 **What it tells you:** Candidate experience and process efficiency.
@@ -290,7 +292,7 @@ Acceptance Rate = Offers accepted / Offers extended × 100
 Quality of Hire = Average performance rating of hires at 6-12 months
 ```
 
-Or: Percentage of new hires meeting/exceeding expectations.
+Some teams report the share of new hires meeting or exceeding expectations instead. That version needs a rating threshold, which each team sets.
 
 **What it tells you:** Recruiting effectiveness at finding good candidates.
 
@@ -329,7 +331,7 @@ Source share = Hires in period from the source / Total hires in period
 - Internal transfers
 - Campus hiring
 
-Source of Hire is reported per source: one share for each source, and the shares sum to 100%.
+Source of Hire is reported per source: one share for each source, with the shares summing to 100%.
 
 **What it tells you:** Most effective recruiting channels.
 
@@ -361,6 +363,8 @@ Compa-Ratio = Actual salary / Market midpoint × 100
 ```
 Pay Equity = Average pay (Group A) / Average pay (Group B)
 ```
+
+GASP compares employees from underrepresented groups (Group A) with everyone else (Group B), within the same role.
 
 **Target:** 0.98-1.02 (within 2%)
 

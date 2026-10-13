@@ -10,6 +10,8 @@ import { exportModel, stagedDatasetName } from "../src/ossie/model.js";
 import { emitMetric } from "../src/ossie/metrics.js";
 import type { MetricFormula } from "../src/types.js";
 import { metricName } from "../src/ossie/names.js";
+import { DIALECT, type DialectName } from "../src/dialect.js";
+import { stagedSource } from "../src/ossie/model.js";
 import { OSSIE_DIALECT, GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
 import { fixtureDb, addOssieViews, scalar, runTemplate } from "./fixture-db.js";
 
@@ -181,7 +183,16 @@ describe("Ossie model: metrics", () => {
         expect(ds.source).toMatch(/AS value FROM gasp\.period_spine p$/);
       }
       expect(ds.source).not.toContain("{{");
-      expect(ext(ds)).toEqual({ staged: true, for: c.ossieName, reason: c.reason });
+      const x = ext(ds);
+      expect(x).toMatchObject({ staged: true, for: c.ossieName, reason: c.reason, source_dialect: "postgres" });
+      // Ossie's source is one string: the other dialects' sources travel in the GASP extension.
+      expect(Object.keys(x.sources).sort()).toEqual(["BIGQUERY", "DATABRICKS", "SNOWFLAKE"]);
+      for (const [ossie, src] of Object.entries(x.sources as Record<string, string>)) {
+        const dialect = ossie.toLowerCase() as DialectName;
+        expect(src, `${ds.name} ${ossie}`).toMatch(/^SELECT p\.period_start, p\.period_end, /);
+        expect(src).not.toContain("{{");
+        for (const token of DIALECT[dialect].forbidden) expect(src, `${ds.name} ${ossie}: ${token}`).not.toContain(token);
+      }
       expect(ext(metricByName.get(c.ossieName)!).staged).toBe(true);
     }
   });
@@ -297,6 +308,11 @@ describe("Ossie model: metrics", () => {
     expect(aging.primary_key).toEqual(["period_start", "bucket"]);
     expect(aging.fields!.find((x) => x.name === "bucket")!.datatype).toBe("String");
     expect(ext(metricByName.get("gasp_aging_buckets")!).gasp_breakdown).toBe("bucket");
+    // MRR by plan reaches plan_name through plan_id: still direct, with the dimension named on its dataset.
+    expect(coverage["mrr:by_plan"].kind).toBe("direct");
+    expect(ext(metricByName.get("gasp_mrr_by_plan")!).gasp_breakdown).toBe("plan.plan_name");
+    expect((metricByName.get("gasp_mrr_by_plan")!.ai_context as any).instructions).toMatch(/joining each dataset the expression reads to plan on plan_id/);
+    expect(model.relationships!.some((r) => r.from === "subscription" && r.to === "plan" && r.from_columns[0] === "plan_id")).toBe(true);
     // Ticket Distribution by Type uses total(): staged, one row per period and ticket type.
     expect(coverage.ticket_distribution_by_type).toMatchObject({ kind: "staged", reason: "total" });
     const ds = byName.get("gasp_staged_gasp_ticket_distribution_by_type")!;
@@ -304,6 +320,13 @@ describe("Ossie model: metrics", () => {
     expect(ext(metricByName.get("gasp_ticket_distribution_by_type")!).gasp_breakdown).toBe("ticket_type");
     // Breadth of Adoption counts distinct (account, feature) pairs.
     expect(coverage.breadth_of_adoption).toMatchObject({ kind: "staged", reason: "distinct pair" });
+  });
+
+  it("a staged breakdown reached through a key joins the keyed snapshot on the period end, carrying key and label", () => {
+    const src = stagedSource("SELECT _d.plan_id AS plan_id, _d.plan_name AS plan_name, (SELECT SUM({{mrr@subscription}}) FROM {{_table:subscription}} WHERE {{snapshot_date@subscription}} = {{_period_end}} AND {{plan_id@subscription}} = _d.plan_id) AS mrr\n" +
+      "FROM (SELECT DISTINCT {{plan_id@plan}} AS plan_id, {{plan_name@plan}} AS plan_name FROM {{_table:plan}} WHERE {{snapshot_date@plan}} = {{_period_end}}) _d");
+    expect(src).toBe("SELECT p.period_start, p.period_end, _d.plan_id AS plan_id, _d.plan_name AS plan_name, ((SELECT SUM(mrr) FROM gasp.subscription WHERE snapshot_date = p.period_end AND plan_id = _d.plan_id)) AS value FROM gasp.period_spine p " +
+      "JOIN (SELECT DISTINCT plan_id AS plan_id, plan_name AS plan_name, snapshot_date AS _period FROM gasp.plan) _d ON _d._period = p.period_end");
   });
 
   it("reports coverage counts", () => {
@@ -387,7 +410,10 @@ describe("Ossie model: values match the compiled templates on the fixture, June 
     const datasets = [...new Set([...e.matchAll(/\b([a-z_][a-z0-9_]*)\.[a-z_][a-z0-9_]*\b/g)].map((m) => m[1]))];
     expect(datasets, id).toHaveLength(1);
     const ds = gaspDatasets[datasets[0]];
-    const where = ds.kind === "snapshot" ? `"${ds.date}" = DATE '${end}'` : `"${ds.date}" >= DATE '${start}' AND "${ds.date}" <= DATE '${end}'`;
+    // A timestamp time dimension covers the whole last day, as the compiled templates do.
+    const ts = ontology.fields!.find((f) => f.id === ds.date)?.type === "timestamp";
+    const upper = ts ? `"${ds.date}" < DATE '${end}' + 1` : `"${ds.date}" <= DATE '${end}'`;
+    const where = ds.kind === "snapshot" ? `"${ds.date}" = DATE '${end}'` : `"${ds.date}" >= DATE '${start}' AND ${upper}`;
     return scalar(db, `SELECT ${toPostgres(e)} FROM (SELECT * FROM gasp."${datasets[0]}" WHERE ${where}) AS ${datasets[0]}`);
   }
 

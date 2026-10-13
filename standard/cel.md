@@ -1,16 +1,16 @@
 # Commercial Event Ledger (CEL)
 
-The single source of truth for all metric computation in the GASP Standard.
+The event layer behind the commercial metrics of the GASP Standard.
 
-Every metric in this standard (revenue, retention, efficiency, operational) derives from atomic commercial events. The CEL is the governed layer where those events live. If an event is not in the CEL, it does not exist for metric purposes. If a metric cannot be traced to CEL events, it is not a governed metric.
+Every revenue, retention and cost metric in this standard derives from atomic commercial events. The CEL is the governed layer where those events live: if a commercial event is not in the CEL, it does not exist for metric purposes. Operational metrics (support, engineering, product usage, people) read the other datasets declared in `ontology.json`, such as tickets, incidents and product events, which sit outside the CEL (see [Scope Boundaries](#scope-boundaries)).
 
 ---
 
 ## Why the CEL Exists
 
-SaaS companies typically compute metrics from derived tables: MRR snapshots, billing system exports, CRM rollups. These derived sources introduce drift. Two teams querying the same concept from different derived tables get different numbers. The CEL eliminates this by establishing a single event-level layer from which all metrics are computed.
+SaaS companies typically compute metrics from derived tables: MRR snapshots, billing system exports, CRM rollups. These derived sources drift: two teams querying MRR from different derived tables get different numbers. The CEL removes the drift by computing every commercial metric from one event-level layer.
 
-The CEL is not a product. It is a conceptual standard for how commercial events should be captured, stored and governed. Implement it in your warehouse, your lakehouse or your operational database. The schema is the contract.
+The CEL is a conceptual standard for how commercial events are captured, stored and governed, which you implement in your warehouse, your lakehouse or your operational database. The schema is the contract.
 
 ---
 
@@ -22,7 +22,7 @@ The CEL is not a product. It is a conceptual standard for how commercial events 
 
 3. **Daily atomic grain.** Every event has a date. The day is the smallest unit. Weekly, monthly, quarterly and annual views are aggregations of daily events.
 
-4. **One event, one truth.** Each commercial event is recorded once. If a subscription renewal generates both a `Revenue_Event` and a `Contract_Event`, those are two distinct events. Not one event with two types.
+4. **One event, one truth.** Each commercial event is recorded once. If a subscription renewal generates both a `Revenue_Event` and a `Contract_Event`, those are two distinct events rather than one event with two types.
 
 5. **Source-system agnostic.** The CEL defines *what* to capture, not *where* it comes from. Events may originate in billing systems, CRMs, HRIS or manual entries. The CEL schema is the normalization layer.
 
@@ -47,7 +47,7 @@ A change in recurring revenue. This is the primary input for MRR, ARR, NRR, GRR 
 | `currency` | `string` | ISO 4217 currency code |
 | `prior_mrr` | `decimal` | MRR before this event |
 | `new_mrr` | `decimal` | MRR after this event |
-| `expansion_classification` | `enum` (expansion and contraction only) | `same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`. See [ATL](atl.md#expansion-classification). The NRR and ARR forms read it. |
+| `expansion_classification` | `enum` (expansion, contraction and reactivation only) | `same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`. See [ATL](atl.md#expansion-classification). The NRR and ARR forms read it. |
 | `change_nature` | `enum` (optional) | `permanent` (default), `temporary`, `scheduled_reversal`. See [Change Nature](#change-nature). |
 | `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
 
@@ -55,7 +55,7 @@ A change in recurring revenue. This is the primary input for MRR, ARR, NRR, GRR 
 
 ### Cost_Event
 
-An incurred cost attributable to a commercial function. Primary input for CAC, Gross Margin, LTV and efficiency metrics.
+An incurred cost, tagged with the function it serves. Primary input for CAC, Gross Margin, LTV and efficiency metrics.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -67,6 +67,9 @@ An incurred cost attributable to a commercial function. Primary input for CAC, G
 | `cost_type` | `enum` | Nature of the cost: `personnel`, `software`, `services`, `infrastructure`, `other` |
 | `cost_function` | `enum` | Purpose of the cost (the ATL cost function tag): `gtm`, `implementation`, `onboarding`, `infrastructure`, `support`, `success_engineering`, `account_management`, `research_development`, `general_administrative`, `services_delivery`, `recruiting`, `partner_program`, `partner_commission` |
 | `customer_id` | `string` (nullable) | Customer if directly attributable; null for shared costs |
+| `partner_id` | `string` (nullable) | Partner identifier; null on costs not attributable to a partner |
+| `project_id` | `string` (nullable) | Services project identifier; null on costs not attributable to a project |
+| `lifecycle_attribution` | `enum` | ATL lifecycle tag: `acquisition`, `activation`, `retention`, `expansion`, `reactivation`, `servicing`. See [ATL](atl.md#lifecycle-attribution). |
 | `description` | `string` | Human-readable description |
 
 ---
@@ -371,7 +374,7 @@ Customer's health score deteriorates, triggering an at-risk state.
 
 ## Example SQL
 
-A minimal warehouse implementation. This is illustrative, not normative. Adapt to your warehouse dialect and tooling.
+A minimal warehouse implementation, illustrative rather than normative, so adapt it to your warehouse dialect and tooling. The MCP server's `generate_query` and `get_data_requirements` tools compile the canonical formulas to SQL in several warehouse dialects.
 
 ### Schema
 
@@ -429,7 +432,7 @@ WHERE event_type = 'new'
 
 ## Change Nature
 
-An optional field on `Revenue_Event` and `Amendment_Event` that captures the intent behind a revenue movement. This field does not alter how events are classified or how metrics are calculated. It provides structured metadata that enables downstream analysis of revenue quality.
+An optional field on `Revenue_Event` and `Amendment_Event` that captures the intent behind a revenue movement. Events keep their classification and metrics keep their calculation; the field adds structured metadata for analysing revenue quality downstream.
 
 ### Values
 
@@ -491,7 +494,7 @@ Under standard GASP metrics this produces +$600 expansion in April and -$600 con
 
 ### Adjusted NRR
 
-Teams that adopt `change_nature` can compute an adjusted NRR that excludes temporary movements. This is not a replacement for standard NRR. It is a complementary metric for internal revenue quality analysis.
+Teams that adopt `change_nature` can compute an adjusted NRR that excludes temporary movements. It sits beside standard NRR as an internal measure of revenue quality.
 
 ```
 Adjusted NRR = (Beginning MRR + Permanent Expansion - Permanent Contraction - Churn) / Beginning MRR x 100
@@ -546,7 +549,7 @@ The GASP Standard defines a three-level entity hierarchy in [Definitions](defini
 | **Subscription** | `subscription_id` on `Revenue_Event`, `Contract_Event` and `Amendment_Event`. MRR lives here. |
 | **License** | Not directly in the CEL. Licenses are derived from subscriptions. Seat counts appear on `Amendment_Event` as `prior_quantity` / `new_quantity`. |
 
-The CEL does not replace the entity model. It records *events that happen to* entities. The entity model defines the nouns; the CEL defines the verbs.
+The CEL sits beside the entity model and records *events that happen to* entities. The entity model defines the nouns; the CEL defines the verbs.
 
 ---
 
@@ -554,7 +557,7 @@ The CEL does not replace the entity model. It records *events that happen to* en
 
 **The CEL covers:**
 - All recurring revenue changes (new, expansion, contraction, churn, reactivation, renewal)
-- Costs attributable to commercial functions (S&M, COGS, implementation, support)
+- Costs, tagged by function (S&M, COGS, implementation, support, R&D, G&A)
 - Contractual milestones (new, renewal, amendment, cancellation)
 - Mid-term subscription changes
 - Customer lifecycle state transitions
@@ -562,13 +565,13 @@ The CEL does not replace the entity model. It records *events that happen to* en
 **The CEL does not cover:**
 - Product usage events (page views, feature clicks, API calls). These belong in a product analytics layer
 - GAAP revenue recognition events. These belong in the accounting ledger
-- HR events (hiring, termination). Unless directly costed as `Cost_Event`
+- HR events (hiring, termination), unless directly costed as a `Cost_Event`
 - Infrastructure events (deployments, incidents). These belong in engineering observability
 
-The CEL is scoped to the same domain as the rest of the GASP Standard: subscription-based SaaS with recurring revenue. Usage-based pricing, marketplace transactions and services-only revenue are out of scope.
+The CEL is scoped to the same domain as the rest of the GASP Standard: subscription-based SaaS with recurring revenue. Pure consumption pricing with no contracted commitment, marketplace transactions and services-only revenue are out of scope. Usage that meets or exceeds a contracted commitment is a `Revenue_Event` tagged `usage_realisation`.
 
 ---
 
 ## What Comes Next
 
-The CEL provides the atomic events. The [Attribution Taxonomy Layer (ATL)](atl.md) provides the tags that make dual-lens metrics possible by classifying each event by lifecycle stage, expansion type and cost function. Together, CEL + ATL form the foundation for Operating (O) and Market (M) metric forms. Ops teams get their internal economic truth and boards get the investor-comparable numbers, computed from the same events.
+The CEL provides the atomic events. The [Attribution Taxonomy Layer (ATL)](atl.md) provides the tags that make dual-lens metrics possible by classifying each event by lifecycle stage, expansion type and cost function. Together they supply the inputs for the Operating (O) and Market (M) forms declared in [Core Metrics](metrics/core.md), so ops teams get their internal economic truth and boards get the investor-comparable numbers from the same events.

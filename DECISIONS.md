@@ -5,6 +5,41 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-13] GASP is governed in the open by one named maintainer, and stale documents are archived rather than deleted
+**Decision:** The public mirror carries `GOVERNANCE.md` (one maintainer, how a change is decided, what counts as a breaking change to the canon, how a second maintainer is added, what happens if the maintainer is unavailable, the relationship to Apache Ossie), `CONTRIBUTING.md` and a `CHANGELOG.md` kept per MCP release. Documents that describe work already done or superseded (the GASP-DL proposal, the TWIN Modifier plan, the homepage wireframes, the 2026-10-12 audit and its recheck) move to `docs/history/` with an index, and the interop spec moves to `docs/ossie-interop-spec.md` at v0.4, written as an individual contributor's plan.
+
+**Context:** GASP is about to be introduced on the Apache Ossie lists by its author as an individual. The first question a reviewer asks about a domain standard from one person is what happens when that person stops, and the answer has to be in the repository before the introduction, not in the post. At the same time the root of the repository held five documents that read as current but described finished or abandoned work, and several documents still carried the voice of a company.
+
+**Alternatives considered:**
+- **Delete the stale documents.** Rejected: the audit reports are the evidence behind a dozen decision records, and the proposal documents explain why the CEL and ATL look the way they do.
+- **A foundation or steering committee on paper.** Rejected: a governance document that names people who do not exist is the kind of claim the playbook says must survive scrutiny. One maintainer, stated plainly, with the mechanism for adding another, is what is true.
+- **Leave the spec at v0.3 and annotate.** Rejected: the plan changed (phases done, dialects exist, author is a person) and a spec that describes the wrong starting point is worse than a short new one.
+
+**Consequences:**
+- The mirror workflow copies the three governance files. The spec's path changes, so the site-quality count guard, `CLAUDE.md`, `TODO.md` and the mirror README point at the new path.
+- Breaking-change rules for the canon are now written down: renaming a metric, changing a formula's meaning or removing a field is a major; additions are not.
+- The changelog is the release note for npm; the TODO shipped log stays as the working record.
+
+---
+
+## [2026-10-13] Breakdowns can reach a label through a key, the compiler has dialects, and AR Balance is a metric
+**Decision:** Three closures so the backlog is empty before Ossie phase 2. (1) A breakdown field may live on a dataset keyed by a key that every grouped aggregate's dataset carries: the domain reads key and label from that dataset (as of period end when it is a snapshot), the aggregates correlate on the key and the result row carries both. MRR by plan returns plan names, License Utilization by product returns product names. (2) The compiler takes a dialect: `postgres` (the default and what the tests execute; Redshift reads the same SQL), `snowflake`, `bigquery` and `databricks`, from a token table in `src/dialect.ts`. `generate_query` defaults it from the adapter's `warehouse`; `get_data_requirements` takes it too. The Ossie export emits staged sources in every dialect the schema's enum and source shape allow. (3) Accounts Receivable Balance is a RevOps metric (outstanding amounts on open invoices at period end), the natural home of the payment-status breakdown, reconciled to the balance sheet's receivables.
+
+**Context:** The three had been parked as "wait for a request". The owner asked for a clean slate before the Ossie work, and each turned out to be a half day rather than a design question: the key-through lookup is a correlated domain with one more column, the dialects differ in five constructs, and the AR balance was missing only because nothing had needed it.
+
+**Alternatives considered:**
+- **Leave names to consumers.** Rejected by the owner: an agent that asks for MRR by plan should get plan names.
+- **Dialect translation by rewriting the compiled SQL text.** Rejected: regex rewriting of SQL is the class of thing the tagged-placeholder work removed; the compiler knows each construct where it emits it.
+- **Waiting for the upstream `POSTGRES` enum value before any dialect work.** Rejected: Snowflake, BigQuery and Databricks are already in the enum and are where adopters run.
+
+**Consequences:**
+- Found while adding BigQuery: every period filter on a timestamp-dated dataset used `<= period_end`, which is midnight at the start of the last day, so rows later that day were dropped in every dialect. The compiler now emits `< period_end + 1 day` for timestamp columns (and `>= start`), on the period, window, to_date and point bounds. Two fixture rows on the last day of June prove it; the MTTR pin moved from 105 to 95 minutes because the previously dropped incident now counts.
+- 301 metrics. Postgres output is otherwise unchanged, so every other executed test and pinned value stands; the other dialects are checked construct by construct and by a sweep for Postgres-only tokens, since only Postgres runs in the test suite.
+- Adding a dialect is a row in the token table.
+- The P0 upstream request shrinks to naming Postgres and Redshift in the enum; the sources themselves already exist in the other three.
+
+---
+
 ## [2026-10-13] A breakdown dimension may be a bucketed expression
 **Decision:** A breakdown has a third shape beside a field and a field with `total`: `{ "expression": <grammar expression over one dataset's fields>, "buckets": { "<label>": [lo, hi], ... }, "total"?: true }`. The labels are the domain, the bounds are inclusive and `hi` may be null for an open top bucket, and each grouped aggregate is correlated through a `CASE` over the expression. Ranges may not overlap and the expression's fields must live on every grouped aggregate's dataset. Aging Buckets becomes one entry-level breakdown over invoice age with four buckets and a whole-balance denominator, in place of a main formula plus three variants. The Ossie export stages a bucketed breakdown (reason `bucket`).
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { loadStandard, metricFormulaId, isMetricStub } from "../src/loader.js";
 import { parseFormula, analyzeFormula, validateFormula } from "../src/formula.js";
 import { compileMetric, resolveBreakdown } from "../src/compile.js";
+import { DIALECT, DIALECTS } from "../src/dialect.js";
 import type { StandardData, MetricFormula, OntologyData, BreakdownSpec } from "../src/types.js";
 
 /** The "field.<id>" reference of a field breakdown spec; undefined for a bucketed spec or a wrong shape. */
@@ -226,6 +227,29 @@ describe("breakdowns", () => {
         failures.push(`${id}: ${(e as Error).message}`);
       }
     }
+    expect(failures).toEqual([]);
+  });
+});
+
+// Every expression compiles in every dialect, and no dialect's output carries a Postgres-only token.
+describe("SQL dialects over every formula", () => {
+  it.each(DIALECTS.filter((d) => d !== "postgres"))("%s output has no Postgres-only token", (dialect) => {
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas!, dialect };
+    const failures: string[] = [];
+    let compiled = 0;
+    for (const [id, f] of entries) {
+      if (!f.formula) continue;
+      for (const v of [undefined, ...Object.keys(f.forms ?? {}), ...Object.keys(f.variants ?? {}), ...Object.keys(f.breakdowns ?? {})]) {
+        try {
+          const sql = compileMetric(id, ctx, v).sql;
+          compiled++;
+          for (const token of DIALECT[dialect].forbidden) if (sql.includes(token)) failures.push(`${id}${v ? `:${v}` : ""}: ${token}`);
+        } catch (e) {
+          failures.push(`${id}${v ? `:${v}` : ""}: ${(e as Error).message}`);
+        }
+      }
+    }
+    expect(compiled).toBeGreaterThan(270);
     expect(failures).toEqual([]);
   });
 });

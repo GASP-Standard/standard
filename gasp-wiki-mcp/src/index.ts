@@ -23,7 +23,8 @@ import {
   type TraversalCandidate,
 } from "./traversal.js";
 import { SITE, metricUrl, definitionUrl, resolveDocLink } from "./urls.js";
-import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement, breakdownTemplate, breakdownRequirement } from "./tools.js";
+import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
+import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import type { StandardData, RelationshipNode, Definition, Metric } from "./types.js";
@@ -494,7 +495,7 @@ server.tool(
 // --- Tool 5: get_data_requirements ---
 server.tool(
   "get_data_requirements",
-  "Get the data requirements for implementing a GASP Standard metric or department dashboard: each field the canonical formula reads with its type and the GASP dataset it is read from, whether the metric needs a staged dataset (cohort or prior-period comparison), reporting grain, source system, page URL and example SQL. The metric resolves exactly as in lookup_metric (name, abbreviation, alias or formula id); a name several departments use lists the candidates unless department picks one. Department is an exact name, case-insensitive. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get that breakdown's requirement: its fields include the dimension and the example SQL returns one row per value.",
+  "Get the data requirements for implementing a GASP Standard metric or department dashboard: each field the canonical formula reads with its type and the GASP dataset it is read from, whether the metric needs a staged dataset (cohort or prior-period comparison), reporting grain, source system, page URL and example SQL. The metric resolves exactly as in lookup_metric (name, abbreviation, alias or formula id); a name several departments use lists the candidates unless department picks one. Department is an exact name, case-insensitive. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get that breakdown's requirement: its fields include the dimension and the example SQL returns one row per value. Pass dialect (postgres, snowflake, bigquery, databricks; postgres also covers Redshift) to get the example SQL in that warehouse's syntax.",
   {
     metric: z
       .string()
@@ -507,8 +508,9 @@ server.tool(
         "Exact department name (e.g. 'Sales', 'Engineering', 'Customer Success'). Alone it lists the department's requirements; with metric it picks between metrics that share a name."
       ),
     breakdown: z.string().optional().describe("Name of a named breakdown the metric declares (e.g. 'by_plan' on MRR); needs metric. The requirement then covers the breakdown's query, one row per value."),
+    dialect: z.enum(DIALECTS).optional().describe("SQL dialect of the example SQL: postgres (default, also Redshift), snowflake, bigquery or databricks; needs metric."),
   },
-  async ({ metric, department, breakdown }) => {
+  async ({ metric, department, breakdown, dialect }) => {
     const all = data.dataRequirements || [];
     const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
     let dept: string | undefined;
@@ -534,13 +536,15 @@ server.tool(
         const why = f?.notComputable ? `it has no single formula: ${f.notComputable}` : "it has no canonical formula yet";
         return text(`${resolved.metric.name} (${resolved.metric.department}, ${metricUrl(resolved.metric)}) has no data requirements: ${why}.`);
       }
-      if (breakdown) {
-        const b = breakdownRequirement(data, id, breakdown);
+      if (breakdown || (dialect && dialect !== "postgres")) {
+        const b = breakdownRequirement(data, id, breakdown, dialect);
         if ("error" in b) return text(b.error);
         filtered = [b.requirement];
       }
     } else if (breakdown) {
       return text("breakdown needs metric: name the metric whose breakdown you want (e.g. metric 'MRR', breakdown 'by_plan').");
+    } else if (dialect && dialect !== "postgres") {
+      return text("dialect needs metric: name the metric whose SQL you want in that dialect.");
     }
 
     if (filtered.length === 0) {
@@ -610,13 +614,14 @@ server.tool(
 // --- Tool 7: generate_query ---
 server.tool(
   "generate_query",
-  "Generate SQL for a GASP metric from your adapter. The query is compiled from the metric's canonical formula: one scalar subquery per aggregate, each on the warehouse table you mapped to that GASP dataset, with :period_start and :period_end parameters. Fields you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get one row per value of its field.",
+  "Generate SQL for a GASP metric from your adapter. The query is compiled from the metric's canonical formula: one scalar subquery per aggregate, each on the warehouse table you mapped to that GASP dataset, with :period_start and :period_end parameters. Fields you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get one row per value of its field. The SQL dialect (postgres, snowflake, bigquery, databricks; postgres also covers Redshift) is the dialect argument, else the adapter's warehouse when it names one of them, else postgres; the output says which it used.",
   {
     metric: z.string().describe("Metric name or abbreviation (e.g. 'NRR', 'CAC', 'Pipeline Value', 'ARR')"),
     adapter: z.string().describe("Your GASP adapter JSON string (see validate_adapter)"),
     breakdown: z.string().optional().describe("Name of a named breakdown the metric declares (e.g. 'by_plan' on MRR). The query returns one row per value of the breakdown's field."),
+    dialect: z.enum(DIALECTS).optional().describe("SQL dialect: postgres (also Redshift), snowflake, bigquery or databricks. Defaults to the adapter's warehouse when it names one of them, else postgres."),
   },
-  async ({ metric: metricName, adapter: adapterJson, breakdown }) => {
+  async ({ metric: metricName, adapter: adapterJson, breakdown, dialect: requestedDialect }) => {
     const resolved = resolveMetric(data, metricName);
     if (resolved.kind === "ambiguous") {
       return { content: [{ type: "text" as const, text: formatAmbiguous(data, metricName, resolved.candidates) }] };
@@ -636,18 +641,20 @@ server.tool(
       const why = f?.notComputable ? `It has no single formula: ${f.notComputable}` : "It has no canonical formula yet.";
       return { content: [{ type: "text" as const, text: `${resolved.metric.name} cannot be compiled to SQL. ${why}` }] };
     }
-    if (breakdown) {
-      const b = breakdownTemplate(data, id, breakdown);
+    const chosen = chooseDialect(requestedDialect, adapter.warehouse);
+    if ("error" in chosen) return { content: [{ type: "text" as const, text: chosen.error }] };
+    if (breakdown || chosen.dialect !== "postgres") {
+      const b = breakdownTemplate(data, id, breakdown, chosen.dialect);
       if ("error" in b) return { content: [{ type: "text" as const, text: b.error }] };
       template = b.template;
     }
     const r = fillTemplate(template, adapter, data);
     const parts: string[] = [
       `# ${resolved.metric.name}: Generated SQL`, `**URL:** ${metricUrl(resolved.metric)}`,
-      `**Warehouse:** ${adapter.warehouse || "not specified"}`, `**Datasets:** ${template.datasets.join(", ")}`, `**Grain:** ${template.grain}`,
+      `**Warehouse:** ${adapter.warehouse || "not specified"}`, `**Dialect:** ${chosen.note}`, `**Datasets:** ${template.datasets.join(", ")}`, `**Grain:** ${template.grain}`,
       `**Fields mapped:** ${r.mapped.length} / ${template.placeholders.length} (field and dataset pairs)`,
     ];
-    if (template.breakdown) parts.push(`**Breakdown${breakdown ? ` \`${breakdown}\`` : ""}:** the query returns one row per \`${template.breakdown.field}\` value.`);
+    if (template.breakdown) parts.push(`**Breakdown${breakdown ? ` \`${breakdown}\`` : ""}:** the query returns one row per \`${template.breakdown.field}\` value${template.breakdown.via ? `, with its \`${template.breakdown.via.key}\` (read from ${template.breakdown.via.dataset})` : ""}.`);
     if (template.staged) parts.push("**Note:** this metric uses a cohort or a prior-period comparison; the query is correct but each aggregate re-reads the table. A staged dataset makes it cheaper.");
     if (r.missingFields.length) parts.push(`**Unmapped fields (left as placeholders):** \`${r.missingFields.join("\`, \`")}\``);
     if (r.missingTables.length) parts.push(`**Datasets with no table:** ${r.missingTables.join(", ")}. Add them under \"datasets\" in the adapter or map a field from each.`);

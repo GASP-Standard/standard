@@ -1,7 +1,7 @@
 {
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
   "counts": {
-    "direct": 179,
+    "direct": 181,
     "staged": 163,
     "notComputable": 15
   },
@@ -972,6 +972,14 @@
       "ossieName": "gasp_aging_buckets",
       "stagedDataset": "gasp_staged_gasp_aging_buckets",
       "reason": "bucket"
+    },
+    "accounts_receivable_balance": {
+      "kind": "direct",
+      "ossieName": "gasp_accounts_receivable_balance"
+    },
+    "accounts_receivable_balance:by_payment_status": {
+      "kind": "direct",
+      "ossieName": "gasp_accounts_receivable_balance_by_payment_status"
     },
     "bad_debt_rate": {
       "kind": "direct",

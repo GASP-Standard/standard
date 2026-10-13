@@ -259,7 +259,7 @@ export interface DataRequirement {
   forms?: Partial<Record<"O" | "M", FormRequirement>>;
   /** Set when the formula is broken down by a field: the query returns one row per value */
   /** `field` is the output column: the breakdown field, or a bucketed breakdown's column with its `buckets` */
-  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]> };
+  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]>; via?: { dataset: string; key: string } };
 }
 
 /** The fields and datasets one O or M form of a formula reads */
@@ -286,7 +286,7 @@ export interface QueryTemplate {
   placeholders: string[];
   /** Set when the formula is broken down by a field: the query returns one row per value */
   /** `field` is the output column: the breakdown field, or a bucketed breakdown's column with its `buckets` */
-  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]> };
+  breakdown?: { field: string; total?: boolean; expression?: string; buckets?: Record<string, [number, number | null]>; via?: { dataset: string; key: string } };
 }
 
 /** Display unit for a formula result. Percent formulas compute unscaled ratios. */

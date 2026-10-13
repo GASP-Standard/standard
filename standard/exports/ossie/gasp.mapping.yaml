@@ -839,6 +839,10 @@ concept_mappings:
                 relationship: employee_status
               - object_mapping:
                   concept: Date
+                  expression: employee.application_date
+                relationship: application_date
+              - object_mapping:
+                  concept: Date
                   expression: employee.hire_date
                 relationship: hire_date
               - object_mapping:

@@ -1236,6 +1236,15 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Employee} on {Date} has {EmployeeStatus}"
+      - name: application_date
+        description: Date the hired employee applied; the start of Time to Hire
+        roles:
+          - concept: Date
+          - concept: Date
+            name: application_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has application date {Date:application_date}"
       - name: hire_date
         description: Employment start date
         roles:
@@ -3340,7 +3349,7 @@ ontology:
     extends:
       - String
     requires:
-      - Channel == 'paid_ads' OR Channel == 'organic_search' OR Channel == 'email' OR Channel == 'events' OR Channel == 'content' OR Channel == 'referral' OR Channel == 'direct' OR Channel == 'other'
+      - Channel == 'paid_ads' OR Channel == 'organic_search' OR Channel == 'email' OR Channel == 'events' OR Channel == 'content' OR Channel == 'referral' OR Channel == 'marketplace' OR Channel == 'direct' OR Channel == 'other'
   - concept: CloseDateValid
     type: ValueType
     description: Close date is in the future or matches the actual close

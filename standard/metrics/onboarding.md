@@ -2,7 +2,7 @@
 
 Metrics for measuring customer onboarding effectiveness and time to value.
 
-**Key insight:** Effective onboarding reduces churn by up to 67% (Wyzowl research). Time to First Value and Activation Rate are the two most predictive onboarding metrics.
+Wyzowl's research puts the churn reduction from effective onboarding at up to 67%. Of the metrics below, Time to First Value (TTFV) and Onboarding-to-Active Rate (Activation Rate) track retention most closely.
 
 ---
 
@@ -10,7 +10,7 @@ Metrics for measuring customer onboarding effectiveness and time to value.
 
 ### Time to First Value (TTFV)
 
-**Definition:** Time from customer signup/contract to achieving first meaningful value.
+**Definition:** Time from contract start to the customer's first meaningful value milestone.
 
 **Formula:**
 ```
@@ -40,7 +40,7 @@ TTFV = Median of (First value milestone date - Contract start date)
 - Sales-led: Slightly faster (paid upfront, motivated)
 - Product-led: Longer (free trials attract less committed users)
 
-**What it tells you:** How quickly customers realize value. Directly impacts retention.
+**What it tells you:** How quickly customers realize value, which feeds directly into retention.
 
 **Sources:**
 - [Userpilot: Time-to-Value Benchmark Report 2024](https://userpilot.com/blog/time-to-value-benchmark-report-2024/)
@@ -76,7 +76,7 @@ Time to Full Adoption = Median of (Full adoption date - Contract start date)
 
 ### Onboarding Duration
 
-**Definition:** Time spent actively in onboarding process.
+**Definition:** Time from onboarding start to onboarding completion, for onboardings completed in the period.
 
 **Formula:**
 ```
@@ -97,6 +97,8 @@ Onboarding Duration = Median of (Onboarding complete date - Onboarding start dat
 ```
 Completion Rate = Customers completing onboarding / Customers starting onboarding × 100
 ```
+
+Both counts come from the same period: onboardings completed in it over onboardings started in it.
 
 **Benchmarks:**
 - Below 70%: Low, investigate friction points
@@ -120,12 +122,12 @@ Milestone Completion = Milestones reached / Milestones due × 100
 Count the milestones due in the period and how many of them were reached by period end. Track each milestone separately to identify drop-off points.
 
 **Typical milestones:**
-1. Kickoff completed
-2. Data import completed
-3. Configuration completed
-4. Integration completed
-5. Training completed
-6. Go-live achieved
+1. Kickoff (`kickoff`)
+2. First value (`first_value`)
+3. Go-live (`go_live`)
+4. Full adoption (`full_adoption`)
+
+These are the canonical `onboarding_milestone` values. Data import, configuration, integration and training usually fall between kickoff and go-live. Teams whose onboarding tool records them can track them as sub-steps.
 
 **What it tells you:** Where customers get stuck.
 
@@ -163,6 +165,8 @@ On-Time Rate = Customers completing on time / Total customers completing × 100
 Engagement Score = Weighted average of engagement indicators (0-100)
 ```
 
+Each team sets its own weights, so the standard publishes no canonical formula for this score.
+
 **What it tells you:** Customer investment in onboarding success.
 
 ---
@@ -175,6 +179,8 @@ Engagement Score = Weighted average of engagement indicators (0-100)
 ```
 Attendance Rate = Sessions attended / Sessions scheduled × 100
 ```
+
+A session counts as attended when at least one customer attendee is recorded.
 
 **Target:** >90%
 
@@ -204,7 +210,7 @@ Task Completion = Tasks completed / Tasks assigned × 100
 Onboarding CSAT = Positive ratings / Total ratings × 100
 ```
 
-Surveyed at onboarding completion.
+Surveyed at onboarding completion. Positive means 4 or 5 on a 5-point scale.
 
 **Benchmarks:**
 - Below 80%: Investigate pain points
@@ -237,7 +243,9 @@ Onboarding NPS = % Promoters - % Detractors
 - Integration health
 - User setup completeness
 
-**What it tells you:** Whether implementations are set up for success.
+The score is an assessment against these components. The standard gives no weights, so it has no canonical formula.
+
+**What it tells you:** Whether implementations are configured to work in production.
 
 ---
 
@@ -297,7 +305,7 @@ Hours per Onboarding = Total onboarding hours / Customers onboarded
 Activation Rate = Active customers post-onboarding / Customers completing onboarding × 100
 ```
 
-Active = meeting defined usage thresholds (product-specific "aha moment").
+A customer counts as active once it has an activation date: the date it first met the product's usage threshold (its "aha moment").
 
 **Benchmarks (Userpilot 2024 data):**
 - Average across SaaS: 37.5%
@@ -312,7 +320,7 @@ Active = meeting defined usage thresholds (product-specific "aha moment").
 
 **Target:** Varies by model. For managed onboarding (enterprise), aim for >90%. For PLG/self-serve, 40%+ is strong.
 
-**What it tells you:** Does onboarding translate to actual product usage?
+**What it tells you:** Whether onboarding turns into real product usage.
 
 **Sources:**
 - [Userpilot: User Activation Rate Benchmark 2024](https://userpilot.com/blog/user-activation-rate-benchmark-report-2024/)
@@ -357,7 +365,9 @@ Active = meeting defined usage thresholds (product-specific "aha moment").
 Feature Adoption = Features in use / Total features available × 100
 ```
 
-**What it tells you:** Are customers set up to use the product fully?
+Measured as a snapshot at the go-live milestone.
+
+**What it tells you:** Whether customers are set up to use the whole product.
 
 ---
 

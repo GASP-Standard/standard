@@ -17,7 +17,9 @@ Active Partners = Partners with activity in trailing 12 months
 
 **Activity:** Deals registered, deals closed, certifications maintained or engagement threshold met.
 
-**What it tells you:** Size of active partner ecosystem.
+A partner's status moves to active when it meets one of these, so the count reads the partner status flag.
+
+**What it tells you:** Size of the active partner ecosystem.
 
 ---
 
@@ -31,12 +33,14 @@ Active Partners = Partners with activity in trailing 12 months
 - Gold / Premier
 - Platinum / Elite
 
+The first name in each pair is the canonical `partner_tier` value.
+
 **Formula:**
 ```
 Tier Distribution = Partners in tier / Total partners × 100
 ```
 
-Partner Tier Distribution is reported per tier: one share for each tier, and the shares sum to 100%.
+Partner Tier Distribution is reported per tier: one share for each tier, with the shares summing to 100%.
 
 **What it tells you:** Partner ecosystem maturity.
 
@@ -108,7 +112,7 @@ Partner-Influenced Revenue = Sum of closed revenue where partner = involved
 
 ### Channel Revenue Percentage
 
-**Definition:** Partner revenue as percentage of total revenue.
+**Definition:** Partner-sourced revenue as a percentage of total recognised (GAAP) revenue.
 
 **Formula:**
 ```
@@ -206,7 +210,7 @@ Compare to direct deal size.
 
 ### Partner Sales Cycle
 
-**Definition:** Average sales cycle for partner-sourced deals.
+**Definition:** Median sales cycle for registered partner deals that closed won in the period, from registration to close.
 
 **Formula:**
 ```
@@ -307,12 +311,14 @@ Cost of Partner Acquisition = Partner program costs / New partners recruited
 
 ### Partner Lifetime Value
 
-**Definition:** Expected revenue from a partner over their lifetime.
+**Definition:** Expected revenue from a partner over its lifetime.
 
 **Formula:**
 ```
 Partner LTV = Average annual partner revenue / Partner churn rate
 ```
+
+Average annual partner revenue is Average Partner Revenue measured over a 12-month period.
 
 ---
 
@@ -363,6 +369,8 @@ Track metrics separately by partner type:
 ```
 Marketplace Revenue = Sum of marketplace transactions
 ```
+
+Marketplace deals are closed-won opportunities whose `channel` is `marketplace`.
 
 ---
 

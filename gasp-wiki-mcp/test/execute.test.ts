@@ -316,6 +316,13 @@ describe("hand-computed metric values, extended datasets", () => {
     expect(await run("partner_revenue_growth", ...JUNE)).toBeCloseTo((13200 - 9600) / 9600, 10);
   });
 
+  it("Marketplace Revenue, June (o08 is the one closed-won marketplace deal)", async () => {
+    const won = snapshot("opportunity", END).filter((r) => r.channel === "marketplace" && r.opportunity_stage === "closed_won" && between(r.close_date, ...JUNE));
+    expect(won.map((r) => r.opportunity_id)).toEqual(["o08"]);
+    expect(sum(won, "opportunity_amount")).toBe(13200);
+    expect(await run("marketplace_revenue", ...JUNE)).toBe(13200);
+  });
+
   it("Renewal Rate and Auto-Renewal Rate, June (contracts ending in June)", async () => {
     const ending = snapshot("subscription", END).filter((r) => between(r.contract_end, ...JUNE));
     expect(ending.map((r) => r.customer_id).sort()).toEqual(["c08", "c11", "c12"]);
@@ -327,8 +334,22 @@ describe("hand-computed metric values, extended datasets", () => {
   it("MTTR, June (minutes from start to resolution, averaged over incidents started in June)", async () => {
     const june = T.incident.filter((r) => between(r.started_at, ...JUNE));
     const expected = june.reduce((s, r) => s + minutes(r.started_at, r.resolved_at), 0) / june.length;
-    expect(expected).toBe((90 + 120) / 2);
+    // inc11 and inc12, plus inc_late (15:00 on 2026-06-30, resolved 75 minutes later).
+    expect(june.map((r) => r.incident_id)).toContain("inc_late");
+    expect(expected).toBe((90 + 120 + 75) / 3);
     expect(await run("mttr", ...JUNE)).toBeCloseTo(expected, 6);
+  });
+
+  // Timestamp-dated datasets: a row late on the last day of the period counts (upper bound < period_end + 1 day).
+  it("Incident Count and Ticket Volume, June, include the rows timestamped on the afternoon and evening of 2026-06-30", async () => {
+    const incidents = T.incident.filter((r) => between(r.started_at, ...JUNE));
+    const tickets = T.ticket.filter((r) => between(r.created_at, ...JUNE));
+    expect(incidents.map((r) => r.incident_id)).toContain("inc_late");
+    expect(tickets.map((r) => r.ticket_id)).toContain("t_late");
+    expect(await run("incident_count", ...JUNE)).toBe(distinct(incidents, "incident_id"));
+    expect(await run("ticket_volume", ...JUNE)).toBe(distinct(tickets, "ticket_id"));
+    // And they fall out of a period that ends the day before.
+    expect(await run("ticket_volume", JUNE[0], "2026-06-29")).toBe(distinct(tickets, "ticket_id") - 1);
   });
 
   it("Services Gross Margin, June (services revenue less services delivery cost)", async () => {
@@ -350,6 +371,12 @@ describe("hand-computed metric values, extended datasets", () => {
     const leavers = snapshot("employee", END).filter((r) => between(r.termination_date, ...JUNE)).length;
     expect([leavers, headcount(JUNE[0]), headcount(END)]).toEqual([2, 21, 20]);
     expect(await run("employee_turnover", ...JUNE)).toBeCloseTo(leavers / ((headcount(JUNE[0]) + headcount(END)) / 2), 10);
+  });
+
+  it("Time to Hire, Q2 (application to start date for e22, e23 and e24: 28, 35 and 42 days)", async () => {
+    const hires = snapshot("employee", END).filter((r) => between(r.hire_date, ...Q2));
+    expect(hires.map((r) => [r.employee_id, (Date.parse(String(r.hire_date)) - Date.parse(String(r.application_date))) / 86400000])).toEqual([["e22", 28], ["e23", 35], ["e24", 42]]);
+    expect(await run("time_to_hire", ...Q2)).toBeCloseTo(35, 10);
   });
 });
 
@@ -430,7 +457,7 @@ describe("named breakdowns", () => {
     const h1 = T.incident.filter((r) => between(r.started_at, ...H1));
     const rows = await runNamed("incident_count", "by_severity", ...H1);
     expect(Object.keys(rows).sort()).toEqual(["sev1", "sev2", "sev3", "sev4"]);
-    expect(rows).toEqual({ sev1: 3, sev2: 3, sev3: 3, sev4: 3 });
+    expect(rows).toEqual({ sev1: 3, sev2: 4, sev3: 3, sev4: 3 }); // inc_late on 2026-06-30 is sev2
     for (const [sev, n] of Object.entries(rows)) expect(n, sev).toBe(distinct(h1.filter((r) => r.severity === sev), "incident_id"));
     expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(await run("incident_count", ...H1));
   });
@@ -440,6 +467,16 @@ describe("named breakdowns", () => {
     const rows = await runNamed("ticket_volume", "by_ticket_type", ...JUNE);
     for (const [type, n] of Object.entries(rows)) expect(n ?? 0, type).toBe(distinct(june.filter((r) => r.ticket_type === type), "ticket_id"));
     expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(june.length);
+  });
+
+  it("MRR by plan, June: one row per plan name, reached through plan_id, and the rows sum to MRR", async () => {
+    const rows = await runNamed("mrr", "by_plan", ...JUNE);
+    expect(Object.keys(rows).sort()).toEqual(["Enterprise", "Pro", "Starter"]);
+    const plans = new Map(snapshot("plan", END).map((r) => [r.plan_name, r.plan_id]));
+    for (const [name, v] of Object.entries(rows)) {
+      expect(v ?? 0, name).toBe(sum(snapshot("subscription", END).filter((r) => r.subscription_status === "active" && r.plan_id === plans.get(name)), "mrr"));
+    }
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(await run("mrr", ...JUNE));
   });
 
   it("MRR by segment, June: each row matches the subscription snapshot and the rows sum to MRR", async () => {
@@ -468,6 +505,19 @@ describe("named breakdowns", () => {
     for (const [status, v] of Object.entries(rows)) expect(v ?? 0, status).toBeCloseTo(sum(billed.filter((r) => r.payment_status === status), "invoice_amount"), 6);
     expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBeCloseTo((await run("billings", ...H1))!, 6);
     expect(Object.values(rows).filter((v) => v !== null).length).toBeGreaterThan(1);
+  });
+
+  it("Accounts Receivable Balance at 2026-06-30: open invoice outstanding amounts, status rows sum to the total", async () => {
+    const open = snapshot("invoice", END).filter((r) => Number(r.outstanding_amount) > 0);
+    const byStatus = (st: string) => sum(open.filter((r) => r.payment_status === st), "outstanding_amount");
+    // 4,000 unpaid plus inv_partial's 1,200 still outstanding of 3,000 invoiced.
+    expect([byStatus("unpaid"), byStatus("partial")]).toEqual([4000, 1200]);
+    expect(sum(open, "outstanding_amount")).toBe(5200);
+    expect(await run("accounts_receivable_balance", ...JUNE)).toBe(5200);
+    const rows = await runNamed("accounts_receivable_balance", "by_payment_status", ...JUNE);
+    expect(rows.unpaid).toBe(4000);
+    expect(rows.partial).toBe(1200);
+    expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(5200);
   });
 
   it("Leads by lead stage, H1: each row matches the period-end lead snapshot and the rows sum to Leads", async () => {

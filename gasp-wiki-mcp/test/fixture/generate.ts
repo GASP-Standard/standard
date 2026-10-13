@@ -232,13 +232,13 @@ export const DEALS: Deal[] = [
 ];
 /**
  * Attribution on the deals above. o07 (c19) is marketing sourced from paid ads,
- * o08 (c20) is partner sourced through p02 via a marketplace referral, o15 is a
+ * o08 (c20) is partner sourced through p02 via a marketplace listing, o15 is a
  * lost services deal and o18 open services pipeline. Every other deal is a
  * sales-sourced subscription deal from the direct channel.
  */
 export const DEAL_TAGS: Record<string, Partial<Deal>> = {
   o07: { source: "marketing", channel: "paid_ads" },
-  o08: { source: "partner", channel: "referral", partner: "p02" },
+  o08: { source: "partner", channel: "marketplace", partner: "p02" },
   o15: { revenueType: "services" },
   o17: { source: "marketing", channel: "content" },
   o18: { revenueType: "services" },
@@ -303,7 +303,7 @@ export interface Fixture { tables: Record<string, Row[]> }
  * and attrsFor never draws for them, so the PRNG sequence (and every pinned
  * value) is unchanged by their addition.
  */
-const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id"]);
+const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date"]);
 export const TICKET_TYPES = ["how_to", "bug", "billing", "how_to", "feature_request", "account", "how_to", "bug", "other"];
 export const HIRE_SOURCES = ["referral", "inbound", "sourced", "agency", "inbound", "internal", "campus", "referral", "other"];
 
@@ -499,6 +499,14 @@ export function generateFixture(): Fixture {
       }));
     }
   }
+
+  // A ticket created late on the last day of June: a timestamp after midnight of the period end must still count.
+  // Every field comes from the story, so no PRNG draw.
+  t.ticket.push(row("ticket", "t_late", {
+    ticket_id: "t_late", created_at: "2026-06-30 18:00:00", customer_id: "c01", agent_id: "a1", ticket_type: "bug",
+    first_response_at: "2026-06-30 19:00:00", first_response_due_at: "2026-06-30 22:00:00", resolution_due_at: "2026-07-02 18:00:00", resolved_at: null,
+    ticket_status: "open", escalated: false, reopened: false, resolved_first_contact: false,
+  }));
 
   generateExtensions(t);
   for (const ds of SEGMENT_DATASETS) for (const r of t[ds] ?? []) r.segment = segmentOf(r.customer_id as string | null);
@@ -781,7 +789,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
     const salary = 60000 + 4000 * i;
     const leaver = leavers[e];
     daily("employee", e, hire, {
-      employee_id: e, hire_date: hire, hire_source: HIRE_SOURCES[i % HIRE_SOURCES.length], department: departments[i % 6], job_level: levels[i % 6], salary,
+      employee_id: e, hire_date: hire, application_date: addDays(hire, -(21 + 7 * (i % 5))), hire_source: HIRE_SOURCES[i % HIRE_SOURCES.length], department: departments[i % 6], job_level: levels[i % 6], salary,
       market_midpoint: Math.round(salary * [0.95, 1, 1.08][i % 3]), underrepresented_group: i % 3 === 0, is_high_performer: i % 4 === 0,
       performance_rating: 2.5 + (i % 5) * 0.5, termination_type: leaver?.type ?? null,
     }, (d) => ({
@@ -926,6 +934,17 @@ function generateExtensions(t: Record<string, Row[]>): void {
       }, (d) => ({ payment_date: d >= paid ? paid : null, payment_status: d >= paid ? "paid" : "unpaid", outstanding_amount: d >= paid ? 0 : amount }));
     }
   }
+  // A partially paid June invoice: 1,800 of 3,000 received on 2026-06-20, 1,200 still outstanding.
+  // Every field comes from the story (no attrsFor), so no PRNG draw.
+  const partialCustomer = CUSTOMERS.slice(0, 8).find((c) => customerStatusOn(c, "2026-06-01") === "active")!;
+  for (const d of eachDay("2026-06-10", END)) {
+    const part = d >= "2026-06-20";
+    t.invoice.push(row("invoice", "inv_partial", {
+      invoice_id: "inv_partial", customer_id: partialCustomer, snapshot_date: d, invoice_date: "2026-06-10", billing_trigger_date: "2026-06-08",
+      invoice_amount: 3000, currency: "USD", payment_method: "ach", invoice_corrected: false, invoice_disputed: false, credit_memo_count: 0,
+      payment_date: null, payment_status: part ? "partial" : "unpaid", outstanding_amount: part ? 1200 : 3000,
+    }));
+  }
   const receivable = new Map<string, number>();
   for (const r of t.invoice) receivable.set(String(r.snapshot_date), (receivable.get(String(r.snapshot_date)) ?? 0) + Number(r.outstanding_amount));
   for (const [i, d] of eachDay(START, END).entries()) {
@@ -985,6 +1004,13 @@ function generateExtensions(t: Record<string, Row[]>): void {
       recovery_time: inc.resolve, incident_type: inc.type, severity: inc.severity,
     }));
   }
+  // An incident starting at 15:00 on the last day of June and resolved 75 minutes later: it must count in June.
+  // Every field comes from the story, so no PRNG draw.
+  t.incident.push(row("incident", "inc_late", {
+    incident_id: "inc_late", started_at: at("2026-06-30", 15, 0), detected_at: at("2026-06-30", 15, 10),
+    acknowledged_at: at("2026-06-30", 15, 15), resolved_at: at("2026-06-30", 16, 15),
+    recovery_time: 75, incident_type: "availability", severity: "sev2",
+  }));
   let dp = 0;
   for (const [mi, month] of MONTHS.entries()) {
     for (let k = 0; k < 8; k++) {

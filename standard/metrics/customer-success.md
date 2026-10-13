@@ -2,7 +2,7 @@
 
 Metrics for measuring customer health, retention and expansion.
 
-**Note:** NRR and GRR definitions are defined in [Core Metrics](core.md).
+**Note:** Net Revenue Retention (NRR) and Gross Revenue Retention (GRR) are defined in [Core Metrics](core.md).
 
 ---
 
@@ -20,7 +20,7 @@ Customer Success owns NRR as the primary outcome metric.
 
 See [Core Metrics](core.md#gross-revenue-retention-grr) for full definition.
 
-GRR isolates the retention component, removing the influence of expansion.
+GRR shows retention with expansion taken out.
 
 ---
 
@@ -40,7 +40,7 @@ Logo Retention Rate = 100% - Logo Churn Rate
 
 Logo Retention Rate is reported per customer segment.
 
-**What it tells you:** Customer retention independent of revenue. Are you keeping relationships?
+**What it tells you:** How many customer relationships you keep, whatever each one is worth.
 
 ---
 
@@ -98,7 +98,7 @@ The per-account composite is built upstream and lands on the customer record as 
 
 ### Health Score Coverage
 
-**Definition:** The percentage of customers with a health score calculated.
+**Definition:** The percentage of active customers that have a health score.
 
 **Formula:**
 ```
@@ -124,7 +124,7 @@ At-Risk Rate = Customers with health score < 40 / Total scored customers × 100
 
 At-Risk Customer Rate is reported per customer segment.
 
-**Variant `entered_at_risk`:** the share of customers active at period start that entered the `at_risk` state in the period. The `state_category = 'at_risk'` transition is the leading indicator of churn, and this variant measures it.
+**Variant `entered_at_risk`:** the share of customers active at period start that entered the `at_risk` state in the period. The move into `state_category = 'at_risk'` is a leading indicator of churn, which this variant counts as it happens.
 
 **Benchmarks:**
 - Below 5%: Healthy portfolio
@@ -149,7 +149,7 @@ A QBR counts as completed when it is held in the period. Eligible accounts are t
 
 **Target:** 90%+ for enterprise/strategic accounts
 
-**What it tells you:** Are you maintaining strategic relationships?
+**What it tells you:** Whether you are keeping up the regular reviews that strategic relationships run on.
 
 ---
 
@@ -164,7 +164,7 @@ Exec Sponsor Coverage = Accounts with an engaged executive sponsor contact / Act
 
 **Population:** Contacts come from the contact dataset (one row per named person at an account, with a role and an engaged flag). An account counts once however many sponsors it has. Restrict to managed accounts by filtering the denominator.
 
-**What it tells you:** Do you have senior relationships? Predicts resilience during renewals.
+**What it tells you:** Whether you have a senior relationship at each account. Accounts with an engaged sponsor tend to hold up better at renewal.
 
 ---
 
@@ -181,7 +181,7 @@ Contact Coverage = Engaged contacts / Active accounts
 
 **Target:** 3+ contacts per account
 
-**What it tells you:** Are you single-threaded? Multi-threading reduces churn risk.
+**What it tells you:** Whether accounts depend on a single contact. An account with several engaged contacts is less likely to churn when one person leaves.
 
 ---
 
@@ -211,7 +211,7 @@ Expansion Rate = Expansion MRR / Beginning MRR × 100
 
 Expansion Revenue Rate is reported per customer segment.
 
-**What it tells you:** Are you growing existing customers? As companies mature, expansion becomes the dominant growth driver.
+**What it tells you:** How fast existing customers grow their spend. As companies mature, expansion becomes the largest source of growth.
 
 **Sources:**
 - [Ordway: New vs Expansion ARR](https://ordwaylabs.com/blog/new-versus-expansion-arr/)
@@ -229,30 +229,30 @@ Expansion Revenue Rate is reported per customer segment.
 License Utilization = Seats assigned / Seats purchased × 100
 ```
 
-**Population:** Active licenses (the license dataset: one row per entitlement a subscription grants, with the product it covers, seats purchased and seats assigned). Reported for the whole base and per product.
+**Population:** Active licenses (the license dataset: one row per entitlement a subscription grants, with the product it covers, seats purchased and seats assigned). Reported for the whole base and per product (by product id and product name).
 
 **Target:** 70 to 90 percent. Below 70 percent the account is paying for seats it does not use and is a downgrade risk at renewal. Above 90 percent the account is close to needing more seats, which is an expansion signal.
 
-**What it tells you:** Whether customers are growing into what they bought. The earliest hard signal of both contraction and expansion for seat-priced products.
+**What it tells you:** Whether customers are growing into what they bought. For seat-priced products it is the earliest hard signal of contraction or expansion.
 
 ---
 
 ### Upsell Rate
 
-**Definition:** The percentage of eligible customers who upgraded.
+**Definition:** The percentage of customers eligible for an upgrade at period start who upgraded in the period.
 
 **Formula:**
 ```
 Upsell Rate = Customers who upgraded / Customers eligible for upgrade × 100
 ```
 
-**What it tells you:** Upgrade conversion effectiveness.
+**What it tells you:** How well you turn upgrade headroom into upgrades.
 
 ---
 
 ### Cross-sell Rate
 
-**Definition:** The percentage of customers who purchased additional products.
+**Definition:** The percentage of customers active at period start who bought an additional product in the period.
 
 **Formula:**
 ```
@@ -267,7 +267,7 @@ Cross-sell Rate = Customers who bought additional product / Total customers × 1
 
 ### Renewal Rate
 
-**Definition:** The percentage of contracts renewed at term.
+**Definition:** The percentage of subscriptions whose term ended in the period that renewed.
 
 **Formula (by logo):**
 ```
@@ -300,7 +300,7 @@ Always specify logo or value basis.
 
 ### Renewal Forecast Accuracy
 
-**Definition:** How accurately renewals were predicted.
+**Definition:** How closely the forecast renewal value matched the value actually renewed, for contracts ending in the period.
 
 **Formula:**
 ```
@@ -309,7 +309,7 @@ Forecast Accuracy = 1 - |Forecasted renewals - Actual renewals| / Actual renewal
 
 **Target:** >90%
 
-**What it tells you:** Can you predict revenue? Important for planning.
+**What it tells you:** How far revenue planning can rely on the renewal forecast.
 
 ---
 
@@ -317,7 +317,7 @@ Forecast Accuracy = 1 - |Forecasted renewals - Actual renewals| / Actual renewal
 
 **Definition:** Average number of days until upcoming renewals.
 
-**What it tells you:** Renewal workload distribution. If clustered, capacity may be strained.
+**What it tells you:** How soon the renewal workload arrives. A short average means renewals are bunched close together, which strains CSM capacity.
 
 ---
 

@@ -34,7 +34,7 @@ Services % = Services revenue / Total revenue × 100
 - 20-30%: Balanced model
 - Above 30%: Services-heavy (may impact valuation multiples)
 
-**Note:** High services % can be viewed negatively by investors (less scalable than product revenue).
+**Note:** Investors often discount a high services share, because services revenue grows with headcount rather than with product usage.
 
 ---
 
@@ -106,7 +106,9 @@ Services Gross Margin = (Services revenue - Direct delivery cost) / Services rev
 Project Margin = (Project revenue - Project costs) / Project revenue × 100
 ```
 
-**What it tells you:** Profitability by engagement. Identify losers.
+Measured on projects completed in the period.
+
+**What it tells you:** Profitability by engagement, including which ones lose money.
 
 ---
 
@@ -118,6 +120,8 @@ Project Margin = (Project revenue - Project costs) / Project revenue × 100
 ```
 Realization Rate = Actual revenue / (Hours worked × Standard rate) × 100
 ```
+
+Hours worked are taken from billed hours.
 
 **Benchmarks:**
 - Below 80%: Significant discounting or write-offs
@@ -204,7 +208,7 @@ Capacity = Consultants × Available hours per consultant
 
 ### Capacity Utilization
 
-**Definition:** Billable hours sold vs available.
+**Definition:** Billable hours sold vs available. Hours booked are the budgeted hours on sold projects.
 
 **Formula:**
 ```
@@ -230,7 +234,7 @@ On-Time Delivery = Projects on time / Total projects completed × 100
 
 ### On-Budget Delivery
 
-**Definition:** Percentage of projects delivered within budget.
+**Definition:** Percentage of projects completed in the period within their budgeted hours.
 
 **Formula:**
 ```
@@ -358,13 +362,13 @@ Reference-ability = Referenceable projects / Completed projects × 100
 Revenue per Consultant = Services revenue / Consultant headcount
 ```
 
-**Benchmarks:** $150K-$300K annually, depending on rate structure.
+**Benchmarks:** $150K-$300K annually, depending on rate structure. Use an annual period to compare against them.
 
 ---
 
 ### Projects per Consultant
 
-**Definition:** Average projects delivered per consultant per year.
+**Definition:** Average projects completed per consultant in the period.
 
 **Formula:**
 ```
@@ -375,7 +379,7 @@ Projects per Consultant = Completed projects / Consultant headcount
 
 ### Average Project Duration
 
-**Definition:** Typical length of engagements.
+**Definition:** Average length, in days, of projects completed in the period.
 
 **Formula:**
 ```
