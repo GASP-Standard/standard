@@ -98,6 +98,4 @@ Once installed, ask your AI assistant:
 
 ## License
 
-<!-- TODO: add a "Source" link and package.json "repository" field to https://github.com/GASP-Standard/standard once the repository is public. -->
-
-Apache-2.0
+Apache-2.0. Source: https://github.com/GASP-Standard/standard (the standard itself is CC BY 4.0, see `standard/LICENSE` there).
