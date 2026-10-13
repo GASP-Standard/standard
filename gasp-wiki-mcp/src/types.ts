@@ -115,6 +115,12 @@ export interface FormulaInput {
   role: string;
   /** positive, negative or mixed: how the metric moves when the input rises */
   polarity?: "positive" | "negative" | "mixed";
+  /**
+   * True when the formula reads the input only as a baseline (under `at period_start`
+   * or inside `lag(...)`): it enters the formula as a component, but nothing that
+   * moves the input during the period moves the metric, so traversal stops there.
+   */
+  baseline?: boolean;
 }
 
 /** A structured formula decomposition for a metric */
@@ -249,6 +255,17 @@ export interface DataRequirement {
   staged: boolean;
   /** Every (field, dataset) pair the compiled SQL reads, as "field@dataset" */
   placeholders: string[];
+  /** What each declared O or M form reads, following metric refs (and form refs) as the main formula does */
+  forms?: Partial<Record<"O" | "M", FormRequirement>>;
+  /** Set when the formula is broken down by a field: the query returns one row per value */
+  breakdown?: { field: string };
+}
+
+/** The fields and datasets one O or M form of a formula reads */
+export interface FormRequirement {
+  fields: string[];
+  datasets: string[];
+  staged: boolean;
 }
 
 /** A parameterised query compiled from a metric's formula, keyed by formula id */
@@ -266,6 +283,8 @@ export interface QueryTemplate {
   staged: boolean;
   /** Every (field, dataset) pair the SQL reads, as "field@dataset"; the adapter maps each pair to a column */
   placeholders: string[];
+  /** Set when the formula is broken down by a field: the query returns one row per value */
+  breakdown?: { field: string };
 }
 
 /** Display unit for a formula result. Percent formulas compute unscaled ratios. */
@@ -285,6 +304,16 @@ export interface MetricFormula {
   variants?: Record<string, string>;
   notes?: string;
   notComputable?: string;
+  /**
+   * "field.<id>": the formula is computed once per value of that field. Every
+   * aggregate not under total() is grouped by it (see src/formula.ts).
+   */
+  breakdown?: string;
+  /**
+   * Named breakdowns, e.g. { "by_plan": "field.plan_id" }: each compiles the main
+   * formula with that breakdown, addressed like a variant (compileMetric(id, ctx, "by_plan")).
+   */
+  breakdowns?: Record<string, string>;
 }
 
 /** The full loaded dataset */
@@ -304,4 +333,10 @@ export interface StandardData {
   metricNodeIds?: Record<string, string>;
   /** Formula id (graph node id, else slug with underscores) → canonical formula */
   formulas?: Record<string, MetricFormula>;
+  /**
+   * The adapter JSON Schema (draft 2020-12), from standard/gasp-adapter-schema.json.
+   * validate_adapter applies it before the field and coverage checks. Optional so
+   * data fetched from an older site build still loads.
+   */
+  adapterSchema?: Record<string, unknown>;
 }

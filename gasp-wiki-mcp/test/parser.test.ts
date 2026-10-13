@@ -264,6 +264,17 @@ Customer-count churn treats every logo equally.
     expect(br.diagnostic).toContain("not additive");
   });
 
+  // Regression (canon m20): the shared pattern cites each form's formula inline in backticks.
+  const sharedInlineSample = sharedChurnSample
+    .replace("MRR-weighted churn captures the economic impact of attrition.", "MRR-weighted churn. The formula is defined above: \`(Churned MRR + Contraction MRR) / Beginning MRR × 100\`.")
+    .replace("Customer-count churn treats every logo equally.", "Customer-count churn. The formula is \`Customers lost / Customers at start × 100\`.");
+  const inlineChurn = parseMetricsFile(sharedInlineSample, "core.md")[0];
+
+  it("parses shared churn: inline formulas become the O and M formulas", () => {
+    expect(inlineChurn.dualLens!.operating.formula).toBe("(Churned MRR + Contraction MRR) / Beginning MRR × 100");
+    expect(inlineChurn.dualLens!.market.formula).toBe("Customers lost / Customers at start × 100");
+  });
+
   // Pattern 3: Note only
   const noteSample = `
 ## Retention Metrics

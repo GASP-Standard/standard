@@ -2,23 +2,29 @@
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
   "counts": {
     "direct": 164,
-    "staged": 138,
-    "notComputable": 19
+    "staged": 140,
+    "notComputable": 16
   },
   "stagedReasons": {
     "cohort": 8,
     "lag": 5,
     "at period_start": 25,
-    "period bound in filter": 88,
+    "total": 4,
+    "period bound in filter": 84,
     "to_date": 3,
     "period_days": 2,
     "window": 5,
-    "all_time": 2
+    "distinct pair": 1,
+    "all_time": 3
   },
   "metrics": {
     "mrr": {
       "kind": "direct",
       "ossieName": "gasp_mrr"
+    },
+    "mrr:by_plan": {
+      "kind": "direct",
+      "ossieName": "gasp_mrr_by_plan"
     },
     "arr": {
       "kind": "direct",
@@ -195,8 +201,10 @@
       "ossieName": "gasp_total_active_partners"
     },
     "partner_tier_distribution": {
-      "kind": "direct",
-      "ossieName": "gasp_partner_tier_distribution"
+      "kind": "staged",
+      "ossieName": "gasp_partner_tier_distribution",
+      "stagedDataset": "gasp_staged_gasp_partner_tier_distribution",
+      "reason": "total"
     },
     "partner_activation_rate": {
       "kind": "staged",
@@ -402,10 +410,10 @@
       "stagedDataset": "gasp_staged_gasp_sales_cycle",
       "reason": "period bound in filter"
     },
-    "sales_cycle:average": {
+    "sales_cycle:median": {
       "kind": "staged",
-      "ossieName": "gasp_sales_cycle_average",
-      "stagedDataset": "gasp_staged_gasp_sales_cycle_average",
+      "ossieName": "gasp_sales_cycle_median",
+      "stagedDataset": "gasp_staged_gasp_sales_cycle_median",
       "reason": "period bound in filter"
     },
     "quota_attainment": {
@@ -577,8 +585,10 @@
       "reason": "to_date"
     },
     "ticket_distribution_by_type": {
-      "kind": "notComputable",
-      "reason": "A categorical breakdown of ticket volume by type with no scalar formula."
+      "kind": "staged",
+      "ossieName": "gasp_ticket_distribution_by_type",
+      "stagedDataset": "gasp_staged_gasp_ticket_distribution_by_type",
+      "reason": "total"
     },
     "frt": {
       "kind": "direct",
@@ -675,6 +685,14 @@
       "ossieName": "gasp_expansion_rate",
       "stagedDataset": "gasp_staged_gasp_expansion_rate",
       "reason": "at period_start"
+    },
+    "license_utilization": {
+      "kind": "direct",
+      "ossieName": "gasp_license_utilization"
+    },
+    "license_utilization:by_product": {
+      "kind": "direct",
+      "ossieName": "gasp_license_utilization_by_product"
     },
     "upsell_rate": {
       "kind": "staged",
@@ -844,25 +862,7 @@
       "kind": "staged",
       "ossieName": "gasp_payment_method_distribution",
       "stagedDataset": "gasp_staged_gasp_payment_method_distribution",
-      "reason": "period bound in filter"
-    },
-    "payment_method_distribution:ach": {
-      "kind": "staged",
-      "ossieName": "gasp_payment_method_distribution_ach",
-      "stagedDataset": "gasp_staged_gasp_payment_method_distribution_ach",
-      "reason": "period bound in filter"
-    },
-    "payment_method_distribution:wire": {
-      "kind": "staged",
-      "ossieName": "gasp_payment_method_distribution_wire",
-      "stagedDataset": "gasp_staged_gasp_payment_method_distribution_wire",
-      "reason": "period bound in filter"
-    },
-    "payment_method_distribution:check": {
-      "kind": "staged",
-      "ossieName": "gasp_payment_method_distribution_check",
-      "stagedDataset": "gasp_staged_gasp_payment_method_distribution_check",
-      "reason": "period bound in filter"
+      "reason": "total"
     },
     "recognized_vs_billed": {
       "kind": "direct",
@@ -967,8 +967,10 @@
       "reason": "period bound in filter"
     },
     "breadth_of_adoption": {
-      "kind": "direct",
-      "ossieName": "gasp_breadth_of_adoption"
+      "kind": "staged",
+      "ossieName": "gasp_breadth_of_adoption",
+      "stagedDataset": "gasp_staged_gasp_breadth_of_adoption",
+      "reason": "distinct pair"
     },
     "session_frequency": {
       "kind": "direct",
@@ -1153,10 +1155,6 @@
       "ossieName": "gasp_billings",
       "stagedDataset": "gasp_staged_gasp_billings",
       "reason": "period bound in filter"
-    },
-    "arr_mrr": {
-      "kind": "notComputable",
-      "reason": "Cross-reference entry that points to the ARR and MRR definitions in Core, which carry the formulas."
     },
     "revenue_per_employee": {
       "kind": "direct",
@@ -1403,8 +1401,10 @@
       "reason": "period bound in filter"
     },
     "source_of_hire": {
-      "kind": "notComputable",
-      "reason": "A distribution of hires by recruiting channel, with no single formula."
+      "kind": "staged",
+      "ossieName": "gasp_source_of_hire",
+      "stagedDataset": "gasp_staged_gasp_source_of_hire",
+      "reason": "total"
     },
     "compa_ratio": {
       "kind": "direct",
@@ -1485,8 +1485,10 @@
       "ossieName": "gasp_marketing_cac"
     },
     "cac_by_channel": {
-      "kind": "direct",
-      "ossieName": "gasp_cac_by_channel"
+      "kind": "staged",
+      "ossieName": "gasp_cac_by_channel",
+      "stagedDataset": "gasp_staged_gasp_cac_by_channel",
+      "reason": "period bound in filter"
     },
     "cpl": {
       "kind": "staged",
@@ -1532,7 +1534,7 @@
     },
     "email_metrics": {
       "kind": "notComputable",
-      "reason": "A family of six email rate formulas (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single metric."
+      "reason": "A family of six email rates (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single headline metric. The ontology has no email send dataset or fields for sends, deliveries, opens, clicks, unsubscribes, bounces or complaints, so none of the six is encoded."
     },
     "content_performance": {
       "kind": "notComputable",
@@ -1554,7 +1556,7 @@
       "kind": "staged",
       "ossieName": "gasp_onboarding_milestone_completion_rate",
       "stagedDataset": "gasp_staged_gasp_onboarding_milestone_completion_rate",
-      "reason": "period bound in filter"
+      "reason": "all_time"
     },
     "professional_services_milestone_completion_rate": {
       "kind": "staged",

@@ -36,6 +36,8 @@ Active Partners = Partners with activity in trailing 12 months
 Tier Distribution = Partners in tier / Total partners × 100
 ```
 
+Partner Tier Distribution is reported per tier: one share for each tier, and the shares sum to 100%.
+
 **What it tells you:** Partner ecosystem maturity.
 
 ---
@@ -46,8 +48,10 @@ Tier Distribution = Partners in tier / Total partners × 100
 
 **Formula:**
 ```
-Activation Rate = Partners with first deal / Partners recruited × 100
+Activation Rate = Partners recruited in period now active / Partners recruited in period × 100
 ```
+
+A recruited partner becomes active once productive: a first deal registered or closed, or the engagement threshold met. Count activation at period end for the partners recruited in the period.
 
 **Benchmarks:**
 - Below 20%: Low activation
@@ -65,7 +69,7 @@ Activation Rate = Partners with first deal / Partners recruited × 100
 
 **Formula:**
 ```
-Partner Churn = Partners churned / Partners at start of period × 100
+Partner Churn = Partners churned in period / Active partners at start of period × 100
 ```
 
 **What it tells you:** Partner program health and competitiveness.
@@ -136,6 +140,8 @@ Growth = (Partner revenue this year - Partner revenue last year) / Partner reven
 ```
 Average Partner Revenue = Total partner revenue / Active partners
 ```
+
+Total partner revenue is Partner-Influenced Revenue: closed revenue on every deal with a partner involved, partner-sourced deals included.
 
 **What it tells you:** Partner productivity.
 

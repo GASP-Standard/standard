@@ -12,8 +12,10 @@ Metrics for measuring marketing performance, demand generation and brand health.
 
 **Formula:**
 ```
-Visitors = Unique visitors in period
+Visitors = Sum of unique visitors in period across traffic sources
 ```
+
+Web analytics report unique visitors per traffic source, so the GASP Standard sums the per-source counts. A visitor who arrives through two sources counts once in each. Load one figure per source per reporting period so a returning visitor counts once within a source.
 
 **What it tells you:** Top of funnel awareness and reach.
 
@@ -234,10 +236,12 @@ Marketing CAC = Marketing spend / New customers acquired
 
 **Formula:**
 ```
-Channel CAC = Channel spend / Customers acquired via channel
+Channel CAC = Channel ad spend / Deals won in period via channel
 ```
 
-**Channels:** Paid search, paid social, organic, content, events, referral, partner.
+**Channels:** Paid ads, organic search, email, events, content, referral, direct and other.
+
+CAC by Channel is reported per channel: one value for each channel. Spend is campaign ad spend, which records its channel, and new customers are deals won in the period attributed to their first-touch channel. The cost ledger has no channel, so ledger cost cannot be split this way; Marketing CAC remains the total.
 
 **What it tells you:** Which channels are most efficient.
 

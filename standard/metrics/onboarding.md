@@ -110,14 +110,14 @@ Completion Rate = Customers completing onboarding / Customers starting onboardin
 
 ### Milestone Completion Rate
 
-**Definition:** Percentage of customers completing each onboarding milestone.
+**Definition:** Percentage of due onboarding milestones that customers reach.
 
 **Formula:**
 ```
-Milestone Completion = Customers completing milestone / Customers reaching milestone × 100
+Milestone Completion = Milestones reached / Milestones due × 100
 ```
 
-Track for each milestone to identify drop-off points.
+Count the milestones due in the period and how many of them were reached by period end. Track each milestone separately to identify drop-off points.
 
 **Typical milestones:**
 1. Kickoff completed

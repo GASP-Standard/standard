@@ -309,8 +309,8 @@ Months until cash runs out at current burn rate.
 
 ### DSO (Days Sales Outstanding)
 Average days to collect payment after invoicing.
-- **Canonical definition:** [Finance Metrics](metrics/finance.md#days-sales-outstanding-dso)
-- **Used in:** Finance, RevOps (same definition)
+- **Canonical definition:** [RevOps Metrics](metrics/revops.md#days-sales-outstanding-dso)
+- **Used in:** RevOps, Finance (same definition)
 
 ### Bad Debt Rate
 Percentage of revenue written off as uncollectable.
@@ -351,7 +351,7 @@ Total value of active sales opportunities.
 - **Canonical definition:** [Sales Metrics](metrics/sales.md#pipeline-value)
 
 ### Pipeline Coverage
-Ratio of pipeline value to quota.
+Ratio of unweighted pipeline value to quota.
 - **Canonical definition:** [Sales Metrics](metrics/sales.md#pipeline-coverage-ratio)
 
 ### Win Rate
@@ -535,7 +535,7 @@ A decomposed representation of a metric's formula: explicit references to other 
 - **Reference:** ontology.json structuredFormulas in the GASP repository
 
 ### Metric Owner
-The named team or person responsible for a metric definition in an organization's adapter. Ownership is a required adapter field. When a metric value is disputed, the owner resolves the dispute. GASP provides the canonical definition; the owner decides whether their organization follows it or deviates, and documents the deviation.
+The named team or person responsible for a metric definition in an organization's adapter. Ownership is a required adapter field. When a metric value is disputed, the owner resolves the dispute. GASP provides the canonical definition; the owner decides whether their organization follows it or deviates and documents any deviation.
 - **Reference:** [Adapter Guide](/v1/adapter#metric-owners)
 
 ### Temporal Semantics

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseFormula, analyzeFormula, validateFormula, FormulaError } from "../src/formula.js";
+import { compileMetric } from "../src/compile.js";
+import type { MetricFormula } from "../src/types.js";
 
 const ctx = {
   fields: new Set(["mrr", "status", "account_id", "mrr_change", "change_type", "mrr_start", "mrr_end", "nps_score"]),
@@ -138,6 +140,17 @@ describe("analyzeFormula", () => {
     expect(a.metricRefs).toEqual([]);
   });
 
+  it("flags a ref read only at period_start or under lag as a baseline input", () => {
+    const nrr = analyzeFormula(parseFormula("(metric.mrr at period_start + metric.expansion_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.account_id, period_start)"));
+    expect(nrr.metricBaseline).toEqual({ mrr: true, expansion_mrr: false, churned_mrr: false });
+    expect(analyzeFormula(parseFormula("metric.mrr / metric.arr")).metricBaseline).toEqual({ mrr: false, arr: false });
+    expect(analyzeFormula(parseFormula("metric.arr - lag(metric.arr, 1 year)")).metricBaseline).toEqual({ arr: false });
+    expect(analyzeFormula(parseFormula("metric.mrr / lag(metric.arr, 1 year)")).metricBaseline).toEqual({ mrr: false, arr: true });
+    // The outermost at wins, as in the compiler.
+    expect(analyzeFormula(parseFormula("(metric.mrr at period_end) at period_start")).metricBaseline).toEqual({ mrr: true });
+    expect(analyzeFormula(parseFormula("(metric.mrr at period_start) at period_end")).metricBaseline).toEqual({ mrr: false });
+  });
+
   it("marks plain aggregates as not staged", () => {
     expect(analyzeFormula(parseFormula("sum(field.mrr) at period_end")).staged).toBe(false);
   });
@@ -167,5 +180,108 @@ describe("form references", () => {
   it("reports the bare metric id to analysis, so graph edges are unchanged", () => {
     const a = analyzeFormula(parseFormula("metric.mrr * metric.arr.O / metric.churned_mrr"));
     expect(a.metricRefs).toEqual(["arr", "churned_mrr", "mrr"]);
+  });
+});
+
+describe("distinct pairs, total() and breakdowns", () => {
+  const fields: Record<string, any> = {
+    ticket_id: { id: "ticket_id", type: "string", datasets: ["ticket"] },
+    created_at: { id: "created_at", type: "timestamp", datasets: ["ticket"] },
+    ticket_type: { id: "ticket_type", type: "enum", datasets: ["ticket"], values: ["bug", "how_to"] },
+    agent_id: { id: "agent_id", type: "string", datasets: ["ticket"] },
+    customer_id: { id: "customer_id", type: "string", datasets: ["ticket", "customer"] },
+    snapshot_date: { id: "snapshot_date", type: "date", datasets: ["customer"] },
+    cost: { id: "cost", type: "decimal", datasets: ["cost_event"] },
+    event_date: { id: "event_date", type: "date", datasets: ["cost_event"] },
+  };
+  const datasets: Record<string, any> = {
+    ticket: { kind: "event", date: "created_at", key: "ticket_id" },
+    customer: { kind: "snapshot", date: "snapshot_date", key: "customer_id" },
+    cost_event: { kind: "event", date: "event_date", key: "event_id" },
+  };
+  const compile = (formula: string, breakdown?: string, extra: Record<string, MetricFormula> = {}) =>
+    compileMetric("t", { fields, datasets, formulas: { volume: { formula: "count(field.ticket_id)", unit: "count" }, ...extra, t: { formula, unit: "percent", ...(breakdown ? { breakdown } : {}) } } });
+
+  it("parses count_distinct over several arguments, with or without a where clause", () => {
+    expect(parseFormula("count_distinct(field.customer_id, field.ticket_id)").expr).toMatchObject({
+      kind: "agg", fn: "count_distinct", arg: { kind: "field", id: "customer_id" }, more: [{ kind: "field", id: "ticket_id" }],
+    });
+    expect(parseFormula("count_distinct(field.customer_id, field.ticket_id where field.agent_id = 'a1')").expr).toMatchObject({
+      more: [{ id: "ticket_id" }], where: { kind: "compare" },
+    });
+    expect(analyzeFormula(parseFormula("count_distinct(field.customer_id, field.ticket_id)")).fieldRefs).toEqual(["customer_id", "ticket_id"]);
+    expect(() => parseFormula("sum(field.mrr, field.mrr_end)")).toThrow("takes one argument");
+    expect(() => parseFormula("max(field.mrr, field.mrr_end where field.status = 'active')")).toThrow("does not take a where clause");
+  });
+
+  it("compiles distinct pairs to a portable derived table that skips null parts", () => {
+    const c = compile("count_distinct(field.customer_id, field.agent_id)");
+    expect(c.sql).toBe(
+      "SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT {{customer_id@ticket}}, {{agent_id@ticket}} FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}} AND {{customer_id@ticket}} IS NOT NULL AND {{agent_id@ticket}} IS NOT NULL) _pairs) AS t",
+    );
+    expect(errorsOf("count_distinct(field.mrr, field.status where field.status = 'active')")).toEqual([]);
+  });
+
+  it("parses total() and validates its placement", () => {
+    expect(parseFormula("count(field.mrr) / total(count(field.mrr))").expr).toMatchObject({ kind: "binary", right: { kind: "total", arg: { kind: "agg" } } });
+    expect(errorsOf("sum(field.mrr) / total(metric.mrr)")).toEqual([]);
+    expect(errorsOf("sum(total(field.mrr))")).toContain("total() cannot appear inside an aggregate");
+    expect(errorsOf("sum(field.mrr) / total(2)")).toContain("total() must wrap an aggregate or a metric");
+  });
+
+  it("compiles a breakdown over an enum field: literal domain, grouped aggregates, total() ungrouped through a metric ref", () => {
+    const c = compile("count(field.ticket_id) / total(metric.volume)", "field.ticket_type");
+    expect(c.breakdown).toEqual({ field: "ticket_type" });
+    expect(c.fields).toContain("ticket_type");
+    expect(c.placeholders).toContain("ticket_type@ticket");
+    expect(c.sql).toBe(
+      "SELECT _d.ticket_type AS ticket_type, (CAST((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}} AND {{ticket_type@ticket}} = _d.ticket_type) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}})), 0)) AS t\n" +
+      "FROM (SELECT 'bug' AS ticket_type UNION ALL SELECT 'how_to' AS ticket_type) _d",
+    );
+  });
+
+  it("takes a non-enum domain from the dataset keyed by the field, else the first dataset read that carries it", () => {
+    const keyed = compile("count(field.ticket_id)", "field.customer_id");
+    expect(keyed.sql).toMatch(/\nFROM \(SELECT DISTINCT \{\{customer_id@customer\}\} AS customer_id FROM \{\{_table:customer\}\} WHERE \{\{customer_id@customer\}\} IS NOT NULL\) _d$/);
+    expect(keyed.datasets).toEqual(["customer", "ticket"]);
+    const read = compile("count(field.ticket_id)", "field.agent_id");
+    expect(read.sql).toMatch(/\nFROM \(SELECT DISTINCT \{\{agent_id@ticket\}\} AS agent_id FROM \{\{_table:ticket\}\} WHERE \{\{agent_id@ticket\}\} IS NOT NULL\) _d$/);
+  });
+
+  it("compiles a named breakdown like a variant: main formula, grouped by its field", () => {
+    const formulas: Record<string, MetricFormula> = {
+      volume: { formula: "count(field.ticket_id)", unit: "count", variants: { escalated: "count(field.ticket_id where field.agent_id = 'a1')" }, breakdowns: { by_type: "field.ticket_type", by_agent: "field.agent_id" } },
+    };
+    const ctx = { fields, datasets, formulas };
+    const plain = compileMetric("volume", ctx);
+    expect(plain.breakdown).toBeUndefined();
+    expect(plain.sql).toBe("SELECT (SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}}) AS volume");
+    const byType = compileMetric("volume", ctx, "by_type");
+    expect(byType.breakdown).toEqual({ field: "ticket_type" });
+    expect(byType.sql).toBe(
+      "SELECT _d.ticket_type AS ticket_type, (SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} <= {{_period_end}} AND {{ticket_type@ticket}} = _d.ticket_type) AS volume\n" +
+      "FROM (SELECT 'bug' AS ticket_type UNION ALL SELECT 'how_to' AS ticket_type) _d",
+    );
+    expect(compileMetric("volume", ctx, "by_agent").sql).toMatch(/\nFROM \(SELECT DISTINCT \{\{agent_id@ticket\}\} AS agent_id FROM \{\{_table:ticket\}\} WHERE \{\{agent_id@ticket\}\} IS NOT NULL\) _d$/);
+    expect(compileMetric("volume", ctx, "escalated").breakdown).toBeUndefined();
+    expect(() => compileMetric("volume", { ...ctx, formulas: { volume: { ...formulas.volume, breakdowns: { by_x: "field.nope" } } } }, "by_x")).toThrow("'volume:by_x' breakdown names unknown field");
+    expect(() => compileMetric("volume", { ...ctx, formulas: { volume: { formula: "sum(field.cost)", unit: "currency", breakdowns: { by_type: "field.ticket_type" } } } }, "by_type"))
+      .toThrow("reads dataset 'cost_event', which has no ticket_type field");
+  });
+
+  it("rejects total() outside a breakdown, also through a metric reference", () => {
+    expect(() => compile("count(field.ticket_id) / total(count(field.ticket_id))")).toThrow("total() outside a breakdown");
+    expect(() => compile("metric.share * 2", undefined, { share: { formula: "count(field.ticket_id) / total(metric.volume)", unit: "percent", breakdown: "field.ticket_type" } }))
+      .toThrow("total() outside a breakdown");
+  });
+
+  it("rejects a grouped aggregate whose dataset lacks the field, naming the aggregate and dataset", () => {
+    expect(() => compile("count(field.ticket_id) / sum(field.cost)", "field.ticket_type"))
+      .toThrow("sum() over field.cost reads dataset 'cost_event', which has no ticket_type field. Wrap the aggregate in total() or add the field to 'cost_event'");
+    expect(() => compile("count(field.ticket_id) / total(sum(field.cost))", "field.ticket_type")).not.toThrow();
+    // Through a metric reference too.
+    expect(() => compile("metric.spend", "field.ticket_type", { spend: { formula: "sum(field.cost)", unit: "currency" } })).toThrow("reads dataset 'cost_event'");
+    expect(() => compile("count(field.ticket_id)", "field.nope")).toThrow("unknown field 'field.nope'");
+    expect(() => compile("count(field.ticket_id)", "ticket_type")).toThrow("must be a field reference");
   });
 });

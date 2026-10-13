@@ -5,7 +5,13 @@
  * flips at denominator/subtrahend formula inputs (read from structuredFormulas).
  * Edge attenuation is bucketed by edgeTypeClassification for entity edges and
  * by canonical metric-edge type for metric signal edges.
+ *
+ * A baseline input (read under `at period_start` or inside `lag`, so it is fixed
+ * before the period starts: NRR reads MRR at period start) is still a direct
+ * component of its metric, but traversal does not continue through it: nothing
+ * that moves the input during the period moves the metric.
  */
+import { analyzeFormula, parseFormula } from "./formula.js";
 
 import type {
   OntologyData,
@@ -51,6 +57,8 @@ interface InternalContext {
   classification: Map<string, EdgeClassification>;
   /** "source|target" → -1 if denominator/subtrahend. */
   pairOverrides: Map<string, Direction>;
+  /** "input|metric" pairs where the metric reads the input only as a baseline. */
+  baselinePairs: Set<string>;
   metricNodeIds: Set<string>;
 }
 
@@ -136,13 +144,18 @@ export function buildContext(
   // Direction overrides: walk structuredFormulas, flip any input whose derived
   // polarity is negative (older data without polarity: denominator or subtrahend role).
   const pairOverrides = new Map<string, Direction>();
+  const baselinePairs = new Set<string>();
   const sf = ontology?.structuredFormulas;
   if (sf) {
     for (const [target, formula] of Object.entries(sf)) {
       if (target === "description" || typeof formula !== "object" || formula === null) continue;
-      const f = formula as { inputs?: Array<{ ref: string; role: string; polarity?: string }> };
+      const f = formula as { expression?: string; inputs?: Array<{ ref: string; role: string; polarity?: string; baseline?: boolean }> };
       if (!f.inputs) continue;
+      // `baseline` is derived onto each input by npm run derive; the expression gives the same answer before then.
+      let analyzed: Record<string, boolean> | undefined;
+      try { analyzed = f.expression ? analyzeFormula(parseFormula(f.expression)).metricBaseline : undefined; } catch { analyzed = undefined; }
       for (const input of f.inputs) {
+        if (input.baseline ?? analyzed?.[input.ref]) baselinePairs.add(`${input.ref}|${target}`);
         const negative = input.polarity ? input.polarity === "negative" : input.role === "denominator" || input.role === "subtrahend";
         if (negative) {
           pairOverrides.set(`${input.ref}|${target}`, -1);
@@ -151,7 +164,7 @@ export function buildContext(
     }
   }
 
-  return { edgesBySource, edgesByTarget, nodeById, classification, pairOverrides, metricNodeIds };
+  return { edgesBySource, edgesByTarget, nodeById, classification, pairOverrides, baselinePairs, metricNodeIds };
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +277,9 @@ export function inferDrivers(
         }
       }
 
+      // A baseline input is a driver itself; its own drivers move it during the period, not the metric.
+      if (ctx.baselinePairs.has(`${edge.source}|${edge.target}`)) continue;
+
       queue.push({
         nodeId: edge.source,
         direction: newDirection,
@@ -325,6 +341,8 @@ export function findPaths(
     const outgoing = ctx.edgesBySource.get(item.nodeId) ?? [];
     for (const edge of outgoing) {
       if (item.visited.has(edge.target)) continue;
+      // A baseline edge only starts a path: a path that reached the input through its drivers stops there.
+      if (item.path.length > 0 && ctx.baselinePairs.has(`${edge.source}|${edge.target}`)) continue;
 
       const step = makeStep(edge, ctx);
       const stepDir: Direction = step.directionFlip ? -1 : 1;
@@ -379,7 +397,8 @@ export interface CoverageGapResult {
  * entities and concepts are ignored.
  *
  * - upstreamMissing: metrics with at least one outgoing edge into the set,
- *   that are not themselves in the set.
+ *   that are not themselves in the set. One hop only, so a baseline input is
+ *   listed as a direct component and its own drivers are not.
  * - downstreamMissing: metrics with at least one incoming edge from the set,
  *   that are not themselves in the set.
  * - disconnected: in-graph metrics with no path (in either direction) to the set.

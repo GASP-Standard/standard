@@ -82,7 +82,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
   for (const [id, f] of Object.entries(formulas)) {
     if (!f.formula) continue;
     compiled.set(id, compileMetric(id, ctx));
-    const variants = [...Object.keys(f.forms ?? {}), ...Object.keys(f.variants ?? {})];
+    const variants = [...Object.keys(f.forms ?? {}), ...Object.keys(f.variants ?? {}), ...Object.keys(f.breakdowns ?? {})];
     for (const c of [compiled.get(id)!, ...variants.map((v) => compileMetric(id, ctx, v))]) {
       for (const fid of c.fields) (usage.get(fid) ?? usage.set(fid, new Set()).get(fid)!).add(id);
     }
@@ -98,7 +98,10 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
     const a = analyzeFormula(parseFormula(f.formula));
     const entry: Record<string, unknown> = {
       expression: f.formula,
-      inputs: a.metricRefs.map((ref) => ({ ref, role: a.metricRoles[ref], polarity: a.metricPolarity[ref].length > 1 ? "mixed" : a.metricPolarity[ref][0] })),
+      inputs: a.metricRefs.map((ref) => ({
+        ref, role: a.metricRoles[ref], polarity: a.metricPolarity[ref].length > 1 ? "mixed" : a.metricPolarity[ref][0],
+        ...(a.metricBaseline[ref] ? { baseline: true } : {}),
+      })),
       fields: compiled.get(id)!.fields,
     };
     if (f.variants?.adjusted) entry.adjustedVariant = f.variants.adjusted;

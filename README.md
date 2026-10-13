@@ -47,4 +47,4 @@ The formula grammar is documented at the top of `gasp-wiki-mcp/src/formula.ts`. 
 
 This is a read-only mirror of the public parts of the GASP monorepo, updated on every change. The website's source stays private. Issues and discussions are welcome here; changes to the standard are made upstream and appear here with the next push. See `MIRROR` for the source commit.
 
-GASP is maintained by [403page labs](https://403.ie).
+GASP was written and is maintained by Gareth O'Shea. Issues and pull requests are welcome here.

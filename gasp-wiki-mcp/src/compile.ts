@@ -19,6 +19,19 @@
  * at the period end. `all_time` drops it. `lag` shifts both bounds. `over cohort`
  * restricts every aggregate to keys present in the key's dataset at the point.
  * Intervals are emitted in units Postgres accepts (a quarter is 3 months).
+ *
+ * A multi-argument count_distinct counts distinct tuples through a derived
+ * table: (SELECT COUNT(*) FROM (SELECT DISTINCT a, b FROM t WHERE ...) _pairs).
+ *
+ * A formula entry with `breakdown` compiles to one row per value of the field
+ * (and so does a named breakdown in `breakdowns`, compiled as a variant):
+ *   SELECT _d.<field> AS <field>, <expr> AS <id>
+ *   FROM (<domain>) _d
+ * Every aggregate not under total() gains `AND {{<field>@<ds>}} = _d.<field>`.
+ * The domain is the field's declared enum values as a UNION ALL of literals
+ * (no VALUES clause, which BigQuery lacks), else the distinct non-null values
+ * on the dataset keyed by the field, else on the first dataset the formula
+ * reads that carries it.
  */
 import { parseFormula, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
 import type { MetricFormula, OntologyDataset, OntologyField } from "./types.js";
@@ -40,6 +53,8 @@ export interface Compiled {
   metricRefs: string[];
   /** Uses cohort or lag, so it cannot run as one Ossie aggregate */
   staged: boolean;
+  /** Set when the entry declares a breakdown: the SQL returns one row per value of the field */
+  breakdown?: { field: string };
 }
 
 export class CompileError extends Error {}
@@ -57,6 +72,10 @@ interface Scope {
   dataset?: string;
   /** metric ids on the current path, to catch cycles */
   path: string[];
+  /** The breakdown field: aggregates are grouped by it unless under total() */
+  breakdown?: string;
+  /** Under total(): aggregates read the whole population */
+  total?: boolean;
 }
 
 const TEMPORAL = new Set(["date", "timestamp"]);
@@ -69,18 +88,35 @@ export function interval(n: number, unit: LagUnit): string {
 export function compileMetric(id: string, ctx: CompileContext, variant?: string): Compiled {
   const f = ctx.formulas[id];
   if (!f) throw new CompileError(`No formula for '${id}'`);
-  const src = variant ? (f.forms as any)?.[variant] ?? f.variants?.[variant] : f.formula;
+  // A named breakdown (f.breakdowns) compiles the main formula grouped by its field.
+  const named = variant !== undefined && !(f.forms as any)?.[variant] && !f.variants?.[variant] ? f.breakdowns?.[variant] : undefined;
+  const src = named !== undefined ? f.formula : variant ? (f.forms as any)?.[variant] ?? f.variants?.[variant] : f.formula;
   if (!src) throw new CompileError(f.notComputable ? `'${id}' is not computable: ${f.notComputable}` : `'${id}' has no ${variant ?? "formula"}`);
+  const ref = named ?? f.breakdown;
+  const breakdown = ref === undefined ? undefined : breakdownField(ref, ctx, named !== undefined ? `${id}:${variant}` : id);
   const c = new Compiler(ctx);
-  const body = c.formula(parseFormula(src), { toDate: false, shift: [], path: [id] });
+  const body = c.formula(parseFormula(src), { toDate: false, shift: [], path: [id], breakdown });
+  const alias = id.replace(/[^a-z0-9_]/gi, "_");
+  const sql = breakdown
+    ? `SELECT _d.${breakdown} AS ${breakdown}, ${body} AS ${alias}\nFROM (${c.domain(breakdown)}) _d`
+    : `SELECT ${body} AS ${alias}`;
   return {
-    sql: `SELECT ${body} AS ${id.replace(/[^a-z0-9_]/gi, "_")}`,
+    sql,
     fields: [...c.fields].sort(),
     placeholders: [...c.placeholders].sort(),
     datasets: [...c.datasets].sort(),
     metricRefs: [...c.metricRefs].sort(),
     staged: c.staged,
+    ...(breakdown ? { breakdown: { field: breakdown } } : {}),
   };
+}
+
+/** The field id of an entry's `breakdown` ("field.<id>"), checked against the ontology. */
+export function breakdownField(ref: string, ctx: Pick<CompileContext, "fields">, id = "formula"): string {
+  if (!ref.startsWith("field.")) throw new CompileError(`'${id}' breakdown must be a field reference (field.<id>), got '${ref}'`);
+  const field = ref.slice(6);
+  if (!ctx.fields[field]) throw new CompileError(`'${id}' breakdown names unknown field 'field.${field}'`);
+  return field;
 }
 
 /** Replace placeholders with plain names, for documentation examples. */
@@ -171,6 +207,9 @@ class Compiler {
       case "lag": this.staged = true; return this.expr(n.arg, { ...scope, shift: [...scope.shift, { n: n.n, unit: n.unit }] });
       case "window": return this.expr(n.arg, { ...scope, window: scope.window ?? { n: n.n, unit: n.unit } }); // outer window wins
       case "all_time": return this.expr(n.arg, { ...scope, allTime: true });
+      case "total":
+        if (!scope.breakdown) throw new CompileError(`total() outside a breakdown (in ${scope.path.join(" -> ")})`);
+        return this.expr(n.arg, { ...scope, total: true });
       case "agg": case "percentile": return this.aggregate(n, scope);
     }
   }
@@ -199,8 +238,12 @@ class Compiler {
       case "binary": case "logic": case "compare": this.fieldsIn(n.left, out); this.fieldsIn(n.right, out); break;
       case "in": this.fieldsIn(n.arg, out); n.values.forEach((v) => this.fieldsIn(v, out)); break;
       case "scalar": n.args.forEach((a) => this.fieldsIn(a, out)); break;
-      case "neg": case "lag": case "window": case "all_time": case "at": case "to_date": case "not": case "isnull": this.fieldsIn(n.arg, out); break;
-      case "agg": case "percentile": this.fieldsIn(n.arg, out); if (n.where) this.fieldsIn(n.where, out); break;
+      case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": this.fieldsIn(n.arg, out); break;
+      case "agg": case "percentile":
+        this.fieldsIn(n.arg, out);
+        if (n.kind === "agg") n.more?.forEach((m) => this.fieldsIn(m, out));
+        if (n.where) this.fieldsIn(n.where, out);
+        break;
     }
     return out;
   }
@@ -224,7 +267,15 @@ class Compiler {
     if (!meta) throw new CompileError(`Unknown dataset '${ds}'`);
     this.datasets.add(ds);
     const s: Scope = { ...scope, dataset: ds };
+    const grouped = !!scope.breakdown && !scope.total;
+    if (grouped && !(this.ctx.fields[scope.breakdown!]?.datasets ?? []).includes(ds)) {
+      const fn = n.kind === "agg" ? n.fn : "percentile";
+      throw new CompileError(
+        `Breakdown by field.${scope.breakdown}: ${fn}() over ${ids.map((x) => `field.${x}`).join(", ")} reads dataset '${ds}', which has no ${scope.breakdown} field. Wrap the aggregate in total() or add the field to '${ds}'`,
+      );
+    }
     const inner = this.expr(n.arg, s);
+    const tuple = n.kind === "agg" && n.more?.length ? [inner, ...n.more.map((m) => this.expr(m, s))] : undefined;
     const agg =
       n.kind === "percentile" ? `PERCENTILE_CONT(${n.p}) WITHIN GROUP (ORDER BY ${inner})`
       : n.fn === "count_distinct" ? `COUNT(DISTINCT ${inner})`
@@ -250,6 +301,7 @@ class Compiler {
       where.push(`${date} >= ${this.bound("period_start", scope)}`, `${date} <= ${this.bound("period_end", scope)}`);
     }
     if (n.where) where.push(this.expr(n.where, s));
+    if (grouped) where.push(`${this.ph(scope.breakdown!, ds)} = _d.${scope.breakdown}`);
     if (scope.cohort && (this.ctx.fields[scope.cohort.key]?.datasets ?? []).includes(ds)) {
       const key = scope.cohort.key;
       const keyDs = Object.entries(this.ctx.datasets).find(([, d]) => d.key === key)?.[0];
@@ -260,6 +312,24 @@ class Compiler {
       const active = kmeta.activeWhen ? ` AND ${this.expr(parseFormula(kmeta.activeWhen).expr, ks)}` : "";
       where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.ph(kmeta.date, keyDs)} = ${this.bound(scope.cohort.point, { ...scope, shift: [] })}${active})`);
     }
+    if (tuple) {
+      // Distinct tuples: COUNT(DISTINCT a) ignores nulls, so a tuple with a null part is not counted either.
+      where.push(...tuple.map((t) => `${t} IS NOT NULL`));
+      return `(SELECT COUNT(*) FROM (SELECT DISTINCT ${tuple.join(", ")} FROM {{_table:${ds}}} WHERE ${where.join(" AND ")}) _pairs)`;
+    }
     return `(SELECT ${agg} FROM {{_table:${ds}}}${where.length ? ` WHERE ${where.join(" AND ")}` : ""})`;
+  }
+
+  /** The rows a breakdown iterates: enum values as literals, else the field's distinct values on one dataset. */
+  domain(field: string): string {
+    const f = this.ctx.fields[field];
+    if (f.values?.length) return f.values.map((v) => `SELECT '${v.replace(/'/g, "''")}' AS ${field}`).join(" UNION ALL ");
+    const carriers = f.datasets ?? [];
+    const keyed = carriers.find((d) => this.ctx.datasets[d]?.key === field);
+    const ds = keyed ?? [...this.datasets].find((d) => carriers.includes(d));
+    if (!ds) throw new CompileError(`Breakdown by field.${field}: no dataset the formula reads carries it`);
+    this.datasets.add(ds);
+    const col = this.ph(field, ds);
+    return `SELECT DISTINCT ${col} AS ${field} FROM {{_table:${ds}}} WHERE ${col} IS NOT NULL`;
   }
 }

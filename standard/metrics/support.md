@@ -58,13 +58,20 @@ Backlog = Count of open tickets
 
 **Definition:** Breakdown of tickets by category.
 
+**Formula:**
+```
+Type share = Tickets of the type created in period / Ticket Volume
+```
+
 **Categories (typical):**
 - How-to / Usage questions
 - Bug reports
 - Feature requests
 - Billing inquiries
 - Account issues
-- Outage/incident related
+- Other (including outage or incident related)
+
+Ticket Distribution by Type is reported per ticket type: one share for each type, and the shares sum to 100%.
 
 **What it tells you:** What's driving support volume. High "how-to" suggests onboarding or documentation gaps.
 

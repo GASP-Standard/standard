@@ -296,14 +296,6 @@ concept_mappings:
                   expression: customer.customer_status
                 relationship: customer_status
               - object_mapping:
-                  concept: EngagedContactCount
-                  expression: customer.engaged_contact_count
-                relationship: engaged_contact_count
-              - object_mapping:
-                  concept: HasExecSponsor
-                  expression: customer.has_exec_sponsor
-                relationship: has_exec_sponsor
-              - object_mapping:
                   concept: Date
                   expression: customer.last_active_date
                 relationship: last_active_date
@@ -360,6 +352,142 @@ concept_mappings:
                 - relationship: ticket_id
                   expression: ticket.ticket_id
             relationship: submits
+      - object_mapping:
+          referent_mappings:
+            - relationship: customer_id
+              expression: contact.customer_id
+        children:
+          - object_mapping:
+              concept: Contact
+              referent_mappings:
+                - relationship: contact_id
+                  expression: contact.contact_id
+            relationship: represented_by
+  - concept: Contact
+    object_mappings:
+      - referent_mappings:
+          - relationship: contact_id
+            expression: contact.contact_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: contact_id
+              expression: contact.contact_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: contact.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: contact.snapshot_date
+            children:
+              - object_mapping:
+                  concept: ContactRole
+                  expression: contact.contact_role
+                relationship: contact_role
+              - object_mapping:
+                  concept: ContactEngaged
+                  expression: contact.contact_engaged
+                relationship: contact_engaged
+  - concept: Plan
+    object_mappings:
+      - referent_mappings:
+          - relationship: plan_id
+            expression: plan.plan_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: plan_id
+              expression: plan.plan_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: plan.snapshot_date
+            children:
+              - object_mapping:
+                  concept: PlanName
+                  expression: plan.plan_name
+                relationship: plan_name
+              - object_mapping:
+                  concept: BillingPeriod
+                  expression: plan.billing_period
+                relationship: billing_period
+  - concept: Product
+    object_mappings:
+      - referent_mappings:
+          - relationship: product_id
+            expression: product.product_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: product_id
+              expression: product.product_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: product.snapshot_date
+            children:
+              - object_mapping:
+                  concept: ProductName
+                  expression: product.product_name
+                relationship: product_name
+              - object_mapping:
+                  concept: ProductLine
+                  expression: product.product_line
+                relationship: product_line
+  - concept: License
+    object_mappings:
+      - referent_mappings:
+          - relationship: license_id
+            expression: license.license_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: license_id
+              expression: license.license_id
+        children:
+          - object_mapping:
+              concept: Product
+              referent_mappings:
+                - relationship: product_id
+                  expression: license.product_id
+            relationship: product_id
+          - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: license.subscription_id
+            relationship: subscription_id
+          - object_mapping:
+              concept: Date
+              expression: license.snapshot_date
+            children:
+              - object_mapping:
+                  concept: LicenseStatus
+                  expression: license.license_status
+                relationship: license_status
+              - object_mapping:
+                  concept: SeatsPurchased
+                  expression: license.seats_purchased
+                relationship: seats_purchased
+              - object_mapping:
+                  concept: SeatsAssigned
+                  expression: license.seats_assigned
+                relationship: seats_assigned
+      - object_mapping:
+          referent_mappings:
+            - relationship: license_id
+              expression: license.license_id
+        children:
+          - object_mapping:
+              concept: Product
+              referent_mappings:
+                - relationship: product_id
+                  expression: license.product_id
+            relationship: grants
   - concept: Subscription
     object_mappings:
       - referent_mappings:
@@ -377,6 +505,12 @@ concept_mappings:
                 - relationship: customer_id
                   expression: subscription.customer_id
             relationship: customer_id
+          - object_mapping:
+              concept: Plan
+              referent_mappings:
+                - relationship: plan_id
+                  expression: subscription.plan_id
+            relationship: plan_id
           - object_mapping:
               concept: Date
               expression: subscription.snapshot_date
@@ -433,6 +567,28 @@ concept_mappings:
                   concept: SubscriptionStatus
                   expression: subscription.subscription_status
                 relationship: subscription_status
+      - object_mapping:
+          referent_mappings:
+            - relationship: subscription_id
+              expression: license.subscription_id
+        children:
+          - object_mapping:
+              concept: License
+              referent_mappings:
+                - relationship: license_id
+                  expression: license.license_id
+            relationship: grants
+      - object_mapping:
+          referent_mappings:
+            - relationship: subscription_id
+              expression: subscription.subscription_id
+        children:
+          - object_mapping:
+              concept: Plan
+              referent_mappings:
+                - relationship: plan_id
+                  expression: subscription.plan_id
+            relationship: priced_by
   - concept: Opportunity
     object_mappings:
       - referent_mappings:
@@ -477,6 +633,10 @@ concept_mappings:
                   expression: opportunity.advanced_to_next_stage
                 relationship: advanced_to_next_stage
               - object_mapping:
+                  concept: Channel
+                  expression: opportunity.channel
+                relationship: channel
+              - object_mapping:
                   concept: Date
                   expression: opportunity.close_date
                 relationship: close_date
@@ -492,10 +652,6 @@ concept_mappings:
                   concept: IncludesServices
                   expression: opportunity.includes_services
                 relationship: includes_services
-              - object_mapping:
-                  concept: MarketingChannel
-                  expression: opportunity.marketing_channel
-                relationship: marketing_channel
               - object_mapping:
                   concept: MarketingInfluenced
                   expression: opportunity.marketing_influenced
@@ -670,6 +826,10 @@ concept_mappings:
                   expression: employee.hire_date
                 relationship: hire_date
               - object_mapping:
+                  concept: HireSource
+                  expression: employee.hire_source
+                relationship: hire_source
+              - object_mapping:
                   concept: IsHighPerformer
                   expression: employee.is_high_performer
                 relationship: is_high_performer
@@ -751,6 +911,17 @@ concept_mappings:
                 - relationship: opportunity_id
                   expression: opportunity.opportunity_id
             relationship: sources
+      - object_mapping:
+          referent_mappings:
+            - relationship: partner_id
+              expression: deal_registration.partner_id
+        children:
+          - object_mapping:
+              concept: DealRegistration
+              referent_mappings:
+                - relationship: registration_id
+                  expression: deal_registration.registration_id
+            relationship: submits
   - concept: Project
     object_mappings:
       - referent_mappings:
@@ -833,6 +1004,28 @@ concept_mappings:
                 - relationship: customer_id
                   expression: project.customer_id
             relationship: serves
+      - object_mapping:
+          referent_mappings:
+            - relationship: project_id
+              expression: project_milestone.project_id
+        children:
+          - object_mapping:
+              concept: ProjectMilestone
+              referent_mappings:
+                - relationship: project_milestone_id
+                  expression: project_milestone.project_milestone_id
+            relationship: owns
+      - object_mapping:
+          referent_mappings:
+            - relationship: project_id
+              expression: deliverable.project_id
+        children:
+          - object_mapping:
+              concept: Deliverable
+              referent_mappings:
+                - relationship: deliverable_id
+                  expression: deliverable.deliverable_id
+            relationship: produces
   - concept: Invoice
     object_mappings:
       - referent_mappings:
@@ -1028,6 +1221,10 @@ concept_mappings:
               concept: TicketStatus
               expression: ticket.ticket_status
             relationship: ticket_status
+          - object_mapping:
+              concept: TicketType
+              expression: ticket.ticket_type
+            relationship: ticket_type
   - concept: ProductEvent
     object_mappings:
       - referent_mappings:
@@ -1268,6 +1465,17 @@ concept_mappings:
                 - relationship: incident_id
                   expression: deployment.incident_id
             relationship: incident_id
+      - object_mapping:
+          referent_mappings:
+            - relationship: deployment_id
+              expression: deployment.deployment_id
+        children:
+          - object_mapping:
+              concept: Incident
+              referent_mappings:
+                - relationship: incident_id
+                  expression: deployment.incident_id
+            relationship: generates
   - concept: Vulnerability
     object_mappings:
       - referent_mappings:
@@ -1402,6 +1610,17 @@ concept_mappings:
                   concept: Date
                   expression: feature.release_date
                 relationship: release_date
+      - object_mapping:
+          referent_mappings:
+            - relationship: feature_id
+              expression: feature.feature_id
+        children:
+          - object_mapping:
+              concept: Release
+              referent_mappings:
+                - relationship: release_id
+                  expression: feature.release_id
+            relationship: belongs_to
   - concept: Release
     object_mappings:
       - referent_mappings:
@@ -1614,6 +1833,10 @@ concept_mappings:
               expression: onboarding_milestone.milestone_date
             relationship: milestone_date
           - object_mapping:
+              concept: Date
+              expression: onboarding_milestone.milestone_due_date
+            relationship: milestone_due_date
+          - object_mapping:
               concept: OnboardingMilestoneValue
               expression: onboarding_milestone.onboarding_milestone
             relationship: onboarding_milestone
@@ -1671,6 +1894,17 @@ concept_mappings:
                   concept: RevisionCount
                   expression: quote.revision_count
                 relationship: revision_count
+      - object_mapping:
+          referent_mappings:
+            - relationship: quote_id
+              expression: order.quote_id
+        children:
+          - object_mapping:
+              concept: Order
+              referent_mappings:
+                - relationship: order_id
+                  expression: order.order_id
+            relationship: converts_to
   - concept: Order
     object_mappings:
       - referent_mappings:
@@ -1928,6 +2162,17 @@ concept_mappings:
                   concept: RegistrationStage
                   expression: deal_registration.registration_stage
                 relationship: registration_stage
+      - object_mapping:
+          referent_mappings:
+            - relationship: registration_id
+              expression: deal_registration.registration_id
+        children:
+          - object_mapping:
+              concept: Opportunity
+              referent_mappings:
+                - relationship: opportunity_id
+                  expression: deal_registration.opportunity_id
+            relationship: converts_to
   - concept: Forecast
     object_mappings:
       - referent_mappings:

@@ -15,6 +15,7 @@
  *   primary   := number | string | true | false | period_days | point | "metric." id form? | "field." id | call | "(" expr ")"
  *   form      := ".O" | ".M"                  the metric's Operating or Market form (forms.O / forms.M)
  *   call      := agg "(" expr ("where" expr)? ")"
+ *              | "count_distinct" "(" expr ("," expr)+ ("where" expr)? ")"   distinct tuples (distinct pairs)
  *              | "percentile" "(" expr "," number ("where" expr)? ")"     p in (0, 1)
  *              | ("min" | "max") "(" expr "," expr ("," expr)* ")"     scalar least/greatest
  *              | ("abs" | "coalesce") "(" expr ("," expr)* ")"
@@ -22,6 +23,7 @@
  *              | "lag" "(" expr "," number unit ")"
  *              | "window" "(" expr "," number unit ")"   the n units ending at the period end (or the `at` point)
  *              | "all_time" "(" expr ")"                 no period filter; the where clause bounds the rows itself
+ *              | "total" "(" expr ")"                    inside a breakdown: the whole population, not grouped
  *   agg       := sum | count | count_distinct | avg | min | max | median
  *   point     := period_start | period_end
  *   unit      := day | week | month | quarter | year
@@ -42,6 +44,14 @@
  * its main formula (LTV-O reads `metric.gross_margin.O`); the metric must
  * declare that form. Graph analysis reports the bare metric id, so a form
  * reference adds the same edge as a plain one.
+ * `count_distinct(a, b)` counts distinct (a, b) tuples whose parts are all
+ * non-null; every field in it shares one dataset like any aggregate.
+ * A formulas.json entry with `"breakdown": "field.<id>"` is compiled once per
+ * value of that field: every aggregate is grouped by it (filtered to the value)
+ * except those under `total(...)`, which read the whole population, so
+ * `count(x) / total(count(x))` is a share of total. Each grouped aggregate,
+ * including those reached through metric references, must read a dataset that
+ * carries the field. `total()` outside a breakdown is a compile error.
  * `over cohort(key, point)` restricts every aggregate, including those inside
  * referenced metrics, to entities present at that point. `lag` and `cohort`
  * mark metrics that need a staged dataset to run as a single Ossie aggregate.
@@ -62,7 +72,8 @@ export type Node =
   | { kind: "field"; id: string }
   | { kind: "binary"; op: "+" | "-" | "*" | "/"; left: Node; right: Node }
   | { kind: "neg"; arg: Node }
-  | { kind: "agg"; fn: Aggregate; arg: Node; where?: Node }
+  /** `more` holds the further arguments of a multi-argument count_distinct (distinct tuples) */
+  | { kind: "agg"; fn: Aggregate; arg: Node; more?: Node[]; where?: Node }
   | { kind: "percentile"; arg: Node; p: number; where?: Node }
   | { kind: "period_days" }
   | { kind: "period_bound"; point: Point }
@@ -71,6 +82,7 @@ export type Node =
   | { kind: "lag"; arg: Node; n: number; unit: LagUnit }
   | { kind: "window"; arg: Node; n: number; unit: LagUnit }
   | { kind: "all_time"; arg: Node }
+  | { kind: "total"; arg: Node }
   | { kind: "at"; arg: Node; point: Point }
   | { kind: "compare"; op: "=" | "!=" | "<" | "<=" | ">" | ">="; left: Node; right: Node }
   | { kind: "in"; arg: Node; values: Node[]; negated: boolean }
@@ -256,10 +268,10 @@ export function parseFormula(src: string): Formula {
       expectOp(")");
       return { kind: fn, arg, n: Number(n.v), unit: unit.v as LagUnit };
     }
-    if (fn === "all_time") {
+    if (fn === "all_time" || fn === "total") {
       const arg = expr();
       expectOp(")");
-      return { kind: "all_time", arg };
+      return { kind: fn, arg };
     }
     if (fn === "in_period") {
       const arg = primary();
@@ -284,15 +296,21 @@ export function parseFormula(src: string): Formula {
     let where: Node | undefined;
     if (isKw("where")) { next(); where = expr(); }
     while (!where && isOp(",")) { next(); args.push(expr()); }
+    if (!where && args.length > 1 && isKw("where")) { next(); where = expr(); }
     expectOp(")");
-    if ((fn === "min" || fn === "max") && args.length > 1) return { kind: "scalar", fn, args };
+    if ((fn === "min" || fn === "max") && args.length > 1) {
+      if (where) throw new FormulaError(`${fn}() with several arguments does not take a where clause`, name.pos);
+      return { kind: "scalar", fn, args };
+    }
     if (fn === "abs" || fn === "coalesce") {
       if (where) throw new FormulaError(`${fn}() does not take a where clause`, name.pos);
       return { kind: "scalar", fn, args };
     }
     if ((AGGREGATES as readonly string[]).includes(fn)) {
-      if (args.length > 1) throw new FormulaError(`${fn}() takes one argument`, name.pos);
-      return { kind: "agg", fn: fn as Aggregate, arg: args[0], where };
+      if (args.length > 1 && fn !== "count_distinct") throw new FormulaError(`${fn}() takes one argument`, name.pos);
+      return args.length > 1
+        ? { kind: "agg", fn: fn as Aggregate, arg: args[0], more: args.slice(1), where }
+        : { kind: "agg", fn: fn as Aggregate, arg: args[0], where };
     }
     throw new FormulaError(`Unknown function '${fn}'`, name.pos);
   };
@@ -329,6 +347,12 @@ export interface FormulaAnalysis {
   metricPolarity: Record<string, Polarity[]>;
   /** True when the formula uses cohort or lag, so it compiles to a staged dataset. */
   staged: boolean;
+  /**
+   * Per metric ref: true when every occurrence is a baseline read, under an
+   * effective `at period_start` (the outermost `at` wins) or inside `lag(...)`.
+   * A ref read both as a baseline and live counts as live (false).
+   */
+  metricBaseline: Record<string, boolean>;
 }
 
 /** Maps the hand-maintained structuredFormulas roles onto polarity. */
@@ -341,15 +365,20 @@ export function analyzeFormula(f: Formula): FormulaAnalysis {
   const fields = new Set<string>();
   const polarity: Record<string, Set<Polarity>> = {};
   const roles: Record<string, InputRole> = {};
+  const baseline: Record<string, boolean> = {};
   let staged = !!f.cohort;
   if (f.cohort) fields.add(f.cohort.key);
 
   // role: the first division decides (numerator or denominator); otherwise the
   // position under + and - (addend, subtrahend), under * (component) or alone (base).
+  // point: the effective `at` (outermost wins); lagged: under a lag().
+  let point: Point | undefined;
+  let lagged = false;
   const walk = (n: Node, neg: boolean, role: InputRole, div: "numerator" | "denominator" | null): void => {
     const effective = div ?? role;
     switch (n.kind) {
       case "metric":
+        baseline[n.id] = (baseline[n.id] ?? true) && (lagged || point === "period_start");
         metrics.add(n.id);
         (polarity[n.id] ??= new Set()).add(neg ? "negative" : "positive");
         roles[n.id] ??= effective;
@@ -372,10 +401,28 @@ export function analyzeFormula(f: Formula): FormulaAnalysis {
         return;
       }
       case "neg": walk(n.arg, !neg, "subtrahend", div); return;
-      case "agg": case "percentile": walk(n.arg, neg, role, div); if (n.where) walk(n.where, false, role, div); return;
+      case "agg": case "percentile":
+        walk(n.arg, neg, role, div);
+        if (n.kind === "agg") n.more?.forEach((m) => walk(m, neg, role, div));
+        if (n.where) walk(n.where, false, role, div);
+        return;
       case "scalar": n.args.forEach((a) => walk(a, neg, role, div)); return;
-      case "lag": staged = true; walk(n.arg, neg, role, div); return;
-      case "at": case "to_date": case "window": case "all_time": walk(n.arg, neg, role, div); return;
+      case "lag": {
+        staged = true;
+        const outer = lagged;
+        lagged = true;
+        walk(n.arg, neg, role, div);
+        lagged = outer;
+        return;
+      }
+      case "at": {
+        const outer = point;
+        point = point ?? n.point;
+        walk(n.arg, neg, role, div);
+        point = outer;
+        return;
+      }
+      case "to_date": case "window": case "all_time": case "total": walk(n.arg, neg, role, div); return;
       case "compare": walk(n.left, false, role, div); walk(n.right, false, role, div); return;
       case "in": walk(n.arg, false, role, div); n.values.forEach((v) => walk(v, false, role, div)); return;
       case "isnull": case "not": walk(n.arg, false, role, div); return;
@@ -391,6 +438,7 @@ export function analyzeFormula(f: Formula): FormulaAnalysis {
     metricRoles: roles,
     metricPolarity: Object.fromEntries(Object.entries(polarity).map(([k, v]) => [k, [...v].sort()])),
     staged,
+    metricBaseline: baseline,
   };
 }
 
@@ -419,7 +467,19 @@ export function hasAggregate(n: Node): boolean {
     case "binary": case "logic": case "compare": return hasAggregate(n.left) || hasAggregate(n.right);
     case "in": return hasAggregate(n.arg) || n.values.some(hasAggregate);
     case "scalar": return n.args.some(hasAggregate);
-    case "neg": case "lag": case "window": case "all_time": case "at": case "to_date": case "not": case "isnull": return hasAggregate(n.arg);
+    case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": return hasAggregate(n.arg);
+    default: return false;
+  }
+}
+
+/** True when a metric reference sits somewhere under the node. */
+export function hasMetric(n: Node): boolean {
+  switch (n.kind) {
+    case "metric": return true;
+    case "binary": case "logic": case "compare": return hasMetric(n.left) || hasMetric(n.right);
+    case "in": return hasMetric(n.arg) || n.values.some(hasMetric);
+    case "scalar": return n.args.some(hasMetric);
+    case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": return hasMetric(n.arg);
     default: return false;
   }
 }
@@ -442,8 +502,11 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
       case "agg": case "percentile": {
         const fn = n.kind === "agg" ? n.fn : "percentile";
         if (inAgg) errors.push(`Nested aggregate ${fn}()`);
-        if (isBool(n.arg)) errors.push(`${fn}() argument must be numeric or a field`);
-        walk(n.arg, true);
+        const args = n.kind === "agg" ? [n.arg, ...(n.more ?? [])] : [n.arg];
+        for (const a of args) {
+          if (isBool(a)) errors.push(`${fn}() argument must be numeric or a field`);
+          walk(a, true);
+        }
         if (n.where) {
           if (!isBool(n.where)) errors.push(`${fn}() where-clause must be a condition`);
           walk(n.where, true);
@@ -462,6 +525,10 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
       case "window": case "all_time":
         if (inAgg) errors.push(`${n.kind}() cannot appear inside an aggregate`);
         else if (!hasAggregate(n.arg)) errors.push(`${n.kind}() must wrap an aggregate`);
+        walk(n.arg, inAgg); return;
+      case "total":
+        if (inAgg) errors.push("total() cannot appear inside an aggregate");
+        else if (!hasAggregate(n.arg) && !hasMetric(n.arg)) errors.push("total() must wrap an aggregate or a metric");
         walk(n.arg, inAgg); return;
       case "neg": case "lag": case "at": case "to_date": case "isnull": walk(n.arg, inAgg); return;
       case "in": walk(n.arg, inAgg); n.values.forEach((v) => walk(v, inAgg)); return;
@@ -483,9 +550,9 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
         case "compare": checkLit(n.left, n.right); checkLit(n.right, n.left); scan(n.left); scan(n.right); return;
         case "in": n.values.forEach((v) => checkLit(n.arg, v)); scan(n.arg); return;
         case "binary": case "logic": scan(n.left); scan(n.right); return;
-        case "agg": case "percentile": scan(n.arg); if (n.where) scan(n.where); return;
+        case "agg": case "percentile": scan(n.arg); if (n.kind === "agg") n.more?.forEach(scan); if (n.where) scan(n.where); return;
         case "scalar": n.args.forEach(scan); return;
-        case "neg": case "lag": case "window": case "all_time": case "at": case "to_date": case "not": case "isnull": scan(n.arg); return;
+        case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": scan(n.arg); return;
         default: return;
       }
     };
@@ -498,8 +565,8 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
         case "binary": case "logic": case "compare": fieldsOf(n.left, out); fieldsOf(n.right, out); return out;
         case "in": fieldsOf(n.arg, out); n.values.forEach((v) => fieldsOf(v, out)); return out;
         case "scalar": n.args.forEach((a) => fieldsOf(a, out)); return out;
-        case "neg": case "lag": case "window": case "all_time": case "at": case "to_date": case "not": case "isnull": return fieldsOf(n.arg, out);
-        case "agg": case "percentile": fieldsOf(n.arg, out); if (n.where) fieldsOf(n.where, out); return out;
+        case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": return fieldsOf(n.arg, out);
+        case "agg": case "percentile": fieldsOf(n.arg, out); if (n.kind === "agg") n.more?.forEach((m) => fieldsOf(m, out)); if (n.where) fieldsOf(n.where, out); return out;
         default: return out;
       }
     };
@@ -515,7 +582,7 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
       switch (n.kind) {
         case "binary": case "logic": case "compare": scanAgg(n.left); scanAgg(n.right); return;
         case "scalar": n.args.forEach(scanAgg); return;
-        case "neg": case "lag": case "window": case "all_time": case "at": case "to_date": case "not": case "isnull": scanAgg(n.arg); return;
+        case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": scanAgg(n.arg); return;
         default: return;
       }
     };

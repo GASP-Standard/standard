@@ -216,7 +216,9 @@ Billing Accuracy = Invoices without correction / Total invoices × 100
 Invoice Cycle Time = Median of (Invoice sent - Billing trigger date)
 ```
 
-**Target:** <5 business days
+Measured in calendar days. A business-day count reads lower when the interval spans a weekend or holiday, so state which one you report.
+
+**Target:** <7 calendar days (about 5 business days)
 
 ---
 
@@ -312,7 +314,7 @@ Bucket % = AR in bucket / Total AR × 100
 
 ### Bad Debt Rate
 
-See [Finance](finance.md#bad-debt-rate) for the canonical definition: write-offs over GAAP revenue.
+See [Finance](finance.md#bad-debt-rate) for the canonical definition: bad debt expense over GAAP revenue.
 
 ---
 
@@ -320,11 +322,18 @@ See [Finance](finance.md#bad-debt-rate) for the canonical definition: write-offs
 
 **Definition:** Breakdown of payments by method.
 
+**Formula:**
+```
+Method share = Invoiced amount in period paid by the method / Invoiced amount in period with a known method
+```
+
 **Methods:**
 - Credit card
 - ACH/Direct debit
 - Wire transfer
 - Check
+
+Payment Method Distribution is reported per method: one share for each method, and the shares sum to 100%.
 
 **What it tells you:** Collection risk and processing costs by method.
 

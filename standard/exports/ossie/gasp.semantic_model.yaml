@@ -480,20 +480,6 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of trial, active, churned, dormant
-      - name: engaged_contact_count
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: engaged_contact_count
-        description: Contacts engaged in the period
-        datatype: Integer
-      - name: has_exec_sponsor
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: has_exec_sponsor
-        description: An executive sponsor is identified
-        datatype: Boolean
       - name: last_active_date
         expression:
           dialects:
@@ -548,6 +534,200 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: "{\"kind\":\"snapshot\",\"activeWhen\":\"field.customer_status = 'active'\"}"
+  - name: contact
+    source: gasp.contact
+    description: "Contact. Kind: snapshot."
+    primary_key:
+      - contact_id
+      - snapshot_date
+    fields:
+      - name: customer_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        datatype: String
+      - name: contact_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: contact_id
+        description: "Contact identifier: a named person at a customer account"
+        datatype: String
+      - name: contact_role
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: contact_role
+        description: The contact's role in the account relationship
+        datatype: String
+        ai_context:
+          instructions: One of executive_sponsor, decision_maker, champion, day_to_day, procurement, other
+      - name: contact_engaged
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: contact_engaged
+        description: The contact had recorded activity (meeting, email, call, QBR) in the trailing 90 days
+        datatype: Boolean
+      - name: snapshot_date
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: snapshot_date
+        dimension:
+          is_time: true
+        description: As-of date of the snapshot row
+        datatype: Date
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"kind":"snapshot"}'
+  - name: plan
+    source: gasp.plan
+    description: "Plan. Kind: snapshot."
+    primary_key:
+      - plan_id
+      - snapshot_date
+    fields:
+      - name: plan_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: plan_id
+        description: Pricing plan identifier; the plan a subscription is priced by
+        datatype: String
+      - name: plan_name
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: plan_name
+        description: Plan display name (Starter, Pro, Enterprise)
+        datatype: String
+      - name: billing_period
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: billing_period
+        description: How often the plan bills
+        datatype: String
+        ai_context:
+          instructions: One of monthly, annual, multi_year
+      - name: snapshot_date
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: snapshot_date
+        dimension:
+          is_time: true
+        description: As-of date of the snapshot row
+        datatype: Date
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"kind":"snapshot"}'
+  - name: product
+    source: gasp.product
+    description: "Product. Kind: snapshot."
+    primary_key:
+      - product_id
+      - snapshot_date
+    fields:
+      - name: product_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: product_id
+        description: Product identifier; the purchasable unit a license grants access to
+        datatype: String
+      - name: product_name
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: product_name
+        description: Product display name
+        datatype: String
+      - name: product_line
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: product_line
+        description: Product family the product belongs to
+        datatype: String
+      - name: snapshot_date
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: snapshot_date
+        dimension:
+          is_time: true
+        description: As-of date of the snapshot row
+        datatype: Date
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"kind":"snapshot"}'
+  - name: license
+    source: gasp.license
+    description: "License. Kind: snapshot."
+    primary_key:
+      - license_id
+      - snapshot_date
+    fields:
+      - name: product_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: product_id
+        description: Product identifier; the purchasable unit a license grants access to
+        datatype: String
+      - name: license_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: license_id
+        description: "License identifier: one entitlement a subscription grants"
+        datatype: String
+      - name: license_status
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: license_status
+        description: Whether the license currently grants access
+        datatype: String
+        ai_context:
+          instructions: One of active, suspended, expired
+      - name: seats_purchased
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: seats_purchased
+        description: Seats the license entitles the customer to
+        datatype: Integer
+      - name: seats_assigned
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: seats_assigned
+        description: Seats assigned to a named user
+        datatype: Integer
+      - name: snapshot_date
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: snapshot_date
+        dimension:
+          is_time: true
+        description: As-of date of the snapshot row
+        datatype: Date
+      - name: subscription_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: subscription_id
+        description: Subscription identifier
+        datatype: String
+    custom_extensions:
+      - vendor_name: GASP
+        data: "{\"kind\":\"snapshot\",\"activeWhen\":\"field.license_status = 'active'\"}"
   - name: subscription
     source: gasp.subscription
     description: "Subscription. Kind: snapshot."
@@ -590,6 +770,13 @@ datasets:
               expression: forecast_renewal_amount
         description: Forecast renewal value
         datatype: Decimal
+      - name: plan_id
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: plan_id
+        description: Pricing plan identifier; the plan a subscription is priced by
+        datatype: String
       - name: mrr
         expression:
           dialects:
@@ -688,6 +875,15 @@ datasets:
               expression: advanced_to_next_stage
         description: Advanced one stage in the period
         datatype: Boolean
+      - name: channel
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: channel
+        description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
+        datatype: String
+        ai_context:
+          instructions: One of paid_ads, organic_search, email, events, content, referral, direct, other
       - name: close_date
         expression:
           dialects:
@@ -732,15 +928,6 @@ datasets:
               expression: lead_id
         description: Lead identifier
         datatype: String
-      - name: marketing_channel
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: marketing_channel
-        description: First-touch marketing channel
-        datatype: String
-        ai_context:
-          instructions: One of paid_ads, organic_search, email, events, content, referral, direct, other
       - name: marketing_influenced
         expression:
           dialects:
@@ -1034,6 +1221,15 @@ datasets:
               expression: hire_date
         description: Employment start date
         datatype: Date
+      - name: hire_source
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: hire_source
+        description: Recruiting channel the employee was hired through
+        datatype: String
+        ai_context:
+          instructions: One of referral, inbound, sourced, agency, internal, campus, other
       - name: is_high_performer
         expression:
           dialects:
@@ -1437,7 +1633,7 @@ datasets:
           dialects:
             - dialect: OSSIE_SQL_2026
               expression: channel
-        description: Campaign channel
+        description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
         datatype: String
         ai_context:
           instructions: One of paid_ads, organic_search, email, events, content, referral, direct, other
@@ -1634,6 +1830,15 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of open, pending, resolved, closed
+      - name: ticket_type
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: ticket_type
+        description: Ticket category the agent or the help desk assigns
+        datatype: String
+        ai_context:
+          instructions: One of how_to, bug, billing, account, feature_request, other
     custom_extensions:
       - vendor_name: GASP
         data: '{"kind":"event"}'
@@ -2607,6 +2812,13 @@ datasets:
         dimension:
           is_time: true
         description: Date the milestone was reached
+        datatype: Date
+      - name: milestone_due_date
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: milestone_due_date
+        description: Date the milestone is due under the onboarding plan. A planned milestone carries it before milestone_date is set
         datatype: Date
       - name: onboarding_id
         expression:
@@ -3733,8 +3945,48 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_rule_of_40","reason":"lag"}'
+  - name: gasp_staged_gasp_partner_tier_distribution
+    source: SELECT p.period_start, p.period_end, _d.partner_tier AS partner_tier, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_tier = _d.partner_tier) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'registered' AS partner_tier UNION ALL SELECT 'silver' AS partner_tier UNION ALL SELECT 'gold' AS partner_tier UNION ALL SELECT 'platinum' AS partner_tier) _d
+    description: "Staged dataset for gasp_partner_tier_distribution: one row per reporting period and partner_tier value holding the metric value, computed by the GASP compiled query (needs total)."
+    primary_key:
+      - period_start
+      - partner_tier
+    fields:
+      - name: period_start
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: partner_tier
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: partner_tier
+        datatype: String
+        description: Partner programme tier
+      - name: value
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: value
+        datatype: Decimal
+        description: Partner Tier Distribution for the period and partner_tier
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"staged":true,"for":"gasp_partner_tier_distribution","reason":"total"}'
   - name: gasp_staged_gasp_partner_activation_rate
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((opportunity_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active'), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND ((partner_recruited_date >= p.period_start AND partner_recruited_date <= p.period_end) AND partner_status = 'active')) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_recruited_date >= p.period_start AND partner_recruited_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_partner_activation_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -3926,7 +4178,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_partner_revenue_growth","reason":"lag"}'
   - name: gasp_staged_gasp_average_partner_revenue
-    source: SELECT p.period_start, p.period_end, ((CAST(((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST(((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_average_partner_revenue: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -4182,7 +4434,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_cost_of_partner_acquisition","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_partner_lifetime_value
-    source: SELECT p.period_start, p.period_end, ((CAST(((CAST(((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS DOUBLE PRECISION) / NULLIF(((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active'), 0))), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST(((CAST(((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS DOUBLE PRECISION) / NULLIF(((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active'), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_partner_lifetime_value: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start, period bound in filter)."
     primary_key:
       - period_start
@@ -4246,7 +4498,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_partner_roi","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_marketplace_revenue
-    source: SELECT p.period_start, p.period_end, ((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (((marketing_channel = 'referral' AND partner_sourced = TRUE) AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (((channel = 'referral' AND partner_sourced = TRUE) AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_marketplace_revenue: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -4278,7 +4530,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_marketplace_revenue","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_marketplace_as_of_revenue
-    source: SELECT p.period_start, p.period_end, ((CAST(((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (((marketing_channel = 'referral' AND partner_sourced = TRUE) AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT SUM(revenue) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST(((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (((channel = 'referral' AND partner_sourced = TRUE) AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT SUM(revenue) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_marketplace_as_of_revenue: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -4310,7 +4562,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_marketplace_as_of_revenue","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_pipeline_velocity
-    source: SELECT p.period_start, p.period_end, ((CAST((((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND opportunity_stage NOT IN ('closed_won', 'closed_lost')) * ((CAST((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage IN ('closed_won', 'closed_lost') AND (close_date >= p.period_start AND close_date <= p.period_end))), 0)))) * ((CAST((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))), 0)))) AS DOUBLE PRECISION) / NULLIF(((SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (close_date - opportunity_created_date)) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)))), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST((((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND opportunity_stage NOT IN ('closed_won', 'closed_lost')) * ((CAST((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage IN ('closed_won', 'closed_lost') AND (close_date >= p.period_start AND close_date <= p.period_end))), 0)))) * ((CAST((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))), 0)))) AS DOUBLE PRECISION) / NULLIF(((SELECT AVG((close_date - opportunity_created_date)) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_pipeline_velocity: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -4470,7 +4722,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_average_deal_size","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_sales_cycle
-    source: SELECT p.period_start, p.period_end, ((SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (close_date - opportunity_created_date)) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((SELECT AVG((close_date - opportunity_created_date)) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_sales_cycle: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -4501,9 +4753,9 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_sales_cycle","reason":"period bound in filter"}'
-  - name: gasp_staged_gasp_sales_cycle_average
-    source: SELECT p.period_start, p.period_end, ((SELECT AVG((close_date - opportunity_created_date)) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_sales_cycle_average: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+  - name: gasp_staged_gasp_sales_cycle_median
+    source: SELECT p.period_start, p.period_end, ((SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (close_date - opportunity_created_date)) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
+    description: "Staged dataset for gasp_sales_cycle_median: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
     fields:
@@ -4529,10 +4781,10 @@ datasets:
             - dialect: OSSIE_SQL_2026
               expression: value
         datatype: Decimal
-        description: Sales Cycle Length, average variant for the period
+        description: Sales Cycle Length, median variant for the period
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_sales_cycle_average","reason":"period bound in filter"}'
+        data: '{"staged":true,"for":"gasp_sales_cycle_median","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_services_attach_rate
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((includes_services = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_services_attach_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -4694,7 +4946,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_on_budget_delivery","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_project_duration_accuracy
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM((target_date - project_start_date)) FROM gasp.project WHERE snapshot_date = p.period_end AND (project_completion_date >= p.period_start AND project_completion_date <= p.period_end)) AS DOUBLE PRECISION) / NULLIF((SELECT SUM((project_completion_date - project_start_date)) FROM gasp.project WHERE snapshot_date = p.period_end AND (project_completion_date >= p.period_start AND project_completion_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((SELECT AVG((CAST((target_date - project_start_date) AS DOUBLE PRECISION) / NULLIF((project_completion_date - project_start_date), 0))) FROM gasp.project WHERE snapshot_date = p.period_end AND (project_completion_date >= p.period_start AND project_completion_date <= p.period_end))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_project_duration_accuracy: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -4917,6 +5169,46 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_ticket_backlog","reason":"to_date"}'
+  - name: gasp_staged_gasp_ticket_distribution_by_type
+    source: SELECT p.period_start, p.period_end, _d.ticket_type AS ticket_type, ((CAST((SELECT COUNT(DISTINCT ticket_id) FROM gasp.ticket WHERE created_at >= p.period_start AND created_at <= p.period_end AND ticket_type = _d.ticket_type) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT ticket_id) FROM gasp.ticket WHERE created_at >= p.period_start AND created_at <= p.period_end)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'how_to' AS ticket_type UNION ALL SELECT 'bug' AS ticket_type UNION ALL SELECT 'billing' AS ticket_type UNION ALL SELECT 'account' AS ticket_type UNION ALL SELECT 'feature_request' AS ticket_type UNION ALL SELECT 'other' AS ticket_type) _d
+    description: "Staged dataset for gasp_ticket_distribution_by_type: one row per reporting period and ticket_type value holding the metric value, computed by the GASP compiled query (needs total)."
+    primary_key:
+      - period_start
+      - ticket_type
+    fields:
+      - name: period_start
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: ticket_type
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: ticket_type
+        datatype: String
+        description: Ticket category the agent or the help desk assigns
+      - name: value
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: value
+        datatype: Decimal
+        description: Ticket Distribution by Type for the period and ticket_type
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"staged":true,"for":"gasp_ticket_distribution_by_type","reason":"total"}'
   - name: gasp_staged_gasp_logo_retention_rate
     source: SELECT p.period_start, p.period_end, ((1 - ((CAST((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn') AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'), 0))))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_logo_retention_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -5686,10 +5978,11 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_collection_effectiveness_index_cei","reason":"at period_start"}'
   - name: gasp_staged_gasp_payment_method_distribution
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method = 'credit_card')) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method IS NOT NULL)), 0))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_payment_method_distribution: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    source: SELECT p.period_start, p.period_end, _d.payment_method AS payment_method, ((CAST((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND (invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method = _d.payment_method) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method IS NOT NULL)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'credit_card' AS payment_method UNION ALL SELECT 'ach' AS payment_method UNION ALL SELECT 'wire' AS payment_method UNION ALL SELECT 'check' AS payment_method UNION ALL SELECT 'other' AS payment_method) _d
+    description: "Staged dataset for gasp_payment_method_distribution: one row per reporting period and payment_method value holding the metric value, computed by the GASP compiled query (needs total, period bound in filter)."
     primary_key:
       - period_start
+      - payment_method
     fields:
       - name: period_start
         expression:
@@ -5707,112 +6000,23 @@ datasets:
               expression: period_end
         datatype: Date
         description: Last day of the reporting period
+      - name: payment_method
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: payment_method
+        datatype: String
+        description: Payment method
       - name: value
         expression:
           dialects:
             - dialect: OSSIE_SQL_2026
               expression: value
         datatype: Decimal
-        description: Payment Method Distribution for the period
+        description: Payment Method Distribution for the period and payment_method
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_payment_method_distribution","reason":"period bound in filter"}'
-  - name: gasp_staged_gasp_payment_method_distribution_ach
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method = 'ach')) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method IS NOT NULL)), 0))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_payment_method_distribution_ach: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
-    primary_key:
-      - period_start
-    fields:
-      - name: period_start
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
-        dimension:
-          is_time: true
-        datatype: Date
-        description: First day of the reporting period
-      - name: period_end
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
-        datatype: Date
-        description: Last day of the reporting period
-      - name: value
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
-        datatype: Decimal
-        description: Payment Method Distribution, ach variant for the period
-    custom_extensions:
-      - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_payment_method_distribution_ach","reason":"period bound in filter"}'
-  - name: gasp_staged_gasp_payment_method_distribution_wire
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method = 'wire')) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method IS NOT NULL)), 0))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_payment_method_distribution_wire: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
-    primary_key:
-      - period_start
-    fields:
-      - name: period_start
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
-        dimension:
-          is_time: true
-        datatype: Date
-        description: First day of the reporting period
-      - name: period_end
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
-        datatype: Date
-        description: Last day of the reporting period
-      - name: value
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
-        datatype: Decimal
-        description: Payment Method Distribution, wire variant for the period
-    custom_extensions:
-      - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_payment_method_distribution_wire","reason":"period bound in filter"}'
-  - name: gasp_staged_gasp_payment_method_distribution_check
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method = 'check')) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(invoice_amount) FROM gasp.invoice WHERE snapshot_date = p.period_end AND ((invoice_date >= p.period_start AND invoice_date <= p.period_end) AND payment_method IS NOT NULL)), 0))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_payment_method_distribution_check: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
-    primary_key:
-      - period_start
-    fields:
-      - name: period_start
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
-        dimension:
-          is_time: true
-        datatype: Date
-        description: First day of the reporting period
-      - name: period_end
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
-        datatype: Date
-        description: Last day of the reporting period
-      - name: value
-        expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
-        datatype: Decimal
-        description: Payment Method Distribution, check variant for the period
-    custom_extensions:
-      - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_payment_method_distribution_check","reason":"period bound in filter"}'
+        data: '{"staged":true,"for":"gasp_payment_method_distribution","reason":"total"}'
   - name: gasp_staged_gasp_deferred_revenue_balance
     source: SELECT p.period_start, p.period_end, (((SELECT SUM(billed_amount) FROM gasp.revenue_schedule WHERE period_start <= p.period_end) - (SELECT SUM(recognized_revenue) FROM gasp.revenue_schedule WHERE period_start <= p.period_end))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_deferred_revenue_balance: one row per reporting period holding the metric value, computed by the GASP compiled query (needs to_date)."
@@ -6134,7 +6338,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_activation_rate","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_time_to_feature_adoption
-    source: SELECT p.period_start, p.period_end, ((SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (first_use_date - release_date)) FROM gasp.feature WHERE snapshot_date = p.period_end AND (release_date >= p.period_start AND release_date <= p.period_end))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (first_use_date - signup_date)) FROM gasp.user WHERE snapshot_date = p.period_end AND (first_use_date >= p.period_start AND first_use_date <= p.period_end))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_time_to_feature_adoption: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -6165,6 +6369,38 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_time_to_feature_adoption","reason":"period bound in filter"}'
+  - name: gasp_staged_gasp_breadth_of_adoption
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(*) FROM (SELECT DISTINCT customer_id, feature_id FROM gasp.product_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND customer_id IS NOT NULL AND feature_id IS NOT NULL) _pairs) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.product_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND product_event_type = 'qualifying')), 0))) AS value FROM gasp.period_spine p
+    description: "Staged dataset for gasp_breadth_of_adoption: one row per reporting period holding the metric value, computed by the GASP compiled query (needs distinct pair)."
+    primary_key:
+      - period_start
+    fields:
+      - name: period_start
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: value
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: value
+        datatype: Decimal
+        description: Breadth of Adoption for the period
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"staged":true,"for":"gasp_breadth_of_adoption","reason":"distinct pair"}'
   - name: gasp_staged_gasp_user_retention_day_n
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE ((product_event_type = 'qualifying' AND (signup_date >= p.period_start AND signup_date <= p.period_end)) AND (event_date - signup_date) = 30)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT user_id) FROM gasp.user WHERE snapshot_date = p.period_end AND (signup_date >= p.period_start AND signup_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_user_retention_day_n: one row per reporting period holding the metric value, computed by the GASP compiled query (needs all_time, period bound in filter)."
@@ -7061,6 +7297,46 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_cost_per_hire","reason":"period bound in filter"}'
+  - name: gasp_staged_gasp_source_of_hire
+    source: SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d
+    description: "Staged dataset for gasp_source_of_hire: one row per reporting period and hire_source value holding the metric value, computed by the GASP compiled query (needs total, period bound in filter)."
+    primary_key:
+      - period_start
+      - hire_source
+    fields:
+      - name: period_start
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: hire_source
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: hire_source
+        datatype: String
+        description: Recruiting channel the employee was hired through
+      - name: value
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: value
+        datatype: Decimal
+        description: Source of Hire for the period and hire_source
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"staged":true,"for":"gasp_source_of_hire","reason":"total"}'
   - name: gasp_staged_gasp_diversity_hiring_rate
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND ((underrepresented_group = TRUE AND hire_date >= p.period_start) AND hire_date <= p.period_end)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_diversity_hiring_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -7349,6 +7625,46 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_lvr","reason":"lag"}'
+  - name: gasp_staged_gasp_cac_by_channel
+    source: SELECT p.period_start, p.period_end, _d.channel AS channel, ((CAST((SELECT SUM(ad_spend) FROM gasp.campaign WHERE period_start >= p.period_start AND period_start <= p.period_end AND channel = _d.channel) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end)) AND channel = _d.channel), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'paid_ads' AS channel UNION ALL SELECT 'organic_search' AS channel UNION ALL SELECT 'email' AS channel UNION ALL SELECT 'events' AS channel UNION ALL SELECT 'content' AS channel UNION ALL SELECT 'referral' AS channel UNION ALL SELECT 'direct' AS channel UNION ALL SELECT 'other' AS channel) _d
+    description: "Staged dataset for gasp_cac_by_channel: one row per reporting period and channel value holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    primary_key:
+      - period_start
+      - channel
+    fields:
+      - name: period_start
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: channel
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: channel
+        datatype: String
+        description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
+      - name: value
+        expression:
+          dialects:
+            - dialect: OSSIE_SQL_2026
+              expression: value
+        datatype: Decimal
+        description: CAC by Channel for the period and channel
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"staged":true,"for":"gasp_cac_by_channel","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_cpl
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(cost) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (cost_function = 'gtm' AND cost_centre = 'marketing')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT lead_id) FROM gasp.lead WHERE snapshot_date = p.period_end AND (lead_created_date >= p.period_start AND lead_created_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_cpl: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -7478,7 +7794,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_marketing_influenced_pipelinerevenue_revenue","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_paid_media_efficiency_roas
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((marketing_channel = 'paid_ads' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(ad_spend) FROM gasp.campaign WHERE period_start >= p.period_start AND period_start <= p.period_end AND channel = 'paid_ads'), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT SUM(opportunity_amount) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((channel = 'paid_ads' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT SUM(ad_spend) FROM gasp.campaign WHERE period_start >= p.period_start AND period_start <= p.period_end AND channel = 'paid_ads'), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_paid_media_efficiency_roas: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -7510,8 +7826,8 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_paid_media_efficiency_roas","reason":"period bound in filter"}'
   - name: gasp_staged_gasp_onboarding_milestone_completion_rate
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding_milestone WHERE milestone_date >= p.period_start AND milestone_date <= p.period_end AND onboarding_milestone = 'go_live') AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_start_date >= p.period_start AND onboarding_start_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_onboarding_milestone_completion_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (((milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end) AND milestone_date IS NOT NULL) AND milestone_date <= p.period_end)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
+    description: "Staged dataset for gasp_onboarding_milestone_completion_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs all_time, period bound in filter)."
     primary_key:
       - period_start
     fields:
@@ -7540,7 +7856,7 @@ datasets:
         description: Milestone Completion Rate for the period
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_onboarding_milestone_completion_rate","reason":"period bound in filter"}'
+        data: '{"staged":true,"for":"gasp_onboarding_milestone_completion_rate","reason":"all_time"}'
   - name: gasp_staged_gasp_professional_services_milestone_completion_rate
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_professional_services_milestone_completion_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -7696,6 +8012,33 @@ relationships:
     to_columns:
       - customer_id
       - snapshot_date
+  - name: contact_customer_id
+    from: contact
+    to: customer
+    from_columns:
+      - customer_id
+      - snapshot_date
+    to_columns:
+      - customer_id
+      - snapshot_date
+  - name: license_product_id
+    from: license
+    to: product
+    from_columns:
+      - product_id
+      - snapshot_date
+    to_columns:
+      - product_id
+      - snapshot_date
+  - name: license_subscription_id
+    from: license
+    to: subscription
+    from_columns:
+      - subscription_id
+      - snapshot_date
+    to_columns:
+      - subscription_id
+      - snapshot_date
   - name: subscription_customer_id
     from: subscription
     to: customer
@@ -7704,6 +8047,15 @@ relationships:
       - snapshot_date
     to_columns:
       - customer_id
+      - snapshot_date
+  - name: subscription_plan_id
+    from: subscription
+    to: plan
+    from_columns:
+      - plan_id
+      - snapshot_date
+    to_columns:
+      - plan_id
       - snapshot_date
   - name: opportunity_customer_id
     from: opportunity
@@ -7737,10 +8089,8 @@ relationships:
     to: sales_rep
     from_columns:
       - rep_id
-      - snapshot_date
     to_columns:
       - rep_id
-      - period_start
   - name: user_customer_id
     from: user
     to: customer
@@ -7755,10 +8105,8 @@ relationships:
     to: consultant
     from_columns:
       - consultant_id
-      - snapshot_date
     to_columns:
       - consultant_id
-      - period_start
   - name: project_customer_id
     from: project
     to: customer
@@ -7886,10 +8234,8 @@ relationships:
     to: consultant
     from_columns:
       - consultant_id
-      - entry_date
     to_columns:
       - consultant_id
-      - period_start
   - name: time_entry_project_id
     from: time_entry
     to: project
@@ -7977,6 +8323,20 @@ metrics:
     custom_extensions:
       - vendor_name: GASP
         data: "{\"gasp_id\":\"mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.mrr where field.subscription_status = 'active') at period_end\"}"
+  - name: gasp_mrr_by_plan
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: SUM(CASE WHEN subscription.subscription_status = 'active' THEN subscription.mrr ELSE 0 END)
+    description: MRR (Monthly Recurring Revenue), by_plan breakdown. The total predictable revenue from active subscriptions, normalized to a monthly value.
+    datatype: Decimal
+    ai_context:
+      synonyms:
+        - MRR
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/mrr-monthly-recurring-revenue. Broken down by plan_id: report one value per plan_id by grouping on the plan_id field of each dataset the expression reads. Reads the subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+    custom_extensions:
+      - vendor_name: GASP
+        data: "{\"gasp_id\":\"mrr\",\"gasp_version\":\"1\",\"variant\":\"by_plan\",\"unit\":\"currency\",\"formula\":\"sum(field.mrr where field.subscription_status = 'active') at period_end\",\"gasp_breakdown\":\"plan_id\"}"
   - name: gasp_arr
     expression:
       dialects:
@@ -8439,14 +8799,14 @@ metrics:
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: (CAST(COUNT(DISTINCT CASE WHEN partner.partner_tier = 'gold' THEN partner.partner_id END) AS DECIMAL) / NULLIF(COUNT(DISTINCT partner.partner_id), 0))
+          expression: SUM(gasp_staged_gasp_partner_tier_distribution.value)
     description: Partner Tier Distribution. Breakdown of partners by program tier.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/partner-tier-distribution. Reads the partner snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/partner-tier-distribution. Broken down by partner_tier: report one value per partner_tier. Staged (total): gasp_staged_gasp_partner_tier_distribution holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"partner_tier_distribution\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.partner_id where field.partner_tier = 'gold') / count_distinct(field.partner_id)\"}"
+        data: '{"gasp_id":"partner_tier_distribution","gasp_version":"1","unit":"percent","formula":"count_distinct(field.partner_id) / total(count_distinct(field.partner_id))","gasp_breakdown":"partner_tier","staged":true}'
   - name: gasp_partner_activation_rate
     expression:
       dialects:
@@ -8458,7 +8818,7 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/partner-activation-rate. Staged (period bound in filter): gasp_staged_gasp_partner_activation_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"partner_activation_rate\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.partner_id where field.opportunity_id is not null and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_end\",\"staged\":true}"
+        data: "{\"gasp_id\":\"partner_activation_rate\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.partner_id where in_period(field.partner_recruited_date) and field.partner_status = 'active') at period_end / count_distinct(field.partner_id where in_period(field.partner_recruited_date)) at period_end\",\"staged\":true}"
   - name: gasp_partner_churn_rate
     expression:
       dialects:
@@ -8530,7 +8890,7 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/average-partner-revenue. Staged (period bound in filter): gasp_staged_gasp_average_partner_revenue holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"average_partner_revenue","gasp_version":"1","unit":"currency","formula":"metric.partner_sourced_revenue / metric.total_active_partners","staged":true}'
+        data: '{"gasp_id":"average_partner_revenue","gasp_version":"1","unit":"currency","formula":"metric.partner_influenced_revenue / metric.total_active_partners","staged":true}'
   - name: gasp_partner_deal_registration_volume
     expression:
       dialects:
@@ -8698,7 +9058,7 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/marketplace-revenue. Staged (period bound in filter): gasp_staged_gasp_marketplace_revenue holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"marketplace_revenue\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.opportunity_amount where field.marketing_channel = 'referral' and field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
+        data: "{\"gasp_id\":\"marketplace_revenue\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.opportunity_amount where field.channel = 'referral' and field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
   - name: gasp_marketplace_as_of_revenue
     expression:
       dialects:
@@ -8739,14 +9099,14 @@ metrics:
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: (CAST((SUM(CASE WHEN opportunity.opportunity_stage NOT IN ('closed_won', 'closed_lost') THEN (opportunity.opportunity_amount * opportunity.stage_probability) ELSE 0 END)) AS DECIMAL) / NULLIF(SUM(sales_rep.quota), 0))
-    description: Pipeline Coverage Ratio. The ratio of pipeline value to quota for the period.
+          expression: (CAST(SUM(CASE WHEN opportunity.opportunity_stage NOT IN ('closed_won', 'closed_lost') THEN opportunity.opportunity_amount ELSE 0 END) AS DECIMAL) / NULLIF(SUM(sales_rep.quota), 0))
+    description: Pipeline Coverage Ratio. The ratio of unweighted pipeline value to quota for the period.
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/pipeline-coverage-ratio. Reads the opportunity snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"pipeline_coverage","gasp_version":"1","unit":"ratio","formula":"metric.pipeline_value / sum(field.quota)"}'
+        data: "{\"gasp_id\":\"pipeline_coverage\",\"gasp_version\":\"1\",\"unit\":\"ratio\",\"formula\":\"sum(field.opportunity_amount where field.opportunity_stage not in ('closed_won', 'closed_lost')) / sum(field.quota)\"}"
   - name: gasp_pipeline_velocity
     expression:
       dialects:
@@ -8832,19 +9192,19 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/sales-cycle-length. Staged (period bound in filter): gasp_staged_gasp_sales_cycle holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"sales_cycle\",\"gasp_version\":\"1\",\"unit\":\"days\",\"formula\":\"median(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
-  - name: gasp_sales_cycle_average
+        data: "{\"gasp_id\":\"sales_cycle\",\"gasp_version\":\"1\",\"unit\":\"days\",\"formula\":\"avg(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
+  - name: gasp_sales_cycle_median
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_sales_cycle_average.value)
-    description: Sales Cycle Length, average variant. The average time from opportunity creation to close.
+          expression: SUM(gasp_staged_gasp_sales_cycle_median.value)
+    description: Sales Cycle Length, median variant. The average time from opportunity creation to close.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/sales-cycle-length. Staged (period bound in filter): gasp_staged_gasp_sales_cycle_average holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/sales-cycle-length. Staged (period bound in filter): gasp_staged_gasp_sales_cycle_median holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"sales_cycle\",\"gasp_version\":\"1\",\"variant\":\"average\",\"unit\":\"days\",\"formula\":\"avg(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
+        data: "{\"gasp_id\":\"sales_cycle\",\"gasp_version\":\"1\",\"variant\":\"median\",\"unit\":\"days\",\"formula\":\"median(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
   - name: gasp_quota_attainment
     expression:
       dialects:
@@ -9108,7 +9468,7 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/professional-services/project-duration-accuracy. Staged (period bound in filter): gasp_staged_gasp_project_duration_accuracy holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"project_duration_accuracy","gasp_version":"1","unit":"percent","formula":"sum(field.target_date - field.project_start_date where in_period(field.project_completion_date)) / sum(field.project_completion_date - field.project_start_date where in_period(field.project_completion_date))","staged":true}'
+        data: '{"gasp_id":"project_duration_accuracy","gasp_version":"1","unit":"percent","formula":"avg((field.target_date - field.project_start_date) / (field.project_completion_date - field.project_start_date) where in_period(field.project_completion_date))","staged":true}'
   - name: gasp_project_csat
     expression:
       dialects:
@@ -9265,6 +9625,18 @@ metrics:
     custom_extensions:
       - vendor_name: GASP
         data: "{\"gasp_id\":\"ticket_backlog\",\"gasp_version\":\"1\",\"unit\":\"count\",\"formula\":\"count_distinct(field.ticket_id where field.ticket_status in ('open', 'pending')) at period_end\",\"staged\":true}"
+  - name: gasp_ticket_distribution_by_type
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: SUM(gasp_staged_gasp_ticket_distribution_by_type.value)
+    description: Ticket Distribution by Type. Breakdown of tickets by category.
+    datatype: Decimal
+    ai_context:
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/support/ticket-distribution-by-type. Broken down by ticket_type: report one value per ticket_type. Staged (total): gasp_staged_gasp_ticket_distribution_by_type holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"gasp_id":"ticket_distribution_by_type","gasp_version":"1","unit":"percent","formula":"count_distinct(field.ticket_id) / total(metric.ticket_volume)","gasp_breakdown":"ticket_type","staged":true}'
   - name: gasp_frt
     expression:
       dialects:
@@ -9497,26 +9869,26 @@ metrics:
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: (CAST(COUNT(DISTINCT CASE WHEN customer.has_exec_sponsor = TRUE THEN customer.customer_id END) AS DECIMAL) / NULLIF(COUNT(DISTINCT CASE WHEN customer.customer_status = 'active' THEN customer.customer_id END), 0))
-    description: Executive Sponsor Coverage. The percentage of accounts with an identified and engaged executive sponsor.
+          expression: (CAST(COUNT(DISTINCT CASE WHEN (contact.contact_role = 'executive_sponsor' AND contact.contact_engaged = TRUE) THEN contact.customer_id END) AS DECIMAL) / NULLIF(COUNT(DISTINCT CASE WHEN customer.customer_status = 'active' THEN customer.customer_id END), 0))
+    description: Executive Sponsor Coverage. The percentage of active accounts with an engaged contact whose role is executive sponsor.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/customer-success/executive-sponsor-coverage. Reads the customer snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/customer-success/executive-sponsor-coverage. Reads the contact and customer snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"executive_sponsor_coverage\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.customer_id where field.has_exec_sponsor = true) / count_distinct(field.customer_id where field.customer_status = 'active')\"}"
+        data: "{\"gasp_id\":\"executive_sponsor_coverage\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.customer_id where field.contact_role = 'executive_sponsor' and field.contact_engaged = true) / count_distinct(field.customer_id where field.customer_status = 'active')\"}"
   - name: gasp_contact_coverage
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: (CAST(SUM(customer.engaged_contact_count) AS DECIMAL) / NULLIF(COUNT(DISTINCT customer.customer_id), 0))
-    description: Contact Coverage. Average number of engaged contacts per account.
+          expression: (CAST(COUNT(DISTINCT CASE WHEN contact.contact_engaged = TRUE THEN contact.contact_id END) AS DECIMAL) / NULLIF(COUNT(DISTINCT CASE WHEN customer.customer_status = 'active' THEN customer.customer_id END), 0))
+    description: Contact Coverage. Average number of engaged contacts per active account.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/customer-success/contact-coverage. Reads the customer snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/customer-success/contact-coverage. Reads the contact and customer snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"contact_coverage","gasp_version":"1","unit":"ratio","formula":"sum(field.engaged_contact_count) / count_distinct(field.customer_id)"}'
+        data: "{\"gasp_id\":\"contact_coverage\",\"gasp_version\":\"1\",\"unit\":\"ratio\",\"formula\":\"count_distinct(field.contact_id where field.contact_engaged = true) / count_distinct(field.customer_id where field.customer_status = 'active')\"}"
   - name: gasp_expansion_rate
     expression:
       dialects:
@@ -9529,6 +9901,30 @@ metrics:
     custom_extensions:
       - vendor_name: GASP
         data: '{"gasp_id":"expansion_rate","gasp_version":"1","unit":"percent","formula":"metric.expansion_mrr / metric.mrr at period_start","staged":true}'
+  - name: gasp_license_utilization
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: (CAST(SUM(CASE WHEN license.license_status = 'active' THEN license.seats_assigned ELSE 0 END) AS DECIMAL) / NULLIF(SUM(CASE WHEN license.license_status = 'active' THEN license.seats_purchased ELSE 0 END), 0))
+    description: License Utilization. The share of purchased seats that are assigned to a user, across active licenses at period end.
+    datatype: Decimal
+    ai_context:
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/customer-success/license-utilization. Reads the license snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+    custom_extensions:
+      - vendor_name: GASP
+        data: "{\"gasp_id\":\"license_utilization\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"sum(field.seats_assigned where field.license_status = 'active') / sum(field.seats_purchased where field.license_status = 'active')\"}"
+  - name: gasp_license_utilization_by_product
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: (CAST(SUM(CASE WHEN license.license_status = 'active' THEN license.seats_assigned ELSE 0 END) AS DECIMAL) / NULLIF(SUM(CASE WHEN license.license_status = 'active' THEN license.seats_purchased ELSE 0 END), 0))
+    description: License Utilization, by_product breakdown. The share of purchased seats that are assigned to a user, across active licenses at period end.
+    datatype: Decimal
+    ai_context:
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/customer-success/license-utilization. Broken down by product_id: report one value per product_id by grouping on the product_id field of each dataset the expression reads. Reads the license snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+    custom_extensions:
+      - vendor_name: GASP
+        data: "{\"gasp_id\":\"license_utilization\",\"gasp_version\":\"1\",\"variant\":\"by_product\",\"unit\":\"percent\",\"formula\":\"sum(field.seats_assigned where field.license_status = 'active') / sum(field.seats_purchased where field.license_status = 'active')\",\"gasp_breakdown\":\"product_id\"}"
   - name: gasp_upsell_rate
     expression:
       dialects:
@@ -9915,46 +10311,10 @@ metrics:
     description: Payment Method Distribution. Breakdown of payments by method.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/revops/payment-method-distribution. Staged (period bound in filter): gasp_staged_gasp_payment_method_distribution holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/revops/payment-method-distribution. Broken down by payment_method: report one value per payment_method. Staged (total): gasp_staged_gasp_payment_method_distribution holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"payment_method_distribution\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'credit_card') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)\",\"staged\":true}"
-  - name: gasp_payment_method_distribution_ach
-    expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_payment_method_distribution_ach.value)
-    description: Payment Method Distribution, ach variant. Breakdown of payments by method.
-    datatype: Decimal
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/revops/payment-method-distribution. Staged (period bound in filter): gasp_staged_gasp_payment_method_distribution_ach holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
-      - vendor_name: GASP
-        data: "{\"gasp_id\":\"payment_method_distribution\",\"gasp_version\":\"1\",\"variant\":\"ach\",\"unit\":\"percent\",\"formula\":\"sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'ach') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)\",\"staged\":true}"
-  - name: gasp_payment_method_distribution_wire
-    expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_payment_method_distribution_wire.value)
-    description: Payment Method Distribution, wire variant. Breakdown of payments by method.
-    datatype: Decimal
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/revops/payment-method-distribution. Staged (period bound in filter): gasp_staged_gasp_payment_method_distribution_wire holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
-      - vendor_name: GASP
-        data: "{\"gasp_id\":\"payment_method_distribution\",\"gasp_version\":\"1\",\"variant\":\"wire\",\"unit\":\"percent\",\"formula\":\"sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'wire') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)\",\"staged\":true}"
-  - name: gasp_payment_method_distribution_check
-    expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_payment_method_distribution_check.value)
-    description: Payment Method Distribution, check variant. Breakdown of payments by method.
-    datatype: Decimal
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/revops/payment-method-distribution. Staged (period bound in filter): gasp_staged_gasp_payment_method_distribution_check holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
-      - vendor_name: GASP
-        data: "{\"gasp_id\":\"payment_method_distribution\",\"gasp_version\":\"1\",\"variant\":\"check\",\"unit\":\"percent\",\"formula\":\"sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'check') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)\",\"staged\":true}"
+        data: '{"gasp_id":"payment_method_distribution","gasp_version":"1","unit":"percent","formula":"sum(field.invoice_amount where in_period(field.invoice_date)) / total(sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null))","gasp_breakdown":"payment_method","staged":true}'
   - name: gasp_recognized_vs_billed
     expression:
       dialects:
@@ -10200,19 +10560,19 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/time-to-feature-adoption. Staged (period bound in filter): gasp_staged_gasp_time_to_feature_adoption holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"time_to_feature_adoption","gasp_version":"1","unit":"days","formula":"median(field.first_use_date - field.release_date where in_period(field.release_date))","staged":true}'
+        data: '{"gasp_id":"time_to_feature_adoption","gasp_version":"1","unit":"days","formula":"median(field.first_use_date - field.signup_date where in_period(field.first_use_date))","staged":true}'
   - name: gasp_breadth_of_adoption
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: (CAST(COUNT(DISTINCT feature.feature_id) AS DECIMAL) / NULLIF((COUNT(DISTINCT CASE WHEN product_event.product_event_type = 'qualifying' THEN product_event.customer_id END)), 0))
+          expression: SUM(gasp_staged_gasp_breadth_of_adoption.value)
     description: Breadth of Adoption. Average number of features used per account.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/breadth-of-adoption. Reads the feature snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/breadth-of-adoption. Staged (distinct pair): gasp_staged_gasp_breadth_of_adoption holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"breadth_of_adoption","gasp_version":"1","unit":"ratio","formula":"count_distinct(field.feature_id) / metric.active_accounts"}'
+        data: '{"gasp_id":"breadth_of_adoption","gasp_version":"1","unit":"ratio","formula":"count_distinct(field.customer_id, field.feature_id) / metric.active_accounts","staged":true}'
   - name: gasp_session_frequency
     expression:
       dialects:
@@ -11311,6 +11671,18 @@ metrics:
     custom_extensions:
       - vendor_name: GASP
         data: "{\"gasp_id\":\"cost_per_hire\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.cost where field.cost_function = 'recruiting') / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)\",\"staged\":true}"
+  - name: gasp_source_of_hire
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: SUM(gasp_staged_gasp_source_of_hire.value)
+    description: Source of Hire. Where successful candidates came from.
+    datatype: Decimal
+    ai_context:
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/people/source-of-hire. Broken down by hire_source: report one value per hire_source. Staged (total): gasp_staged_gasp_source_of_hire holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"gasp_id":"source_of_hire","gasp_version":"1","unit":"percent","formula":"count_distinct(field.employee_id where in_period(field.hire_date)) / total(count_distinct(field.employee_id where in_period(field.hire_date)))","gasp_breakdown":"hire_source","staged":true}'
   - name: gasp_compa_ratio
     expression:
       dialects:
@@ -11497,16 +11869,16 @@ metrics:
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: (CAST(SUM(CASE WHEN (cost_event.cost_function = 'gtm' AND cost_event.cost_centre = 'marketing') THEN cost_event.cost ELSE 0 END) AS DECIMAL) / NULLIF(COUNT(DISTINCT CASE WHEN revenue_event.event_type = 'new' THEN revenue_event.customer_id END), 0))
+          expression: SUM(gasp_staged_gasp_cac_by_channel.value)
     description: CAC by Channel. Customer acquisition cost broken down by marketing channel.
     datatype: Decimal
     ai_context:
       synonyms:
         - CAC
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/cac-by-channel."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/cac-by-channel. Broken down by channel: report one value per channel. Staged (period bound in filter): gasp_staged_gasp_cac_by_channel holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"cac_by_channel\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.cost where field.cost_function = 'gtm' and field.cost_centre = 'marketing') / count_distinct(field.customer_id where field.event_type = 'new')\"}"
+        data: "{\"gasp_id\":\"cac_by_channel\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.ad_spend) / count_distinct(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"gasp_breakdown\":\"channel\",\"staged\":true}"
   - name: gasp_cpl
     expression:
       dialects:
@@ -11606,7 +11978,7 @@ metrics:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/paid-media-efficiency-roas. Staged (period bound in filter): gasp_staged_gasp_paid_media_efficiency_roas holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"paid_media_efficiency_roas\",\"gasp_version\":\"1\",\"unit\":\"ratio\",\"formula\":\"sum(field.opportunity_amount where field.marketing_channel = 'paid_ads' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / sum(field.ad_spend where field.channel = 'paid_ads')\",\"staged\":true}"
+        data: "{\"gasp_id\":\"paid_media_efficiency_roas\",\"gasp_version\":\"1\",\"unit\":\"ratio\",\"formula\":\"sum(field.opportunity_amount where field.channel = 'paid_ads' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / sum(field.ad_spend where field.channel = 'paid_ads')\",\"staged\":true}"
   - name: gasp_share_of_voice
     expression:
       dialects:
@@ -11638,13 +12010,13 @@ metrics:
       dialects:
         - dialect: OSSIE_SQL_2026
           expression: SUM(gasp_staged_gasp_onboarding_milestone_completion_rate.value)
-    description: Milestone Completion Rate. Percentage of customers completing each onboarding milestone.
+    description: Milestone Completion Rate. Percentage of due onboarding milestones that customers reach.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/onboarding/milestone-completion-rate. Staged (period bound in filter): gasp_staged_gasp_onboarding_milestone_completion_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/onboarding/milestone-completion-rate. Staged (all_time): gasp_staged_gasp_onboarding_milestone_completion_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"onboarding_milestone_completion_rate\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.onboarding_id where field.onboarding_milestone = 'go_live') / count_distinct(field.onboarding_id where in_period(field.onboarding_start_date))\",\"staged\":true}"
+        data: '{"gasp_id":"onboarding_milestone_completion_rate","gasp_version":"1","unit":"percent","formula":"all_time(count(field.onboarding_id where in_period(field.milestone_due_date) and field.milestone_date is not null and field.milestone_date <= period_end)) / all_time(count(field.onboarding_id where in_period(field.milestone_due_date)))","staged":true}'
   - name: gasp_professional_services_milestone_completion_rate
     expression:
       dialects:

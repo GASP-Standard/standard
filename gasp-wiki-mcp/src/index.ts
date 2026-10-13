@@ -10,9 +10,9 @@ import {
   findDefinition,
   metricNodeId,
   getRelationships,
-  resolveNode as resolveGraphNode,
+  resolveNodeResult,
   suggestNodes,
-  search, metricFormulaId } from "./loader.js";
+  search, metricFormulaId, isMetricStub } from "./loader.js";
 import {
   buildContext,
   inferDrivers,
@@ -22,7 +22,7 @@ import {
   type TraversalCandidate,
 } from "./traversal.js";
 import { SITE, metricUrl, definitionUrl, resolveDocLink } from "./urls.js";
-import { formatCanonicalFormula, resolveMetric, suggestMatches, fillTemplate, validateAdapter } from "./tools.js";
+import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement } from "./tools.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import type { StandardData, RelationshipNode, Definition, Metric } from "./types.js";
@@ -80,9 +80,27 @@ const server = new McpServer({
 // from ontology.json plus the edge `inverse` flag from relationships.json.
 const traversalCtx = buildContext(data.nodes, data.edges, data.ontology);
 
-/** Resolve a user-supplied metric name to a graph node, exact matches only (see loader resolveNode). */
-function resolveNode(name: string): RelationshipNode | undefined {
-  return resolveGraphNode(data, name);
+/**
+ * Resolve a user-supplied name to a graph node, exact matches only (see loader
+ * resolveNodeResult). On a miss, `text` says why: several metrics share the
+ * name, the metric sits outside the graph, or nothing matched.
+ */
+function resolveNode(name: string): { node: RelationshipNode; text?: undefined } | { node?: undefined; text: string } {
+  const r = resolveNodeResult(data, name);
+  if (r.kind === "node") return { node: r.node };
+  if (r.kind === "ambiguous") return { text: formatAmbiguous(data, name, r.candidates) };
+  if (r.metric) return { text: `${r.metric.name} (${r.metric.department}, ${metricUrl(r.metric)}) is not in the relationship graph.` };
+  return { text: `No graph node is named "${name}".${suggestNodes(data, name)}` };
+}
+
+/** Department names as the data spells them, matched case-insensitively; undefined with the reply text on a miss. */
+function matchDepartment(department: string, departments: string[]): { dept: string; text?: undefined } | { dept?: undefined; text: string } {
+  const q = department.toLowerCase().trim();
+  const exact = departments.find((d) => d.toLowerCase() === q || d.toLowerCase().replace(/\s+/g, "-") === q);
+  if (exact) return { dept: exact };
+  const near = departments.filter((d) => d.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)) || d.toLowerCase().startsWith(q));
+  const hint = near.length ? ` Did you mean: ${near.join(", ")}?` : "";
+  return { text: `No department is named "${department}".${hint}\n\nDepartments: ${departments.join(", ")}` };
 }
 
 /** Render a path as a markdown one-liner: `from → [type] to → [type] to`. */
@@ -120,10 +138,13 @@ function formatDefinition(def: Definition): string {
 // --- Tool 1: lookup_metric ---
 server.tool(
   "lookup_metric",
-  "Look up a GASP Standard metric by name or abbreviation. Returns definition, formula, benchmarks, time period, department and page URL. Falls back to glossary terms (e.g. 'Signal Type', 'Metric Owner') when no metric matches; use lookup_definition to ask for a term directly.",
-  { name: z.string().describe("Metric name or abbreviation (e.g. 'MRR', 'Net Revenue Retention', 'CAC Payback')") },
+  "Look up a GASP Standard metric by exact name, abbreviation, alias or formula id. Returns definition, formula, benchmarks, time period, department and page URL. When a name belongs to several departments' metrics (e.g. 'Escalation Rate') it lists each with its department, formula id and URL; qualify by department ('Support Escalation Rate') or pass the formula id. Falls back to glossary terms (e.g. 'Signal Type', 'Metric Owner') when no metric matches; use lookup_definition to ask for a term directly.",
+  { name: z.string().describe("Metric name, abbreviation or formula id (e.g. 'MRR', 'Net Revenue Retention', 'CAC Payback', 'support_escalation_rate')") },
   async ({ name }) => {
     const resolved = resolveMetric(data, name);
+    if (resolved.kind === "ambiguous") {
+      return { content: [{ type: "text" as const, text: formatAmbiguous(data, name, resolved.candidates) }] };
+    }
     if (resolved.kind === "definition") {
       return { content: [{ type: "text" as const, text: `No metric named "${name}". Matching glossary term:\n\n${formatDefinition(resolved.definition)}` }] };
     }
@@ -185,16 +206,19 @@ server.tool(
       parts.push(`\n**Aliases:** ${metric.aliases.join(", ")}`);
     }
 
-    // Graph node id keys every ontology lookup below
-    const nodeId = metricNodeId(data, metric);
+    // Graph node id keys every ontology lookup below. Only the tested slug map
+    // counts: the slug-prefix fallback would hand Product's Activation Rate the Onboarding node.
+    const nodeId = data.metricNodeIds ? data.metricNodeIds[metric.slug] : metricNodeId(data, metric);
 
-    // Entity mapping from ontology
-    if (nodeId && data.ontology?.entityMappings) {
-      const entityId = Object.entries(data.ontology.entityMappings)
-        .find(([, metricIds]) => (metricIds as string[]).includes(nodeId))?.[0];
-      const entity = entityId && data.ontology.entities.find(e => e.id === entityId);
-      if (entity) {
-        parts.push(`\n**Measures:** ${entity.label} (${entity.aliases.join(", ")})`);
+    // Entities whose datasets the formula reads (entityMappings is keyed by formula id)
+    if (data.ontology?.entityMappings) {
+      const formulaId = metricFormulaId(data, metric);
+      const entities = Object.entries(data.ontology.entityMappings)
+        .filter(([, metricIds]) => (metricIds as string[]).includes(formulaId))
+        .map(([entityId]) => data.ontology!.entities.find((e) => e.id === entityId))
+        .filter((e): e is NonNullable<typeof e> => !!e);
+      if (entities.length) {
+        parts.push(`\n**Measures:** ${entities.map((e) => `${e.label}${e.aliases.length ? ` (${e.aliases.join(", ")})` : ""}`).join("; ")}`);
       }
     }
 
@@ -265,13 +289,13 @@ server.tool(
 // --- Tool 2: list_metrics ---
 server.tool(
   "list_metrics",
-  "List all GASP Standard metrics, optionally filtered by department and/or signal type. Returns metric names grouped by category.",
+  "List all GASP Standard metrics, optionally filtered by department and/or signal type. Returns metric names grouped by department and category. The Core tier is the 'Core' department. An unknown department returns the department list.",
   {
     department: z
       .string()
       .optional()
       .describe(
-        "Filter by department name (e.g. 'sales', 'marketing', 'core'). Case-insensitive. Omit to list all."
+        "Filter by exact department name (e.g. 'sales', 'customer success', 'core'). Case-insensitive. Omit to list all."
       ),
     signalType: z
       .enum(["outcome", "leading", "efficiency", "operational"])
@@ -283,10 +307,9 @@ server.tool(
   async ({ department, signalType }) => {
     let filtered = data.metrics;
     if (department) {
-      const q = department.toLowerCase();
-      filtered = filtered.filter(
-        (m) => m.department.toLowerCase().includes(q)
-      );
+      const match = matchDepartment(department, [...new Set(data.metrics.map((m) => m.department))].sort());
+      if (match.text !== undefined) return { content: [{ type: "text" as const, text: match.text }] };
+      filtered = filtered.filter((m) => m.department === match.dept);
     }
     if (signalType) {
       filtered = filtered.filter(
@@ -302,7 +325,7 @@ server.tool(
         content: [
           {
             type: "text" as const,
-            text: `No metrics found for department "${department}".\n\nAvailable departments: ${departments.join(", ")}`,
+            text: `No metrics found${department ? ` for department "${department}"` : ""}${signalType ? ` with signal type ${signalType}` : ""}.\n\nAvailable departments: ${departments.join(", ")}`,
           },
         ],
       };
@@ -340,10 +363,13 @@ server.tool(
 // --- Tool 3: get_formula ---
 server.tool(
   "get_formula",
-  "Get the canonical formula for a GASP Standard metric: the machine-readable GASP grammar formula with its unit, operating and market forms and named variants, the metrics and fields it reads, plus the formula as written in the standard.",
-  { metric: z.string().describe("Metric name or abbreviation (e.g. 'NRR', 'LTV', 'CAC Payback')") },
+  "Get the canonical formula for a GASP Standard metric: the machine-readable GASP grammar formula with its unit, operating and market forms and named variants, the metrics, fields and datasets it and each form read, plus the formula as written in the standard.",
+  { metric: z.string().describe("Metric name, abbreviation or formula id (e.g. 'NRR', 'LTV', 'CAC Payback'). A name several departments use returns the candidates to choose from.") },
   async ({ metric: name }) => {
     const resolved = resolveMetric(data, name);
+    if (resolved.kind === "ambiguous") {
+      return { content: [{ type: "text" as const, text: formatAmbiguous(data, name, resolved.candidates) }] };
+    }
     if (resolved.kind !== "metric") {
       return { content: [{ type: "text" as const, text: `No metric is named "${name}".${suggestMatches(data, name)}` }] };
     }
@@ -388,11 +414,15 @@ function formatValidation(d: StandardData, metric: Metric): string {
 // --- Tool 4: get_relationships ---
 server.tool(
   "get_relationships",
-  "Get the upstream (what drives it) and downstream (what it drives) relationships for a metric, entity, or concept from the GASP relationship graph. Relationship types: metric signal (DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES), entity lifecycle (CONVERTS_TO, PARENT_OF, BELONGS_TO), entity ownership (OWNS, GRANTS, PRICED_BY), entity interactions (MANAGES, SERVES, ENGAGES_VIA, SUBMITS, REPRESENTED_BY, SOURCES), entity financial flows (GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS).",
+  "Get the upstream (what drives it) and downstream (what it drives) relationships for a metric, entity, or concept from the GASP relationship graph. Names resolve exactly as in lookup_metric (an ambiguous metric name lists the candidates). For an entity it also lists every metric whose formula reads the entity's datasets, with department and URL. Relationship types: metric signal (DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES), entity lifecycle (CONVERTS_TO, PARENT_OF, BELONGS_TO), entity ownership (OWNS, GRANTS, PRICED_BY), entity interactions (MANAGES, SERVES, ENGAGES_VIA, SUBMITS, REPRESENTED_BY, SOURCES), entity financial flows (GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS).",
   { metric: z.string().describe("Metric name or ID (e.g. 'arr', 'NRR'), entity (e.g. 'customer', 'subscription'), or concept (e.g. 'revenue', 'bookings')") },
   async ({ metric: name }) => {
-    const { node, upstream, downstream } = getRelationships(data, name);
+    const { node, upstream, downstream, measuredBy: readers, ambiguous, outsideGraph } = getRelationships(data, name);
 
+    if (ambiguous) return { content: [{ type: "text" as const, text: formatAmbiguous(data, name, ambiguous) }] };
+    if (outsideGraph) {
+      return { content: [{ type: "text" as const, text: `${outsideGraph.name} (${outsideGraph.department}, ${metricUrl(outsideGraph)}) is not in the relationship graph, which holds ${data.nodes.filter((n) => !n.nodeType || n.nodeType === "metric").length} metrics. Use get_formula for the metrics and fields it reads.` }] };
+    }
     if (!node) {
       const available = data.nodes.map((n) => `${n.label} (${n.id})`).join(", ");
       return {
@@ -451,6 +481,11 @@ server.tool(
       }
     }
 
+    if (readers.length > 0) {
+      parts.push(`\n## Measured by, from the ontology (${readers.length} metrics reading this entity's datasets)`);
+      for (const m of readers) parts.push(`- **${m.name}** (${m.department}): ${metricUrl(m)}`);
+    }
+
     return { content: [{ type: "text" as const, text: parts.join("\n") }] };
   }
 );
@@ -458,51 +493,56 @@ server.tool(
 // --- Tool 5: get_data_requirements ---
 server.tool(
   "get_data_requirements",
-  "Get the data requirements for implementing a GASP Standard metric or department dashboard. Returns required fields with types, reporting grain, source system, and example SQL query.",
+  "Get the data requirements for implementing a GASP Standard metric or department dashboard: each field the canonical formula reads with its type and the GASP dataset it is read from, whether the metric needs a staged dataset (cohort or prior-period comparison), reporting grain, source system, page URL and example SQL. The metric resolves exactly as in lookup_metric (name, abbreviation, alias or formula id); a name several departments use lists the candidates unless department picks one. Department is an exact name, case-insensitive.",
   {
     metric: z
       .string()
       .optional()
-      .describe("Metric name to search for (e.g. 'ARR', 'Pipeline', 'CSAT')"),
+      .describe("Metric name, abbreviation or formula id (e.g. 'ARR', 'Pipeline Coverage Ratio', 'CSAT')"),
     department: z
       .string()
       .optional()
       .describe(
-        "Department name (e.g. 'Sales', 'Engineering', 'Executive'). Omit to search all."
+        "Exact department name (e.g. 'Sales', 'Engineering', 'Customer Success'). Alone it lists the department's requirements; with metric it picks between metrics that share a name."
       ),
   },
   async ({ metric, department }) => {
-    let filtered = data.dataRequirements || [];
-
+    const all = data.dataRequirements || [];
+    const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
+    let dept: string | undefined;
     if (department) {
-      const q = department.toLowerCase();
-      filtered = filtered.filter(
-        (dr) => dr.department.toLowerCase().includes(q)
-      );
+      const match = matchDepartment(department, [...new Set(data.metrics.map((m) => m.department))].sort());
+      if (match.text !== undefined) return text(match.text);
+      dept = match.dept;
     }
+    let filtered = dept ? all.filter((dr) => dr.department === dept) : all;
 
     if (metric) {
-      const q = metric.toLowerCase();
-      filtered = filtered.filter(
-        (dr) =>
-          dr.metric.toLowerCase() === q ||
-          dr.metric.toLowerCase().includes(q) ||
-          dr.fields.some((f) => f.toLowerCase().includes(q))
-      );
+      let resolved = resolveMetric(data, metric);
+      if (resolved.kind === "ambiguous" && dept) {
+        const inDept = resolved.candidates.filter((m) => m.department === dept);
+        if (inDept.length === 1) resolved = { kind: "metric", metric: inDept[0] };
+      }
+      if (resolved.kind === "ambiguous") return text(formatAmbiguous(data, metric, resolved.candidates));
+      if (resolved.kind !== "metric") return text(`No metric is named "${metric}".${suggestMatches(data, metric)}`);
+      const id = metricFormulaId(data, resolved.metric);
+      filtered = all.filter((dr) => dr.formulaId === id);
+      if (filtered.length === 0) {
+        const f = data.formulas?.[id];
+        const why = f?.notComputable ? `it has no single formula: ${f.notComputable}` : "it has no canonical formula yet";
+        return text(`${resolved.metric.name} (${resolved.metric.department}, ${metricUrl(resolved.metric)}) has no data requirements: ${why}.`);
+      }
     }
 
     if (filtered.length === 0) {
-      const depts = [
-        ...new Set((data.dataRequirements || []).map((dr) => dr.department)),
-      ].sort();
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `No data requirements found${metric ? ` for metric "${metric}"` : ""}${department ? ` in department "${department}"` : ""}.\n\nAvailable departments: ${depts.join(", ")}`,
-          },
-        ],
-      };
+      return text(`No data requirements found in department "${dept}".`);
+    }
+
+    // Formula id → metric page, preferring the full record over a cross-reference stub
+    const pages = new Map<string, string>();
+    for (const m of data.metrics) {
+      const id = metricFormulaId(data, m);
+      if (!pages.has(id) || !isMetricStub(m)) pages.set(id, metricUrl(m));
     }
 
     const parts: string[] = [
@@ -518,37 +558,17 @@ server.tool(
 
     for (const [dept, drs] of grouped) {
       parts.push(`## ${dept}\n`);
-      for (const dr of drs) {
-        parts.push(`### ${dr.metric}`);
-        parts.push(`- **Source:** ${dr.source}`);
-        parts.push(`- **Grain:** ${dr.grain}`);
-        parts.push(`- **Frequency:** ${dr.frequency}`);
-        parts.push(`- **Description:** ${dr.description}`);
-        parts.push("");
-
-        // Field table
-        parts.push("| Field | Type |");
-        parts.push("|-------|------|");
-        for (const field of dr.fields) {
-          const fieldType = dr.fieldTypes?.[field] || "unknown";
-          parts.push(`| \`${field}\` | ${fieldType} |`);
-        }
-        parts.push("");
-
-        // SQL
-        parts.push("**Example SQL:**");
-        parts.push("```sql\n" + dr.exampleQuery + "\n```\n");
-      }
+      for (const dr of drs) parts.push(formatDataRequirement(dr, pages.get(dr.formulaId)));
     }
 
-    return { content: [{ type: "text" as const, text: parts.join("\n") }] };
+    return text(parts.join("\n"));
   }
 );
 
 // --- Tool 6: search ---
 server.tool(
   "search",
-  "Search across all GASP Standard metrics and definitions. Returns top 10 matches ranked by relevance.",
+  "Search across all GASP Standard metrics and glossary definitions by whole words. Returns up to 10 results, one per metric or term, each with what matched and its URL: name and alias hits rank above definition hits, which rank above formula and field hits. When nothing matches (e.g. a misspelling) it returns the closest names labelled 'Did you mean'.",
   { query: z.string().describe("Search query (e.g. 'churn', 'retention', 'pipeline coverage')") },
   async ({ query: q }) => {
     const results = search(data, q, 10);
@@ -564,11 +584,13 @@ server.tool(
       };
     }
 
-    const parts: string[] = [`# Search results for "${q}" (${results.length} matches)\n`];
+    const parts: string[] = results[0].didYouMean
+      ? [`# No matches for "${q}". Did you mean:\n`]
+      : [`# Search results for "${q}" (${results.length} matches)\n`];
     for (const r of results) {
       const dept = r.department ? ` [${r.department}]` : "";
       parts.push(`### ${r.name}${dept}`);
-      parts.push(`*${r.type}*: ${r.snippet}`);
+      parts.push(`*${r.type}*${r.didYouMean ? "" : ` (matched ${r.matched})`}: ${r.snippet}`);
       parts.push(r.url ? `URL: ${r.url}\n` : "");
     }
 
@@ -586,6 +608,9 @@ server.tool(
   },
   async ({ metric: metricName, adapter: adapterJson }) => {
     const resolved = resolveMetric(data, metricName);
+    if (resolved.kind === "ambiguous") {
+      return { content: [{ type: "text" as const, text: formatAmbiguous(data, metricName, resolved.candidates) }] };
+    }
     if (resolved.kind !== "metric") {
       return { content: [{ type: "text" as const, text: `No metric is named "${metricName}".${suggestMatches(data, metricName)}` }] };
     }
@@ -607,6 +632,7 @@ server.tool(
       `**Warehouse:** ${adapter.warehouse || "not specified"}`, `**Datasets:** ${template.datasets.join(", ")}`, `**Grain:** ${template.grain}`,
       `**Fields mapped:** ${r.mapped.length} / ${template.placeholders.length} (field and dataset pairs)`,
     ];
+    if (template.breakdown) parts.push(`**Breakdown:** the query returns one row per \`${template.breakdown.field}\` value.`);
     if (template.staged) parts.push("**Note:** this metric uses a cohort or a prior-period comparison; the query is correct but each aggregate re-reads the table. A staged dataset makes it cheaper.");
     if (r.missingFields.length) parts.push(`**Unmapped fields (left as placeholders):** \`${r.missingFields.join("\`, \`")}\``);
     if (r.missingTables.length) parts.push(`**Datasets with no table:** ${r.missingTables.join(", ")}. Add them under \"datasets\" in the adapter or map a field from each.`);
@@ -623,7 +649,7 @@ server.tool(
 // --- Tool 8: validate_adapter ---
 server.tool(
   "validate_adapter",
-  "Validate a GASP adapter against the standard. Checks the file against the adapter schema, rejects unknown fields, checks warehouse references, reports datasets whose fields point at different tables, scores every metric against the fields its canonical formula reads (fully covered, partially covered, not covered), lists enum fields that need a value mapping, and lists covered metrics with no declared owner.",
+  "Validate a GASP adapter against the standard. First applies the adapter JSON Schema (https://gaspwiki.com/schemas/gasp-adapter-v1.json, version 1.1) and lists each violation with its JSON path: missing version or mappings, unknown version values, keys the schema does not allow and values of the wrong type. Then, whether or not the schema passed, it reports gaspField values not in the ontology, unknown datasets, fields mapped to a dataset that does not carry them, bare column names on fields that live on several datasets, datasets whose fields point at different tables, scores every metric against the field and dataset pairs its canonical formula reads (fully covered, partially covered, not covered), lists enum fields mapped without a transform, covered metrics with no declared owner and owners naming unknown metrics, and ranks the next pairs to map. Coverage needs a mappings array; without one only the schema result is returned.",
   { adapter: z.string().describe("The adapter JSON as a string. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json") },
   async ({ adapter: adapterJson }) => {
     let adapter: any;
@@ -643,11 +669,9 @@ server.tool(
     maxDepth: z.number().int().min(1).max(8).optional().describe("Maximum traversal depth (default 6)"),
   },
   async ({ metric: name, direction: dirStr, maxDepth }) => {
-    const node = resolveNode(name);
+    const { node, text: missing } = resolveNode(name);
     if (!node) {
-      return {
-        content: [{ type: "text" as const, text: `No graph node is named "${name}".${suggestNodes(data, name)}` }],
-      };
+      return { content: [{ type: "text" as const, text: missing! }] };
     }
     if (!traversalCtx.metricNodeIds.has(node.id)) {
       return {
@@ -694,14 +718,13 @@ server.tool(
     maxDepth: z.number().int().min(1).max(8).optional().describe("Maximum chain length (default 6)"),
   },
   async ({ from, to, maxDepth }) => {
-    const fromNode = resolveNode(from);
-    const toNode = resolveNode(to);
-    if (!fromNode || !toNode) {
-      const missing = !fromNode ? from : to;
-      return {
-        content: [{ type: "text" as const, text: `No graph node is named "${missing}".${suggestNodes(data, missing)}` }],
-      };
+    const fromHit = resolveNode(from);
+    const toHit = resolveNode(to);
+    if (!fromHit.node || !toHit.node) {
+      return { content: [{ type: "text" as const, text: (fromHit.text ?? toHit.text)! }] };
     }
+    const fromNode = fromHit.node;
+    const toNode = toHit.node;
 
     const paths = findPaths(fromNode.id, toNode.id, traversalCtx, { maxDepth });
 
@@ -747,11 +770,12 @@ server.tool(
     const resolved: string[] = [];
     const unresolved: string[] = [];
     for (const m of metrics) {
-      const node = resolveNode(m);
+      const { node } = resolveNode(m);
       if (node && traversalCtx.metricNodeIds.has(node.id)) {
         resolved.push(node.id);
       } else {
-        unresolved.push(m);
+        const r = resolveNodeResult(data, m);
+        unresolved.push(r.kind === "ambiguous" ? `${m} (ambiguous: ${r.candidates.map((c) => `\`${metricFormulaId(data, c)}\``).join(" or ")})` : m);
       }
     }
 
@@ -811,7 +835,9 @@ server.tool(
       const r = resolveMetric(data, term);
       const hint = r.kind === "metric"
         ? ` "${r.metric.name}" is a metric: use lookup_metric (${metricUrl(r.metric)}).`
-        : suggestMatches(data, term);
+        : r.kind === "ambiguous"
+          ? ` It is a metric name:\n\n${formatAmbiguous(data, term, r.candidates)}`
+          : suggestMatches(data, term);
       return { content: [{ type: "text" as const, text: `No definition is named "${term}".${hint}` }] };
     }
     return { content: [{ type: "text" as const, text: formatDefinition(def) }] };

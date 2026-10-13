@@ -34,12 +34,14 @@ Always specify whether weighted or unweighted.
 
 ### Pipeline Coverage Ratio
 
-**Definition:** The ratio of pipeline value to quota for the period.
+**Definition:** The ratio of unweighted pipeline value to quota for the period.
 
 **Formula:**
 ```
-Pipeline Coverage = Total Pipeline Value / Quota for Period
+Pipeline Coverage = Unweighted Pipeline Value / Quota for Period
 ```
+
+Use the unweighted Pipeline Value (open opportunities at full deal value). The 1 / Win Rate rule below already applies the conversion, so a stage-weighted pipeline would count it twice.
 
 Express as multiple (e.g., "3x" or "3:1").
 
@@ -245,10 +247,10 @@ Average Deal Size = Total contract value of closed deals / Number of deals
 
 **Formula:**
 ```
-Sales Cycle = Average of (Close date - Opportunity created date) for won deals
+Sales Cycle = Average of (Close date - Opportunity created date) for deals won in the period
 ```
 
-Measured in days. Use median rather than average to reduce outlier skew.
+Measured in days. Report the median of the same deals beside the average, since a few long deals skew the mean.
 
 **Benchmarks by segment:**
 - SMB: 14-40 days

@@ -119,6 +119,9 @@
     "customer-success::expansion-revenue-rate": {
       "primary": "outcome"
     },
+    "customer-success::license-utilization": {
+      "primary": "leading"
+    },
     "customer-success::upsell-rate": {
       "primary": "efficiency"
     },

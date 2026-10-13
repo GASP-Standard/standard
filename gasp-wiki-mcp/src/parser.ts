@@ -384,8 +384,21 @@ function parseSharedForm(label: string, section: string): DualLensForm {
 
   const celSource = extractSubsectionField(section, "CEL Source");
   const insight = extractSubsectionField(section, "What it tells you");
+  // The shared pattern cites each form's formula inline ("The formula is defined above: `(A + B) / C × 100`").
+  const formula = extractInlineFormula(description);
 
-  return { label, description, celSource, atlInclusion: "", formula: null, insight };
+  return { label, description, celSource, atlInclusion: "", formula, insight };
+}
+
+/** First inline code span that reads as a formula (contains an operator), else null. */
+function extractInlineFormula(text: string): string | null {
+  const tick = "`";
+  const regex = new RegExp(tick + "([^" + tick + "\\n]+)" + tick, "g");
+  for (const m of text.matchAll(regex)) {
+    const span = m[1].trim();
+    if (/[\/×=+]/.test(span)) return span;
+  }
+  return null;
 }
 
 /** Parse a Bridge section */

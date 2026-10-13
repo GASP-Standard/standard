@@ -190,8 +190,10 @@ Time to Adoption = Median of (First feature use date - Signup date)
 
 **Formula:**
 ```
-Breadth = Total features used across all accounts / Active accounts
+Breadth = Distinct (account, feature) pairs used in period / Active accounts
 ```
+
+Each account counts each feature it used once, so the result is the average number of distinct features per active account.
 
 **What it tells you:** How much of the product is being utilized.
 
@@ -301,7 +303,7 @@ Common intervals: Day 1, Day 7, Day 14, Day 30.
 Cohort Retention (Week N) = Active users in week N / Users in cohort × 100
 ```
 
-**What it tells you:** How retention evolves, and whether it's improving for newer cohorts.
+**What it tells you:** How retention evolves and whether it is improving for newer cohorts.
 
 ---
 

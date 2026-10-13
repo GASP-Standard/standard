@@ -96,9 +96,9 @@ ARR-O measures organic recurring revenue by excluding MRR changes that come from
 
 **Formula:**
 ```
-ARR-O = MRR × 12
+ARR-O = (MRR − TTM_Pricing_Adjustment_MRR − TTM_Recontracting_MRR) × 12
 ```
-Where MRR excludes changes tagged with `expansion_classification` ∈ (`pricing_adjustment`, `recontracting`). ARR-O is a trailing twelve month measure: it subtracts the MRR change tagged `pricing_adjustment` or `recontracting` in the trailing 12 months, for customers active at period end. Stripping price rises out of ARR is a GASP construct rather than an industry convention; where price and volume are separated elsewhere, it is a growth decomposition over the period.
+Where TTM_Pricing_Adjustment_MRR and TTM_Recontracting_MRR are the MRR changes tagged with `expansion_classification` `pricing_adjustment` or `recontracting` in the trailing 12 months, counted for customers active at period end. MRR is the period-end MRR used by ARR-M. ARR-O is therefore a trailing twelve month measure. Stripping price rises out of ARR is a GASP construct rather than an industry convention; where price and volume are separated elsewhere, it is a growth decomposition over the period.
 
 **What it tells you:** The run rate of revenue driven by real customer adoption and organic expansion. The durable portion of ARR.
 
@@ -121,7 +121,7 @@ All MRR sources included.
 
 **Reconciliation:**
 ```
-ARR-M = ARR-O + Pricing_Adjustment_MRR × 12 + Recontracting_MRR × 12
+ARR-M = ARR-O + TTM_Pricing_Adjustment_MRR × 12 + TTM_Recontracting_MRR × 12
 ```
 
 **Diagnostic:** The delta (ARR-M − ARR-O) is the **Durability Gap.** Because ARR-O subtracts only the trailing 12 months of tagged MRR change for customers active at period end, the Durability Gap is a trailing-year growth decomposition. How much of reported ARR growth comes from mechanical pricing and contract changes rather than organic customer expansion. A growing gap signals ARR growth that may not be durable. Tracked implicitly by KeyBanc in their annual SaaS survey. Public SaaS companies report total ARR (ARR-M) while internal planning teams strip pricing actions to assess true product-led growth.
@@ -436,19 +436,21 @@ NRR-M ≈ NRR-O + Reactivation + Cross-Module + New Buying Centre + Pricing Adju
 
 **Calculation Methods:**
 
-Two methods are widely used. The **cohort method is preferred** for accuracy.
+Two methods are widely used. The GASP Standard uses the **formula method** as canonical. Both run over the customers active at the start of the period.
 
-**1. Cohort Method (Preferred):**
+**1. Formula Method (Canonical):**
+```
+GRR = (Beginning MRR - Contraction MRR - Churned MRR) / Beginning MRR × 100
+```
+
+**2. Cohort Method (Alternative):**
 Compare the MRR of a cohort, using the lesser of beginning MRR or current MRR for each customer (this mathematically eliminates expansion while capturing shrinkage and churn).
 
 ```
 GRR = Sum of min(Beginning MRR, Current MRR) per customer / Beginning MRR × 100
 ```
 
-**2. Formula Method:**
-```
-GRR = (Beginning MRR - Contraction MRR - Churned MRR) / Beginning MRR × 100
-```
+**Why they differ:** The cohort method nets each customer's movements within the period, so a customer who contracts and then expands back to their starting MRR shows no loss. The formula method counts every contraction and churn event as it happens, so it is equal to or lower than the cohort method. The formula method is canonical because it reads the same contraction and churn events as Net Revenue Retention (NRR), keeping the two retention rates on one basis. It also needs no per-customer end-of-period snapshot. Report the cohort method as a labelled alternative.
 
 **Time period:** Typically measured annually.
 
@@ -638,7 +640,7 @@ CAC = (Sales + Marketing spend in period) / New customers acquired in period
 - Advertising spend
 - Marketing tools and software
 - Events and content costs
-- Trial/POC costs (hosting, implementation support)
+- Trial/POC hosting costs
 
 **Exclude:**
 - Customer Success costs (retention, not acquisition)
@@ -670,10 +672,10 @@ CAC = (Sales + Marketing spend in period) / New customers acquired in period
 
 #### Operating Form: Fully Loaded CAC (CAC-O)
 
-CAC-O includes all costs to make a customer productive: go-to-market spend plus implementation and onboarding. It reflects the true economic cost of acquiring a revenue-generating customer.
+CAC-O includes all costs to make a customer productive: go-to-market spend plus implementation and onboarding. It reflects the true economic cost of acquiring a revenue-generating customer. Implementation support during a trial or proof of concept is an activation cost: tag it `cost_function` = `implementation` and it counts in CAC-O and in the Activation Delta, outside the main CAC Include list.
 
 **CEL Source:** `Cost_Event`
-**ATL Inclusion:** `lifecycle_attribution` ∈ (`acquisition`, `activation`)
+**ATL Inclusion:** `cost_function` ∈ (`gtm`, `implementation`, `onboarding`), the acquisition and activation lifecycle costs
 
 **Formula:**
 ```
@@ -687,7 +689,7 @@ CAC-O = Total Cost (Acquisition + Activation lifecycle) / New Customers Acquired
 CAC-M includes only go-to-market costs: sales and marketing spend. This matches the investor-comparable CAC used by KeyBanc, Benchmarkit and public SaaS benchmarks.
 
 **CEL Source:** `Cost_Event`
-**ATL Inclusion:** `lifecycle_attribution` = `acquisition` AND `cost_function` = `gtm`
+**ATL Inclusion:** `cost_function` = `gtm` (all sales and marketing spend, the S&M basis investors use)
 
 **Formula:**
 ```

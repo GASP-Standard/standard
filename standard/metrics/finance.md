@@ -54,7 +54,7 @@ Billings = Total invoiced amount in period
 
 ### ARR / MRR
 
-See [Core Metrics](core.md) for full definitions.
+See [Core Metrics: MRR](core.md#mrr-monthly-recurring-revenue) and [ARR](core.md#arr-annual-recurring-revenue) for full definitions.
 
 ---
 
@@ -340,8 +340,10 @@ See [RevOps](revops.md#days-sales-outstanding-dso) for the canonical definition:
 
 **Formula:**
 ```
-Collection Rate = Cash collected / Amount invoiced × 100
+Collection Rate = Amount of invoices paid / Amount invoiced × 100
 ```
+
+Both sides read the invoices issued in the period. An invoice counts as collected at its full amount once it carries a payment date. The GASP Standard has no payment amount field, so a partial payment counts as the whole invoice and cash received is measured at the invoice level.
 
 **Target:** >95%
 

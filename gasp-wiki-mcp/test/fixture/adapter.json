@@ -21,9 +21,56 @@
     "user": "gasp_users",
     "product_event": "gasp_product_events",
     "survey_response": "gasp_survey_responses",
-    "ticket": "gasp_tickets"
+    "ticket": "gasp_tickets",
+    "contract_event": "gasp_contract_events",
+    "amendment_event": "gasp_amendment_events",
+    "employee": "gasp_employees",
+    "requisition": "gasp_requisitions",
+    "partner": "gasp_partners",
+    "deal_registration": "gasp_deal_registrations",
+    "partner_activity": "gasp_partner_activities",
+    "project": "gasp_projects",
+    "project_milestone": "gasp_project_milestones",
+    "deliverable": "gasp_deliverables",
+    "consultant": "gasp_consultant_capacity",
+    "time_entry": "gasp_time_entries",
+    "onboarding": "gasp_onboardings",
+    "onboarding_milestone": "gasp_onboarding_milestones",
+    "onboarding_session": "gasp_onboarding_sessions",
+    "invoice": "gasp_invoices",
+    "balance_sheet": "gasp_balance_sheet",
+    "revenue_schedule": "gasp_revenue_schedule",
+    "forecast": "gasp_forecasts",
+    "quote": "gasp_quotes",
+    "order": "gasp_orders",
+    "incident": "gasp_incidents",
+    "deployment": "gasp_deployments",
+    "vulnerability": "gasp_vulnerabilities",
+    "service_metrics": "gasp_service_metrics",
+    "issue": "gasp_issues",
+    "feature": "gasp_features",
+    "release": "gasp_releases",
+    "roadmap_item": "gasp_roadmap_items",
+    "campaign": "gasp_campaigns",
+    "sales_rep": "gasp_sales_reps",
+    "kb_article": "gasp_kb_articles",
+    "web_traffic": "gasp_web_traffic",
+    "brand_mention": "gasp_brand_mentions",
+    "crm_record": "gasp_crm_records",
+    "contact": "gasp_contacts",
+    "plan": "gasp_plans",
+    "product": "gasp_products",
+    "license": "gasp_licenses"
   },
   "mappings": [
+    {
+      "gaspField": "accounts_receivable",
+      "warehouseRef": "gasp_balance_sheet.accounts_receivable"
+    },
+    {
+      "gaspField": "acknowledged_at",
+      "warehouseRef": "gasp_incidents.acknowledged_at"
+    },
     {
       "gaspField": "acquisition_date",
       "warehouseRef": "gasp_customers.acquisition_date"
@@ -39,6 +86,36 @@
       "warehouseRef": "gasp_users.activation_date"
     },
     {
+      "gaspField": "activity_date",
+      "warehouseRef": "gasp_partner_activities.activity_date"
+    },
+    {
+      "gaspField": "activity_id",
+      "warehouseRef": "gasp_partner_activities.activity_id"
+    },
+    {
+      "gaspField": "actual_date",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.actual_date"
+    },
+    {
+      "gaspField": "actual_date",
+      "dataset": "project_milestone",
+      "warehouseRef": "gasp_project_milestones.actual_date"
+    },
+    {
+      "gaspField": "actual_revenue",
+      "warehouseRef": "gasp_forecasts.actual_revenue"
+    },
+    {
+      "gaspField": "acv",
+      "warehouseRef": "gasp_contract_events.acv"
+    },
+    {
+      "gaspField": "ad_spend",
+      "warehouseRef": "gasp_campaigns.ad_spend"
+    },
+    {
       "gaspField": "advanced_to_next_stage",
       "warehouseRef": "gasp_opportunities.advanced_to_next_stage"
     },
@@ -47,16 +124,60 @@
       "warehouseRef": "gasp_tickets.agent_id"
     },
     {
+      "gaspField": "amendment_type",
+      "warehouseRef": "gasp_amendment_events.amendment_type"
+    },
+    {
+      "gaspField": "article_id",
+      "warehouseRef": "gasp_kb_articles.article_id"
+    },
+    {
+      "gaspField": "attendees",
+      "warehouseRef": "gasp_onboarding_sessions.attendees"
+    },
+    {
       "gaspField": "auto_renewed",
       "warehouseRef": "gasp_subscriptions.auto_renewed"
+    },
+    {
+      "gaspField": "available_hours",
+      "warehouseRef": "gasp_consultant_capacity.available_hours"
     },
     {
       "gaspField": "bad_debt_expense",
       "warehouseRef": "gasp_financials.bad_debt_expense"
     },
     {
+      "gaspField": "billed_amount",
+      "warehouseRef": "gasp_revenue_schedule.billed_amount"
+    },
+    {
+      "gaspField": "billed_hours",
+      "warehouseRef": "gasp_time_entries.billed_hours"
+    },
+    {
+      "gaspField": "billed_revenue",
+      "warehouseRef": "gasp_time_entries.billed_revenue"
+    },
+    {
+      "gaspField": "billing_trigger_date",
+      "warehouseRef": "gasp_invoices.billing_trigger_date"
+    },
+    {
+      "gaspField": "campaign_id",
+      "warehouseRef": "gasp_campaigns.campaign_id"
+    },
+    {
       "gaspField": "capital_expenditures",
       "warehouseRef": "gasp_financials.capital_expenditures"
+    },
+    {
+      "gaspField": "cash_balance",
+      "warehouseRef": "gasp_balance_sheet.cash_balance"
+    },
+    {
+      "gaspField": "certification_status",
+      "warehouseRef": "gasp_partners.certification_status"
     },
     {
       "gaspField": "ces_score",
@@ -68,17 +189,70 @@
       "warehouseRef": "gasp_revenue_events.change_nature"
     },
     {
+      "gaspField": "change_nature",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.change_nature"
+    },
+    {
+      "gaspField": "channel",
+      "dataset": "campaign",
+      "warehouseRef": "gasp_campaigns.channel"
+    },
+    {
+      "gaspField": "channel",
+      "dataset": "opportunity",
+      "warehouseRef": "gasp_opportunities.channel"
+    },
+    {
       "gaspField": "close_date",
       "dataset": "opportunity",
       "warehouseRef": "gasp_opportunities.close_date"
+    },
+    {
+      "gaspField": "close_date",
+      "dataset": "deal_registration",
+      "warehouseRef": "gasp_deal_registrations.closed_on"
+    },
+    {
+      "gaspField": "close_date",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.deal_closed_on"
     },
     {
       "gaspField": "close_date_valid",
       "warehouseRef": "gasp_opportunities.close_date_valid"
     },
     {
+      "gaspField": "closed_revenue",
+      "warehouseRef": "gasp_sales_reps.closed_revenue"
+    },
+    {
+      "gaspField": "committed_at",
+      "warehouseRef": "gasp_deployments.committed_at"
+    },
+    {
       "gaspField": "composite_score",
       "warehouseRef": "gasp_customers.composite_score"
+    },
+    {
+      "gaspField": "consultant_id",
+      "dataset": "consultant",
+      "warehouseRef": "gasp_consultant_capacity.consultant_id"
+    },
+    {
+      "gaspField": "consultant_id",
+      "dataset": "time_entry",
+      "warehouseRef": "gasp_time_entries.consultant_id"
+    },
+    {
+      "gaspField": "consultant_id",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.consultant_id"
+    },
+    {
+      "gaspField": "contract_end",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.contract_end"
     },
     {
       "gaspField": "contract_end",
@@ -86,9 +260,28 @@
       "warehouseRef": "gasp_subscriptions.contract_end"
     },
     {
+      "gaspField": "contract_event_type",
+      "warehouseRef": "gasp_contract_events.contract_event_type"
+    },
+    {
+      "gaspField": "contract_start",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.contract_start"
+    },
+    {
       "gaspField": "contract_start",
       "dataset": "subscription",
       "warehouseRef": "gasp_subscriptions.contract_start"
+    },
+    {
+      "gaspField": "contract_start",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.contract_began"
+    },
+    {
+      "gaspField": "contract_start",
+      "dataset": "onboarding_milestone",
+      "warehouseRef": "gasp_onboarding_milestones.contract_start"
     },
     {
       "gaspField": "core_features_adopted",
@@ -116,6 +309,15 @@
       "warehouseRef": "gasp_tickets.created_at"
     },
     {
+      "gaspField": "created_at",
+      "dataset": "issue",
+      "warehouseRef": "gasp_issues.created_at"
+    },
+    {
+      "gaspField": "credit_memo_count",
+      "warehouseRef": "gasp_invoices.credit_memo_count"
+    },
+    {
       "gaspField": "criteria_met",
       "warehouseRef": "gasp_customers.criteria_met"
     },
@@ -134,6 +336,16 @@
       "warehouseRef": "gasp_cost_events.currency"
     },
     {
+      "gaspField": "currency",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.currency"
+    },
+    {
+      "gaspField": "currency",
+      "dataset": "invoice",
+      "warehouseRef": "gasp_invoices.currency"
+    },
+    {
       "gaspField": "customer_id",
       "dataset": "revenue_event",
       "warehouseRef": "gasp_revenue_events.account_ref"
@@ -142,6 +354,16 @@
       "gaspField": "customer_id",
       "dataset": "cost_event",
       "warehouseRef": "gasp_cost_events.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.customer_id"
     },
     {
       "gaspField": "customer_id",
@@ -170,6 +392,21 @@
     },
     {
       "gaspField": "customer_id",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.client_ref"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "invoice",
+      "warehouseRef": "gasp_invoices.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
       "dataset": "survey_response",
       "warehouseRef": "gasp_survey_responses.customer_id"
     },
@@ -179,8 +416,50 @@
       "warehouseRef": "gasp_product_events.customer_id"
     },
     {
+      "gaspField": "customer_id",
+      "dataset": "revenue_schedule",
+      "warehouseRef": "gasp_revenue_schedule.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "contact",
+      "warehouseRef": "gasp_contacts.account_id"
+    },
+    {
       "gaspField": "customer_status",
       "warehouseRef": "gasp_customers.lifecycle_status"
+    },
+    {
+      "gaspField": "deflections",
+      "warehouseRef": "gasp_kb_articles.deflections"
+    },
+    {
+      "gaspField": "deliverable_id",
+      "warehouseRef": "gasp_deliverables.deliverable_id"
+    },
+    {
+      "gaspField": "department",
+      "warehouseRef": "gasp_employees.department"
+    },
+    {
+      "gaspField": "deploy_date",
+      "warehouseRef": "gasp_deployments.deploy_date"
+    },
+    {
+      "gaspField": "deployment_id",
+      "warehouseRef": "gasp_deployments.deployment_id"
+    },
+    {
+      "gaspField": "detected_at",
+      "warehouseRef": "gasp_incidents.detected_at"
+    },
+    {
+      "gaspField": "discovered_at",
+      "warehouseRef": "gasp_vulnerabilities.discovered_at"
+    },
+    {
+      "gaspField": "downtime_minutes",
+      "warehouseRef": "gasp_service_metrics.downtime_minutes"
     },
     {
       "gaspField": "ebitda",
@@ -192,17 +471,39 @@
       "warehouseRef": "gasp_survey_responses.employee_id"
     },
     {
-      "gaspField": "engaged_contact_count",
-      "warehouseRef": "gasp_customers.engaged_contact_count"
+      "gaspField": "employee_id",
+      "dataset": "employee",
+      "warehouseRef": "gasp_employees.employee_id"
+    },
+    {
+      "gaspField": "employee_status",
+      "warehouseRef": "gasp_employees.emp_status"
     },
     {
       "gaspField": "engagement_score",
       "warehouseRef": "gasp_survey_responses.engagement_score"
     },
     {
+      "gaspField": "entry_date",
+      "warehouseRef": "gasp_time_entries.entry_date"
+    },
+    {
+      "gaspField": "entry_id",
+      "warehouseRef": "gasp_time_entries.entry_id"
+    },
+    {
+      "gaspField": "error_count",
+      "warehouseRef": "gasp_service_metrics.error_count"
+    },
+    {
       "gaspField": "escalated",
       "dataset": "ticket",
       "warehouseRef": "gasp_tickets.escalated"
+    },
+    {
+      "gaspField": "escalated",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.escalated"
     },
     {
       "gaspField": "event_date",
@@ -213,6 +514,16 @@
       "gaspField": "event_date",
       "dataset": "cost_event",
       "warehouseRef": "gasp_cost_events.incurred_on"
+    },
+    {
+      "gaspField": "event_date",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.event_date"
+    },
+    {
+      "gaspField": "event_date",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.event_date"
     },
     {
       "gaspField": "event_date",
@@ -231,6 +542,16 @@
     },
     {
       "gaspField": "event_id",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.event_id"
+    },
+    {
+      "gaspField": "event_id",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.event_id"
+    },
+    {
+      "gaspField": "event_id",
       "dataset": "product_event",
       "warehouseRef": "gasp_product_events.event_id"
     },
@@ -244,9 +565,27 @@
       "warehouseRef": "gasp_revenue_events.expansion_classification"
     },
     {
+      "gaspField": "expansion_classification",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.expansion_classification"
+    },
+    {
+      "gaspField": "feature_created_date",
+      "warehouseRef": "gasp_features.feature_created_date"
+    },
+    {
       "gaspField": "feature_id",
       "dataset": "product_event",
       "warehouseRef": "gasp_product_events.feature_id"
+    },
+    {
+      "gaspField": "feature_id",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.feature_id"
+    },
+    {
+      "gaspField": "filled_date",
+      "warehouseRef": "gasp_requisitions.filled_date"
     },
     {
       "gaspField": "first_response_at",
@@ -262,6 +601,11 @@
       "warehouseRef": "gasp_users.first_use_date"
     },
     {
+      "gaspField": "first_use_date",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.first_use_date"
+    },
+    {
       "gaspField": "forecast_category",
       "warehouseRef": "gasp_opportunities.forecast_category"
     },
@@ -270,12 +614,179 @@
       "warehouseRef": "gasp_subscriptions.forecast_renewal_amount"
     },
     {
-      "gaspField": "has_exec_sponsor",
-      "warehouseRef": "gasp_customers.has_exec_sponsor"
+      "gaspField": "forecasted_revenue",
+      "warehouseRef": "gasp_forecasts.forecasted_revenue"
+    },
+    {
+      "gaspField": "has_error",
+      "warehouseRef": "gasp_orders.has_error"
+    },
+    {
+      "gaspField": "contact_id",
+      "warehouseRef": "gasp_contacts.contact_id"
+    },
+    {
+      "gaspField": "contact_role",
+      "warehouseRef": "gasp_contacts.contact_role"
+    },
+    {
+      "gaspField": "contact_engaged",
+      "warehouseRef": "gasp_contacts.contact_engaged"
+    },
+    {
+      "gaspField": "plan_id",
+      "dataset": "subscription",
+      "warehouseRef": "gasp_subscriptions.plan_id"
+    },
+    {
+      "gaspField": "plan_id",
+      "dataset": "plan",
+      "warehouseRef": "gasp_plans.plan_id"
+    },
+    {
+      "gaspField": "plan_name",
+      "warehouseRef": "gasp_plans.plan_name"
+    },
+    {
+      "gaspField": "billing_period",
+      "warehouseRef": "gasp_plans.billing_period"
+    },
+    {
+      "gaspField": "product_id",
+      "dataset": "license",
+      "warehouseRef": "gasp_licenses.product_id"
+    },
+    {
+      "gaspField": "product_id",
+      "dataset": "product",
+      "warehouseRef": "gasp_products.product_id"
+    },
+    {
+      "gaspField": "product_name",
+      "warehouseRef": "gasp_products.product_name"
+    },
+    {
+      "gaspField": "product_line",
+      "warehouseRef": "gasp_products.product_line"
+    },
+    {
+      "gaspField": "license_id",
+      "warehouseRef": "gasp_licenses.license_id"
+    },
+    {
+      "gaspField": "license_status",
+      "warehouseRef": "gasp_licenses.license_status"
+    },
+    {
+      "gaspField": "seats_purchased",
+      "warehouseRef": "gasp_licenses.seats_purchased"
+    },
+    {
+      "gaspField": "seats_assigned",
+      "warehouseRef": "gasp_licenses.assigned_seats"
+    },
+    {
+      "gaspField": "hire_date",
+      "dataset": "sales_rep",
+      "warehouseRef": "gasp_sales_reps.hire_date"
+    },
+    {
+      "gaspField": "hire_date",
+      "dataset": "employee",
+      "warehouseRef": "gasp_employees.started_on"
+    },
+    {
+      "gaspField": "hire_date",
+      "dataset": "requisition",
+      "warehouseRef": "gasp_requisitions.hire_date"
+    },
+    {
+      "gaspField": "hire_source",
+      "warehouseRef": "gasp_employees.hire_source"
+    },
+    {
+      "gaspField": "hours",
+      "dataset": "time_entry",
+      "warehouseRef": "gasp_time_entries.hours_logged"
+    },
+    {
+      "gaspField": "hours",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.hours"
+    },
+    {
+      "gaspField": "hours_actual",
+      "warehouseRef": "gasp_projects.hours_actual"
+    },
+    {
+      "gaspField": "hours_budgeted",
+      "warehouseRef": "gasp_projects.hours_budgeted"
+    },
+    {
+      "gaspField": "incident_id",
+      "dataset": "incident",
+      "warehouseRef": "gasp_incidents.incident_id"
+    },
+    {
+      "gaspField": "incident_id",
+      "dataset": "deployment",
+      "warehouseRef": "gasp_deployments.incident_id"
+    },
+    {
+      "gaspField": "incident_type",
+      "warehouseRef": "gasp_incidents.incident_type"
     },
     {
       "gaspField": "includes_services",
       "warehouseRef": "gasp_opportunities.includes_services"
+    },
+    {
+      "gaspField": "invoice_amount",
+      "warehouseRef": "gasp_invoices.invoice_amount"
+    },
+    {
+      "gaspField": "invoice_corrected",
+      "warehouseRef": "gasp_invoices.invoice_corrected"
+    },
+    {
+      "gaspField": "invoice_date",
+      "warehouseRef": "gasp_invoices.invoice_date"
+    },
+    {
+      "gaspField": "invoice_disputed",
+      "warehouseRef": "gasp_invoices.invoice_disputed"
+    },
+    {
+      "gaspField": "invoice_id",
+      "warehouseRef": "gasp_invoices.invoice_id"
+    },
+    {
+      "gaspField": "is_competitor",
+      "warehouseRef": "gasp_brand_mentions.is_competitor"
+    },
+    {
+      "gaspField": "is_high_performer",
+      "warehouseRef": "gasp_employees.is_high_performer"
+    },
+    {
+      "gaspField": "issue_environment",
+      "warehouseRef": "gasp_issues.issue_environment"
+    },
+    {
+      "gaspField": "issue_id",
+      "warehouseRef": "gasp_issues.issue_id"
+    },
+    {
+      "gaspField": "issue_source",
+      "warehouseRef": "gasp_issues.issue_source"
+    },
+    {
+      "gaspField": "issue_type",
+      "warehouseRef": "gasp_issues.issue_type"
+    },
+    {
+      "gaspField": "job_level",
+      "warehouseRef": "gasp_employees.job_level"
     },
     {
       "gaspField": "last_active_date",
@@ -325,8 +836,17 @@
       "warehouseRef": "gasp_cost_events.lifecycle_attribution"
     },
     {
-      "gaspField": "marketing_channel",
-      "warehouseRef": "gasp_opportunities.marketing_channel"
+      "gaspField": "lifecycle_attribution",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.lifecycle_attribution"
+    },
+    {
+      "gaspField": "list_price",
+      "warehouseRef": "gasp_quotes.list_price"
+    },
+    {
+      "gaspField": "market_midpoint",
+      "warehouseRef": "gasp_employees.market_midpoint"
     },
     {
       "gaspField": "marketing_influenced",
@@ -335,6 +855,22 @@
     {
       "gaspField": "marketing_source",
       "warehouseRef": "gasp_opportunities.marketing_source"
+    },
+    {
+      "gaspField": "mention_count",
+      "warehouseRef": "gasp_brand_mentions.mention_count"
+    },
+    {
+      "gaspField": "mention_source",
+      "warehouseRef": "gasp_brand_mentions.mention_source"
+    },
+    {
+      "gaspField": "milestone_date",
+      "warehouseRef": "gasp_onboarding_milestones.milestone_date"
+    },
+    {
+      "gaspField": "milestone_due_date",
+      "warehouseRef": "gasp_onboarding_milestones.milestone_due_date"
     },
     {
       "gaspField": "mql_date",
@@ -348,6 +884,11 @@
       "gaspField": "mrr_change",
       "dataset": "revenue_event",
       "warehouseRef": "gasp_revenue_events.mrr_change"
+    },
+    {
+      "gaspField": "mrr_change",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.mrr_change"
     },
     {
       "gaspField": "mrr_end",
@@ -370,9 +911,45 @@
       "warehouseRef": "gasp_survey_responses.nps_score"
     },
     {
+      "gaspField": "offer_status",
+      "warehouseRef": "gasp_requisitions.offer_status"
+    },
+    {
+      "gaspField": "onboarding_completion_date",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.onboarding_completion_date"
+    },
+    {
       "gaspField": "onboarding_completion_date",
       "dataset": "customer",
       "warehouseRef": "gasp_customers.onboarding_completion_date"
+    },
+    {
+      "gaspField": "onboarding_id",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.onboarding_id"
+    },
+    {
+      "gaspField": "onboarding_id",
+      "dataset": "onboarding_milestone",
+      "warehouseRef": "gasp_onboarding_milestones.onboarding_id"
+    },
+    {
+      "gaspField": "onboarding_id",
+      "dataset": "onboarding_session",
+      "warehouseRef": "gasp_onboarding_sessions.onboarding_id"
+    },
+    {
+      "gaspField": "onboarding_milestone",
+      "warehouseRef": "gasp_onboarding_milestones.onboarding_milestone"
+    },
+    {
+      "gaspField": "onboarding_session_date",
+      "warehouseRef": "gasp_onboarding_sessions.onboarding_session_date"
+    },
+    {
+      "gaspField": "onboarding_start_date",
+      "warehouseRef": "gasp_onboardings.onboarding_start_date"
     },
     {
       "gaspField": "operating_cash_flow",
@@ -392,8 +969,37 @@
       "warehouseRef": "gasp_opportunities.opportunity_id"
     },
     {
+      "gaspField": "opportunity_id",
+      "dataset": "deal_registration",
+      "warehouseRef": "gasp_deal_registrations.opportunity_id"
+    },
+    {
       "gaspField": "opportunity_stage",
       "warehouseRef": "gasp_opportunities.opportunity_stage"
+    },
+    {
+      "gaspField": "order_completed_at",
+      "warehouseRef": "gasp_orders.order_completed_at"
+    },
+    {
+      "gaspField": "order_id",
+      "warehouseRef": "gasp_orders.order_id"
+    },
+    {
+      "gaspField": "order_received_at",
+      "warehouseRef": "gasp_orders.order_received_at"
+    },
+    {
+      "gaspField": "outstanding_amount",
+      "warehouseRef": "gasp_invoices.outstanding_amount"
+    },
+    {
+      "gaspField": "partner_activity_type",
+      "warehouseRef": "gasp_partner_activities.partner_activity_type"
+    },
+    {
+      "gaspField": "partner_churn_date",
+      "warehouseRef": "gasp_partners.partner_churn_date"
     },
     {
       "gaspField": "partner_id",
@@ -402,8 +1008,23 @@
     },
     {
       "gaspField": "partner_id",
+      "dataset": "partner",
+      "warehouseRef": "gasp_partners.partner_id"
+    },
+    {
+      "gaspField": "partner_id",
       "dataset": "opportunity",
       "warehouseRef": "gasp_opportunities.partner_id"
+    },
+    {
+      "gaspField": "partner_id",
+      "dataset": "partner_activity",
+      "warehouseRef": "gasp_partner_activities.partner_id"
+    },
+    {
+      "gaspField": "partner_id",
+      "dataset": "deal_registration",
+      "warehouseRef": "gasp_deal_registrations.partner_ref"
     },
     {
       "gaspField": "partner_id",
@@ -411,13 +1032,104 @@
       "warehouseRef": "gasp_survey_responses.partner_id"
     },
     {
+      "gaspField": "partner_recruited_date",
+      "warehouseRef": "gasp_partners.partner_recruited_date"
+    },
+    {
       "gaspField": "partner_sourced",
       "warehouseRef": "gasp_opportunities.partner_sourced"
+    },
+    {
+      "gaspField": "partner_status",
+      "warehouseRef": "gasp_partners.state"
+    },
+    {
+      "gaspField": "partner_tier",
+      "warehouseRef": "gasp_partners.partner_tier"
+    },
+    {
+      "gaspField": "patched_at",
+      "warehouseRef": "gasp_vulnerabilities.patched_at"
+    },
+    {
+      "gaspField": "payment_date",
+      "warehouseRef": "gasp_invoices.payment_date"
+    },
+    {
+      "gaspField": "payment_method",
+      "warehouseRef": "gasp_invoices.payment_method"
+    },
+    {
+      "gaspField": "payment_status",
+      "warehouseRef": "gasp_invoices.payment_status"
+    },
+    {
+      "gaspField": "performance_rating",
+      "warehouseRef": "gasp_employees.performance_rating"
     },
     {
       "gaspField": "period_start",
       "dataset": "financials",
       "warehouseRef": "gasp_financials.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "forecast",
+      "warehouseRef": "gasp_forecasts.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "campaign",
+      "warehouseRef": "gasp_campaigns.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "sales_rep",
+      "warehouseRef": "gasp_sales_reps.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "consultant",
+      "warehouseRef": "gasp_consultant_capacity.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "kb_article",
+      "warehouseRef": "gasp_kb_articles.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "service_metrics",
+      "warehouseRef": "gasp_service_metrics.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "revenue_schedule",
+      "warehouseRef": "gasp_revenue_schedule.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "web_traffic",
+      "warehouseRef": "gasp_web_traffic.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "brand_mention",
+      "warehouseRef": "gasp_brand_mentions.period_start"
+    },
+    {
+      "gaspField": "planned_date",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.planned_date"
+    },
+    {
+      "gaspField": "planned_date",
+      "dataset": "project_milestone",
+      "warehouseRef": "gasp_project_milestones.planned_date"
+    },
+    {
+      "gaspField": "populated_field_count",
+      "warehouseRef": "gasp_crm_records.populated_field_count"
     },
     {
       "gaspField": "prior_mrr",
@@ -428,14 +1140,54 @@
       "warehouseRef": "gasp_product_events.product_event_type"
     },
     {
+      "gaspField": "project_completion_date",
+      "warehouseRef": "gasp_projects.project_completion_date"
+    },
+    {
+      "gaspField": "project_cost",
+      "warehouseRef": "gasp_projects.project_cost"
+    },
+    {
       "gaspField": "project_id",
       "dataset": "cost_event",
       "warehouseRef": "gasp_cost_events.project_id"
     },
     {
       "gaspField": "project_id",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.project_id"
+    },
+    {
+      "gaspField": "project_id",
+      "dataset": "project_milestone",
+      "warehouseRef": "gasp_project_milestones.project_id"
+    },
+    {
+      "gaspField": "project_id",
+      "dataset": "time_entry",
+      "warehouseRef": "gasp_time_entries.project_ref"
+    },
+    {
+      "gaspField": "project_id",
+      "dataset": "deliverable",
+      "warehouseRef": "gasp_deliverables.project_id"
+    },
+    {
+      "gaspField": "project_id",
       "dataset": "survey_response",
       "warehouseRef": "gasp_survey_responses.project_id"
+    },
+    {
+      "gaspField": "project_milestone_id",
+      "warehouseRef": "gasp_project_milestones.project_milestone_id"
+    },
+    {
+      "gaspField": "project_revenue",
+      "warehouseRef": "gasp_projects.project_revenue"
+    },
+    {
+      "gaspField": "project_start_date",
+      "warehouseRef": "gasp_projects.project_start_date"
     },
     {
       "gaspField": "qbr_completed",
@@ -444,6 +1196,88 @@
     {
       "gaspField": "qbr_due",
       "warehouseRef": "gasp_customers.qbr_due"
+    },
+    {
+      "gaspField": "quota",
+      "warehouseRef": "gasp_sales_reps.quota"
+    },
+    {
+      "gaspField": "quote_id",
+      "dataset": "quote",
+      "warehouseRef": "gasp_quotes.quote_id"
+    },
+    {
+      "gaspField": "quote_id",
+      "dataset": "order",
+      "warehouseRef": "gasp_orders.quote_id"
+    },
+    {
+      "gaspField": "quote_requested_at",
+      "warehouseRef": "gasp_quotes.quote_requested_at"
+    },
+    {
+      "gaspField": "quote_sent_at",
+      "warehouseRef": "gasp_quotes.quote_sent_at"
+    },
+    {
+      "gaspField": "quoted_price",
+      "warehouseRef": "gasp_quotes.quoted_price"
+    },
+    {
+      "gaspField": "ramped_date",
+      "warehouseRef": "gasp_sales_reps.ramped_date"
+    },
+    {
+      "gaspField": "recognition_correct",
+      "warehouseRef": "gasp_revenue_schedule.recognition_correct"
+    },
+    {
+      "gaspField": "recognized_revenue",
+      "warehouseRef": "gasp_revenue_schedule.recognized_revenue"
+    },
+    {
+      "gaspField": "record_id",
+      "warehouseRef": "gasp_crm_records.record_id"
+    },
+    {
+      "gaspField": "recovery_time",
+      "warehouseRef": "gasp_incidents.recovery_time"
+    },
+    {
+      "gaspField": "referenceable",
+      "warehouseRef": "gasp_projects.referenceable"
+    },
+    {
+      "gaspField": "registration_date",
+      "warehouseRef": "gasp_deal_registrations.registration_date"
+    },
+    {
+      "gaspField": "registration_id",
+      "warehouseRef": "gasp_deal_registrations.registration_id"
+    },
+    {
+      "gaspField": "registration_stage",
+      "warehouseRef": "gasp_deal_registrations.registration_stage"
+    },
+    {
+      "gaspField": "release_date",
+      "dataset": "release",
+      "warehouseRef": "gasp_releases.release_date"
+    },
+    {
+      "gaspField": "release_date",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.release_date"
+    },
+    {
+      "gaspField": "release_id",
+      "dataset": "release",
+      "warehouseRef": "gasp_releases.release_id"
+    },
+    {
+      "gaspField": "release_id",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.release_id"
     },
     {
       "gaspField": "renewal_amount",
@@ -475,8 +1309,33 @@
       "warehouseRef": "gasp_opportunities.rep_id"
     },
     {
+      "gaspField": "rep_id",
+      "dataset": "sales_rep",
+      "warehouseRef": "gasp_sales_reps.rep_id"
+    },
+    {
+      "gaspField": "request_count",
+      "warehouseRef": "gasp_service_metrics.request_count"
+    },
+    {
+      "gaspField": "required_field_count",
+      "warehouseRef": "gasp_crm_records.required_field_count"
+    },
+    {
       "gaspField": "required_fields_complete",
       "warehouseRef": "gasp_opportunities.required_fields_complete"
+    },
+    {
+      "gaspField": "requisition_id",
+      "warehouseRef": "gasp_requisitions.requisition_id"
+    },
+    {
+      "gaspField": "requisition_opened_date",
+      "warehouseRef": "gasp_requisitions.requisition_opened_date"
+    },
+    {
+      "gaspField": "requisition_status",
+      "warehouseRef": "gasp_requisitions.requisition_status"
     },
     {
       "gaspField": "resolution_due_at",
@@ -488,12 +1347,25 @@
       "warehouseRef": "gasp_tickets.resolved_at"
     },
     {
+      "gaspField": "resolved_at",
+      "dataset": "incident",
+      "warehouseRef": "gasp_incidents.resolved_at"
+    },
+    {
       "gaspField": "resolved_first_contact",
       "warehouseRef": "gasp_tickets.resolved_first_contact"
     },
     {
+      "gaspField": "resource_id",
+      "warehouseRef": "gasp_onboardings.resource_id"
+    },
+    {
       "gaspField": "response_id",
       "warehouseRef": "gasp_survey_responses.response_id"
+    },
+    {
+      "gaspField": "response_time_ms",
+      "warehouseRef": "gasp_service_metrics.response_time_ms"
     },
     {
       "gaspField": "revenue",
@@ -510,8 +1382,36 @@
       "warehouseRef": "gasp_financials.revenue_type"
     },
     {
+      "gaspField": "revision_count",
+      "warehouseRef": "gasp_quotes.revision_count"
+    },
+    {
+      "gaspField": "reworked",
+      "warehouseRef": "gasp_deliverables.reworked"
+    },
+    {
+      "gaspField": "roadmap_item_completed",
+      "warehouseRef": "gasp_roadmap_items.roadmap_item_completed"
+    },
+    {
+      "gaspField": "roadmap_item_id",
+      "warehouseRef": "gasp_roadmap_items.roadmap_item_id"
+    },
+    {
+      "gaspField": "salary",
+      "warehouseRef": "gasp_employees.salary"
+    },
+    {
       "gaspField": "satisfaction_score",
       "warehouseRef": "gasp_survey_responses.satisfaction_score"
+    },
+    {
+      "gaspField": "scope_changed",
+      "warehouseRef": "gasp_projects.scope_changed"
+    },
+    {
+      "gaspField": "service_id",
+      "warehouseRef": "gasp_service_metrics.service_id"
     },
     {
       "gaspField": "session_duration",
@@ -522,6 +1422,10 @@
       "warehouseRef": "gasp_product_events.session_id"
     },
     {
+      "gaspField": "severity",
+      "warehouseRef": "gasp_incidents.severity"
+    },
+    {
       "gaspField": "signup_date",
       "dataset": "user",
       "warehouseRef": "gasp_users.signup_date"
@@ -530,6 +1434,15 @@
       "gaspField": "signup_date",
       "dataset": "product_event",
       "warehouseRef": "gasp_product_events.signup_date"
+    },
+    {
+      "gaspField": "sla_met",
+      "warehouseRef": "gasp_service_metrics.sla_met"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "balance_sheet",
+      "warehouseRef": "gasp_balance_sheet.snapshot_date"
     },
     {
       "gaspField": "snapshot_date",
@@ -557,6 +1470,101 @@
       "warehouseRef": "gasp_users.snapshot_date"
     },
     {
+      "gaspField": "snapshot_date",
+      "dataset": "employee",
+      "warehouseRef": "gasp_employees.as_at"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "partner",
+      "warehouseRef": "gasp_partners.as_at"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.snap_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "invoice",
+      "warehouseRef": "gasp_invoices.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "requisition",
+      "warehouseRef": "gasp_requisitions.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "vulnerability",
+      "warehouseRef": "gasp_vulnerabilities.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "feature",
+      "warehouseRef": "gasp_features.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "roadmap_item",
+      "warehouseRef": "gasp_roadmap_items.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "project_milestone",
+      "warehouseRef": "gasp_project_milestones.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "deliverable",
+      "warehouseRef": "gasp_deliverables.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.snap_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "quote",
+      "warehouseRef": "gasp_quotes.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "order",
+      "warehouseRef": "gasp_orders.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "crm_record",
+      "warehouseRef": "gasp_crm_records.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "deal_registration",
+      "warehouseRef": "gasp_deal_registrations.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "contact",
+      "warehouseRef": "gasp_contacts.as_of"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "plan",
+      "warehouseRef": "gasp_plans.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "product",
+      "warehouseRef": "gasp_products.snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "license",
+      "warehouseRef": "gasp_licenses.as_of"
+    },
+    {
       "gaspField": "sql_date",
       "warehouseRef": "gasp_leads.sql_date"
     },
@@ -569,14 +1577,50 @@
       "warehouseRef": "gasp_opportunities.stage_probability"
     },
     {
+      "gaspField": "standard_rate",
+      "warehouseRef": "gasp_time_entries.standard_rate"
+    },
+    {
+      "gaspField": "started_at",
+      "warehouseRef": "gasp_incidents.started_at"
+    },
+    {
+      "gaspField": "steps_completed",
+      "warehouseRef": "gasp_onboardings.steps_completed"
+    },
+    {
+      "gaspField": "steps_total",
+      "warehouseRef": "gasp_onboardings.steps_total"
+    },
+    {
       "gaspField": "subscription_id",
       "dataset": "revenue_event",
       "warehouseRef": "gasp_revenue_events.subscription_id"
     },
     {
       "gaspField": "subscription_id",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.subscription_id"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "amendment_event",
+      "warehouseRef": "gasp_amendment_events.subscription_id"
+    },
+    {
+      "gaspField": "subscription_id",
       "dataset": "subscription",
       "warehouseRef": "gasp_subscriptions.subscription_id"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "revenue_schedule",
+      "warehouseRef": "gasp_revenue_schedule.subscription_id"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "license",
+      "warehouseRef": "gasp_licenses.sub_ref"
     },
     {
       "gaspField": "subscription_status",
@@ -595,6 +1639,32 @@
       "warehouseRef": "gasp_survey_responses.survey_type"
     },
     {
+      "gaspField": "sync_status",
+      "warehouseRef": "gasp_crm_records.sync_status"
+    },
+    {
+      "gaspField": "target_date",
+      "dataset": "project",
+      "warehouseRef": "gasp_projects.target_date"
+    },
+    {
+      "gaspField": "target_date",
+      "dataset": "onboarding",
+      "warehouseRef": "gasp_onboardings.target_date"
+    },
+    {
+      "gaspField": "tcv",
+      "warehouseRef": "gasp_contract_events.tcv"
+    },
+    {
+      "gaspField": "termination_date",
+      "warehouseRef": "gasp_employees.termination_date"
+    },
+    {
+      "gaspField": "termination_type",
+      "warehouseRef": "gasp_employees.termination_type"
+    },
+    {
       "gaspField": "ticket_id",
       "warehouseRef": "gasp_tickets.ticket_id"
     },
@@ -603,8 +1673,32 @@
       "warehouseRef": "gasp_tickets.ticket_status"
     },
     {
+      "gaspField": "ticket_type",
+      "warehouseRef": "gasp_tickets.ticket_type"
+    },
+    {
       "gaspField": "tier",
       "warehouseRef": "gasp_customers.tier"
+    },
+    {
+      "gaspField": "time_entry_type",
+      "warehouseRef": "gasp_time_entries.time_entry_type"
+    },
+    {
+      "gaspField": "traffic_source",
+      "warehouseRef": "gasp_web_traffic.traffic_source"
+    },
+    {
+      "gaspField": "training_completed",
+      "warehouseRef": "gasp_partners.training_completed"
+    },
+    {
+      "gaspField": "underrepresented_group",
+      "warehouseRef": "gasp_employees.underrepresented_group"
+    },
+    {
+      "gaspField": "unique_visitors",
+      "warehouseRef": "gasp_web_traffic.unique_visitors"
     },
     {
       "gaspField": "updated_within_sla",
@@ -631,6 +1725,22 @@
     {
       "gaspField": "user_status",
       "warehouseRef": "gasp_users.user_status"
+    },
+    {
+      "gaspField": "utilization",
+      "warehouseRef": "gasp_service_metrics.utilization"
+    },
+    {
+      "gaspField": "vulnerability_id",
+      "warehouseRef": "gasp_vulnerabilities.vulnerability_id"
+    },
+    {
+      "gaspField": "vulnerability_status",
+      "warehouseRef": "gasp_vulnerabilities.vulnerability_status"
+    },
+    {
+      "gaspField": "written_off_hours",
+      "warehouseRef": "gasp_time_entries.written_off_hours"
     }
   ]
 }

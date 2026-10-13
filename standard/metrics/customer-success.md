@@ -124,8 +124,10 @@ At-Risk Rate = Customers with health score < 40 / Total scored customers × 100
 
 **Formula:**
 ```
-QBR Completion = QBRs completed / QBRs scheduled × 100
+QBR Completion = Accounts with a completed QBR / Accounts due a QBR × 100
 ```
+
+A QBR counts as completed when it is held in the period. Eligible accounts are those due a QBR in the period.
 
 **Target:** 90%+ for enterprise/strategic accounts
 
@@ -135,12 +137,14 @@ QBR Completion = QBRs completed / QBRs scheduled × 100
 
 ### Executive Sponsor Coverage
 
-**Definition:** The percentage of accounts with an identified and engaged executive sponsor.
+**Definition:** The percentage of active accounts with an engaged contact whose role is executive sponsor.
 
 **Formula:**
 ```
-Exec Sponsor Coverage = Accounts with active exec sponsor / Total managed accounts × 100
+Exec Sponsor Coverage = Accounts with an engaged executive sponsor contact / Active accounts × 100
 ```
+
+**Population:** Contacts come from the contact dataset (one row per named person at an account, with a role and an engaged flag). An account counts once however many sponsors it has. Restrict to managed accounts by filtering the denominator.
 
 **What it tells you:** Do you have senior relationships? Predicts resilience during renewals.
 
@@ -148,12 +152,14 @@ Exec Sponsor Coverage = Accounts with active exec sponsor / Total managed accoun
 
 ### Contact Coverage
 
-**Definition:** Average number of engaged contacts per account.
+**Definition:** Average number of engaged contacts per active account.
 
 **Formula:**
 ```
-Contact Coverage = Total engaged contacts / Number of accounts
+Contact Coverage = Engaged contacts / Active accounts
 ```
+
+**Population:** Engaged contacts are rows of the contact dataset with the engaged flag set at period end (engaged means activity in the last 90 days, however the CRM defines activity). The denominator is active accounts, so an account with no contacts pulls the average down rather than disappearing from it.
 
 **Target:** 3+ contacts per account
 
@@ -191,6 +197,23 @@ Expansion Rate = Expansion MRR / Beginning MRR × 100
 - [Ordway: New vs Expansion ARR](https://ordwaylabs.com/blog/new-versus-expansion-arr/)
 - [High Alpha: 2025 SaaS Benchmarks](https://www.highalpha.com/saas-benchmarks)
 - [ChartMogul: SaaS Benchmarks Report](https://chartmogul.com/reports/saas-benchmarks-report/)
+
+---
+
+### License Utilization
+
+**Definition:** The share of purchased seats that are assigned to a user, across active licenses at period end.
+
+**Formula:**
+```
+License Utilization = Seats assigned / Seats purchased × 100
+```
+
+**Population:** Active licenses (the license dataset: one row per entitlement a subscription grants, with the product it covers, seats purchased and seats assigned). Reported for the whole base and per product.
+
+**Target:** 70 to 90 percent. Below 70 percent the account is paying for seats it does not use and is a downgrade risk at renewal. Above 90 percent the account is close to needing more seats, which is an expansion signal.
+
+**What it tells you:** Whether customers are growing into what they bought. The earliest hard signal of both contraction and expansion for seat-priced products.
 
 ---
 
@@ -354,5 +377,6 @@ ARR per CSM = Total managed ARR / Number of CSMs
 | Customer Health Score | Health | Churn risk prediction |
 | At-Risk Rate | Health | Portfolio risk level |
 | Expansion Rate | Growth | Upsell/cross-sell effectiveness |
+| License Utilization | Growth | Seat usage, contraction and expansion signal |
 | Renewal Rate | Retention | Contract renewal success |
 | Accounts per CSM | Productivity | Team capacity |

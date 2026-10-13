@@ -5,7 +5,10 @@
     "mrr": {
       "formula": "sum(field.mrr where field.subscription_status = 'active') at period_end",
       "unit": "currency",
-      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage."
+      "breakdowns": {
+        "by_plan": "field.plan_id"
+      },
+      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage. by_plan returns one row per plan the subscriptions are priced by."
     },
     "arr": {
       "formula": "metric.mrr * 12",
@@ -72,7 +75,7 @@
         "per_customer": "sum(min(field.mrr_end, field.mrr_start)) / sum(field.mrr_start) over cohort(field.customer_id, period_start)",
         "adjusted": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
       },
-      "notes": "Period is trailing 12 months. Capped at 100% by construction."
+      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction."
     },
     "logo_churn_rate": {
       "formula": "count_distinct(field.customer_id where field.event_type = 'churn') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
@@ -132,18 +135,20 @@
       "notes": "Active means activity in the trailing 12 months: deals registered, deals closed, certification maintained or engagement threshold met. Encoded through the partner status flag."
     },
     "partner_tier_distribution": {
-      "formula": "count_distinct(field.partner_id where field.partner_tier = 'gold') / count_distinct(field.partner_id)",
+      "formula": "count_distinct(field.partner_id) / total(count_distinct(field.partner_id))",
       "unit": "percent",
-      "notes": "Reported per tier; gold is the example tier. Group by field.tier for the full distribution."
+      "breakdown": "field.partner_tier",
+      "notes": "Reported per tier: partners in the tier over all partners, on the period-end partner snapshot."
     },
     "partner_activation_rate": {
-      "formula": "count_distinct(field.partner_id where field.opportunity_id is not null and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_end",
+      "formula": "count_distinct(field.partner_id where in_period(field.partner_recruited_date) and field.partner_status = 'active') at period_end / count_distinct(field.partner_id where in_period(field.partner_recruited_date)) at period_end",
       "unit": "percent",
-      "notes": "Partners with at least one closed-won deal in the period over active partners."
+      "notes": "Partners recruited in the period who are active at period end over partners recruited in the period, as partnerships.md defines it. A partner moves from recruited to active status once productive (first deal registered or closed, or the engagement threshold met)."
     },
     "partner_churn_rate": {
       "formula": "count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start",
-      "unit": "percent"
+      "unit": "percent",
+      "notes": "Partners with a churn date in the period over partners active at period start."
     },
     "partner_sourced_revenue": {
       "formula": "sum(field.opportunity_amount where field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
@@ -164,9 +169,9 @@
       "unit": "percent"
     },
     "average_partner_revenue": {
-      "formula": "metric.partner_sourced_revenue / metric.total_active_partners",
+      "formula": "metric.partner_influenced_revenue / metric.total_active_partners",
       "unit": "currency",
-      "notes": "Markdown says total partner revenue; encoded with partner-sourced revenue."
+      "notes": "Total partner revenue is partner_influenced_revenue: closed-won revenue on every deal with a partner attached, partner-sourced deals included."
     },
     "partner_deal_registration_volume": {
       "formula": "count_distinct(field.registration_id where in_period(field.registration_date))",
@@ -244,9 +249,9 @@
       "notComputable": "A partner-type grouping that applies existing metrics per type (key metric seats under management), not a single formula."
     },
     "marketplace_revenue": {
-      "formula": "sum(field.opportunity_amount where field.marketing_channel = 'referral' and field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
+      "formula": "sum(field.opportunity_amount where field.channel = 'referral' and field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "currency",
-      "notes": "Marketplace deals are partner-sourced opportunities attributed to the marketplace listing. Tag them with marketing_channel referral and partner_sourced until a marketplace channel value is added."
+      "notes": "Marketplace deals are partner-sourced opportunities attributed to the marketplace listing. Tag them with channel referral and partner_sourced until a marketplace channel value is added."
     },
     "marketplace_as_of_revenue": {
       "formula": "metric.marketplace_revenue / metric.revenue_gaap",
@@ -264,9 +269,9 @@
       "notes": "Weighted form is the main formula. Always state weighted or unweighted."
     },
     "pipeline_coverage": {
-      "formula": "metric.pipeline_value / sum(field.quota)",
+      "formula": "sum(field.opportunity_amount where field.opportunity_stage not in ('closed_won', 'closed_lost')) / sum(field.quota)",
       "unit": "ratio",
-      "notes": "Markdown uses total pipeline value; the unweighted variant of pipeline value is the usual input."
+      "notes": "Unweighted open pipeline (the unweighted variant of pipeline_value) over quota. The 3x to 4x benchmarks assume unweighted pipeline, since 1 / win rate already applies the conversion."
     },
     "pipeline_velocity": {
       "formula": "count(field.opportunity_id where field.opportunity_stage not in ('closed_won', 'closed_lost')) * metric.win_rate * metric.average_deal_size / metric.sales_cycle",
@@ -298,12 +303,12 @@
       "notes": "Uses total contract value, not annualised."
     },
     "sales_cycle": {
-      "formula": "median(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
+      "formula": "avg(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "days",
       "variants": {
-        "average": "avg(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))"
+        "median": "median(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))"
       },
-      "notes": "Markdown gives average and recommends median."
+      "notes": "Mean days from opportunity creation to close for deals won in the period, as sales.md defines it. Report the median variant beside it to show outlier skew."
     },
     "quota_attainment": {
       "formula": "sum(field.closed_revenue) / sum(field.quota)",
@@ -408,9 +413,9 @@
       "unit": "percent"
     },
     "project_duration_accuracy": {
-      "formula": "sum(field.target_date - field.project_start_date where in_period(field.project_completion_date)) / sum(field.project_completion_date - field.project_start_date where in_period(field.project_completion_date))",
+      "formula": "avg((field.target_date - field.project_start_date) / (field.project_completion_date - field.project_start_date) where in_period(field.project_completion_date))",
       "unit": "percent",
-      "notes": "Estimated duration over actual duration. Target is 90 to 110 percent."
+      "notes": "Per-project estimated duration over actual duration, averaged over projects completed in the period, so each project weighs the same. Target is 90 to 110 percent."
     },
     "project_csat": {
       "formula": "count(field.satisfaction_score where field.survey_type = 'project' and field.satisfaction_score >= 4) / count(field.satisfaction_score where field.survey_type = 'project')",
@@ -459,7 +464,7 @@
     "ticket_volume": {
       "formula": "count_distinct(field.ticket_id)",
       "unit": "count",
-      "notes": "Tickets created in period. Break down by field.channel."
+      "notes": "Tickets created in period. Ticket Distribution by Type (ticket_distribution_by_type) breaks it down by field.ticket_type."
     },
     "tickets_per_customer": {
       "formula": "metric.ticket_volume / count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
@@ -470,7 +475,10 @@
       "unit": "count"
     },
     "ticket_distribution_by_type": {
-      "notComputable": "A categorical breakdown of ticket volume by type with no scalar formula."
+      "formula": "count_distinct(field.ticket_id) / total(metric.ticket_volume)",
+      "unit": "percent",
+      "breakdown": "field.ticket_type",
+      "notes": "Reported per ticket type: tickets of the type created in the period over Ticket Volume (all tickets created in the period). The numerator counts tickets as Ticket Volume does."
     },
     "frt": {
       "formula": "(median(field.first_response_at - field.created_at)) * 1440",
@@ -554,17 +562,26 @@
       "notes": "Counted per account: customers with a QBR held in the period (qbr_completed) over customers with a QBR due (qbr_due), both on the customer snapshot. customer-success.md defines it over eligible accounts."
     },
     "executive_sponsor_coverage": {
-      "formula": "count_distinct(field.customer_id where field.has_exec_sponsor = true) / count_distinct(field.customer_id where field.customer_status = 'active')",
+      "formula": "count_distinct(field.customer_id where field.contact_role = 'executive_sponsor' and field.contact_engaged = true) / count_distinct(field.customer_id where field.customer_status = 'active')",
       "unit": "percent",
-      "notes": "Denominator is active accounts; restrict to managed accounts by filtering the population."
+      "notes": "Numerator counts accounts with at least one engaged contact whose role is executive_sponsor on the contact snapshot at period end. Denominator is active accounts; restrict to managed accounts by filtering the population."
     },
     "contact_coverage": {
-      "formula": "sum(field.engaged_contact_count) / count_distinct(field.customer_id)",
-      "unit": "ratio"
+      "formula": "count_distinct(field.contact_id where field.contact_engaged = true) / count_distinct(field.customer_id where field.customer_status = 'active')",
+      "unit": "ratio",
+      "notes": "Engaged contacts on the contact snapshot at period end over active accounts on the customer snapshot. An account with no contacts counts in the denominator."
     },
     "expansion_rate": {
       "formula": "metric.expansion_mrr / metric.mrr at period_start",
       "unit": "percent"
+    },
+    "license_utilization": {
+      "formula": "sum(field.seats_assigned where field.license_status = 'active') / sum(field.seats_purchased where field.license_status = 'active')",
+      "unit": "percent",
+      "breakdowns": {
+        "by_product": "field.product_id"
+      },
+      "notes": "Active licenses on the license snapshot at period end. Seats purchased is the entitlement the subscription grants; seats assigned is the number held by a named user. by_product returns one row per product the licenses cover."
     },
     "upsell_rate": {
       "formula": "count_distinct(field.customer_id where field.amendment_type = 'upgrade') / count_distinct(field.customer_id where field.upgrade_eligible = true) at period_start",
@@ -659,7 +676,7 @@
     "invoice_cycle_time": {
       "formula": "median(field.invoice_date - field.billing_trigger_date where in_period(field.invoice_date))",
       "unit": "days",
-      "notes": "Markdown target is in business days; the formula counts calendar days."
+      "notes": "Calendar days, as revops.md states. A business-day count differs when the interval spans weekends or holidays."
     },
     "billing_disputes": {
       "formula": "count_distinct(field.invoice_id where in_period(field.invoice_date) and field.invoice_disputed = true) / count_distinct(field.invoice_id where in_period(field.invoice_date))",
@@ -695,14 +712,10 @@
       "notes": "Canonical definition is in finance.md; revops.md links to it. Denominator is GAAP recognised revenue (metric.revenue_gaap), not billings."
     },
     "payment_method_distribution": {
-      "formula": "sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'credit_card') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)",
+      "formula": "sum(field.invoice_amount where in_period(field.invoice_date)) / total(sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null))",
       "unit": "percent",
-      "variants": {
-        "ach": "sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'ach') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)",
-        "wire": "sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'wire') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)",
-        "check": "sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method = 'check') / sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_method is not null)"
-      },
-      "notes": "Main formula is the credit card share; variants give the other methods."
+      "breakdown": "field.payment_method",
+      "notes": "Reported per payment method: invoiced amount in the period paid by the method over invoiced amount with a known method."
     },
     "recognized_vs_billed": {
       "formula": "sum(field.recognized_revenue) / sum(field.billed_amount)",
@@ -794,14 +807,14 @@
       "notes": "Average feature actions per user per period."
     },
     "time_to_feature_adoption": {
-      "formula": "median(field.first_use_date - field.release_date where in_period(field.release_date))",
+      "formula": "median(field.first_use_date - field.signup_date where in_period(field.first_use_date))",
       "unit": "days",
-      "notes": "Median days from a feature's release to its first use, for features released in the period. product.md measures from the user's signup date; the feature dataset carries no signup date, so release date is the anchor."
+      "notes": "Median days from a user's signup to their first use of the tracked feature, for users whose first use falls in the period. Both dates are on the user dataset (first_use_date is the first use of the feature)."
     },
     "breadth_of_adoption": {
-      "formula": "count_distinct(field.feature_id) / metric.active_accounts",
+      "formula": "count_distinct(field.customer_id, field.feature_id) / metric.active_accounts",
       "unit": "ratio",
-      "notes": "Distinct features used across all accounts over active accounts; a per-account breadth needs a staged dataset."
+      "notes": "Distinct (account, feature) pairs used in the period over active accounts: the average number of features each active account uses. Both fields are on product_event."
     },
     "session_frequency": {
       "formula": "count_distinct(field.session_id) / count_distinct(field.user_id where field.product_event_type = 'qualifying')",
@@ -987,9 +1000,6 @@
       "formula": "sum(field.invoice_amount where in_period(field.invoice_date))",
       "unit": "currency"
     },
-    "arr_mrr": {
-      "notComputable": "Cross-reference entry that points to the ARR and MRR definitions in Core, which carry the formulas."
-    },
     "revenue_per_employee": {
       "formula": "metric.arr / metric.total_headcount",
       "unit": "currency"
@@ -1053,7 +1063,8 @@
     },
     "collection_rate": {
       "formula": "sum(field.invoice_amount where in_period(field.invoice_date) and field.payment_date is not null) / metric.billings",
-      "unit": "percent"
+      "unit": "percent",
+      "notes": "Invoice-level cash: an invoice issued in the period counts at its full amount once it has a payment date. The ontology has no payment amount field, so partial payments are not measured separately."
     },
     "ttfv": {
       "formula": "median(field.milestone_date - field.contract_start where field.onboarding_milestone = 'first_value')",
@@ -1217,7 +1228,10 @@
       "unit": "currency"
     },
     "source_of_hire": {
-      "notComputable": "A distribution of hires by recruiting channel, with no single formula."
+      "formula": "count_distinct(field.employee_id where in_period(field.hire_date)) / total(count_distinct(field.employee_id where in_period(field.hire_date)))",
+      "unit": "percent",
+      "breakdown": "field.hire_source",
+      "notes": "Reported per hire source: hires in the period through the source over all hires in the period, read on the period-end employee snapshot."
     },
     "compa_ratio": {
       "formula": "avg(field.salary / field.market_midpoint)",
@@ -1244,7 +1258,7 @@
     "visitors": {
       "formula": "sum(field.unique_visitors)",
       "unit": "count",
-      "notes": "Unique visitors to owned properties in the period."
+      "notes": "Sum of per-source unique visitors: web_traffic is keyed by traffic_source, so a visitor arriving through two sources counts once in each. Load one row per source per reporting period so a returning visitor is not counted again within a source."
     },
     "visitor_to_lead_rate": {
       "formula": "metric.leads / metric.visitors",
@@ -1286,9 +1300,10 @@
       "unit": "currency"
     },
     "cac_by_channel": {
-      "formula": "sum(field.cost where field.cost_function = 'gtm' and field.cost_centre = 'marketing') / count_distinct(field.customer_id where field.event_type = 'new')",
+      "formula": "sum(field.ad_spend) / count_distinct(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "currency",
-      "notes": "Filter both cost (by cost_centre or campaign) and new customers by channel to compute per-channel CAC."
+      "breakdown": "field.channel",
+      "notes": "Reported per marketing channel. Spend is campaign ad spend, which carries its channel, rather than the cost ledger: cost_event rows have a cost function but no channel, so ledger cost cannot be split by channel. New customers are opportunities won in the period, attributed to their first-touch channel."
     },
     "cpl": {
       "formula": "sum(field.cost where field.cost_function = 'gtm' and field.cost_centre = 'marketing') / metric.leads",
@@ -1321,12 +1336,12 @@
       "unit": "count"
     },
     "paid_media_efficiency_roas": {
-      "formula": "sum(field.opportunity_amount where field.marketing_channel = 'paid_ads' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / sum(field.ad_spend where field.channel = 'paid_ads')",
+      "formula": "sum(field.opportunity_amount where field.channel = 'paid_ads' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / sum(field.ad_spend where field.channel = 'paid_ads')",
       "unit": "ratio",
       "notes": "Expressed as a ratio such as 3x."
     },
     "email_metrics": {
-      "notComputable": "A family of six email rate formulas (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single metric."
+      "notComputable": "A family of six email rates (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single headline metric. The ontology has no email send dataset or fields for sends, deliveries, opens, clicks, unsubscribes, bounces or complaints, so none of the six is encoded."
     },
     "content_performance": {
       "notComputable": "A family of content measures (downloads, engagement rate, content-to-MQL) with no single metric."
@@ -1345,9 +1360,9 @@
       "notes": "Same NPS arithmetic applied to prospect and market respondents rather than customers."
     },
     "onboarding_milestone_completion_rate": {
-      "formula": "count_distinct(field.onboarding_id where field.onboarding_milestone = 'go_live') / count_distinct(field.onboarding_id where in_period(field.onboarding_start_date))",
+      "formula": "all_time(count(field.onboarding_id where in_period(field.milestone_due_date) and field.milestone_date is not null and field.milestone_date <= period_end)) / all_time(count(field.onboarding_id where in_period(field.milestone_due_date)))",
       "unit": "percent",
-      "notes": "Onboardings reaching the milestone in the period over onboardings started in the period. Filter onboarding_milestone for other milestones."
+      "notes": "Milestones reached over milestones due: onboarding milestones due in the period that were reached by period end, over all milestones due in the period. Each row of onboarding_milestone is one planned milestone, so planned rows carry milestone_due_date before milestone_date is set; all_time keeps unreached rows that the milestone_date period filter would drop. Add field.onboarding_milestone = '<milestone>' to both sides for a single milestone."
     },
     "professional_services_milestone_completion_rate": {
       "formula": "count_distinct(field.project_milestone_id where in_period(field.actual_date) and field.actual_date <= field.planned_date) / count_distinct(field.project_milestone_id where in_period(field.actual_date))",

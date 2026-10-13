@@ -3,8 +3,8 @@
 // Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive`
 // ═══════════════════════════════════════════════════════════════
 //
-// Nodes: 60 Metrics, 15 Entities, 7 Concepts, 47 Datasets, 251 Fields, 22 Source Categories
-// Edges: 88 metric relationships, 62 MEASURES, 22 entity/concept relationships, 363 BELONGS_TO, 335 SOURCED_FROM
+// Nodes: 60 Metrics, 28 Entities, 7 Concepts, 51 Datasets, 264 Fields, 22 Source Categories
+// Edges: 79 metric relationships, 70 MEASURES, 30 entity/concept relationships, 385 BELONGS_TO, 352 SOURCED_FROM
 //
 // Relationship types (metric signal): DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES
 // Relationship types (entity): OWNS, GRANTS, PARENT_OF, PRICED_BY, CONVERTS_TO, SUBMITS, ENGAGES_VIA, MANAGES, SOURCES, SERVES, REPRESENTED_BY, GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS, BELONGS_TO
@@ -21,13 +21,13 @@ CREATE (:Metric {id: 'arr', name: 'ARR', department: 'Core', signalType: 'outcom
 CREATE (:Metric {id: 'rule_of_40', name: 'Rule of 40', department: 'Core', signalType: 'outcome', level: 1, definition: 'A heuristic that balances growth and profitability. A healthy SaaS company\'s growth rate plus profit margin should equal 40% or more.', formula: '(metric.arr - lag(metric.arr, 1 year)) / lag(metric.arr, 1 year) + metric.ebitda_margin', url: 'https://gaspwiki.com/v1/metrics/core/rule-of-40', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'mrr', name: 'MRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The total predictable revenue from active subscriptions, normalized to a monthly value.', formula: 'sum(field.mrr where field.subscription_status = \'active\') at period_end', url: 'https://gaspwiki.com/v1/metrics/core/mrr-monthly-recurring-revenue', grain: 'End-of-month snapshot', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'net_new_mrr', name: 'Net New MRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The net change in MRR after accounting for all movements.', formula: 'metric.new_mrr + metric.expansion_mrr - metric.churned_mrr - metric.contraction_mrr', url: 'https://gaspwiki.com/v1/metrics/core/net-new-mrr', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
-CREATE (:Metric {id: 'nrr', name: 'NRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Also known as Net Dollar Retention (NDR).', formula: '(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)', url: 'https://gaspwiki.com/v1/metrics/core/net-revenue-retention-nrr', grain: 'Monthly cohort', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'grr', name: 'GRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The percentage of revenue retained from existing customers, excluding expansion revenue. Also known as Gross Dollar Retention.', formula: '(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)', url: 'https://gaspwiki.com/v1/metrics/core/gross-revenue-retention-grr', grain: 'Account-month', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'gross_margin', name: 'Gross Margin', department: 'Core', signalType: 'outcome', level: 2, definition: 'Revenue minus cost of goods sold (COGS), as a percentage of revenue. Measures profitability after direct delivery costs.', formula: '(sum(field.revenue) - sum(field.cost where field.cost_function = \'infrastructure\')) / sum(field.revenue)', url: 'https://gaspwiki.com/v1/metrics/core/gross-margin', grain: 'End-of-month snapshot', frequency: 'Monthly', period: 'month'});
+CREATE (:Metric {id: 'nrr', name: 'NRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Also known as Net Dollar Retention (NDR).', formula: '(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)', url: 'https://gaspwiki.com/v1/metrics/core/net-revenue-retention-nrr', grain: 'Customer cohort at period start', frequency: 'Monthly', period: 'trailing_12_months'});
+CREATE (:Metric {id: 'grr', name: 'GRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The percentage of revenue retained from existing customers, excluding expansion revenue. Also known as Gross Dollar Retention.', formula: '(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)', url: 'https://gaspwiki.com/v1/metrics/core/gross-revenue-retention-grr', grain: 'Customer cohort at period start', frequency: 'Monthly', period: 'trailing_12_months'});
+CREATE (:Metric {id: 'gross_margin', name: 'Gross Margin', department: 'Core', signalType: 'outcome', level: 2, definition: 'Revenue minus cost of goods sold (COGS), as a percentage of revenue. Measures profitability after direct delivery costs.', formula: '(sum(field.revenue) - sum(field.cost where field.cost_function = \'infrastructure\')) / sum(field.revenue)', url: 'https://gaspwiki.com/v1/metrics/core/gross-margin', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'arpa', name: 'ARPA', department: 'Core', signalType: 'outcome', level: 2, definition: 'Average monthly recurring revenue per customer.', formula: 'metric.mrr / count_distinct(field.customer_id where field.customer_status = \'active\') at period_end', url: 'https://gaspwiki.com/v1/metrics/core/arpa-average-revenue-per-account', grain: 'End-of-month snapshot', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'mrr_growth_rate', name: 'MRR Growth Rate', department: 'Core', signalType: 'outcome', level: 2, definition: 'The month-over-month percentage change in MRR.', formula: '(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)', url: 'https://gaspwiki.com/v1/metrics/core/mrr-growth-rate', grain: 'End-of-month snapshot', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'operating_margin', name: 'Operating Margin', department: 'Finance', signalType: 'outcome', level: 2, definition: 'Operating income as a percentage of revenue.', formula: 'metric.gross_margin - metric.opex_ratio', url: 'https://gaspwiki.com/v1/metrics/finance/operating-margin-ebit-margin', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'fcf', name: 'Free Cash Flow', department: 'Finance', signalType: 'outcome', level: 2, definition: 'Cash generated from operations minus capital expenditures.', formula: 'sum(field.operating_cash_flow) - sum(field.capital_expenditures)', url: 'https://gaspwiki.com/v1/metrics/finance/free-cash-flow-fcf', grain: 'End-of-month snapshot', frequency: 'Monthly', period: 'month'});
+CREATE (:Metric {id: 'fcf', name: 'Free Cash Flow', department: 'Finance', signalType: 'outcome', level: 2, definition: 'Cash generated from operations minus capital expenditures.', formula: 'sum(field.operating_cash_flow) - sum(field.capital_expenditures)', url: 'https://gaspwiki.com/v1/metrics/finance/free-cash-flow-fcf', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'new_mrr', name: 'New MRR', department: 'Core', signalType: 'outcome', level: 3, definition: 'MRR generated from brand new customers acquired in the period.', formula: 'sum(field.mrr_change where field.event_type = \'new\')', url: 'https://gaspwiki.com/v1/metrics/core/new-mrr', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'expansion_mrr', name: 'Expansion MRR', department: 'Core', signalType: 'outcome', level: 3, definition: 'Additional MRR from existing customers through upgrades, add-ons, seat increases or price increases.', formula: 'sum(field.mrr_change where field.event_type = \'expansion\')', url: 'https://gaspwiki.com/v1/metrics/core/expansion-mrr', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'churned_mrr', name: 'Churned MRR', department: 'Core', signalType: 'outcome', level: 3, definition: 'MRR lost from customers who cancelled their subscriptions.', formula: '-sum(field.mrr_change where field.event_type = \'churn\')', url: 'https://gaspwiki.com/v1/metrics/core/churned-mrr', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
@@ -38,9 +38,9 @@ CREATE (:Metric {id: 'ltv_cac_ratio', name: 'LTV:CAC Ratio', department: 'Core',
 CREATE (:Metric {id: 'cac_payback', name: 'CAC Payback Period', department: 'Core', signalType: 'efficiency', level: 3, definition: 'The number of months required to recover the cost of acquiring a customer. Also called "Months to Recover CAC" or "Time to Recover CAC."', formula: 'metric.cac / (metric.arpa * metric.gross_margin)', url: 'https://gaspwiki.com/v1/metrics/core/cac-payback-period', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'logo_churn_rate', name: 'Logo Churn Rate', department: 'Core', signalType: 'outcome', level: 3, definition: 'The percentage of customers lost in a period. Also called customer churn or logo churn.', formula: 'count_distinct(field.customer_id where field.event_type = \'churn\') / count_distinct(field.customer_id where field.customer_status = \'active\') at period_start', url: 'https://gaspwiki.com/v1/metrics/core/logo-churn-rate-customer-churn', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'revenue_churn_rate', name: 'Revenue Churn Rate', department: 'Core', signalType: 'outcome', level: 3, definition: 'The percentage of MRR lost to churn and contraction in a period. Also called MRR Churn Rate.', formula: '(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start', url: 'https://gaspwiki.com/v1/metrics/core/revenue-churn-rate', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
-CREATE (:Metric {id: 'nps', name: 'NPS', department: 'Core', signalType: 'leading', level: 3, definition: 'A measure of customer loyalty based on likelihood to recommend.', formula: '(count(field.nps_score where field.survey_type = \'customer\' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = \'customer\' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = \'customer\') * 100', url: 'https://gaspwiki.com/v1/metrics/core/nps-net-promoter-score', grain: 'Weekly snapshot', frequency: 'Weekly', period: 'week'});
+CREATE (:Metric {id: 'nps', name: 'NPS', department: 'Core', signalType: 'leading', level: 3, definition: 'A measure of customer loyalty based on likelihood to recommend.', formula: '(count(field.nps_score where field.survey_type = \'customer\' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = \'customer\' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = \'customer\') * 100', url: 'https://gaspwiki.com/v1/metrics/core/nps-net-promoter-score', grain: 'Per survey response', frequency: 'Per response', period: 'undefined'});
 CREATE (:Metric {id: 'pipeline_value', name: 'Pipeline Value', department: 'Sales', signalType: 'leading', level: 3, definition: 'Total value of all active sales opportunities.', formula: 'sum(field.opportunity_amount * field.stage_probability where field.opportunity_stage not in (\'closed_won\', \'closed_lost\'))', url: 'https://gaspwiki.com/v1/metrics/sales/pipeline-value', grain: 'Daily snapshot', frequency: 'Daily sync', period: 'day'});
-CREATE (:Metric {id: 'pipeline_coverage', name: 'Pipeline Coverage', department: 'Sales', signalType: 'leading', level: 3, definition: 'The ratio of pipeline value to quota for the period.', formula: 'metric.pipeline_value / sum(field.quota)', url: 'https://gaspwiki.com/v1/metrics/sales/pipeline-coverage-ratio', grain: 'Daily snapshot', frequency: 'Daily sync', period: 'day'});
+CREATE (:Metric {id: 'pipeline_coverage', name: 'Pipeline Coverage', department: 'Sales', signalType: 'leading', level: 3, definition: 'The ratio of unweighted pipeline value to quota for the period.', formula: 'sum(field.opportunity_amount where field.opportunity_stage not in (\'closed_won\', \'closed_lost\')) / sum(field.quota)', url: 'https://gaspwiki.com/v1/metrics/sales/pipeline-coverage-ratio', grain: 'Daily snapshot', frequency: 'Daily sync', period: 'day'});
 CREATE (:Metric {id: 'win_rate', name: 'Win Rate', department: 'Sales', signalType: 'efficiency', level: 3, definition: 'The percentage of qualified opportunities that close as won.', formula: 'count(field.opportunity_id where field.opportunity_stage = \'closed_won\' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in (\'closed_won\', \'closed_lost\') and in_period(field.close_date))', url: 'https://gaspwiki.com/v1/metrics/sales/win-rate', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'acv', name: 'ACV', department: 'Sales', signalType: 'outcome', level: 3, definition: 'The annualized value of a contract, normalizing multi-year deals to a single year. Also used to describe average deal size when aggregated.', formula: 'avg(field.acv where field.contract_event_type = \'new_contract\')', url: 'https://gaspwiki.com/v1/metrics/sales/acv-annual-contract-value', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'quota_attainment', name: 'Quota Attainment', department: 'Sales', signalType: 'outcome', level: 3, definition: 'The percentage of quota achieved by a rep or team.', formula: 'sum(field.closed_revenue) / sum(field.quota)', url: 'https://gaspwiki.com/v1/metrics/sales/quota-attainment', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
@@ -52,40 +52,40 @@ CREATE (:Metric {id: 'magic_number', name: 'Magic Number', department: 'Finance'
 CREATE (:Metric {id: 'burn_rate', name: 'Cash Burn Rate', department: 'Finance', signalType: 'operational', level: 3, definition: 'Net cash consumed per month.', formula: '(sum(field.cash_balance) at period_start - sum(field.cash_balance) at period_end) / (period_days / 30.4375)', url: 'https://gaspwiki.com/v1/metrics/finance/cash-burn-rate', grain: 'End-of-month snapshot', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'revenue_per_employee', name: 'Revenue per Employee', department: 'Finance', signalType: 'outcome', level: 3, definition: 'Total revenue divided by headcount.', formula: 'metric.arr / metric.total_headcount', url: 'https://gaspwiki.com/v1/metrics/finance/revenue-per-employee', grain: 'End-of-month snapshot', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'partner_sourced_revenue', name: 'Partner-Sourced Revenue', department: 'Partnerships', signalType: 'outcome', level: 3, definition: 'Revenue from deals originated by partners.', formula: 'sum(field.opportunity_amount where field.partner_sourced = true and field.opportunity_stage = \'closed_won\' and in_period(field.close_date))', url: 'https://gaspwiki.com/v1/metrics/partnerships/partner-sourced-revenue', grain: 'Per event, aggregate monthly', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'sales_cycle', name: 'Sales Cycle Length', department: 'Sales', signalType: 'operational', level: 4, definition: 'The average time from opportunity creation to close.', formula: 'median(field.close_date - field.opportunity_created_date where field.opportunity_stage = \'closed_won\' and in_period(field.close_date))', url: 'https://gaspwiki.com/v1/metrics/sales/sales-cycle-length', grain: 'Per event', frequency: 'Per deal', period: 'undefined'});
-CREATE (:Metric {id: 'mqls', name: 'MQLs', department: 'Marketing', signalType: 'operational', level: 4, definition: 'Leads that have demonstrated sufficient engagement and intent to warrant sales attention, based on criteria established between marketing and sales.', formula: 'count_distinct(field.lead_id where in_period(field.mql_date))', url: 'https://gaspwiki.com/v1/metrics/marketing/marketing-qualified-leads-mqls', grain: 'Daily snapshot', frequency: 'Daily', period: 'day'});
-CREATE (:Metric {id: 'sqls', name: 'SQLs', department: 'Marketing', signalType: 'operational', level: 4, definition: 'MQLs accepted by sales as worth pursuing.', formula: 'count_distinct(field.lead_id where in_period(field.sql_date))', url: 'https://gaspwiki.com/v1/metrics/marketing/sales-qualified-leads-sqls', grain: 'Daily snapshot', frequency: 'Daily', period: 'day'});
+CREATE (:Metric {id: 'sales_cycle', name: 'Sales Cycle Length', department: 'Sales', signalType: 'operational', level: 4, definition: 'The average time from opportunity creation to close.', formula: 'avg(field.close_date - field.opportunity_created_date where field.opportunity_stage = \'closed_won\' and in_period(field.close_date))', url: 'https://gaspwiki.com/v1/metrics/sales/sales-cycle-length', grain: 'Per event', frequency: 'Per deal', period: 'undefined'});
+CREATE (:Metric {id: 'mqls', name: 'MQLs', department: 'Marketing', signalType: 'operational', level: 4, definition: 'Leads that have demonstrated sufficient engagement and intent to warrant sales attention, based on criteria established between marketing and sales.', formula: 'count_distinct(field.lead_id where in_period(field.mql_date))', url: 'https://gaspwiki.com/v1/metrics/marketing/marketing-qualified-leads-mqls', grain: 'Per lead stage date, aggregate daily', frequency: 'Daily', period: 'day'});
+CREATE (:Metric {id: 'sqls', name: 'SQLs', department: 'Marketing', signalType: 'operational', level: 4, definition: 'MQLs accepted by sales as worth pursuing.', formula: 'count_distinct(field.lead_id where in_period(field.sql_date))', url: 'https://gaspwiki.com/v1/metrics/marketing/sales-qualified-leads-sqls', grain: 'Per lead stage date, aggregate daily', frequency: 'Daily', period: 'day'});
 CREATE (:Metric {id: 'lvr', name: 'Lead Velocity Rate', department: 'Marketing', signalType: 'leading', level: 4, definition: 'Month-over-month growth in qualified leads. Considered by many to be the most important leading indicator in SaaS.', formula: '(metric.mqls - lag(metric.mqls, 1 month)) / lag(metric.mqls, 1 month)', url: 'https://gaspwiki.com/v1/metrics/marketing/lead-velocity-rate-lvr', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'marketing_cac', name: 'Marketing CAC', department: 'Marketing', signalType: 'efficiency', level: 4, definition: 'Marketing-only portion of acquisition cost.', formula: 'sum(field.cost where field.cost_function = \'gtm\' and field.cost_centre = \'marketing\') / count_distinct(field.customer_id where field.event_type = \'new\')', url: 'https://gaspwiki.com/v1/metrics/marketing/marketing-cac', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'cpl', name: 'Cost per Lead', department: 'Marketing', signalType: 'efficiency', level: 4, definition: 'Cost to acquire a lead.', formula: 'sum(field.cost where field.cost_function = \'gtm\' and field.cost_centre = \'marketing\') / metric.leads', url: 'https://gaspwiki.com/v1/metrics/marketing/cost-per-lead-cpl', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'marketing_sourced_pipeline', name: 'Marketing Sourced Pipeline', department: 'Marketing', signalType: 'leading', level: 4, definition: 'Pipeline value attributed to marketing efforts (first-touch attribution).', formula: 'sum(field.opportunity_amount where field.marketing_source = \'marketing\' and field.opportunity_stage not in (\'closed_won\', \'closed_lost\'))', url: 'https://gaspwiki.com/v1/metrics/marketing/marketing-sourced-pipeline', grain: 'Daily snapshot', frequency: 'Daily', period: 'day'});
 CREATE (:Metric {id: 'qbr_completion', name: 'QBR Completion Rate', department: 'Customer Success', signalType: 'operational', level: 4, definition: 'The percentage of eligible accounts that completed a QBR.', formula: 'count_distinct(field.customer_id where field.qbr_completed = true) / count_distinct(field.customer_id where field.qbr_due = true)', url: 'https://gaspwiki.com/v1/metrics/customer-success/quarterly-business-review-qbr-completion-rate', grain: 'Quarterly snapshot', frequency: 'Quarterly', period: 'quarter'});
-CREATE (:Metric {id: 'csat', name: 'CSAT', department: 'Support', signalType: 'outcome', level: 4, definition: 'Customer rating of support interaction.', formula: 'count(field.satisfaction_score where field.survey_type = \'customer\' and field.satisfaction_score >= 4) / count(field.satisfaction_score where field.survey_type = \'customer\')', url: 'https://gaspwiki.com/v1/metrics/support/customer-satisfaction-score-csat', grain: 'Per event', frequency: 'Per project', period: 'undefined'});
+CREATE (:Metric {id: 'csat', name: 'CSAT', department: 'Support', signalType: 'outcome', level: 4, definition: 'Customer rating of support interaction.', formula: 'count(field.satisfaction_score where field.survey_type = \'customer\' and field.satisfaction_score >= 4) / count(field.satisfaction_score where field.survey_type = \'customer\')', url: 'https://gaspwiki.com/v1/metrics/support/customer-satisfaction-score-csat', grain: 'Per survey response', frequency: 'Per response', period: 'undefined'});
 CREATE (:Metric {id: 'ttfv', name: 'Time to First Value', department: 'Onboarding', signalType: 'operational', level: 4, definition: 'Time from customer signup/contract to achieving first meaningful value.', formula: 'median(field.milestone_date - field.contract_start where field.onboarding_milestone = \'first_value\')', url: 'https://gaspwiki.com/v1/metrics/onboarding/time-to-first-value-ttfv', grain: 'Per event', frequency: 'Daily', period: 'undefined'});
 CREATE (:Metric {id: 'onboarding_completion', name: 'Onboarding Completion Rate', department: 'Onboarding', signalType: 'outcome', level: 4, definition: 'Percentage of customers who complete the onboarding program.', formula: 'count_distinct(field.onboarding_id where in_period(field.onboarding_completion_date)) / count_distinct(field.onboarding_id where in_period(field.onboarding_start_date))', url: 'https://gaspwiki.com/v1/metrics/onboarding/onboarding-completion-rate', grain: 'Per event, aggregate monthly', frequency: 'Daily', period: 'month'});
 CREATE (:Metric {id: 'activation_rate', name: 'Activation Rate', department: 'Onboarding', signalType: 'outcome', level: 4, definition: 'Percentage of onboarded customers who become actively engaged.', formula: 'count_distinct(field.customer_id where in_period(field.onboarding_completion_date) and field.activation_date is not null) / count_distinct(field.customer_id where in_period(field.onboarding_completion_date))', url: 'https://gaspwiki.com/v1/metrics/onboarding/onboarding-to-active-rate-activation-rate', grain: 'Per event, aggregate monthly', frequency: 'Daily', period: 'month'});
-CREATE (:Metric {id: 'dau_mau', name: 'DAU/MAU Ratio', department: 'Product', signalType: 'leading', level: 4, definition: 'The ratio of daily to monthly active users, indicating how often users return.', formula: 'metric.daily_active_users_dau / metric.monthly_active_users_mau', url: 'https://gaspwiki.com/v1/metrics/product/daumau-ratio-stickiness', grain: 'Daily snapshot', frequency: 'Daily', period: 'day'});
+CREATE (:Metric {id: 'dau_mau', name: 'DAU/MAU Ratio', department: 'Product', signalType: 'leading', level: 4, definition: 'The ratio of daily to monthly active users, indicating how often users return.', formula: 'metric.daily_active_users_dau / metric.monthly_active_users_mau', url: 'https://gaspwiki.com/v1/metrics/product/daumau-ratio-stickiness', grain: 'Distinct users in a trailing window (1, 7 or 30 days) ending at period end', frequency: 'Daily', period: 'day'});
 CREATE (:Metric {id: 'feature_adoption', name: 'Feature Adoption Rate', department: 'Product', signalType: 'leading', level: 4, definition: 'Percentage of users/accounts using a specific feature.', formula: 'count_distinct(field.user_id where field.feature_id is not null) / count_distinct(field.user_id where field.product_event_type = \'qualifying\')', url: 'https://gaspwiki.com/v1/metrics/product/feature-adoption-rate', grain: 'Per event, aggregate monthly', frequency: 'Daily', period: 'month'});
 CREATE (:Metric {id: 'pqas', name: 'Product Qualified Accounts', department: 'Product', signalType: 'leading', level: 4, definition: 'Accounts that have demonstrated product engagement indicating sales-readiness.', formula: 'count_distinct(field.customer_id where field.criteria_met = true) at period_end', url: 'https://gaspwiki.com/v1/metrics/product/product-qualified-accounts-pqas', grain: 'Daily snapshot', frequency: 'Daily', period: 'day'});
 CREATE (:Metric {id: 'forecast_accuracy', name: 'Forecast Accuracy', department: 'RevOps', signalType: 'operational', level: 4, definition: 'How closely forecasted revenue matched actual revenue.', formula: '1 - abs(sum(field.forecasted_revenue) - sum(field.actual_revenue)) / sum(field.actual_revenue)', url: 'https://gaspwiki.com/v1/metrics/revops/forecast-accuracy', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'dso', name: 'Days Sales Outstanding', department: 'RevOps', signalType: 'operational', level: 4, definition: 'Average days to collect payment after invoicing.', formula: 'sum(field.accounts_receivable) at period_end / metric.revenue_gaap * period_days', url: 'https://gaspwiki.com/v1/metrics/revops/days-sales-outstanding-dso', grain: 'Per event', frequency: 'Per invoice', period: 'undefined'});
+CREATE (:Metric {id: 'dso', name: 'Days Sales Outstanding', department: 'RevOps', signalType: 'operational', level: 4, definition: 'Average days to collect payment after invoicing.', formula: 'sum(field.accounts_receivable) at period_end / metric.revenue_gaap * period_days', url: 'https://gaspwiki.com/v1/metrics/revops/days-sales-outstanding-dso', grain: 'End-of-month receivables snapshot', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'employee_turnover', name: 'Employee Turnover Rate', department: 'People', signalType: 'outcome', level: 4, definition: 'Percentage of employees who left in a period.', formula: 'count_distinct(field.employee_id where field.termination_date >= period_start and field.termination_date <= period_end) / ((metric.total_headcount at period_start + metric.total_headcount at period_end) / 2)', url: 'https://gaspwiki.com/v1/metrics/people/employee-turnover-rate', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'frt', name: 'First Response Time', department: 'Support', signalType: 'operational', level: 5, definition: 'Time from ticket creation to first human response.', formula: '(median(field.first_response_at - field.created_at)) * 1440', url: 'https://gaspwiki.com/v1/metrics/support/first-response-time-frt', grain: 'Per event', frequency: 'Per ticket', period: 'undefined'});
-CREATE (:Metric {id: 'ticket_volume', name: 'Ticket Volume', department: 'Support', signalType: 'operational', level: 5, definition: 'Total number of support tickets received in a period.', formula: 'count_distinct(field.ticket_id)', url: 'https://gaspwiki.com/v1/metrics/support/ticket-volume', grain: 'Per event', frequency: 'Per ticket', period: 'undefined'});
-CREATE (:Metric {id: 'self_service_rate', name: 'Self-Service Rate', department: 'Support', signalType: 'efficiency', level: 5, definition: 'Percentage of support needs resolved through self-service.', formula: 'sum(field.deflections) / (sum(field.deflections) + metric.ticket_volume)', url: 'https://gaspwiki.com/v1/metrics/support/self-service-rate-ticket-deflection', grain: 'Daily snapshot', frequency: 'Daily', period: 'day'});
-CREATE (:Metric {id: 'uptime', name: 'Uptime', department: 'Engineering', signalType: 'outcome', level: 5, definition: 'The percentage of time the service is operational.', formula: '1 - sum(field.downtime_minutes) / (period_days * 1440)', url: 'https://gaspwiki.com/v1/metrics/engineering/uptime-availability', grain: 'Real-time', frequency: 'Real-time', period: 'realtime'});
+CREATE (:Metric {id: 'ticket_volume', name: 'Ticket Volume', department: 'Support', signalType: 'operational', level: 5, definition: 'Total number of support tickets received in a period.', formula: 'count_distinct(field.ticket_id)', url: 'https://gaspwiki.com/v1/metrics/support/ticket-volume', grain: 'Per event, aggregate monthly', frequency: 'Daily', period: 'month'});
+CREATE (:Metric {id: 'self_service_rate', name: 'Self-Service Rate', department: 'Support', signalType: 'efficiency', level: 5, definition: 'Percentage of support needs resolved through self-service.', formula: 'sum(field.deflections) / (sum(field.deflections) + metric.ticket_volume)', url: 'https://gaspwiki.com/v1/metrics/support/self-service-rate-ticket-deflection', grain: 'Daily aggregate', frequency: 'Daily', period: 'day'});
+CREATE (:Metric {id: 'uptime', name: 'Uptime', department: 'Engineering', signalType: 'outcome', level: 5, definition: 'The percentage of time the service is operational.', formula: '1 - sum(field.downtime_minutes) / (period_days * 1440)', url: 'https://gaspwiki.com/v1/metrics/engineering/uptime-availability', grain: 'Per service per interval, aggregate per period', frequency: 'Real-time', period: 'month'});
 CREATE (:Metric {id: 'deployment_frequency', name: 'Deployment Frequency', department: 'Engineering', signalType: 'operational', level: 5, definition: 'How often code is deployed to production.', formula: 'count_distinct(field.deployment_id)', url: 'https://gaspwiki.com/v1/metrics/engineering/deployment-frequency', grain: 'Per event', frequency: 'Per deploy', period: 'undefined'});
 CREATE (:Metric {id: 'mttr', name: 'MTTR', department: 'Engineering', signalType: 'operational', level: 5, definition: 'Time from incident start to resolution.', formula: '(avg(field.resolved_at - field.started_at)) * 1440', url: 'https://gaspwiki.com/v1/metrics/engineering/mean-time-to-resolve-mttr', grain: 'Per event', frequency: 'Per deploy', period: 'undefined'});
-CREATE (:Metric {id: 'enps', name: 'Employee NPS', department: 'People', signalType: 'leading', level: 5, definition: 'Likelihood of employees recommending the company as a place to work.', formula: '(count(field.nps_score where field.survey_type = \'employee\' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = \'employee\' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = \'employee\') * 100', url: 'https://gaspwiki.com/v1/metrics/people/employee-net-promoter-score-enps', grain: 'Quarterly snapshot', frequency: 'Quarterly', period: 'quarter'});
+CREATE (:Metric {id: 'enps', name: 'Employee NPS', department: 'People', signalType: 'leading', level: 5, definition: 'Likelihood of employees recommending the company as a place to work.', formula: '(count(field.nps_score where field.survey_type = \'employee\' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = \'employee\' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = \'employee\') * 100', url: 'https://gaspwiki.com/v1/metrics/people/employee-net-promoter-score-enps', grain: 'Per survey response, aggregate quarterly', frequency: 'Quarterly', period: 'quarter'});
 
-// ─── Entity Nodes (15) ──────────────────────────
+// ─── Entity Nodes (28) ──────────────────────────
 CREATE (:Entity {id: 'customer', name: 'Customer', aliases: 'Account, Organization', definition: 'A distinct billing entity with one or more subscriptions. The "who" of your business relationship.', level: 'billing'});
 CREATE (:Entity {id: 'subscription', name: 'Subscription', aliases: 'Contract, Agreement', definition: 'A billable agreement between a customer and your product, with defined terms, pricing, and status. The "what and when" of the relationship.', level: 'billing'});
 CREATE (:Entity {id: 'license', name: 'License', aliases: 'Entitlement, Access, Quota', definition: 'A specific capability, quantity, or configuration granted by a subscription. The "how much" of the relationship.', level: 'billing'});
 CREATE (:Entity {id: 'lead', name: 'Lead', aliases: 'Prospect, Contact', definition: 'A person or company that has shown interest but has not been qualified as a sales opportunity.', level: 'acquisition'});
 CREATE (:Entity {id: 'opportunity', name: 'Opportunity', aliases: 'Deal, Pipeline Item', definition: 'A qualified sales prospect with an estimated value, stage, and expected close date.', level: 'acquisition'});
 CREATE (:Entity {id: 'user', name: 'User', aliases: 'Product User, End User', definition: 'An individual who uses the product. In B2B, one Customer may have many Users. Usage metrics are measured at this level.', level: 'engagement'});
-CREATE (:Entity {id: 'ticket', name: 'Ticket', aliases: 'Support Case, Issue', definition: 'A discrete support interaction initiated by a customer or user, tracked to resolution.', level: 'support'});
+CREATE (:Entity {id: 'ticket', name: 'Ticket', aliases: 'Support Case', definition: 'A discrete support interaction initiated by a customer or user, tracked to resolution.', level: 'support'});
 CREATE (:Entity {id: 'employee', name: 'Employee', aliases: 'Team Member, Headcount', definition: 'An internal team member. People metrics and efficiency ratios (revenue per employee) are measured at this level.', level: 'internal'});
 CREATE (:Entity {id: 'invoice', name: 'Invoice', aliases: 'Transaction, Billing Document', definition: 'A billing document representing money owed or collected. Cash flow and collections metrics are measured at this level.', level: 'financial'});
 CREATE (:Entity {id: 'partner', name: 'Partner', aliases: 'Channel Partner, Reseller', definition: 'An external organization that sources, influences, or resells deals. Partner metrics are measured at this level.', level: 'channel'});
@@ -94,6 +94,19 @@ CREATE (:Entity {id: 'plan', name: 'Plan', aliases: 'Tier, Pricing Plan, Package
 CREATE (:Entity {id: 'product', name: 'Product', aliases: 'Module, SKU, Feature Bundle', definition: 'A distinct purchasable unit within the company\'s offering (e.g. Analytics Module, Automation Module). A subscription may include multiple products.', level: 'billing'});
 CREATE (:Entity {id: 'campaign', name: 'Campaign', aliases: 'Marketing Campaign, Initiative', definition: 'A marketing initiative with defined objectives, channels, budget and dates. Campaigns source leads and influence opportunities.', level: 'acquisition'});
 CREATE (:Entity {id: 'contact', name: 'Contact', aliases: 'Stakeholder, Decision Maker, Champion', definition: 'A named individual at a customer account involved in the buying or expansion process. Distinct from User (product user) and Lead (pre-qualification).', level: 'acquisition'});
+CREATE (:Entity {id: 'incident', name: 'Incident', aliases: 'Outage, SEV', definition: 'An unplanned interruption or degradation of service, tracked from start to resolution. Reliability metrics (MTTR, incident rate) are measured at this level.', level: 'engineering'});
+CREATE (:Entity {id: 'deployment', name: 'Deployment', aliases: 'Deploy, Production Change', definition: 'A release of code to production. DORA delivery metrics (deployment frequency, lead time for changes, change failure rate) are measured at this level.', level: 'engineering'});
+CREATE (:Entity {id: 'release', name: 'Release', aliases: 'Version', definition: 'A versioned bundle of features shipped to customers. Delivery predictability metrics are measured at this level.', level: 'engineering'});
+CREATE (:Entity {id: 'issue', name: 'Issue', aliases: 'Bug, Defect, Feature Request', definition: 'A tracked defect or request in the engineering backlog, with its source and the environment it was found in. Quality metrics (escaped defects, bug rate) are measured at this level.', level: 'engineering'});
+CREATE (:Entity {id: 'vulnerability', name: 'Vulnerability', aliases: 'CVE, Security Finding', definition: 'A security weakness found in the product or its infrastructure, tracked from discovery to patch. Security remediation metrics are measured at this level.', level: 'engineering'});
+CREATE (:Entity {id: 'feature', name: 'Feature', aliases: 'Capability', definition: 'A unit of product functionality with planned and actual ship dates and a first use by customers. Adoption and roadmap delivery metrics are measured at this level.', level: 'product'});
+CREATE (:Entity {id: 'requisition', name: 'Requisition', aliases: 'Job Opening, Req', definition: 'An approved request to hire for a role, open until filled or closed. Recruiting metrics (time to fill, offer acceptance rate) are measured at this level.', level: 'internal'});
+CREATE (:Entity {id: 'project_milestone', name: 'Project Milestone', aliases: 'Milestone', definition: 'A dated checkpoint inside a professional services project, with a planned and an actual date. Delivery predictability is measured at this level.', level: 'services'});
+CREATE (:Entity {id: 'deliverable', name: 'Deliverable', aliases: 'Work Product', definition: 'An artefact a professional services project hands to the customer, which the customer accepts or sends back for rework. Delivery quality is measured at this level.', level: 'services'});
+CREATE (:Entity {id: 'quote', name: 'Quote', aliases: 'Proposal, Pricing Quote', definition: 'A priced offer sent to a prospect or customer before an order. Quote turnaround and discounting are measured at this level.', level: 'financial'});
+CREATE (:Entity {id: 'order', name: 'Order', aliases: 'Sales Order', definition: 'An accepted quote in fulfilment, from receipt to completion. Order accuracy and fulfilment time are measured at this level.', level: 'financial'});
+CREATE (:Entity {id: 'kb_article', name: 'Knowledge Article', aliases: 'Help Article, KB Article', definition: 'A self-service help article. Ticket deflection and self-service rates are measured at this level.', level: 'support'});
+CREATE (:Entity {id: 'deal_registration', name: 'Deal Registration', aliases: 'Partner Registration', definition: 'A partner\'s claim on an opportunity it sourced, moving from qualification to close. Partner pipeline and conflict metrics are measured at this level.', level: 'channel'});
 
 // ─── Concept Nodes (7) ───────────────────────
 CREATE (:Concept {id: 'revenue', name: 'Revenue (GAAP)', definition: 'Recognized revenue under accrual accounting. The financial outcome of delivering on subscription obligations.'});
@@ -128,13 +141,17 @@ CREATE (:SourceCategory {id: 'partner_management', name: 'Partner Management', d
 CREATE (:SourceCategory {id: 'lms', name: 'LMS', description: 'Learning management: training courses, certifications, completion tracking'});
 CREATE (:SourceCategory {id: 'derived', name: 'Derived', description: 'Calculated from other metrics: no direct data source required'});
 
-// ─── Dataset Nodes (47) ─────────────────────────────
+// ─── Dataset Nodes (51) ─────────────────────────────
 CREATE (:Dataset {id: 'revenue_event', name: 'Revenue event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Revenue_Event'});
 CREATE (:Dataset {id: 'cost_event', name: 'Cost event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Cost_Event'});
 CREATE (:Dataset {id: 'contract_event', name: 'Contract event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Contract_Event'});
 CREATE (:Dataset {id: 'amendment_event', name: 'Amendment event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Amendment_Event'});
 CREATE (:Dataset {id: 'lifecycle_event', name: 'Lifecycle state change', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Lifecycle_State_Change'});
 CREATE (:Dataset {id: 'customer', name: 'Customer', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'customer_id'});
+CREATE (:Dataset {id: 'contact', name: 'Contact', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'contact_id'});
+CREATE (:Dataset {id: 'plan', name: 'Plan', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'plan_id'});
+CREATE (:Dataset {id: 'product', name: 'Product', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'product_id'});
+CREATE (:Dataset {id: 'license', name: 'License', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'license_id'});
 CREATE (:Dataset {id: 'subscription', name: 'Subscription', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'subscription_id'});
 CREATE (:Dataset {id: 'opportunity', name: 'Opportunity', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'opportunity_id'});
 CREATE (:Dataset {id: 'lead', name: 'Lead', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'lead_id'});
@@ -177,7 +194,7 @@ CREATE (:Dataset {id: 'partner_activity', name: 'Partner activity', kind: 'event
 CREATE (:Dataset {id: 'deal_registration', name: 'Partner deal registration', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'registration_id'});
 CREATE (:Dataset {id: 'forecast', name: 'Revenue forecast', kind: 'fact', dateField: 'period_start', keyField: 'period_start'});
 
-// ─── Field Nodes (251) ─────────────────────────────
+// ─── Field Nodes (264) ─────────────────────────────
 CREATE (:Field {id: 'accounts_receivable', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'acknowledged_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'acquisition_date', type: 'date', metricCount: 1});
@@ -187,7 +204,7 @@ CREATE (:Field {id: 'activity_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'actual_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'actual_revenue', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'acv', type: 'decimal', metricCount: 1});
-CREATE (:Field {id: 'ad_spend', type: 'decimal', metricCount: 1});
+CREATE (:Field {id: 'ad_spend', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'advanced_to_next_stage', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'agent_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'amendment_type', type: 'enum', metricCount: 2, values: 'upgrade|downgrade|add_on|cross_sell|seat_change|pricing_change'});
@@ -206,7 +223,7 @@ CREATE (:Field {id: 'cash_balance', type: 'decimal', metricCount: 3});
 CREATE (:Field {id: 'certification_status', type: 'enum', metricCount: 1, values: 'none|in_progress|certified|expired'});
 CREATE (:Field {id: 'ces_score', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'change_nature', type: 'enum', metricCount: 2, values: 'permanent|temporary|scheduled_reversal'});
-CREATE (:Field {id: 'channel', type: 'enum', metricCount: 1, values: 'paid_ads|organic_search|email|events|content|referral|direct|other'});
+CREATE (:Field {id: 'channel', type: 'enum', metricCount: 4, values: 'paid_ads|organic_search|email|events|content|referral|direct|other'});
 CREATE (:Field {id: 'close_date', type: 'date', metricCount: 27});
 CREATE (:Field {id: 'close_date_valid', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'closed_revenue', type: 'decimal', metricCount: 2});
@@ -217,17 +234,17 @@ CREATE (:Field {id: 'contract_end', type: 'date', metricCount: 6});
 CREATE (:Field {id: 'contract_event_type', type: 'enum', metricCount: 2, values: 'new_contract|renewal|amendment|cancellation'});
 CREATE (:Field {id: 'contract_start', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'core_features_adopted', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'cost', type: 'decimal', metricCount: 23});
-CREATE (:Field {id: 'cost_centre', type: 'enum', metricCount: 4, values: 'marketing|sales|customer_success|support|engineering|product|finance|people|services|partnerships|general'});
-CREATE (:Field {id: 'cost_function', type: 'enum', metricCount: 23, values: 'gtm|implementation|onboarding|infrastructure|support|success_engineering|account_management|research_development|general_administrative|services_delivery|recruiting|partner_program|partner_commission'});
+CREATE (:Field {id: 'cost', type: 'decimal', metricCount: 22});
+CREATE (:Field {id: 'cost_centre', type: 'enum', metricCount: 3, values: 'marketing|sales|customer_success|support|engineering|product|finance|people|services|partnerships|general'});
+CREATE (:Field {id: 'cost_function', type: 'enum', metricCount: 22, values: 'gtm|implementation|onboarding|infrastructure|support|success_engineering|account_management|research_development|general_administrative|services_delivery|recruiting|partner_program|partner_commission'});
 CREATE (:Field {id: 'cost_type', type: 'enum', metricCount: 0, values: 'personnel|software|services|infrastructure|other'});
-CREATE (:Field {id: 'created_at', type: 'timestamp', metricCount: 16});
+CREATE (:Field {id: 'created_at', type: 'timestamp', metricCount: 17});
 CREATE (:Field {id: 'credit_memo_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'criteria_met', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'csm_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'currency', type: 'string', metricCount: 0});
-CREATE (:Field {id: 'customer_id', type: 'string', metricCount: 27});
-CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 16, values: 'trial|active|churned|dormant'});
+CREATE (:Field {id: 'customer_id', type: 'string', metricCount: 26});
+CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 17, values: 'trial|active|churned|dormant'});
 CREATE (:Field {id: 'deflections', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'deliverable_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'department', type: 'string', metricCount: 0});
@@ -237,17 +254,16 @@ CREATE (:Field {id: 'detected_at', type: 'timestamp', metricCount: 2});
 CREATE (:Field {id: 'discovered_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'downtime_minutes', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'ebitda', type: 'decimal', metricCount: 2});
-CREATE (:Field {id: 'employee_id', type: 'string', metricCount: 13});
+CREATE (:Field {id: 'employee_id', type: 'string', metricCount: 14});
 CREATE (:Field {id: 'employee_status', type: 'enum', metricCount: 11, values: 'active|on_leave|terminated'});
-CREATE (:Field {id: 'engaged_contact_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'engagement_score', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'entry_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'entry_id', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'error_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'escalated', type: 'boolean', metricCount: 2});
-CREATE (:Field {id: 'event_date', type: 'date', metricCount: 61});
+CREATE (:Field {id: 'event_date', type: 'date', metricCount: 60});
 CREATE (:Field {id: 'event_id', type: 'string', metricCount: 1});
-CREATE (:Field {id: 'event_type', type: 'enum', metricCount: 19, values: 'new|expansion|contraction|churn|reactivation|renewal'});
+CREATE (:Field {id: 'event_type', type: 'enum', metricCount: 18, values: 'new|expansion|contraction|churn|reactivation|renewal'});
 CREATE (:Field {id: 'expansion_classification', type: 'enum', metricCount: 2, values: 'same_product|new_module|new_buying_centre|pricing_adjustment|recontracting|usage_realisation'});
 CREATE (:Field {id: 'feature_created_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'feature_id', type: 'string', metricCount: 4});
@@ -259,8 +275,21 @@ CREATE (:Field {id: 'forecast_category', type: 'enum', metricCount: 1, values: '
 CREATE (:Field {id: 'forecast_renewal_amount', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'forecasted_revenue', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'has_error', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'has_exec_sponsor', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'hire_date', type: 'date', metricCount: 7});
+CREATE (:Field {id: 'contact_id', type: 'string', metricCount: 1});
+CREATE (:Field {id: 'contact_role', type: 'enum', metricCount: 1, values: 'executive_sponsor|decision_maker|champion|day_to_day|procurement|other'});
+CREATE (:Field {id: 'contact_engaged', type: 'boolean', metricCount: 2});
+CREATE (:Field {id: 'plan_id', type: 'string', metricCount: 1});
+CREATE (:Field {id: 'plan_name', type: 'string', metricCount: 0});
+CREATE (:Field {id: 'billing_period', type: 'enum', metricCount: 0, values: 'monthly|annual|multi_year'});
+CREATE (:Field {id: 'product_id', type: 'string', metricCount: 1});
+CREATE (:Field {id: 'product_name', type: 'string', metricCount: 0});
+CREATE (:Field {id: 'product_line', type: 'string', metricCount: 0});
+CREATE (:Field {id: 'license_id', type: 'string', metricCount: 0});
+CREATE (:Field {id: 'license_status', type: 'enum', metricCount: 1, values: 'active|suspended|expired'});
+CREATE (:Field {id: 'seats_purchased', type: 'integer', metricCount: 1});
+CREATE (:Field {id: 'seats_assigned', type: 'integer', metricCount: 1});
+CREATE (:Field {id: 'hire_date', type: 'date', metricCount: 8});
+CREATE (:Field {id: 'hire_source', type: 'enum', metricCount: 1, values: 'referral|inbound|sourced|agency|internal|campus|other'});
 CREATE (:Field {id: 'hours', type: 'decimal', metricCount: 3});
 CREATE (:Field {id: 'hours_actual', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'hours_budgeted', type: 'decimal', metricCount: 2});
@@ -287,12 +316,12 @@ CREATE (:Field {id: 'lead_stage', type: 'enum', metricCount: 0, values: 'lead|mq
 CREATE (:Field {id: 'lifecycle_attribution', type: 'enum', metricCount: 0, values: 'acquisition|activation|retention|expansion|reactivation|servicing'});
 CREATE (:Field {id: 'list_price', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'market_midpoint', type: 'decimal', metricCount: 1});
-CREATE (:Field {id: 'marketing_channel', type: 'enum', metricCount: 3, values: 'paid_ads|organic_search|email|events|content|referral|direct|other'});
 CREATE (:Field {id: 'marketing_influenced', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'marketing_source', type: 'enum', metricCount: 2, values: 'marketing|sales|partner|other'});
 CREATE (:Field {id: 'mention_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'mention_source', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'milestone_date', type: 'date', metricCount: 4});
+CREATE (:Field {id: 'milestone_due_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'mql_date', type: 'date', metricCount: 5});
 CREATE (:Field {id: 'mrr', type: 'decimal', metricCount: 16});
 CREATE (:Field {id: 'mrr_change', type: 'decimal', metricCount: 14});
@@ -305,9 +334,9 @@ CREATE (:Field {id: 'nps_score', type: 'integer', metricCount: 6});
 CREATE (:Field {id: 'offer_status', type: 'enum', metricCount: 1, values: 'extended|accepted|declined|withdrawn'});
 CREATE (:Field {id: 'onboarding_completion_date', type: 'date', metricCount: 8});
 CREATE (:Field {id: 'onboarding_id', type: 'string', metricCount: 6});
-CREATE (:Field {id: 'onboarding_milestone', type: 'enum', metricCount: 4, values: 'kickoff|first_value|go_live|full_adoption'});
+CREATE (:Field {id: 'onboarding_milestone', type: 'enum', metricCount: 3, values: 'kickoff|first_value|go_live|full_adoption'});
 CREATE (:Field {id: 'onboarding_session_date', type: 'date', metricCount: 1});
-CREATE (:Field {id: 'onboarding_start_date', type: 'date', metricCount: 3});
+CREATE (:Field {id: 'onboarding_start_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'operating_cash_flow', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'opportunity_amount', type: 'decimal', metricCount: 22});
 CREATE (:Field {id: 'opportunity_created_date', type: 'date', metricCount: 4});
@@ -320,8 +349,8 @@ CREATE (:Field {id: 'outstanding_amount', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'partner_activity_type', type: 'enum', metricCount: 1, values: 'webinar|event|content|campaign'});
 CREATE (:Field {id: 'partner_churn_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'partner_id', type: 'string', metricCount: 11});
-CREATE (:Field {id: 'partner_recruited_date', type: 'date', metricCount: 1});
-CREATE (:Field {id: 'partner_sourced', type: 'boolean', metricCount: 10});
+CREATE (:Field {id: 'partner_recruited_date', type: 'date', metricCount: 2});
+CREATE (:Field {id: 'partner_sourced', type: 'boolean', metricCount: 8});
 CREATE (:Field {id: 'partner_status', type: 'enum', metricCount: 6, values: 'recruited|active|churned'});
 CREATE (:Field {id: 'partner_tier', type: 'enum', metricCount: 1, values: 'registered|silver|gold|platinum'});
 CREATE (:Field {id: 'patched_at', type: 'timestamp', metricCount: 1});
@@ -329,7 +358,7 @@ CREATE (:Field {id: 'payment_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'payment_method', type: 'enum', metricCount: 1, values: 'credit_card|ach|wire|check|other'});
 CREATE (:Field {id: 'payment_status', type: 'enum', metricCount: 0, values: 'paid|unpaid|partial|written_off'});
 CREATE (:Field {id: 'performance_rating', type: 'decimal', metricCount: 1});
-CREATE (:Field {id: 'period_start', type: 'date', metricCount: 50});
+CREATE (:Field {id: 'period_start', type: 'date', metricCount: 51});
 CREATE (:Field {id: 'planned_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'populated_field_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'prior_mrr', type: 'decimal', metricCount: 0});
@@ -357,7 +386,7 @@ CREATE (:Field {id: 'referenceable', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'registration_date', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'registration_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'registration_stage', type: 'enum', metricCount: 2, values: 'qualification|discovery|proposal|negotiation|closed_won|closed_lost'});
-CREATE (:Field {id: 'release_date', type: 'date', metricCount: 3});
+CREATE (:Field {id: 'release_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'release_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'renewal_amount', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'renewal_complete_date', type: 'date', metricCount: 1});
@@ -391,12 +420,12 @@ CREATE (:Field {id: 'service_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'session_duration', type: 'integer', metricCount: 2});
 CREATE (:Field {id: 'session_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'severity', type: 'enum', metricCount: 0, values: 'sev1|sev2|sev3|sev4'});
-CREATE (:Field {id: 'signup_date', type: 'date', metricCount: 3});
+CREATE (:Field {id: 'signup_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'sla_met', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'snapshot_date', type: 'date', metricCount: 168});
+CREATE (:Field {id: 'snapshot_date', type: 'date', metricCount: 169});
 CREATE (:Field {id: 'sql_date', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'stage_accurate', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'stage_probability', type: 'decimal', metricCount: 2});
+CREATE (:Field {id: 'stage_probability', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'standard_rate', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'started_at', type: 'timestamp', metricCount: 6});
 CREATE (:Field {id: 'state_category', type: 'enum', metricCount: 1, values: 'activation|onboarding_complete|healthy|at_risk|churned|reactivated'});
@@ -412,8 +441,9 @@ CREATE (:Field {id: 'target_date', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'tcv', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'termination_date', type: 'date', metricCount: 5});
 CREATE (:Field {id: 'termination_type', type: 'enum', metricCount: 3, values: 'voluntary|involuntary'});
-CREATE (:Field {id: 'ticket_id', type: 'string', metricCount: 11});
+CREATE (:Field {id: 'ticket_id', type: 'string', metricCount: 12});
 CREATE (:Field {id: 'ticket_status', type: 'enum', metricCount: 3, values: 'open|pending|resolved|closed'});
+CREATE (:Field {id: 'ticket_type', type: 'enum', metricCount: 1, values: 'how_to|bug|billing|account|feature_request|other'});
 CREATE (:Field {id: 'tier', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'time_entry_type', type: 'enum', metricCount: 2, values: 'billable|training|pre_sales|internal'});
 CREATE (:Field {id: 'traffic_source', type: 'enum', metricCount: 1, values: 'organic_search|paid_search|paid_social|social|email|referral|direct|other'});
@@ -430,21 +460,9 @@ CREATE (:Field {id: 'vulnerability_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'vulnerability_status', type: 'enum', metricCount: 1, values: 'open|patched|accepted'});
 CREATE (:Field {id: 'written_off_hours', type: 'decimal', metricCount: 1});
 
-// ─── Metric Relationships (88) ──────────────────
-MATCH (a:Metric {id: 'churned_mrr'}), (b:Metric {id: 'net_new_mrr'})
-CREATE (a)-[:REDUCES]->(b);
-MATCH (a:Metric {id: 'contraction_mrr'}), (b:Metric {id: 'net_new_mrr'})
-CREATE (a)-[:REDUCES]->(b);
+// ─── Metric Relationships (79) ──────────────────
 MATCH (a:Metric {id: 'net_new_mrr'}), (b:Metric {id: 'mrr'})
 CREATE (a)-[:DRIVES]->(b);
-MATCH (a:Metric {id: 'churned_mrr'}), (b:Metric {id: 'nrr'})
-CREATE (a)-[:REDUCES]->(b);
-MATCH (a:Metric {id: 'contraction_mrr'}), (b:Metric {id: 'nrr'})
-CREATE (a)-[:REDUCES]->(b);
-MATCH (a:Metric {id: 'churned_mrr'}), (b:Metric {id: 'grr'})
-CREATE (a)-[:REDUCES]->(b);
-MATCH (a:Metric {id: 'contraction_mrr'}), (b:Metric {id: 'grr'})
-CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'mqls'}), (b:Metric {id: 'sqls'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'sqls'}), (b:Metric {id: 'pipeline_value'})
@@ -467,14 +485,10 @@ MATCH (a:Metric {id: 'pqas'}), (b:Metric {id: 'pipeline_value'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'feature_adoption'}), (b:Metric {id: 'pqas'})
 CREATE (a)-[:DRIVES]->(b);
-MATCH (a:Metric {id: 'revenue_churn_rate'}), (b:Metric {id: 'ltv'})
-CREATE (a)-[:REDUCES]->(b);
-MATCH (a:Metric {id: 'gross_margin'}), (b:Metric {id: 'operating_margin'})
-CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'acv'}), (b:Metric {id: 'arpa'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'ttfv'}), (b:Metric {id: 'onboarding_completion'})
-CREATE (a)-[:DRIVES]->(b);
+CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'onboarding_completion'}), (b:Metric {id: 'activation_rate'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'activation_rate'}), (b:Metric {id: 'feature_adoption'})
@@ -502,7 +516,7 @@ CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'ticket_volume'}), (b:Metric {id: 'csat'})
 CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'frt'}), (b:Metric {id: 'csat'})
-CREATE (a)-[:DRIVES]->(b);
+CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'qbr_completion'}), (b:Metric {id: 'health_score'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'qbr_completion'}), (b:Metric {id: 'expansion_mrr'})
@@ -520,7 +534,7 @@ CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'uptime'}), (b:Metric {id: 'nps'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'mttr'}), (b:Metric {id: 'uptime'})
-CREATE (a)-[:DRIVES]->(b);
+CREATE (a)-[:REDUCES]->(b);
 MATCH (a:Metric {id: 'deployment_frequency'}), (b:Metric {id: 'feature_adoption'})
 CREATE (a)-[:DRIVES]->(b);
 MATCH (a:Metric {id: 'gross_margin'}), (b:Metric {id: 'fcf'})
@@ -593,8 +607,6 @@ MATCH (a:Metric {id: 'mrr'}), (b:Metric {id: 'nrr'})
 CREATE (a)-[:COMPONENT_OF]->(b);
 MATCH (a:Metric {id: 'gross_margin'}), (b:Metric {id: 'operating_margin'})
 CREATE (a)-[:COMPONENT_OF]->(b);
-MATCH (a:Metric {id: 'pipeline_value'}), (b:Metric {id: 'pipeline_coverage'})
-CREATE (a)-[:COMPONENT_OF]->(b);
 MATCH (a:Metric {id: 'churned_mrr'}), (b:Metric {id: 'revenue_churn_rate'})
 CREATE (a)-[:COMPONENT_OF]->(b);
 MATCH (a:Metric {id: 'contraction_mrr'}), (b:Metric {id: 'revenue_churn_rate'})
@@ -608,7 +620,7 @@ CREATE (a)-[:COMPONENT_OF]->(b);
 MATCH (a:Metric {id: 'ticket_volume'}), (b:Metric {id: 'self_service_rate'})
 CREATE (a)-[:COMPONENT_OF]->(b);
 
-// ─── MEASURES Edges (62) ──────────────────────────
+// ─── MEASURES Edges (70) ──────────────────────────
 MATCH (m:Metric {id: 'activation_rate'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'acv'}), (e:Entity {id: 'customer'})
@@ -645,11 +657,15 @@ MATCH (m:Metric {id: 'new_mrr'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'nrr'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'onboarding_completion'}), (e:Entity {id: 'customer'})
+CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'pqas'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'qbr_completion'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'revenue_churn_rate'}), (e:Entity {id: 'customer'})
+CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'ttfv'}), (e:Entity {id: 'customer'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'acv'}), (e:Entity {id: 'subscription'})
 CREATE (m)-[:MEASURES]->(e);
@@ -731,10 +747,22 @@ MATCH (m:Metric {id: 'ticket_volume'}), (e:Entity {id: 'ticket'})
 CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'employee_turnover'}), (e:Entity {id: 'employee'})
 CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'pipeline_coverage'}), (e:Entity {id: 'employee'})
+CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'quota_attainment'}), (e:Entity {id: 'employee'})
+CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'revenue_per_employee'}), (e:Entity {id: 'employee'})
 CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'mttr'}), (e:Entity {id: 'incident'})
+CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'deployment_frequency'}), (e:Entity {id: 'deployment'})
+CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'feature_adoption'}), (e:Entity {id: 'feature'})
+CREATE (m)-[:MEASURES]->(e);
+MATCH (m:Metric {id: 'self_service_rate'}), (e:Entity {id: 'kb_article'})
+CREATE (m)-[:MEASURES]->(e);
 
-// ─── BELONGS_TO Edges (363) ─────────────────────────────
+// ─── BELONGS_TO Edges (385) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (d:Dataset {id: 'balance_sheet'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'acknowledged_at'}), (d:Dataset {id: 'incident'})
@@ -798,6 +826,8 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'change_nature'}), (d:Dataset {id: 'amendment_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'channel'}), (d:Dataset {id: 'campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'channel'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'close_date'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -893,6 +923,8 @@ MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'product_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'revenue_schedule'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'contact'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_status'}), (d:Dataset {id: 'customer'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'deflections'}), (d:Dataset {id: 'kb_article'})
@@ -918,8 +950,6 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'employee_id'}), (d:Dataset {id: 'employee'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'employee_status'}), (d:Dataset {id: 'employee'})
-CREATE (f)-[:BELONGS_TO]->(d);
-MATCH (f:Field {id: 'engaged_contact_count'}), (d:Dataset {id: 'customer'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'engagement_score'}), (d:Dataset {id: 'survey_response'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -987,13 +1017,43 @@ MATCH (f:Field {id: 'forecasted_revenue'}), (d:Dataset {id: 'forecast'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'has_error'}), (d:Dataset {id: 'order'})
 CREATE (f)-[:BELONGS_TO]->(d);
-MATCH (f:Field {id: 'has_exec_sponsor'}), (d:Dataset {id: 'customer'})
+MATCH (f:Field {id: 'contact_id'}), (d:Dataset {id: 'contact'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'contact_role'}), (d:Dataset {id: 'contact'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'contact_engaged'}), (d:Dataset {id: 'contact'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'plan_id'}), (d:Dataset {id: 'subscription'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'plan_id'}), (d:Dataset {id: 'plan'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'plan_name'}), (d:Dataset {id: 'plan'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'billing_period'}), (d:Dataset {id: 'plan'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'product_id'}), (d:Dataset {id: 'license'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'product_id'}), (d:Dataset {id: 'product'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'product_name'}), (d:Dataset {id: 'product'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'product_line'}), (d:Dataset {id: 'product'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'license_id'}), (d:Dataset {id: 'license'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'license_status'}), (d:Dataset {id: 'license'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'seats_purchased'}), (d:Dataset {id: 'license'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'seats_assigned'}), (d:Dataset {id: 'license'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'hire_date'}), (d:Dataset {id: 'sales_rep'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'hire_date'}), (d:Dataset {id: 'employee'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'hire_date'}), (d:Dataset {id: 'requisition'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'hire_source'}), (d:Dataset {id: 'employee'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'hours'}), (d:Dataset {id: 'time_entry'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1061,8 +1121,6 @@ MATCH (f:Field {id: 'list_price'}), (d:Dataset {id: 'quote'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'market_midpoint'}), (d:Dataset {id: 'employee'})
 CREATE (f)-[:BELONGS_TO]->(d);
-MATCH (f:Field {id: 'marketing_channel'}), (d:Dataset {id: 'opportunity'})
-CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'marketing_influenced'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'marketing_source'}), (d:Dataset {id: 'opportunity'})
@@ -1072,6 +1130,8 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'mention_source'}), (d:Dataset {id: 'brand_mention'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'milestone_date'}), (d:Dataset {id: 'onboarding_milestone'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'milestone_due_date'}), (d:Dataset {id: 'onboarding_milestone'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'mql_date'}), (d:Dataset {id: 'lead'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1379,6 +1439,14 @@ MATCH (f:Field {id: 'snapshot_date'}), (d:Dataset {id: 'crm_record'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'snapshot_date'}), (d:Dataset {id: 'deal_registration'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'snapshot_date'}), (d:Dataset {id: 'contact'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'snapshot_date'}), (d:Dataset {id: 'plan'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'snapshot_date'}), (d:Dataset {id: 'product'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'snapshot_date'}), (d:Dataset {id: 'license'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'sql_date'}), (d:Dataset {id: 'lead'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'stage_accurate'}), (d:Dataset {id: 'opportunity'})
@@ -1405,6 +1473,8 @@ MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'subscription'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'revenue_schedule'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'license'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'subscription_status'}), (d:Dataset {id: 'subscription'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'survey_completed'}), (d:Dataset {id: 'survey_response'})
@@ -1428,6 +1498,8 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'ticket_id'}), (d:Dataset {id: 'ticket'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'ticket_status'}), (d:Dataset {id: 'ticket'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'ticket_type'}), (d:Dataset {id: 'ticket'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'tier'}), (d:Dataset {id: 'customer'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1462,7 +1534,7 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'written_off_hours'}), (d:Dataset {id: 'time_entry'})
 CREATE (f)-[:BELONGS_TO]->(d);
 
-// ─── SOURCED_FROM Edges (335) ─────────────────────────────
+// ─── SOURCED_FROM Edges (352) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'finance'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'billing'})
@@ -1540,6 +1612,8 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'change_nature'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'channel'}), (s:SourceCategory {id: 'ad_platforms'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'channel'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'channel'}), (s:SourceCategory {id: 'marketing_automation'})
 CREATE (f)-[:SOURCED_FROM]->(s);
@@ -1641,10 +1715,6 @@ MATCH (f:Field {id: 'employee_id'}), (s:SourceCategory {id: 'survey_tool'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'employee_status'}), (s:SourceCategory {id: 'hris'})
 CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'engaged_contact_count'}), (s:SourceCategory {id: 'cs_platform'})
-CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'engaged_contact_count'}), (s:SourceCategory {id: 'crm'})
-CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'engagement_score'}), (s:SourceCategory {id: 'survey_tool'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'entry_date'}), (s:SourceCategory {id: 'psa'})
@@ -1703,11 +1773,47 @@ MATCH (f:Field {id: 'forecasted_revenue'}), (s:SourceCategory {id: 'finance'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'has_error'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'has_exec_sponsor'}), (s:SourceCategory {id: 'cs_platform'})
+MATCH (f:Field {id: 'contact_id'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'contact_id'}), (s:SourceCategory {id: 'cs_platform'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'contact_role'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'contact_role'}), (s:SourceCategory {id: 'cs_platform'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'contact_engaged'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'contact_engaged'}), (s:SourceCategory {id: 'cs_platform'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'plan_id'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'plan_name'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'billing_period'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'product_id'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'product_name'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'product_line'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'license_id'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'license_status'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'seats_purchased'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'seats_assigned'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'seats_assigned'}), (s:SourceCategory {id: 'product_analytics'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'hire_date'}), (s:SourceCategory {id: 'hris'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'hire_date'}), (s:SourceCategory {id: 'ats'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'hire_source'}), (s:SourceCategory {id: 'ats'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'hire_source'}), (s:SourceCategory {id: 'hris'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'hours'}), (s:SourceCategory {id: 'psa'})
 CREATE (f)-[:SOURCED_FROM]->(s);
@@ -1785,10 +1891,6 @@ MATCH (f:Field {id: 'list_price'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'market_midpoint'}), (s:SourceCategory {id: 'hris'})
 CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'marketing_channel'}), (s:SourceCategory {id: 'crm'})
-CREATE (f)-[:SOURCED_FROM]->(s);
-MATCH (f:Field {id: 'marketing_channel'}), (s:SourceCategory {id: 'marketing_automation'})
-CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'marketing_influenced'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'marketing_influenced'}), (s:SourceCategory {id: 'marketing_automation'})
@@ -1802,6 +1904,8 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'mention_source'}), (s:SourceCategory {id: 'web_analytics'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'milestone_date'}), (s:SourceCategory {id: 'cs_platform'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'milestone_due_date'}), (s:SourceCategory {id: 'cs_platform'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'mql_date'}), (s:SourceCategory {id: 'marketing_automation'})
 CREATE (f)-[:SOURCED_FROM]->(s);
@@ -2097,6 +2201,8 @@ MATCH (f:Field {id: 'ticket_id'}), (s:SourceCategory {id: 'help_desk'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'ticket_status'}), (s:SourceCategory {id: 'help_desk'})
 CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'ticket_type'}), (s:SourceCategory {id: 'help_desk'})
+CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'tier'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'tier'}), (s:SourceCategory {id: 'crm'})
@@ -2134,7 +2240,7 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'written_off_hours'}), (s:SourceCategory {id: 'psa'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 
-// ─── Entity Relationships (22) ──────────────
+// ─── Entity Relationships (30) ──────────────
 // Structural
 MATCH (s:Entity {id: 'customer'}), (t:Entity {id: 'subscription'})
 CREATE (s)-[:OWNS {cardinality: '1:N', provenance: 'Schema.org owns, Zuora/Stripe Account→Subscription'}]->(t);
@@ -2146,16 +2252,26 @@ MATCH (s:Entity {id: 'subscription'}), (t:Entity {id: 'plan'})
 CREATE (s)-[:PRICED_BY {cardinality: 'N:1', provenance: 'Stripe Subscription→Price, Zuora Rate Plan, Chargebee Plan'}]->(t);
 MATCH (s:Entity {id: 'license'}), (t:Entity {id: 'product'})
 CREATE (s)-[:GRANTS {cardinality: 'N:M', provenance: 'Auth0 entitlements, Stripe Entitlements API, custom IAM'}]->(t);
+MATCH (s:Entity {id: 'project'}), (t:Entity {id: 'project_milestone'})
+CREATE (s)-[:OWNS {cardinality: '1:N', provenance: 'PSA tools (Kantata, Rocketlane) Project→Milestone'}]->(t);
 // Behavioral
 MATCH (s:Entity {id: 'customer'}), (t:Entity {id: 'user'})
 CREATE (s)-[:ENGAGES_VIA {cardinality: '1:N', provenance: 'SaaS-native concept (B2B multi-user model)'}]->(t);
 MATCH (s:Entity {id: 'customer'}), (t:Entity {id: 'ticket'})
 CREATE (s)-[:SUBMITS {cardinality: '1:N', provenance: 'Salesforce Account→Case, HubSpot Company→Ticket'}]->(t);
+MATCH (s:Entity {id: 'partner'}), (t:Entity {id: 'deal_registration'})
+CREATE (s)-[:SUBMITS {cardinality: '1:N', provenance: 'PRM tools (Impartner, PartnerStack) Partner→Deal Registration'}]->(t);
 // Lifecycle
 MATCH (s:Entity {id: 'lead'}), (t:Entity {id: 'opportunity'})
 CREATE (s)-[:CONVERTS_TO {cardinality: '1:1', provenance: 'Salesforce Lead Conversion process'}]->(t);
 MATCH (s:Entity {id: 'opportunity'}), (t:Entity {id: 'customer'})
 CREATE (s)-[:CONVERTS_TO {cardinality: '1:1', provenance: 'Salesforce Opportunity→Account (closed-won)'}]->(t);
+MATCH (s:Entity {id: 'quote'}), (t:Entity {id: 'order'})
+CREATE (s)-[:CONVERTS_TO {cardinality: '1:N', provenance: 'Salesforce CPQ Quote→Order, NetSuite Estimate→Sales Order'}]->(t);
+MATCH (s:Entity {id: 'deal_registration'}), (t:Entity {id: 'opportunity'})
+CREATE (s)-[:CONVERTS_TO {cardinality: '1:1', provenance: 'Salesforce PRM Deal Registration→Opportunity'}]->(t);
+MATCH (s:Entity {id: 'requisition'}), (t:Entity {id: 'employee'})
+CREATE (s)-[:CONVERTS_TO {cardinality: '1:1', provenance: 'ATS (Greenhouse, Lever) Requisition→Hire, HRIS employee record'}]->(t);
 // Assignment
 MATCH (s:Entity {id: 'partner'}), (t:Entity {id: 'opportunity'})
 CREATE (s)-[:SOURCES {cardinality: '1:N', provenance: 'Salesforce Partner object→Opportunity'}]->(t);
@@ -2184,6 +2300,12 @@ MATCH (s:Entity {id: 'customer'}), (t:Concept {id: 'segment'})
 CREATE (s)-[:BELONGS_TO {cardinality: 'N:1', provenance: 'Common GTM segmentation practice'}]->(t);
 MATCH (s:Entity {id: 'opportunity'}), (t:Concept {id: 'tcv'})
 CREATE (s)-[:PRODUCES {cardinality: 'N:1', provenance: 'Salesforce Opportunity Amount across full term, CFO reporting'}]->(t);
+MATCH (s:Entity {id: 'deployment'}), (t:Entity {id: 'incident'})
+CREATE (s)-[:GENERATES {cardinality: 'N:1', provenance: 'DORA change failure rate, incident post-mortems'}]->(t);
+MATCH (s:Entity {id: 'feature'}), (t:Entity {id: 'release'})
+CREATE (s)-[:BELONGS_TO {cardinality: 'N:1', provenance: 'Jira Fix Version, Linear Project, GitHub Release'}]->(t);
+MATCH (s:Entity {id: 'project'}), (t:Entity {id: 'deliverable'})
+CREATE (s)-[:PRODUCES {cardinality: '1:N', provenance: 'PSA tools Project→Deliverable, SOW acceptance criteria'}]->(t);
 
 // ─── Indexes ──────────────────────────────────────────
 CREATE INDEX metric_id IF NOT EXISTS FOR (m:Metric) ON (m.id);

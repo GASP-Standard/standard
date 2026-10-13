@@ -316,13 +316,20 @@ Cost per Hire = (Internal recruiting costs + External recruiting costs) / Total 
 
 **Definition:** Where successful candidates came from.
 
+**Formula:**
+```
+Source share = Hires in period from the source / Total hires in period
+```
+
 **Channels:**
 - Employee referrals
-- Job boards
-- LinkedIn/direct sourcing
+- Inbound applications (job boards and career page)
+- Direct sourcing (LinkedIn and similar)
 - Agencies
-- Career page
 - Internal transfers
+- Campus hiring
+
+Source of Hire is reported per source: one share for each source, and the shares sum to 100%.
 
 **What it tells you:** Most effective recruiting channels.
 

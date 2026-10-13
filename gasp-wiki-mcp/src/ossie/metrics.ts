@@ -20,6 +20,11 @@
  * stay fractional as the grammar defines). Anything else is staged: model.ts
  * wraps the compiled SQL (compile.ts) in a per-period dataset.
  *
+ * A multi-argument count_distinct (distinct tuples) needs a subquery, so it is
+ * staged ("distinct pair"). An entry with a breakdown is emitted ungrouped; the
+ * model marks it with `gasp_breakdown` so the consumer adds the dimension. One
+ * that uses total() is staged ("total"): a share of total needs two populations.
+ *
  * The dataset an aggregate reads is chosen exactly as compile.ts chooses it:
  * the datasets every field in the aggregate shares, preferring one keyed by
  * one of those fields, else the first declared.
@@ -34,7 +39,7 @@ export interface EmitContext {
 }
 
 /** Why a formula needs a staged dataset, highest priority first (the first that applies is reported). */
-export const STAGED_REASONS = ["cohort", "lag", "window", "all_time", "to_date", "at period_start", "period bound in filter", "period bound", "period_days"] as const;
+export const STAGED_REASONS = ["cohort", "lag", "window", "all_time", "distinct pair", "total", "to_date", "at period_start", "period bound in filter", "period bound", "period_days"] as const;
 export type StagedReason = (typeof STAGED_REASONS)[number];
 
 export type Emission =
@@ -51,10 +56,16 @@ interface Scope {
 
 const TEMPORAL = new Set(["date", "timestamp"]);
 
-/** The grammar text of a formula entry expression: main formula, a form (O, M) or a named variant. */
+/** The grammar text of a formula entry expression: main formula, a form (O, M), a named variant or a named breakdown (the main formula). */
 export function formulaSource(f: MetricFormula, variant?: string): string | undefined {
   if (!variant) return f.formula;
-  return (f.forms as Record<string, string> | undefined)?.[variant] ?? f.variants?.[variant];
+  return (f.forms as Record<string, string> | undefined)?.[variant] ?? f.variants?.[variant] ?? (f.breakdowns?.[variant] !== undefined ? f.formula : undefined);
+}
+
+/** The breakdown field id of an entry expression: a named breakdown's field, else the entry-level breakdown. */
+export function breakdownOf(f: MetricFormula, variant?: string): string | undefined {
+  const named = variant && !(f.forms as Record<string, string> | undefined)?.[variant] && !f.variants?.[variant] ? f.breakdowns?.[variant] : undefined;
+  return (named ?? f.breakdown)?.replace(/^field\./, "");
 }
 
 /** The first notComputable reason reachable from a formula through metric refs, if any. */
@@ -84,8 +95,8 @@ function children(n: Node): Node[] {
     case "binary": case "logic": case "compare": return [n.left, n.right];
     case "in": return [n.arg, ...n.values];
     case "scalar": return n.args;
-    case "neg": case "lag": case "window": case "all_time": case "at": case "to_date": case "not": case "isnull": return [n.arg];
-    case "agg": case "percentile": return n.where ? [n.arg, n.where] : [n.arg];
+    case "neg": case "lag": case "window": case "all_time": case "total": case "at": case "to_date": case "not": case "isnull": return [n.arg];
+    case "agg": case "percentile": return [n.arg, ...(n.kind === "agg" ? n.more ?? [] : []), ...(n.where ? [n.where] : [])];
     default: return [];
   }
 }
@@ -172,6 +183,7 @@ class Emitter {
       case "lag": this.reasons.add("lag"); return this.expr(n.arg, scope, inWhere);
       case "window": this.reasons.add("window"); return this.expr(n.arg, scope, inWhere);
       case "all_time": this.reasons.add("all_time"); return this.expr(n.arg, scope, inWhere);
+      case "total": this.reasons.add("total"); return this.expr(n.arg, scope, inWhere);
       case "agg": case "percentile": return this.aggregate(n, scope);
     }
   }
@@ -239,6 +251,10 @@ class Emitter {
     }
     const s: Scope = { ...scope, dataset: ds };
     const where = meta.kind === "snapshot" ? n.where : this.dropInPeriod(n.where, meta.date);
+    if (n.kind === "agg" && n.more?.length) {
+      this.reasons.add("distinct pair");
+      n.more.forEach((m) => this.expr(m, s));
+    }
     const arg = this.expr(n.arg, s);
     const w = where ? this.expr(where, s, true) : undefined;
     const filtered = (orElse: string) => (w ? `CASE WHEN ${w} THEN ${arg}${orElse} END` : arg);

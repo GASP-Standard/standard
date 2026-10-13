@@ -5,6 +5,88 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-13] Every entity has a logical table, and seat utilisation is a metric
+**Decision:** License, Plan, Product and Contact get datasets. `contact` (one row per named person at an account, with a role and an engaged flag) replaces the two pre-aggregated workaround columns on the customer snapshot, so Contact Coverage counts engaged contacts and Executive Sponsor Coverage counts accounts with an engaged contact whose role is executive sponsor. `plan` carries the catalogue and `subscription` gains `plan_id`; `product` carries the catalogue and `license` (one row per entitlement a subscription grants, with the product, seats purchased and seats assigned) links to it. A new Customer Success metric, License Utilization (seats assigned over seats purchased on active licenses), reads the license table, with a named breakdown by product; MRR gains a named breakdown by plan. The standard has 301 metrics.
+
+**Context:** The four entities were in the hierarchy (subscription grants license, license grants product, subscription priced by plan, customer represented by contact) but no table carried them, so no metric measured them, the Ossie export had no concept for them and the four edges stayed unmapped. Contact Coverage read an `engaged_contact_count` column that presupposed the aggregation the metric is meant to do. Seat utilisation was absent from a SaaS metrics standard.
+
+**Alternatives considered:**
+- **Declare the four as vocabulary-only entities.** Rejected by the owner, who asked for the comprehensive version.
+- **Keep the workaround columns beside the contact table.** Rejected: two ways to compute one metric is the drift the single-source refactor removed.
+- **Plan and product catalogues with price and seat columns.** Rejected for now: nothing reads them, and a field no formula reads fails the field-usage test. `plan_name`, `billing_period`, `product_name` and `product_line` are declared as dimensions for breakdowns.
+
+**Consequences:**
+- 51 datasets, 32 entity-bearing; Ossie `unmappedEdges` is empty and all four hierarchy edges export with joins.
+- The fixture has plan, product, license and contact tables with story values; License Utilization, Contact Coverage and Executive Sponsor Coverage are pinned.
+- Adapters that mapped `engaged_contact_count` or `has_exec_sponsor` now get "unknown field" from `validate_adapter` and should map a contact table instead.
+
+---
+
+## [2026-10-13] Breakdowns are a property of the formula entry, and distinct pairs are an aggregate
+**Decision:** The grammar gains `count_distinct(a, b)` for distinct tuples and `total(expr)` for an ungrouped population inside a breakdown. A formula entry may declare `"breakdown": "field.<id>"`; its main formula is then compiled once per value of that field, as one query that returns a row per value: every aggregate not under `total()` is correlated to the dimension, the domain is the field's declared enum values or the distinct values of the dataset keyed by the field, and the SQL keeps the one-scalar-subquery-per-aggregate shape with no joins. The dimension must live on the dataset of every grouped aggregate, including through metric references; otherwise it is a compile error that names the aggregate. In the Ossie export a breakdown with no `total()` is the ungrouped direct expression with `custom_extensions.gasp_breakdown`, and one with `total()` is staged.
+
+**Context:** Six metrics were `notComputable` or wrong only because the grammar had no group-by: CAC by Channel, Ticket Distribution by Type, Source of Hire, Payment Method Distribution, Partner Tier Distribution and Breadth of Adoption (which counted distinct features in the catalogue rather than account and feature pairs in usage). The same construct is what makes a Plan or Product dataset useful: MRR by plan and licence utilisation by product are breakdowns of metrics that already exist, which is why the dataset promotion for those entities waited on this.
+
+**Alternatives considered:**
+- **A `by` clause in the grammar.** Rejected: it makes the formula's result shape depend on syntax inside the expression, and share-of-total metrics need per-aggregate control anyway, which `total()` gives with the dimension declared once.
+- **One `notComputable` reason per breakdown metric, as before.** Rejected: an agent asking for CAC by channel got a sentence instead of SQL.
+- **Grouping every aggregate that carries the field and silently leaving the rest ungrouped.** Rejected: a share-of-total would silently become 1, which is the kind of wrong-but-valid SQL the executed tests exist to catch.
+
+**Consequences:**
+- `Compiled`, `QueryTemplate` and `DataRequirement` carry `breakdown`; `get_formula`, `get_data_requirements` and `generate_query` say the query returns one row per value.
+- The executed-template test accepts rows for breakdown templates and pins the ticket type shares to sum to one.
+- The duplicated enum fields `channel` and `marketing_channel` become one field on both datasets, which the breakdown needs because the dimension is one field id.
+- New reasons in the Ossie coverage: `distinct pair` and `total`.
+
+---
+
+## [2026-10-13] Driver traversal stops at baseline inputs, and lower-is-better edges are typed reduces
+**Decision:** A metric reference read `at period_start` or inside `lag()` is a baseline input. `infer_drivers` and `explain_path` list it as a component but do not continue upstream through its drivers, because whatever moved it did so before the period. Curated edges from a lower-is-better metric (a time or a cost) are typed `reduces`, and a curated edge never duplicates a derived component edge between the same pair.
+
+**Context:** Running the tools showed `infer_drivers("NRR", up)` recommending New MRR, Win Rate and Pipeline Value, all reached through `net_new_mrr → mrr → nrr` although NRR reads MRR at period start over the start-of-period cohort and the standard lists "including new customer revenue" as a common mistake. `infer_drivers("Churned MRR", down)` recommended raising First Response Time, MTTR and Time to First Value because their edges were typed `drives`. Eight pairs carried both a curated `reduces` or `drives` edge and a derived `component` edge and were counted as two paths.
+
+**Alternatives considered:**
+- **Hand-curating a stop list of metrics traversal should not pass through.** Rejected: the formula already says which inputs are baselines.
+- **Deleting the `mrr → nrr` component edge.** Rejected: it is true and the diagram should show it; only the onward walk is wrong.
+
+**Consequences:**
+- `structuredFormulas` inputs gain a `baseline` flag written by `npm run derive`; traversal reads it.
+- `test/traversal.test.ts` fails on a `drives` edge from a lower-is-better metric, on a curated edge that duplicates a component pair, and on New MRR appearing among NRR's drivers.
+
+---
+
+## [2026-10-13] GASP presents as an independent standard
+**Decision:** No company is named anywhere. The footer links to GitHub (`GASP-Standard/standard`) where it linked 403page labs, the accessibility statement speaks for "the GASP Standard maintainers" and routes feedback to GitHub issues, and prose that names the source calls it GASP-Standard/standard. Where a person has to be named (the npm `author` field, the mirror README's maintainer line, the copyright lines of both licences, the Ossie spec byline), it is the author, Gareth O'Shea.
+
+**Context:** After the repository move the repos said GASP-Standard while the footer, the accessibility page, the package and the mirror README said 403page labs. The owner chose the independent framing over "a 403page labs project" so the standard reads as the community's, which matters for the Apache Ossie introduction post and for adoption by vendors who would not adopt a competitor's standard.
+
+**Alternatives considered:**
+- **Keep the company credit and make it consistent.** Rejected by the owner.
+- **Keep the company as the maintainers line and licensor.** Rejected by the owner once asked directly: the author is a person, and the standard should not read as a vendor's.
+
+**Consequences:**
+- `grep -rn "403page"` over the repo returns only historical documents (audit reports, this file, TODO's shipped log). The accessibility statement's contact route is GitHub issues.
+- The same session ran the deslop pass over every page, the quiz, the two hand-maintained content files and the generated page descriptions, replaced hand-written tool output on the tools and adapter pages with real output, and fixed the stale claims that pass found (lever count, step counts, tier counts, dependency trees). The site-quality count guards now also cover entities, fields, nodes and edges in `llms.txt`, the README, `CLAUDE.md` and the Ossie spec.
+
+---
+
+## [2026-10-13] Every dataset with its own identity is an entity, and browser islands read a slim bundle
+**Decision:** Thirteen datasets become first-class entities (Incident, Deployment, Release, Issue, Vulnerability, Feature, Requisition, Project Milestone, Deliverable, Quote, Order, Knowledge Article, Deal Registration), with graph nodes and eight curated edges that mirror new `entityRelationships` entries. Seven datasets that are views on an existing entity attach to it instead (sales rep and consultant to Employee, time entry to Project and Employee, partner activity to Partner, the three onboarding datasets to Customer). Ledger and period-level facts (cost events, financials, balance sheet, forecast, web traffic, brand mentions, CRM record quality, service metrics, roadmap items, survey responses) stay entity-free. Separately, `generate-content.ts` writes `src/data/client-standard.json` (definitions by slug plus data requirements) and every React island reads that instead of the full bundle.
+
+**Context:** 30 of 47 datasets had no entity, so `entityMappings` missed their metrics, the graph showed 15 entities and the Ossie export carried four edges with no concept and eleven without a mapping. On the site, the dashboard, relationship explorer and TWIN Modifier each imported `standard.json` (1.1 MB) to look up a definition string, which was most of the dashboard's mobile LCP cost.
+
+**Alternatives considered:**
+- **Promote every dataset.** Rejected: a cost event or a web traffic row is not a business object anyone measures at that level, and an entity per fact table would bury the fifteen that matter.
+- **Attach survey responses to Customer.** Rejected: a response can be about a customer, an employee, a partner or a project, and attaching it to all four would map NPS to employees and eNPS to customers.
+- **`client:visible` on the dashboard island.** Rejected: it delays hydration but still ships the bundle, and the hash-driven department views need the island live on load.
+
+**Consequences:**
+- 28 entities, 95 nodes, 187 edges (70 derived `measures`). Every entity except License, Plan, Product and Contact has metrics; those four have no dataset and stay in the Ossie `unmappedEdges` list, which is now the whole list. The Ticket entity loses its "Issue" alias because Issue is its own entity.
+- The dashboard's client JavaScript drops from the full bundle to a 288 KB chunk. `consistency.test.ts` fails if any component imports `standard.json` again.
+- The data-integrity test, README, `CLAUDE.md`, `llms.txt` and the Ossie spec counts are updated and guarded.
+
+---
+
 ## [2026-10-13] The standard is published through a read-only mirror, and the standard and MCP server stand alone
 **Decision:** The monorepo (`GASP-Standard/gasp`, private) keeps the website. A GitHub Actions workflow mirrors the public parts, `standard/`, `gasp-wiki-mcp/`, the decision documents, `DECISIONS.md` and the Ossie spec, to `GASP-Standard/standard` (public, read-only) on every push to `main`, with a README, a test workflow and a source-commit marker written for the mirror. To make the mirror self-sufficient, the two inputs the MCP package read from the frontend move into `/standard/`: `relationships.json` is canonical there and carries each metric node's page `slug` and each entity's glossary `definition`, and every derived artefact (Cypher, adapter template, Ossie files) is written to `standard/exports/`. The website copies all of it, and the data bundle, into its own tree at build time; those copies are generated and ignored by git, as the content files already were.
 

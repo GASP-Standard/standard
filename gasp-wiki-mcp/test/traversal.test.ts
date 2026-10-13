@@ -190,4 +190,54 @@ describe("graph shape", () => {
     });
     expect(cycles).toEqual([]);
   });
+
+  it("no curated edge duplicates a derived component edge between the same two metrics", () => {
+    // A component edge already carries the input's polarity (structuredFormulas),
+    // so a curated drives or reduces edge on the same pair is listed twice and
+    // counted as two paths. Keep one: the derived one.
+    const component = new Set(data.edges.filter((e) => e.type === "component").map((e) => `${e.source}|${e.target}`));
+    const duplicates = data.edges
+      .filter((e) => (e.type === "drives" || e.type === "reduces" || e.type === "predicts") && component.has(`${e.source}|${e.target}`))
+      .map((e) => `${e.source} ${e.type} ${e.target}`);
+    expect(duplicates).toEqual([]);
+  });
+
+  it("every lower-is-better driver edge is typed reduces", () => {
+    // Time and cost metrics that hurt their target when they rise. A drives edge
+    // between two of them (logo churn drives churned MRR) is still a positive relation.
+    const lowerIsBetter = ["frt", "mttr", "ttfv", "churned_mrr", "contraction_mrr", "logo_churn_rate", "revenue_churn_rate", "cac", "cac_payback", "burn_rate", "sales_cycle"];
+    const wrong = data.edges
+      .filter((e) => e.type === "drives" && lowerIsBetter.includes(e.source) && !lowerIsBetter.includes(e.target))
+      .map((e) => `${e.source} drives ${e.target}`);
+    expect(wrong).toEqual([]);
+  });
+});
+
+// A baseline input (read at period_start or under lag) is a direct component, but
+// traversal does not continue through its drivers: NRR reads MRR at period start
+// over the start-of-period cohort, so New MRR cannot move it.
+describe("baseline inputs", () => {
+  it("marks mrr as a baseline input of NRR, GRR, Expansion Rate and Revenue Churn Rate", () => {
+    for (const id of ["nrr", "grr", "expansion_rate", "revenue_churn_rate"]) expect(ctx.baselinePairs.has(`mrr|${id}`), id).toBe(true);
+    expect(ctx.baselinePairs.has("churned_mrr|nrr")).toBe(false);
+  });
+
+  it("NRR's drivers list MRR and Churned MRR but not New MRR, Win Rate or Pipeline Value", () => {
+    const ids = inferDrivers("nrr", 1, ctx).map((c) => c.id);
+    expect(ids).toContain("mrr");
+    expect(ids).toContain("churned_mrr");
+    for (const id of ["new_mrr", "net_new_mrr", "win_rate", "pipeline_value"]) expect(ids, id).not.toContain(id);
+  });
+
+  it("explain_path from Churned MRR to NRR never passes through net_new_mrr", () => {
+    const paths = findPaths("churned_mrr", "nrr", ctx);
+    expect(paths.length).toBeGreaterThan(0);
+    for (const p of paths) expect(p.path.some((s) => s.from === "net_new_mrr" || s.to === "net_new_mrr")).toBe(false);
+    // MRR itself still reaches NRR directly.
+    expect(findPaths("mrr", "nrr", ctx).some((p) => p.path.length === 1)).toBe(true);
+  });
+
+  it("coverage_gap lists the baseline input as a direct upstream of NRR", () => {
+    expect(coverageGap(new Set(["nrr"]), ctx).upstreamMissing).toContain("mrr");
+  });
 });

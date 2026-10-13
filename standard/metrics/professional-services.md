@@ -260,8 +260,10 @@ Scope Change Rate = Projects with scope changes / Total projects × 100
 
 **Formula:**
 ```
-Duration Accuracy = Estimated duration / Actual duration × 100
+Duration Accuracy = Average of (Estimated duration / Actual duration) per project × 100
 ```
+
+Compute the ratio for each project completed in the period, then average, so every project carries equal weight.
 
 **Target:** 90-110%
 

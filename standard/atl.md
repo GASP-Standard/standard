@@ -51,7 +51,7 @@ Every CEL event receives exactly one lifecycle tag. This is the primary dimensio
 
 Revenue growth and mid-term amendments are not all the same. A customer adding seats to the same product is fundamentally different from a customer buying a new module. This dimension captures that distinction.
 
-Applies to: `Revenue_Event` where `event_type` is `expansion` or `reactivation`, and all `Amendment_Event` records.
+Applies to: `Revenue_Event` where `event_type` is `expansion` or `reactivation`, plus every `Amendment_Event` record.
 
 ### Values
 
@@ -122,7 +122,7 @@ All five event classes receive exactly one `lifecycle_attribution` tag.
 
 ### Rule 2: Revenue growth and amendments get an Expansion tag
 
-`Revenue_Event` records where `event_type` is `expansion` or `reactivation`, and all `Amendment_Event` records, receive exactly one `expansion_classification` tag.
+`Revenue_Event` records where `event_type` is `expansion` or `reactivation`, plus every `Amendment_Event` record, receive exactly one `expansion_classification` tag.
 
 ### Rule 3: Cost events get a Cost Function tag
 
@@ -323,4 +323,4 @@ The full inclusion/exclusion rules for each dual-lens Core metric are specified 
 
 The current GASP Standard defines metrics with Include/Exclude lists (e.g., CAC includes S&M + implementation costs. NRR excludes reactivation from some calculations). These existing definitions are implicitly the Operating (O) perspective. They represent the economic truth that internal operators need.
 
-ATL does not replace those definitions. It provides the tagging vocabulary that makes it possible to *also* compute the Market (M) perspective from the same underlying events, and to formally reconcile the two via a Translation Bridge.
+ATL does not replace those definitions. It provides the tagging vocabulary that makes it possible to *also* compute the Market (M) perspective from the same underlying events and to formally reconcile the two via a Translation Bridge.

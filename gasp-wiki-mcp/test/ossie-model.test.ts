@@ -30,7 +30,7 @@ const ext = (d: { custom_extensions?: Array<{ vendor_name: string; data: string 
 const entries: Array<{ key: string; id: string; variant?: string }> = [];
 for (const [id, f] of Object.entries(data.formulas!)) {
   if (f.formula || f.notComputable) entries.push({ key: id, id });
-  for (const v of [...Object.keys(f.forms ?? {}), ...Object.keys(f.variants ?? {})]) entries.push({ key: `${id}:${v}`, id, variant: v });
+  for (const v of [...Object.keys(f.forms ?? {}), ...Object.keys(f.variants ?? {}), ...Object.keys(f.breakdowns ?? {})]) entries.push({ key: `${id}:${v}`, id, variant: v });
 }
 
 describe("Ossie model: datasets", () => {
@@ -84,8 +84,23 @@ describe("Ossie model: datasets", () => {
       expect(r.from_columns.length).toBe(r.to_columns.length);
       for (const c of r.from_columns) expect(from!.fields!.some((f) => f.name === c), `${r.name} from ${c}`).toBe(true);
       for (const c of r.to_columns) expect(to!.fields!.some((f) => f.name === c), `${r.name} to ${c}`).toBe(true);
+      // A fact target is joined on its key alone (see the next test); every other target's key is covered.
+      if (data.ontology!.datasets![r.to]?.kind === "fact") continue;
       expect(to!.primary_key!.every((k) => r.to_columns.includes(k)), r.name).toBe(true);
     }
+  });
+
+  it("joins a fact dataset on its key alone, with no date condition", () => {
+    const facts = (model.relationships ?? []).filter((r) => data.ontology!.datasets![r.to]?.kind === "fact");
+    expect(facts.map((r) => r.name)).toEqual(expect.arrayContaining(["opportunity_rep_id", "project_consultant_id", "time_entry_consultant_id"]));
+    for (const r of facts) {
+      const target = data.ontology!.datasets![r.to];
+      expect(r.to_columns, r.name).toEqual([target.key]);
+      expect(r.from_columns, r.name).toHaveLength(1);
+      expect(r.to_columns).not.toContain(target.date);
+      expect(r.from_columns).not.toContain(data.ontology!.datasets![r.from].date);
+    }
+    expect(model.relationships!.find((r) => r.name === "opportunity_rep_id")).toMatchObject({ from: "opportunity", to: "sales_rep", from_columns: ["rep_id"], to_columns: ["rep_id"] });
   });
 
   it("joins a subscription to its customer by key and snapshot date, and an event to a snapshot by key and date", () => {
@@ -152,11 +167,18 @@ describe("Ossie model: metrics", () => {
       const ds = byName.get(c.stagedDataset)!;
       expect(c.stagedDataset).toBe(stagedDatasetName(c.ossieName));
       expect(expr(c.ossieName)).toBe(`SUM(${c.stagedDataset}.value)`);
-      expect(ds.primary_key).toEqual(["period_start"]);
-      expect(ds.fields!.map((f) => f.name)).toEqual(["period_start", "period_end", "value"]);
+      // A breakdown adds its field: one row per period and value.
+      const bf = ext(metricByName.get(c.ossieName)!).gasp_breakdown as string | undefined;
+      expect(ds.primary_key).toEqual(bf ? ["period_start", bf] : ["period_start"]);
+      expect(ds.fields!.map((f) => f.name)).toEqual(bf ? ["period_start", "period_end", bf, "value"] : ["period_start", "period_end", "value"]);
       expect(ds.fields!.find((f) => f.name === "period_start")!.dimension?.is_time).toBe(true);
-      expect(ds.source).toMatch(/^SELECT p\.period_start, p\.period_end, \(/);
-      expect(ds.source).toMatch(/AS value FROM gasp\.period_spine p$/);
+      if (bf) {
+        expect(ds.source).toMatch(new RegExp(`^SELECT p\\.period_start, p\\.period_end, _d\\.${bf} AS ${bf}, \\(`));
+        expect(ds.source).toMatch(/AS value FROM gasp\.period_spine p CROSS JOIN \(.*\) _d$/);
+      } else {
+        expect(ds.source).toMatch(/^SELECT p\.period_start, p\.period_end, \(/);
+        expect(ds.source).toMatch(/AS value FROM gasp\.period_spine p$/);
+      }
       expect(ds.source).not.toContain("{{");
       expect(ext(ds)).toEqual({ staged: true, for: c.ossieName, reason: c.reason });
       expect(ext(metricByName.get(c.ossieName)!).staged).toBe(true);
@@ -232,9 +254,45 @@ describe("Ossie model: metrics", () => {
       expect(emit("max(sum(field.mrr_change), 0) / 2")).toMatchObject({ kind: "direct", expression: "(CAST(GREATEST(SUM(revenue_event.mrr_change), 0) AS DECIMAL) / 2)" });
     });
 
+    it("stages distinct pairs and total(); a breakdown with neither stays direct", () => {
+      expect(emit("count_distinct(field.customer_id, field.feature_id)")).toMatchObject({ kind: "staged", reason: "distinct pair" });
+      expect(emit("count(field.ticket_id) / total(count(field.ticket_id))")).toMatchObject({ kind: "staged", reason: "total" });
+      expect(emit("count(field.ticket_id)")).toMatchObject({ kind: "direct", expression: "COUNT(ticket.ticket_id)" });
+    });
+
     it("a reference to a notComputable metric is not computable", () => {
       expect(emit("metric.x * 2", { x: { notComputable: "no single formula" } })).toMatchObject({ kind: "notComputable" });
     });
+  });
+
+  it("marks a breakdown with no total() as direct with the gasp_breakdown extension, and stages one with total()", () => {
+    const withEntry = (id: string, f: MetricFormula) => exportModel({ ...data, formulas: { ...data.formulas!, [id]: f } });
+    const direct = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id)", unit: "count", breakdown: "field.ticket_type" });
+    expect(direct.coverage.ticket_volume.kind).toBe("direct");
+    const m = direct.model.metrics!.find((x) => x.name === "gasp_ticket_volume")!;
+    expect(m.expression.dialects[0].expression).toBe("COUNT(DISTINCT ticket.ticket_id)");
+    expect(ext(m).gasp_breakdown).toBe("ticket_type");
+    expect((m.ai_context as any).instructions).toMatch(/Broken down by ticket_type/);
+    // A named breakdown is its own metric, like a variant, with the variant name and gasp_breakdown.
+    const named = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id)", unit: "count", breakdowns: { by_type: "field.ticket_type" } });
+    expect(named.coverage.ticket_volume.kind).toBe("direct");
+    expect(named.coverage["ticket_volume:by_type"].kind).toBe("direct");
+    const nm = named.model.metrics!.find((x) => x.name === "gasp_ticket_volume_by_type")!;
+    expect(nm.expression.dialects[0].expression).toBe("COUNT(DISTINCT ticket.ticket_id)");
+    expect(ext(nm)).toMatchObject({ gasp_id: "ticket_volume", variant: "by_type", gasp_breakdown: "ticket_type" });
+    expect(ext(named.model.metrics!.find((x) => x.name === "gasp_ticket_volume")!).gasp_breakdown).toBeUndefined();
+    // A staged main formula stages the named breakdown too, one row per period and value.
+    const namedStaged = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id) to_date", unit: "count", breakdowns: { by_type: "field.ticket_type" } });
+    expect(namedStaged.coverage["ticket_volume:by_type"]).toMatchObject({ kind: "staged", reason: "to_date" });
+    expect(namedStaged.model.datasets.find((d) => d.name === "gasp_staged_gasp_ticket_volume_by_type")!.primary_key).toEqual(["period_start", "ticket_type"]);
+    expect(namedStaged.model.datasets.find((d) => d.name === "gasp_staged_gasp_ticket_volume")!.primary_key).toEqual(["period_start"]);
+    // Ticket Distribution by Type uses total(): staged, one row per period and ticket type.
+    expect(coverage.ticket_distribution_by_type).toMatchObject({ kind: "staged", reason: "total" });
+    const ds = byName.get("gasp_staged_gasp_ticket_distribution_by_type")!;
+    expect(ds.primary_key).toEqual(["period_start", "ticket_type"]);
+    expect(ext(metricByName.get("gasp_ticket_distribution_by_type")!).gasp_breakdown).toBe("ticket_type");
+    // Breadth of Adoption counts distinct (account, feature) pairs.
+    expect(coverage.breadth_of_adoption).toMatchObject({ kind: "staged", reason: "distinct pair" });
   });
 
   it("reports coverage counts", () => {
@@ -264,10 +322,14 @@ describe("Ossie model: staged sources run", () => {
     await db.exec("CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE)");
     await db.exec("INSERT INTO gasp.period_spine VALUES ('2026-01-01', '2026-01-31'), ('2026-02-01', '2026-02-28')");
     const failures: string[] = [];
+    const values = new Map(ontology.fields!.map((f) => [f.id, f.values?.length ?? 0]));
     for (const ds of model.datasets.filter((d): d is OssieDataset => d.name.startsWith("gasp_staged_"))) {
       try {
         const res = await db.query(ds.source);
-        if (res.rows.length !== 2) failures.push(`${ds.name}: ${res.rows.length} rows`);
+        // A breakdown on an enum field has one row per period and declared value.
+        const bf = ds.primary_key!.find((k) => k !== "period_start");
+        const expected = bf ? 2 * values.get(bf)! : 2;
+        if (res.rows.length !== expected) failures.push(`${ds.name}: ${res.rows.length} rows, expected ${expected}`);
       } catch (e) {
         failures.push(`${ds.name}: ${(e as Error).message}`);
       }

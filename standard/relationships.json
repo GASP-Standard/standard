@@ -574,6 +574,85 @@
       "level": 0
     },
     {
+      "id": "entity_incident",
+      "label": "Incident",
+      "nodeType": "entity",
+      "level": 0,
+      "definition": "incident"
+    },
+    {
+      "id": "entity_deployment",
+      "label": "Deployment",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_release",
+      "label": "Release",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_issue",
+      "label": "Issue",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_vulnerability",
+      "label": "Vulnerability",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_feature",
+      "label": "Feature",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_requisition",
+      "label": "Requisition",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_project_milestone",
+      "label": "Project Milestone",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_deliverable",
+      "label": "Deliverable",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_quote",
+      "label": "Quote",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_order",
+      "label": "Order",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_kb_article",
+      "label": "Knowledge Article",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
+      "id": "entity_deal_registration",
+      "label": "Deal Registration",
+      "nodeType": "entity",
+      "level": 0
+    },
+    {
       "id": "concept_revenue",
       "label": "Revenue (GAAP)",
       "nodeType": "concept",
@@ -623,39 +702,9 @@
   ],
   "edges": [
     {
-      "source": "churned_mrr",
-      "target": "net_new_mrr",
-      "type": "reduces"
-    },
-    {
-      "source": "contraction_mrr",
-      "target": "net_new_mrr",
-      "type": "reduces"
-    },
-    {
       "source": "net_new_mrr",
       "target": "mrr",
       "type": "drives"
-    },
-    {
-      "source": "churned_mrr",
-      "target": "nrr",
-      "type": "reduces"
-    },
-    {
-      "source": "contraction_mrr",
-      "target": "nrr",
-      "type": "reduces"
-    },
-    {
-      "source": "churned_mrr",
-      "target": "grr",
-      "type": "reduces"
-    },
-    {
-      "source": "contraction_mrr",
-      "target": "grr",
-      "type": "reduces"
     },
     {
       "source": "mqls",
@@ -713,16 +762,6 @@
       "type": "drives"
     },
     {
-      "source": "revenue_churn_rate",
-      "target": "ltv",
-      "type": "reduces"
-    },
-    {
-      "source": "gross_margin",
-      "target": "operating_margin",
-      "type": "drives"
-    },
-    {
       "source": "acv",
       "target": "arpa",
       "type": "drives"
@@ -730,7 +769,7 @@
     {
       "source": "ttfv",
       "target": "onboarding_completion",
-      "type": "drives"
+      "type": "reduces"
     },
     {
       "source": "onboarding_completion",
@@ -802,7 +841,7 @@
     {
       "source": "frt",
       "target": "csat",
-      "type": "drives"
+      "type": "reduces"
     },
     {
       "source": "qbr_completion",
@@ -847,7 +886,7 @@
     {
       "source": "mttr",
       "target": "uptime",
-      "type": "drives"
+      "type": "reduces"
     },
     {
       "source": "deployment_frequency",
@@ -1030,11 +1069,6 @@
       "type": "component"
     },
     {
-      "source": "pipeline_value",
-      "target": "pipeline_coverage",
-      "type": "component"
-    },
-    {
       "source": "churned_mrr",
       "target": "revenue_churn_rate",
       "type": "component"
@@ -1155,6 +1189,11 @@
       "type": "measures"
     },
     {
+      "source": "onboarding_completion",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "pqas",
       "target": "entity_customer",
       "type": "measures"
@@ -1166,6 +1205,11 @@
     },
     {
       "source": "revenue_churn_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "ttfv",
       "target": "entity_customer",
       "type": "measures"
     },
@@ -1370,8 +1414,38 @@
       "type": "measures"
     },
     {
+      "source": "pipeline_coverage",
+      "target": "entity_employee",
+      "type": "measures"
+    },
+    {
+      "source": "quota_attainment",
+      "target": "entity_employee",
+      "type": "measures"
+    },
+    {
       "source": "revenue_per_employee",
       "target": "entity_employee",
+      "type": "measures"
+    },
+    {
+      "source": "mttr",
+      "target": "entity_incident",
+      "type": "measures"
+    },
+    {
+      "source": "deployment_frequency",
+      "target": "entity_deployment",
+      "type": "measures"
+    },
+    {
+      "source": "feature_adoption",
+      "target": "entity_feature",
+      "type": "measures"
+    },
+    {
+      "source": "self_service_rate",
+      "target": "entity_kb_article",
       "type": "measures"
     },
     {
@@ -1483,6 +1557,46 @@
       "source": "entity_opportunity",
       "target": "concept_tcv",
       "type": "produces"
+    },
+    {
+      "source": "entity_deployment",
+      "target": "entity_incident",
+      "type": "generates"
+    },
+    {
+      "source": "entity_feature",
+      "target": "entity_release",
+      "type": "belongs_to"
+    },
+    {
+      "source": "entity_project",
+      "target": "entity_project_milestone",
+      "type": "owns"
+    },
+    {
+      "source": "entity_project",
+      "target": "entity_deliverable",
+      "type": "produces"
+    },
+    {
+      "source": "entity_quote",
+      "target": "entity_order",
+      "type": "converts_to"
+    },
+    {
+      "source": "entity_partner",
+      "target": "entity_deal_registration",
+      "type": "submits"
+    },
+    {
+      "source": "entity_deal_registration",
+      "target": "entity_opportunity",
+      "type": "converts_to"
+    },
+    {
+      "source": "entity_requisition",
+      "target": "entity_employee",
+      "type": "converts_to"
     }
   ]
 }

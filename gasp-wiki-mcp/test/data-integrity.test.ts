@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect, beforeAll } from "vitest";
 import { loadStandard } from "../src/loader.js";
@@ -11,16 +11,16 @@ beforeAll(() => {
 });
 
 describe("data integrity", () => {
-  it("loads 300 metrics", () => {
-    expect(data.metrics).toHaveLength(300);
+  it("loads 301 metrics", () => {
+    expect(data.metrics).toHaveLength(301);
   });
 
   it("loads 92 definitions (80 SaaS domain + 12 GASP framework)", () => {
     expect(data.definitions).toHaveLength(92);
   });
 
-  it("loads 82 relationship nodes (60 metrics + 15 entities + 7 concepts)", () => {
-    expect(data.nodes).toHaveLength(82);
+  it("loads 95 relationship nodes (60 metrics + 28 entities + 7 concepts)", () => {
+    expect(data.nodes).toHaveLength(95);
   });
 
   it("loads every edge in relationships.json", () => {
@@ -234,5 +234,20 @@ describe("taxonomy integrity", () => {
     const dualTagged = data.metrics.filter((m) => m.signalTypeSecondary);
     expect(dualTagged.length).toBeGreaterThanOrEqual(5);
     expect(dualTagged.length).toBeLessThanOrEqual(15);
+  });
+});
+
+describe("adapter schema", () => {
+  const here = new URL(".", import.meta.url).pathname;
+  const schema = JSON.parse(readFileSync(join(here, "..", "..", "standard", "gasp-adapter-schema.json"), "utf-8"));
+  const bundlePath = join(here, "..", "build", "standard-data.json");
+
+  it("is loaded from standard/gasp-adapter-schema.json", () => {
+    expect(data.adapterSchema).toEqual(schema);
+  });
+
+  it.skipIf(!existsSync(bundlePath))("travels in the bundled standard-data.json", () => {
+    const bundled = JSON.parse(readFileSync(bundlePath, "utf-8")) as StandardData;
+    expect(bundled.adapterSchema).toEqual(schema);
   });
 });

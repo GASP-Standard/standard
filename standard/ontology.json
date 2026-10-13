@@ -67,8 +67,7 @@
       "id": "ticket",
       "label": "Ticket",
       "aliases": [
-        "Support Case",
-        "Issue"
+        "Support Case"
       ],
       "definition": "A discrete support interaction initiated by a customer or user, tracked to resolution.",
       "level": "support"
@@ -155,6 +154,131 @@
       ],
       "definition": "A named individual at a customer account involved in the buying or expansion process. Distinct from User (product user) and Lead (pre-qualification).",
       "level": "acquisition"
+    },
+    {
+      "id": "incident",
+      "label": "Incident",
+      "aliases": [
+        "Outage",
+        "SEV"
+      ],
+      "definition": "An unplanned interruption or degradation of service, tracked from start to resolution. Reliability metrics (MTTR, incident rate) are measured at this level.",
+      "level": "engineering"
+    },
+    {
+      "id": "deployment",
+      "label": "Deployment",
+      "aliases": [
+        "Deploy",
+        "Production Change"
+      ],
+      "definition": "A release of code to production. DORA delivery metrics (deployment frequency, lead time for changes, change failure rate) are measured at this level.",
+      "level": "engineering"
+    },
+    {
+      "id": "release",
+      "label": "Release",
+      "aliases": [
+        "Version"
+      ],
+      "definition": "A versioned bundle of features shipped to customers. Delivery predictability metrics are measured at this level.",
+      "level": "engineering"
+    },
+    {
+      "id": "issue",
+      "label": "Issue",
+      "aliases": [
+        "Bug",
+        "Defect",
+        "Feature Request"
+      ],
+      "definition": "A tracked defect or request in the engineering backlog, with its source and the environment it was found in. Quality metrics (escaped defects, bug rate) are measured at this level.",
+      "level": "engineering"
+    },
+    {
+      "id": "vulnerability",
+      "label": "Vulnerability",
+      "aliases": [
+        "CVE",
+        "Security Finding"
+      ],
+      "definition": "A security weakness found in the product or its infrastructure, tracked from discovery to patch. Security remediation metrics are measured at this level.",
+      "level": "engineering"
+    },
+    {
+      "id": "feature",
+      "label": "Feature",
+      "aliases": [
+        "Capability"
+      ],
+      "definition": "A unit of product functionality with planned and actual ship dates and a first use by customers. Adoption and roadmap delivery metrics are measured at this level.",
+      "level": "product"
+    },
+    {
+      "id": "requisition",
+      "label": "Requisition",
+      "aliases": [
+        "Job Opening",
+        "Req"
+      ],
+      "definition": "An approved request to hire for a role, open until filled or closed. Recruiting metrics (time to fill, offer acceptance rate) are measured at this level.",
+      "level": "internal"
+    },
+    {
+      "id": "project_milestone",
+      "label": "Project Milestone",
+      "aliases": [
+        "Milestone"
+      ],
+      "definition": "A dated checkpoint inside a professional services project, with a planned and an actual date. Delivery predictability is measured at this level.",
+      "level": "services"
+    },
+    {
+      "id": "deliverable",
+      "label": "Deliverable",
+      "aliases": [
+        "Work Product"
+      ],
+      "definition": "An artefact a professional services project hands to the customer, which the customer accepts or sends back for rework. Delivery quality is measured at this level.",
+      "level": "services"
+    },
+    {
+      "id": "quote",
+      "label": "Quote",
+      "aliases": [
+        "Proposal",
+        "Pricing Quote"
+      ],
+      "definition": "A priced offer sent to a prospect or customer before an order. Quote turnaround and discounting are measured at this level.",
+      "level": "financial"
+    },
+    {
+      "id": "order",
+      "label": "Order",
+      "aliases": [
+        "Sales Order"
+      ],
+      "definition": "An accepted quote in fulfilment, from receipt to completion. Order accuracy and fulfilment time are measured at this level.",
+      "level": "financial"
+    },
+    {
+      "id": "kb_article",
+      "label": "Knowledge Article",
+      "aliases": [
+        "Help Article",
+        "KB Article"
+      ],
+      "definition": "A self-service help article. Ticket deflection and self-service rates are measured at this level.",
+      "level": "support"
+    },
+    {
+      "id": "deal_registration",
+      "label": "Deal Registration",
+      "aliases": [
+        "Partner Registration"
+      ],
+      "definition": "A partner's claim on an opportunity it sourced, moving from qualification to close. Partner pipeline and conflict metrics are measured at this level.",
+      "level": "channel"
     }
   ],
   "sourceCategories": [
@@ -282,12 +406,12 @@
       "breadth_of_adoption",
       "burn_multiple",
       "cac",
-      "cac_by_channel",
       "cac_payback",
       "carry_mrr",
       "churned_mrr",
       "contact_coverage",
       "contraction_mrr",
+      "cost_per_onboarding",
       "cross_sell_rate",
       "day_30_retention_post_onboarding",
       "executive_sponsor_coverage",
@@ -304,11 +428,22 @@
       "net_new_mrr",
       "new_mrr",
       "nrr",
+      "on_time_completion_rate",
+      "onboarding_completion",
+      "onboarding_duration",
+      "onboarding_milestone_completion_rate",
+      "onboardings_per_resource",
       "order_to_activation_time",
       "pqas",
       "qbr_completion",
       "revenue_churn_rate",
+      "session_attendance_rate",
+      "task_completion_rate",
       "tickets_per_customer",
+      "time_spent_per_onboarding",
+      "time_to_full_adoption",
+      "time_to_go_live",
+      "ttfv",
       "upsell_rate"
     ],
     "subscription": [
@@ -320,7 +455,6 @@
       "bookings",
       "burn_multiple",
       "cac",
-      "cac_by_channel",
       "cac_payback",
       "carry_mrr",
       "churned_mrr",
@@ -354,7 +488,9 @@
       "unbilled_revenue",
       "upsell_rate"
     ],
-    "license": [],
+    "license": [
+      "license_utilization"
+    ],
     "lead": [
       "cost_per_mql",
       "cpl",
@@ -372,6 +508,7 @@
       "average_deal_size",
       "average_partner_revenue",
       "average_services_deal_size",
+      "cac_by_channel",
       "channel_revenue_percentage",
       "commit_accuracy",
       "lead_to_opportunity_rate",
@@ -382,7 +519,6 @@
       "marketplace_revenue",
       "opportunity_to_close_rate",
       "paid_media_efficiency_roas",
-      "partner_activation_rate",
       "partner_deal_size",
       "partner_influenced_revenue",
       "partner_lifetime_value",
@@ -422,6 +558,7 @@
       "session_duration",
       "session_frequency",
       "time_in_product",
+      "time_to_feature_adoption",
       "user_retention_day_n",
       "waumau_ratio",
       "weekly_active_users_wau"
@@ -437,12 +574,17 @@
       "self_service_rate",
       "support_escalation_rate",
       "ticket_backlog",
+      "ticket_distribution_by_type",
       "ticket_volume",
       "tickets_per_agent",
       "tickets_per_customer"
     ],
     "employee": [
       "average_tenure",
+      "bench_rate",
+      "billable_utilization",
+      "capacity",
+      "capacity_utilization",
       "compa_ratio",
       "cost_per_hire",
       "day_90_turnover",
@@ -454,11 +596,21 @@
       "headcount_growth_rate",
       "involuntary_turnover_rate",
       "pay_equity_ratio",
+      "pipeline_coverage",
+      "projects_per_consultant",
       "quality_of_hire",
+      "quota_attainment",
+      "ramp_time",
+      "realization_rate",
       "regrettable_turnover",
+      "revenue_per_consultant",
       "revenue_per_employee",
+      "revenue_per_rep",
+      "source_of_hire",
       "total_headcount",
-      "voluntary_turnover_rate"
+      "total_utilization",
+      "voluntary_turnover_rate",
+      "write_off_rate"
     ],
     "invoice": [
       "aging_buckets",
@@ -475,10 +627,14 @@
       "average_partner_revenue",
       "certification_rate",
       "cost_of_partner_acquisition",
+      "deal_registration_to_close_rate",
+      "joint_marketing_activities",
       "partner_activation_rate",
       "partner_churn_rate",
+      "partner_deal_registration_volume",
       "partner_influenced_revenue",
       "partner_lifetime_value",
+      "partner_sales_cycle",
       "partner_tier_distribution",
       "partner_win_rate",
       "total_active_partners",
@@ -487,23 +643,98 @@
     "project": [
       "average_project_duration",
       "bench_rate",
+      "billable_utilization",
       "capacity_utilization",
       "on_budget_delivery",
       "on_time_delivery",
       "professional_services_escalation_rate",
+      "professional_services_milestone_completion_rate",
       "project_duration_accuracy",
       "project_margin",
       "projects_per_consultant",
+      "realization_rate",
       "reference_ability",
+      "rework_rate",
       "scope_change_rate",
-      "time_to_start"
+      "time_to_start",
+      "total_utilization",
+      "write_off_rate"
     ],
     "plan": [],
     "product": [],
     "campaign": [
+      "cac_by_channel",
       "paid_media_efficiency_roas"
     ],
-    "contact": []
+    "contact": [
+      "contact_coverage",
+      "executive_sponsor_coverage"
+    ],
+    "incident": [
+      "change_failure_rate",
+      "incident_count",
+      "mean_time_to_acknowledge_mtta",
+      "mean_time_to_detect_mttd",
+      "mean_time_to_recovery_mttr",
+      "mttr",
+      "security_incident_count"
+    ],
+    "deployment": [
+      "change_failure_rate",
+      "deployment_frequency",
+      "lead_time_for_changes"
+    ],
+    "release": [
+      "release_frequency"
+    ],
+    "issue": [
+      "bug_escape_rate",
+      "feature_request_volume",
+      "user_reported_issues"
+    ],
+    "vulnerability": [
+      "time_to_patch",
+      "vulnerability_count"
+    ],
+    "feature": [
+      "breadth_of_adoption",
+      "feature_adoption",
+      "feature_adoption_at_go_live",
+      "feature_delivery_rate",
+      "time_to_market"
+    ],
+    "requisition": [
+      "offer_acceptance_rate",
+      "open_positions",
+      "time_to_fill",
+      "time_to_hire"
+    ],
+    "project_milestone": [
+      "professional_services_milestone_completion_rate"
+    ],
+    "deliverable": [
+      "rework_rate"
+    ],
+    "quote": [
+      "discount_rate",
+      "quote_accuracy",
+      "quote_cycle_time",
+      "quote_to_order_rate",
+      "quote_volume"
+    ],
+    "order": [
+      "order_error_rate",
+      "order_processing_time",
+      "quote_to_order_rate"
+    ],
+    "kb_article": [
+      "self_service_rate"
+    ],
+    "deal_registration": [
+      "deal_registration_to_close_rate",
+      "partner_deal_registration_volume",
+      "partner_sales_cycle"
+    ]
   },
   "fields": [
     {
@@ -632,7 +863,7 @@
         "ad_platforms"
       ],
       "description": "Media spend in the period",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "advanced_to_next_stage",
@@ -878,10 +1109,12 @@
       "id": "channel",
       "type": "enum",
       "datasets": [
-        "campaign"
+        "campaign",
+        "opportunity"
       ],
       "sources": [
         "ad_platforms",
+        "crm",
         "marketing_automation"
       ],
       "values": [
@@ -894,8 +1127,8 @@
         "direct",
         "other"
       ],
-      "description": "Campaign channel",
-      "metricCount": 1
+      "description": "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity",
+      "metricCount": 4
     },
     {
       "id": "close_date",
@@ -1047,7 +1280,7 @@
         "finance"
       ],
       "description": "Cost amount (CEL Cost_Event.amount)",
-      "metricCount": 23
+      "metricCount": 22
     },
     {
       "id": "cost_centre",
@@ -1072,7 +1305,7 @@
         "general"
       ],
       "description": "Department or team that incurred the cost",
-      "metricCount": 4
+      "metricCount": 3
     },
     {
       "id": "cost_function",
@@ -1099,7 +1332,7 @@
         "partner_commission"
       ],
       "description": "Purpose of cost (ATL cost function, extended to all cost events)",
-      "metricCount": 23
+      "metricCount": 22
     },
     {
       "id": "cost_type",
@@ -1132,7 +1365,7 @@
         "product_analytics"
       ],
       "description": "Creation time",
-      "metricCount": 16
+      "metricCount": 17
     },
     {
       "id": "credit_memo_count",
@@ -1205,7 +1438,8 @@
         "onboarding",
         "survey_response",
         "product_event",
-        "revenue_schedule"
+        "revenue_schedule",
+        "contact"
       ],
       "sources": [
         "billing",
@@ -1217,7 +1451,7 @@
         "survey_tool"
       ],
       "description": "Customer (account) identifier. Primary business noun; CEL name",
-      "metricCount": 27
+      "metricCount": 26
     },
     {
       "id": "customer_status",
@@ -1236,7 +1470,7 @@
         "dormant"
       ],
       "description": "Customer lifecycle status; active means at least one active subscription",
-      "metricCount": 16
+      "metricCount": 17
     },
     {
       "id": "deflections",
@@ -1360,7 +1594,7 @@
         "survey_tool"
       ],
       "description": "Employee identifier",
-      "metricCount": 13
+      "metricCount": 14
     },
     {
       "id": "employee_status",
@@ -1378,19 +1612,6 @@
       ],
       "description": "Employment status",
       "metricCount": 11
-    },
-    {
-      "id": "engaged_contact_count",
-      "type": "integer",
-      "datasets": [
-        "customer"
-      ],
-      "sources": [
-        "cs_platform",
-        "crm"
-      ],
-      "description": "Contacts engaged in the period",
-      "metricCount": 1
     },
     {
       "id": "engagement_score",
@@ -1472,7 +1693,7 @@
         "product_analytics"
       ],
       "description": "Date the event occurred",
-      "metricCount": 61
+      "metricCount": 60
     },
     {
       "id": "event_id",
@@ -1512,7 +1733,7 @@
         "renewal"
       ],
       "description": "Revenue movement classifier (CEL Revenue_Event.event_type)",
-      "metricCount": 19
+      "metricCount": 18
     },
     {
       "id": "expansion_classification",
@@ -1667,15 +1888,187 @@
       "metricCount": 1
     },
     {
-      "id": "has_exec_sponsor",
-      "type": "boolean",
+      "id": "contact_id",
+      "type": "string",
       "datasets": [
-        "customer"
+        "contact"
       ],
       "sources": [
+        "crm",
         "cs_platform"
       ],
-      "description": "An executive sponsor is identified",
+      "description": "Contact identifier: a named person at a customer account",
+      "metricCount": 1
+    },
+    {
+      "id": "contact_role",
+      "type": "enum",
+      "datasets": [
+        "contact"
+      ],
+      "sources": [
+        "crm",
+        "cs_platform"
+      ],
+      "values": [
+        "executive_sponsor",
+        "decision_maker",
+        "champion",
+        "day_to_day",
+        "procurement",
+        "other"
+      ],
+      "description": "The contact's role in the account relationship",
+      "metricCount": 1
+    },
+    {
+      "id": "contact_engaged",
+      "type": "boolean",
+      "datasets": [
+        "contact"
+      ],
+      "sources": [
+        "crm",
+        "cs_platform"
+      ],
+      "description": "The contact had recorded activity (meeting, email, call, QBR) in the trailing 90 days",
+      "metricCount": 2
+    },
+    {
+      "id": "plan_id",
+      "type": "string",
+      "datasets": [
+        "subscription",
+        "plan"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "Pricing plan identifier; the plan a subscription is priced by",
+      "metricCount": 1
+    },
+    {
+      "id": "plan_name",
+      "type": "string",
+      "datasets": [
+        "plan"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "dimension": true,
+      "description": "Plan display name (Starter, Pro, Enterprise)",
+      "metricCount": 0
+    },
+    {
+      "id": "billing_period",
+      "type": "enum",
+      "datasets": [
+        "plan"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "values": [
+        "monthly",
+        "annual",
+        "multi_year"
+      ],
+      "dimension": true,
+      "description": "How often the plan bills",
+      "metricCount": 0
+    },
+    {
+      "id": "product_id",
+      "type": "string",
+      "datasets": [
+        "license",
+        "product"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "Product identifier; the purchasable unit a license grants access to",
+      "metricCount": 1
+    },
+    {
+      "id": "product_name",
+      "type": "string",
+      "datasets": [
+        "product"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "dimension": true,
+      "description": "Product display name",
+      "metricCount": 0
+    },
+    {
+      "id": "product_line",
+      "type": "string",
+      "datasets": [
+        "product"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "dimension": true,
+      "description": "Product family the product belongs to",
+      "metricCount": 0
+    },
+    {
+      "id": "license_id",
+      "type": "string",
+      "datasets": [
+        "license"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "License identifier: one entitlement a subscription grants",
+      "metricCount": 0
+    },
+    {
+      "id": "license_status",
+      "type": "enum",
+      "datasets": [
+        "license"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "values": [
+        "active",
+        "suspended",
+        "expired"
+      ],
+      "description": "Whether the license currently grants access",
+      "metricCount": 1
+    },
+    {
+      "id": "seats_purchased",
+      "type": "integer",
+      "datasets": [
+        "license"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "Seats the license entitles the customer to",
+      "metricCount": 1
+    },
+    {
+      "id": "seats_assigned",
+      "type": "integer",
+      "datasets": [
+        "license"
+      ],
+      "sources": [
+        "billing",
+        "product_analytics"
+      ],
+      "description": "Seats assigned to a named user",
       "metricCount": 1
     },
     {
@@ -1691,7 +2084,29 @@
         "ats"
       ],
       "description": "Employment start date",
-      "metricCount": 7
+      "metricCount": 8
+    },
+    {
+      "id": "hire_source",
+      "type": "enum",
+      "datasets": [
+        "employee"
+      ],
+      "sources": [
+        "ats",
+        "hris"
+      ],
+      "values": [
+        "referral",
+        "inbound",
+        "sourced",
+        "agency",
+        "internal",
+        "campus",
+        "other"
+      ],
+      "description": "Recruiting channel the employee was hired through",
+      "metricCount": 1
     },
     {
       "id": "hours",
@@ -2070,29 +2485,6 @@
       "metricCount": 1
     },
     {
-      "id": "marketing_channel",
-      "type": "enum",
-      "datasets": [
-        "opportunity"
-      ],
-      "sources": [
-        "crm",
-        "marketing_automation"
-      ],
-      "values": [
-        "paid_ads",
-        "organic_search",
-        "email",
-        "events",
-        "content",
-        "referral",
-        "direct",
-        "other"
-      ],
-      "description": "First-touch marketing channel",
-      "metricCount": 3
-    },
-    {
       "id": "marketing_influenced",
       "type": "boolean",
       "datasets": [
@@ -2159,6 +2551,18 @@
       ],
       "description": "Date the milestone was reached",
       "metricCount": 4
+    },
+    {
+      "id": "milestone_due_date",
+      "type": "date",
+      "datasets": [
+        "onboarding_milestone"
+      ],
+      "sources": [
+        "cs_platform"
+      ],
+      "description": "Date the milestone is due under the onboarding plan. A planned milestone carries it before milestone_date is set",
+      "metricCount": 1
     },
     {
       "id": "mql_date",
@@ -2332,7 +2736,7 @@
         "full_adoption"
       ],
       "description": "Milestone reached",
-      "metricCount": 4
+      "metricCount": 3
     },
     {
       "id": "onboarding_session_date",
@@ -2356,7 +2760,7 @@
         "cs_platform"
       ],
       "description": "Onboarding kickoff date",
-      "metricCount": 3
+      "metricCount": 2
     },
     {
       "id": "operating_cash_flow",
@@ -2535,7 +2939,7 @@
         "partner_management"
       ],
       "description": "Date the partner signed",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "partner_sourced",
@@ -2548,7 +2952,7 @@
         "partner_management"
       ],
       "description": "Sourced by a partner",
-      "metricCount": 10
+      "metricCount": 8
     },
     {
       "id": "partner_status",
@@ -2678,7 +3082,7 @@
         "derived"
       ],
       "description": "Start of the period the row describes",
-      "metricCount": 50
+      "metricCount": 51
     },
     {
       "id": "planned_date",
@@ -3047,7 +3451,7 @@
         "cicd"
       ],
       "description": "Release date",
-      "metricCount": 3
+      "metricCount": 2
     },
     {
       "id": "release_id",
@@ -3484,7 +3888,7 @@
         "product_analytics"
       ],
       "description": "User signup date",
-      "metricCount": 3
+      "metricCount": 4
     },
     {
       "id": "sla_met",
@@ -3522,13 +3926,17 @@
         "quote",
         "order",
         "crm_record",
-        "deal_registration"
+        "deal_registration",
+        "contact",
+        "plan",
+        "product",
+        "license"
       ],
       "sources": [
         "derived"
       ],
       "description": "As-of date of the snapshot row",
-      "metricCount": 168
+      "metricCount": 169
     },
     {
       "id": "sql_date",
@@ -3564,7 +3972,7 @@
         "crm"
       ],
       "description": "Win probability for the stage, 0 to 1",
-      "metricCount": 2
+      "metricCount": 1
     },
     {
       "id": "standard_rate",
@@ -3644,7 +4052,8 @@
         "contract_event",
         "amendment_event",
         "subscription",
-        "revenue_schedule"
+        "revenue_schedule",
+        "license"
       ],
       "sources": [
         "billing"
@@ -3796,7 +4205,7 @@
         "help_desk"
       ],
       "description": "Ticket identifier",
-      "metricCount": 11
+      "metricCount": 12
     },
     {
       "id": "ticket_status",
@@ -3815,6 +4224,26 @@
       ],
       "description": "Ticket status",
       "metricCount": 3
+    },
+    {
+      "id": "ticket_type",
+      "type": "enum",
+      "datasets": [
+        "ticket"
+      ],
+      "sources": [
+        "help_desk"
+      ],
+      "values": [
+        "how_to",
+        "bug",
+        "billing",
+        "account",
+        "feature_request",
+        "other"
+      ],
+      "description": "Ticket category the agent or the help desk assigns",
+      "metricCount": 1
     },
     {
       "id": "tier",
@@ -4088,6 +4517,43 @@
       "label": "Customer",
       "activeWhen": "field.customer_status = 'active'"
     },
+    "contact": {
+      "kind": "snapshot",
+      "date": "snapshot_date",
+      "key": "contact_id",
+      "entities": [
+        "contact"
+      ],
+      "label": "Contact"
+    },
+    "plan": {
+      "kind": "snapshot",
+      "date": "snapshot_date",
+      "key": "plan_id",
+      "entities": [
+        "plan"
+      ],
+      "label": "Plan"
+    },
+    "product": {
+      "kind": "snapshot",
+      "date": "snapshot_date",
+      "key": "product_id",
+      "entities": [
+        "product"
+      ],
+      "label": "Product"
+    },
+    "license": {
+      "kind": "snapshot",
+      "date": "snapshot_date",
+      "key": "license_id",
+      "entities": [
+        "license"
+      ],
+      "label": "License",
+      "activeWhen": "field.license_status = 'active'"
+    },
     "subscription": {
       "kind": "snapshot",
       "date": "snapshot_date",
@@ -4177,12 +4643,18 @@
       "kind": "fact",
       "date": "period_start",
       "key": "rep_id",
+      "entities": [
+        "employee"
+      ],
       "label": "Sales rep period"
     },
     "consultant": {
       "kind": "fact",
       "date": "period_start",
       "key": "consultant_id",
+      "entities": [
+        "employee"
+      ],
       "label": "Consultant capacity"
     },
     "ticket": {
@@ -4213,30 +4685,45 @@
       "kind": "fact",
       "date": "period_start",
       "key": "article_id",
+      "entities": [
+        "kb_article"
+      ],
       "label": "Knowledge base article"
     },
     "requisition": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "requisition_id",
+      "entities": [
+        "requisition"
+      ],
       "label": "Job requisition"
     },
     "incident": {
       "kind": "event",
       "date": "started_at",
       "key": "incident_id",
+      "entities": [
+        "incident"
+      ],
       "label": "Incident"
     },
     "deployment": {
       "kind": "event",
       "date": "deploy_date",
       "key": "deployment_id",
+      "entities": [
+        "deployment"
+      ],
       "label": "Deployment"
     },
     "vulnerability": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "vulnerability_id",
+      "entities": [
+        "vulnerability"
+      ],
       "label": "Vulnerability"
     },
     "service_metrics": {
@@ -4249,18 +4736,27 @@
       "kind": "event",
       "date": "created_at",
       "key": "issue_id",
+      "entities": [
+        "issue"
+      ],
       "label": "Issue (bug or request)"
     },
     "feature": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "feature_id",
+      "entities": [
+        "feature"
+      ],
       "label": "Feature"
     },
     "release": {
       "kind": "event",
       "date": "release_date",
       "key": "release_id",
+      "entities": [
+        "release"
+      ],
       "label": "Release"
     },
     "roadmap_item": {
@@ -4273,48 +4769,75 @@
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "project_milestone_id",
+      "entities": [
+        "project",
+        "project_milestone"
+      ],
       "label": "Project milestone"
     },
     "time_entry": {
       "kind": "event",
       "date": "entry_date",
       "key": "entry_id",
+      "entities": [
+        "project",
+        "employee"
+      ],
       "label": "Time entry"
     },
     "deliverable": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "deliverable_id",
+      "entities": [
+        "project",
+        "deliverable"
+      ],
       "label": "Deliverable"
     },
     "onboarding": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "onboarding_id",
+      "entities": [
+        "customer"
+      ],
       "label": "Onboarding engagement"
     },
     "onboarding_milestone": {
       "kind": "event",
       "date": "milestone_date",
       "key": "onboarding_id",
+      "entities": [
+        "customer"
+      ],
       "label": "Onboarding milestone"
     },
     "onboarding_session": {
       "kind": "event",
       "date": "onboarding_session_date",
       "key": "onboarding_id",
+      "entities": [
+        "customer"
+      ],
       "label": "Onboarding session"
     },
     "quote": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "quote_id",
+      "entities": [
+        "quote"
+      ],
       "label": "Quote"
     },
     "order": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "order_id",
+      "entities": [
+        "order"
+      ],
       "label": "Order"
     },
     "revenue_schedule": {
@@ -4360,12 +4883,19 @@
       "kind": "event",
       "date": "activity_date",
       "key": "activity_id",
+      "entities": [
+        "partner"
+      ],
       "label": "Partner activity"
     },
     "deal_registration": {
       "kind": "snapshot",
       "date": "snapshot_date",
       "key": "registration_id",
+      "entities": [
+        "partner",
+        "deal_registration"
+      ],
       "label": "Partner deal registration"
     },
     "forecast": {
@@ -4376,66 +4906,295 @@
     }
   },
   "temporalMapping": {
-    "arr": "ARR",
     "mrr": "ARR / MRR",
+    "arr": "ARR",
     "arpa": "ARR / MRR",
     "mrr_growth_rate": "ARR / MRR",
     "new_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
     "expansion_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
     "churned_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
     "contraction_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
+    "carry_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
     "net_new_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
-    "nrr": "NRR",
-    "grr": "NRR / GRR",
-    "gross_margin": "Gross Margin",
-    "rule_of_40": "Rule of 40",
+    "bundle_pricing_and_mrr_allocation": "ARR / MRR",
+    "nrr": "NRR / GRR (trailing 12 months)",
+    "grr": "NRR / GRR (trailing 12 months)",
     "logo_churn_rate": "Logo Churn",
     "revenue_churn_rate": "Revenue Churn",
-    "nps": "Customer Health Score",
+    "nps": "CSAT",
     "cac": "CAC",
     "ltv": "LTV",
     "ltv_cac_ratio": "LTV:CAC & CAC Payback",
     "cac_payback": "LTV:CAC & CAC Payback",
+    "gross_margin": "Margins",
+    "rule_of_40": "Rule of 40",
+    "total_active_partners": "Active Partners",
+    "partner_tier_distribution": "Active Partners",
+    "partner_activation_rate": "Partner Revenue",
+    "partner_churn_rate": "Partner Revenue",
+    "partner_sourced_revenue": "Partner Revenue",
+    "partner_influenced_revenue": "Partner Revenue",
+    "channel_revenue_percentage": "Partner Revenue",
+    "partner_revenue_growth": "Partner Revenue",
+    "average_partner_revenue": "Partner Revenue",
+    "partner_deal_registration_volume": "Deal Registrations",
+    "deal_registration_to_close_rate": "Deal Registrations",
+    "partner_win_rate": "Win Rate",
+    "partner_deal_size": "ACV",
+    "partner_sales_cycle": "Deal Registrations",
+    "partner_portal_engagement": "Partner Revenue",
+    "certification_rate": "Active Partners",
+    "training_completion": "Active Partners",
+    "joint_marketing_activities": "Partner Revenue",
+    "partner_nps": "Partner Satisfaction",
+    "partner_margin_commission": "Partner Revenue",
+    "cost_of_partner_acquisition": "Partner Revenue",
+    "partner_lifetime_value": "LTV",
+    "partner_roi": "Partner Revenue",
+    "resellers": "Active Partners",
+    "referral_partners": "Active Partners",
+    "technology_partners_integrations": "Active Partners",
+    "system_integrators_sis": "Active Partners",
+    "managed_service_providers_msps": "Active Partners",
+    "marketplace_revenue": "Partner Revenue",
+    "marketplace_as_of_revenue": "Partner Revenue",
+    "marketplace_listings_performance": "Partner Revenue",
     "pipeline_value": "Pipeline Value",
     "pipeline_coverage": "Pipeline Value",
+    "pipeline_velocity": "Pipeline Velocity",
     "win_rate": "Win Rate",
+    "lead_to_opportunity_rate": "Win Rate",
+    "opportunity_to_close_rate": "Win Rate",
     "acv": "ACV",
-    "quota_attainment": "Quota Attainment",
+    "average_deal_size": "ACV",
     "sales_cycle": "Sales Cycle",
-    "mqls": "MQLs",
-    "sqls": "MQLs",
-    "lvr": "LVR",
-    "marketing_cac": "Marketing CAC",
-    "cpl": "Marketing CAC",
-    "marketing_sourced_pipeline": "Sourced Pipeline",
+    "quota_attainment": "Quota Attainment",
+    "revenue_per_rep": "Quota Attainment",
+    "ramp_time": "Quota Attainment",
+    "activity_metrics_diagnostic": "Activity Metrics",
+    "services_revenue": "Margins",
+    "services_as_of_total_revenue": "Margins",
+    "services_attach_rate": "Win Rate",
+    "average_services_deal_size": "ACV",
+    "services_backlog": "Balances (to date)",
+    "services_gross_margin": "Margins",
+    "project_margin": "Project Margin",
+    "realization_rate": "Project Margin",
+    "write_off_rate": "Project Margin",
+    "billable_utilization": "Utilization",
+    "total_utilization": "Utilization",
+    "bench_rate": "Team",
+    "capacity": "Utilization",
+    "capacity_utilization": "Utilization",
+    "on_time_delivery": "Delivery",
+    "on_budget_delivery": "Delivery",
+    "scope_change_rate": "Team",
+    "project_duration_accuracy": "Delivery",
+    "project_csat": "CSAT",
+    "project_nps": "CSAT",
+    "rework_rate": "Team",
+    "reference_ability": "Delivery",
+    "revenue_per_consultant": "Project Margin",
+    "projects_per_consultant": "Delivery",
+    "average_project_duration": "Delivery",
+    "services_pipeline": "Pipeline Value",
+    "services_win_rate": "Win Rate",
+    "time_to_start": "Delivery",
+    "ticket_volume": "Activity Metrics",
+    "tickets_per_customer": "Activity Metrics",
+    "ticket_backlog": "Backlog",
+    "ticket_distribution_by_type": "Activity Metrics",
+    "frt": "FRT",
+    "first_response_sla_adherence": "FRT",
+    "resolution_time_time_to_resolution": "Resolution",
+    "first_contact_resolution_fcr": "FCR",
+    "resolution_sla_adherence": "Resolution",
+    "reopen_rate": "Resolution",
+    "csat": "CSAT",
+    "customer_effort_score_ces": "CSAT",
+    "tickets_per_agent": "Activity Metrics",
+    "cost_per_ticket": "Activity Metrics",
+    "self_service_rate": "Self-Service",
+    "logo_retention_rate": "Logo Churn",
     "health_score": "Customer Health Score",
-    "expansion_rate": "Expansion Revenue",
-    "renewal_rate": "Renewal Rate",
+    "health_score_coverage": "Customer Health Score",
     "at_risk_rate": "Customer Health Score",
     "qbr_completion": "QBR Completion",
-    "csat": "CSAT",
-    "frt": "FRT",
-    "ticket_volume": "FRT",
-    "self_service_rate": "Self-Service",
-    "ttfv": "TTFV",
-    "onboarding_completion": "Completion",
-    "activation_rate": "Activation",
-    "dau_mau": "DAU/MAU",
-    "feature_adoption": "Feature Adoption",
-    "pqas": "PQAs",
-    "uptime": "Uptime",
-    "deployment_frequency": "DORA Metrics",
-    "mttr": "DORA Metrics",
-    "operating_margin": "Margins",
-    "fcf": "Burn & Runway",
-    "burn_rate": "Burn Rate",
-    "revenue_per_employee": "ARR",
-    "magic_number": "CAC",
-    "dso": "Collections",
-    "employee_turnover": "Retention",
-    "enps": "eNPS",
+    "executive_sponsor_coverage": "Customer Health Score",
+    "contact_coverage": "Customer Health Score",
+    "license_utilization": "ARR",
+    "expansion_rate": "Expansion Revenue",
+    "upsell_rate": "Expansion Revenue",
+    "cross_sell_rate": "Expansion Revenue",
+    "renewal_rate": "Renewal Rate",
+    "renewal_forecast_accuracy": "Renewal Rate",
+    "days_to_renewal": "ARR / MRR",
+    "accounts_per_csm": "Customer Health Score",
+    "arr_per_csm": "ARR",
+    "pipeline_hygiene_score": "Pipeline Hygiene",
     "forecast_accuracy": "Forecast Accuracy",
-    "partner_sourced_revenue": "Partner Revenue"
+    "commit_accuracy": "Forecast Accuracy",
+    "stage_conversion_rates": "Pipeline Hygiene",
+    "quote_volume": "Quote-to-Cash",
+    "quote_to_order_rate": "Quote-to-Cash",
+    "quote_cycle_time": "Quote-to-Cash",
+    "quote_accuracy": "Quote-to-Cash",
+    "discount_rate": "Quote-to-Cash",
+    "order_to_activation_time": "Quote-to-Cash",
+    "order_processing_time": "Quote-to-Cash",
+    "order_error_rate": "Quote-to-Cash",
+    "billing_accuracy": "Quote-to-Cash",
+    "invoice_cycle_time": "Quote-to-Cash",
+    "billing_disputes": "Quote-to-Cash",
+    "credit_memo_rate": "Quote-to-Cash",
+    "dso": "Collections",
+    "collection_effectiveness_index_cei": "Collections",
+    "aging_buckets": "Collections",
+    "bad_debt_rate": "Margins",
+    "payment_method_distribution": "Quote-to-Cash",
+    "recognized_vs_billed": "Margins",
+    "deferred_revenue_balance": "Balances (to date)",
+    "unbilled_revenue": "Margins",
+    "revenue_recognition_accuracy": "Margins",
+    "renewal_notification_rate": "Renewal Rate",
+    "auto_renewal_rate": "Renewal Rate",
+    "renewal_processing_time": "Renewal Rate",
+    "system_sync_accuracy": "Data Quality",
+    "data_completeness": "Data Quality",
+    "daily_active_users_dau": "DAU/MAU",
+    "weekly_active_users_wau": "DAU/MAU",
+    "monthly_active_users_mau": "DAU/MAU",
+    "dau_mau": "DAU/MAU",
+    "waumau_ratio": "DAU/MAU",
+    "active_accounts": "Feature Adoption",
+    "activation_rate": "Activation",
+    "feature_adoption": "Feature Adoption",
+    "core_feature_adoption": "Feature Adoption",
+    "feature_depth": "Feature Adoption",
+    "time_to_feature_adoption": "Feature Adoption",
+    "breadth_of_adoption": "Feature Adoption",
+    "session_frequency": "Feature Adoption",
+    "session_duration": "Feature Adoption",
+    "time_in_product": "Feature Adoption",
+    "actions_per_session": "Feature Adoption",
+    "pqas": "PQAs",
+    "user_retention_day_n": "Cohort Retention",
+    "cohort_retention": "Cohort Retention",
+    "resurrection_rate": "Activation",
+    "release_frequency": "DORA Metrics",
+    "feature_delivery_rate": "Delivery",
+    "roadmap_completion": "Backlog",
+    "time_to_market": "Delivery",
+    "error_rate_user_facing": "Feature Adoption",
+    "bug_escape_rate": "Activity Metrics",
+    "user_reported_issues": "Activity Metrics",
+    "feature_request_volume": "Activity Metrics",
+    "uptime": "Uptime",
+    "sla_adherence": "Uptime",
+    "error_rate": "Infrastructure",
+    "latency_response_time": "Infrastructure",
+    "incident_count": "Incidents",
+    "mean_time_to_detect_mttd": "Incidents",
+    "mean_time_to_acknowledge_mtta": "Incidents",
+    "mttr": "DORA Metrics",
+    "change_failure_rate": "DORA Metrics",
+    "deployment_frequency": "DORA Metrics",
+    "lead_time_for_changes": "DORA Metrics",
+    "mean_time_to_recovery_mttr": "DORA Metrics",
+    "infrastructure_utilization": "Infrastructure",
+    "infrastructure_cost_per_customer": "Infrastructure",
+    "headroom": "Infrastructure",
+    "vulnerability_count": "Security",
+    "time_to_patch": "Incidents",
+    "security_incident_count": "Incidents",
+    "revenue_gaap": "Margins",
+    "bookings": "ACV",
+    "billings": "Quote-to-Cash",
+    "revenue_per_employee": "ARR",
+    "operating_margin": "Margins",
+    "ebitda_margin": "Margins",
+    "net_income_margin": "Margins",
+    "burn_rate": "Burn Rate",
+    "cash_runway": "Burn & Runway",
+    "fcf": "Margins",
+    "free_cash_flow_margin": "Margins",
+    "magic_number": "CAC",
+    "burn_multiple": "Burn Rate",
+    "opex_ratio": "Margins",
+    "sm_as_of_revenue": "Margins",
+    "rd_as_of_revenue": "Margins",
+    "ga_as_of_revenue": "Margins",
+    "collection_rate": "Quote-to-Cash",
+    "ttfv": "TTFV",
+    "time_to_go_live": "TTFV",
+    "time_to_full_adoption": "TTFV",
+    "onboarding_duration": "Efficiency",
+    "onboarding_completion": "Completion",
+    "on_time_completion_rate": "Completion",
+    "onboarding_engagement_score": "Completion",
+    "session_attendance_rate": "Completion",
+    "task_completion_rate": "Completion",
+    "onboarding_csat": "CSAT",
+    "onboarding_nps": "CSAT",
+    "implementation_quality_score": "Quality",
+    "onboardings_per_resource": "Efficiency",
+    "cost_per_onboarding": "Efficiency",
+    "time_spent_per_onboarding": "Efficiency",
+    "day_30_retention_post_onboarding": "Cohort Retention",
+    "onboarding_cohort_churn": "Cohort Retention",
+    "feature_adoption_at_go_live": "Feature Adoption",
+    "total_headcount": "Headcount",
+    "headcount_growth_rate": "Headcount",
+    "headcount_by_department": "Headcount",
+    "employee_turnover": "Retention",
+    "voluntary_turnover_rate": "Retention",
+    "involuntary_turnover_rate": "Retention",
+    "regrettable_turnover": "Retention",
+    "average_tenure": "Headcount",
+    "day_90_turnover": "Retention",
+    "enps": "eNPS",
+    "engagement_score": "Engagement",
+    "survey_participation_rate": "Engagement",
+    "open_positions": "Headcount",
+    "time_to_fill": "Recruiting",
+    "time_to_hire": "Recruiting",
+    "offer_acceptance_rate": "Recruiting",
+    "quality_of_hire": "Recruiting",
+    "cost_per_hire": "Recruiting",
+    "source_of_hire": "Recruiting",
+    "compa_ratio": "Compensation",
+    "pay_equity_ratio": "Compensation",
+    "diversity_representation": "Headcount",
+    "diversity_in_leadership": "Headcount",
+    "diversity_hiring_rate": "Recruiting",
+    "visitors": "Visitors",
+    "visitor_to_lead_rate": "Visitors",
+    "leads": "MQLs",
+    "mqls": "MQLs",
+    "lead_to_mql_rate": "MQLs",
+    "sqls": "MQLs",
+    "mql_to_sql_rate": "MQLs",
+    "sql_to_opportunity_rate": "MQLs",
+    "lvr": "LVR",
+    "marketing_cac": "Marketing CAC",
+    "cac_by_channel": "Marketing CAC",
+    "cpl": "Marketing CAC",
+    "cost_per_mql": "Marketing CAC",
+    "marketing_sourced_pipeline": "Sourced Pipeline",
+    "marketing_sourced_revenue": "Win Rate",
+    "marketing_influenced_pipelinerevenue": "Sourced Pipeline",
+    "organic_traffic": "Visitors",
+    "paid_media_efficiency_roas": "Channel Spend",
+    "email_metrics": "Activity Metrics",
+    "content_performance": "Activity Metrics",
+    "brand_awareness": "Activity Metrics",
+    "share_of_voice": "Visitors",
+    "nps_marketing_context": "CSAT",
+    "onboarding_milestone_completion_rate": "Milestones",
+    "professional_services_milestone_completion_rate": "Delivery",
+    "support_escalation_rate": "Resolution",
+    "professional_services_escalation_rate": "Team",
+    "product_activation_rate": "Activation"
   },
   "temporalSemantics": {
     "ARR / MRR": {
@@ -4450,10 +5209,12 @@
       "aggregation": "aggregate",
       "period": "month"
     },
-    "NRR / GRR": {
-      "grain": "Account-month",
+    "NRR / GRR (trailing 12 months)": {
+      "grain": "Customer cohort at period start",
       "frequency": "Monthly",
-      "period": "month"
+      "aggregation": "cohort",
+      "period": "trailing_12_months",
+      "annualisation": "Report over the trailing 12 months ending at period end. A shorter window is annualised by raising the ratio to the number of such windows in a year (monthly ^ 12, quarterly ^ 4)."
     },
     "Rule of 40": {
       "grain": "Monthly aggregate",
@@ -4491,22 +5252,10 @@
       "aggregation": "aggregate",
       "period": "month"
     },
-    "Health Score": {
-      "grain": "Weekly snapshot",
-      "frequency": "Weekly",
-      "aggregation": "snapshot",
-      "period": "week"
-    },
     "LTV:CAC & CAC Payback": {
       "grain": "Monthly aggregate",
       "frequency": "Monthly",
       "aggregation": "aggregate",
-      "period": "month"
-    },
-    "Gross Margin": {
-      "grain": "End-of-month snapshot",
-      "frequency": "Monthly",
-      "aggregation": "snapshot",
       "period": "month"
     },
     "Pipeline Value": {
@@ -4551,9 +5300,9 @@
       "period": "month"
     },
     "MQLs": {
-      "grain": "Daily snapshot",
+      "grain": "Per lead stage date, aggregate daily",
       "frequency": "Daily",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "day"
     },
     "Marketing CAC": {
@@ -4575,22 +5324,16 @@
       "period": "month"
     },
     "Visitors": {
-      "grain": "Daily snapshot",
+      "grain": "Daily aggregate",
       "frequency": "Daily",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "day"
     },
     "Channel Spend": {
-      "grain": "Daily snapshot",
+      "grain": "Daily aggregate",
       "frequency": "Daily",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "day"
-    },
-    "NRR": {
-      "grain": "Monthly cohort",
-      "frequency": "Monthly",
-      "aggregation": "cohort",
-      "period": "month"
     },
     "Renewal Rate": {
       "grain": "Monthly aggregate",
@@ -4610,12 +5353,6 @@
       "aggregation": "snapshot",
       "period": "quarter"
     },
-    "Cohort Revenue Retention": {
-      "grain": "Monthly cohort",
-      "frequency": "Monthly",
-      "aggregation": "cohort",
-      "period": "month"
-    },
     "Customer Health Score": {
       "grain": "Weekly snapshot",
       "frequency": "Weekly",
@@ -4623,9 +5360,9 @@
       "period": "week"
     },
     "DAU/MAU": {
-      "grain": "Daily snapshot",
+      "grain": "Distinct users in a trailing window (1, 7 or 30 days) ending at period end",
       "frequency": "Daily",
-      "aggregation": "snapshot",
+      "aggregation": "window",
       "period": "day"
     },
     "Activation": {
@@ -4653,9 +5390,10 @@
       "period": "month"
     },
     "Uptime": {
-      "grain": "Real-time",
+      "grain": "Per service per interval, aggregate per period",
       "frequency": "Real-time",
-      "period": "realtime"
+      "aggregation": "aggregate",
+      "period": "month"
     },
     "DORA Metrics": {
       "grain": "Per event",
@@ -4668,9 +5406,9 @@
       "aggregation": "event"
     },
     "Infrastructure": {
-      "grain": "Daily snapshot",
+      "grain": "Per service per interval, aggregate daily",
       "frequency": "Daily",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "day"
     },
     "Security": {
@@ -4680,8 +5418,8 @@
       "period": "day"
     },
     "CSAT": {
-      "grain": "Per event",
-      "frequency": "Per project",
+      "grain": "Per survey response",
+      "frequency": "Per response",
       "aggregation": "event"
     },
     "FRT": {
@@ -4700,7 +5438,13 @@
       "aggregation": "event"
     },
     "Self-Service": {
-      "grain": "Daily snapshot",
+      "grain": "Daily aggregate",
+      "frequency": "Daily",
+      "aggregation": "aggregate",
+      "period": "day"
+    },
+    "Backlog": {
+      "grain": "Open work items at period end",
       "frequency": "Daily",
       "aggregation": "snapshot",
       "period": "day"
@@ -4718,9 +5462,16 @@
       "period": "month"
     },
     "Collections": {
-      "grain": "Per event",
-      "frequency": "Per invoice",
-      "aggregation": "event"
+      "grain": "End-of-month receivables snapshot",
+      "frequency": "Monthly",
+      "aggregation": "snapshot",
+      "period": "month"
+    },
+    "Balances (to date)": {
+      "grain": "Cumulative balance at period end",
+      "frequency": "Monthly",
+      "aggregation": "to_date",
+      "period": "month"
     },
     "Margins": {
       "grain": "Monthly aggregate",
@@ -4729,10 +5480,16 @@
       "period": "month"
     },
     "eNPS": {
-      "grain": "Quarterly snapshot",
+      "grain": "Per survey response, aggregate quarterly",
       "frequency": "Quarterly",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "quarter"
+    },
+    "Headcount": {
+      "grain": "End-of-month snapshot",
+      "frequency": "Monthly",
+      "aggregation": "snapshot",
+      "period": "month"
     },
     "Retention": {
       "grain": "Monthly aggregate",
@@ -4746,9 +5503,9 @@
       "aggregation": "event"
     },
     "Engagement": {
-      "grain": "Quarterly snapshot",
+      "grain": "Per survey response, aggregate quarterly",
       "frequency": "Quarterly",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "quarter"
     },
     "Compensation": {
@@ -4790,9 +5547,9 @@
       "period": "month"
     },
     "Active Partners": {
-      "grain": "Monthly aggregate",
+      "grain": "End-of-month snapshot",
       "frequency": "Monthly",
-      "aggregation": "aggregate",
+      "aggregation": "snapshot",
       "period": "month"
     },
     "Deal Registrations": {
@@ -4800,21 +5557,16 @@
       "frequency": "Per registration",
       "aggregation": "event"
     },
-    "Training": {
-      "grain": "Per event",
-      "frequency": "Per completion",
-      "aggregation": "event"
-    },
     "Partner Satisfaction": {
-      "grain": "Quarterly snapshot",
+      "grain": "Per survey response, aggregate quarterly",
       "frequency": "Quarterly",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "quarter"
     },
     "Utilization": {
-      "grain": "Weekly snapshot",
+      "grain": "Weekly aggregate",
       "frequency": "Weekly",
-      "aggregation": "snapshot",
+      "aggregation": "aggregate",
       "period": "week"
     },
     "Project Margin": {
@@ -6945,7 +7697,8 @@
         {
           "ref": "mrr",
           "role": "denominator",
-          "polarity": "negative"
+          "polarity": "negative",
+          "baseline": true
         }
       ],
       "fields": [
@@ -7020,7 +7773,8 @@
         {
           "ref": "mrr",
           "role": "numerator",
-          "polarity": "mixed"
+          "polarity": "mixed",
+          "baseline": true
         }
       ],
       "fields": [
@@ -7274,7 +8028,8 @@
         {
           "ref": "mrr",
           "role": "numerator",
-          "polarity": "mixed"
+          "polarity": "mixed",
+          "baseline": true
         }
       ],
       "fields": [
@@ -7333,21 +8088,14 @@
       ]
     },
     "pipeline_coverage": {
-      "expression": "metric.pipeline_value / sum(field.quota)",
-      "inputs": [
-        {
-          "ref": "pipeline_value",
-          "role": "numerator",
-          "polarity": "positive"
-        }
-      ],
+      "expression": "sum(field.opportunity_amount where field.opportunity_stage not in ('closed_won', 'closed_lost')) / sum(field.quota)",
+      "inputs": [],
       "fields": [
         "opportunity_amount",
         "opportunity_stage",
         "period_start",
         "quota",
-        "snapshot_date",
-        "stage_probability"
+        "snapshot_date"
       ]
     },
     "pipeline_value": {
@@ -7414,7 +8162,8 @@
         {
           "ref": "mrr",
           "role": "denominator",
-          "polarity": "negative"
+          "polarity": "negative",
+          "baseline": true
         }
       ],
       "fields": [
@@ -7472,7 +8221,7 @@
       ]
     },
     "sales_cycle": {
-      "expression": "median(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
+      "expression": "avg(field.close_date - field.opportunity_created_date where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "inputs": [],
       "fields": [
         "close_date",
@@ -7727,6 +8476,70 @@
         "cardinality": "N:1",
         "description": "Closed-won opportunities produce TCV (Total Contract Value). Distinct from Bookings (period-attributable) and ACV (annualized): TCV captures the full multi-year commitment value.",
         "provenance": "Salesforce Opportunity Amount across full term, CFO reporting"
+      },
+      {
+        "from": "deployment",
+        "to": "incident",
+        "type": "GENERATES",
+        "cardinality": "N:1",
+        "description": "A deployment can trigger an incident. The deployment row carries the incident it caused, which is what Change Failure Rate counts.",
+        "provenance": "DORA change failure rate, incident post-mortems"
+      },
+      {
+        "from": "feature",
+        "to": "release",
+        "type": "BELONGS_TO",
+        "cardinality": "N:1",
+        "description": "A feature ships in a release. Roadmap delivery and release predictability roll features up to the release that carried them.",
+        "provenance": "Jira Fix Version, Linear Project, GitHub Release"
+      },
+      {
+        "from": "project",
+        "to": "project_milestone",
+        "type": "OWNS",
+        "cardinality": "1:N",
+        "description": "A professional services project owns its milestones. Milestone completion and schedule accuracy are measured against the owning project.",
+        "provenance": "PSA tools (Kantata, Rocketlane) Project→Milestone"
+      },
+      {
+        "from": "project",
+        "to": "deliverable",
+        "type": "PRODUCES",
+        "cardinality": "1:N",
+        "description": "A project produces deliverables the customer accepts or sends back. Rework rate reads deliverables through their project.",
+        "provenance": "PSA tools Project→Deliverable, SOW acceptance criteria"
+      },
+      {
+        "from": "quote",
+        "to": "order",
+        "type": "CONVERTS_TO",
+        "cardinality": "1:N",
+        "description": "An accepted quote becomes an order. The order carries the quote it came from, which is how quote-to-cash cycle time is measured.",
+        "provenance": "Salesforce CPQ Quote→Order, NetSuite Estimate→Sales Order"
+      },
+      {
+        "from": "partner",
+        "to": "deal_registration",
+        "type": "SUBMITS",
+        "cardinality": "1:N",
+        "description": "A partner submits deal registrations for opportunities it sourced. Registration volume and approval rate are measured per partner.",
+        "provenance": "PRM tools (Impartner, PartnerStack) Partner→Deal Registration"
+      },
+      {
+        "from": "deal_registration",
+        "to": "opportunity",
+        "type": "CONVERTS_TO",
+        "cardinality": "1:1",
+        "description": "An approved deal registration is linked to the opportunity it protects. Partner-sourced pipeline is read through this link.",
+        "provenance": "Salesforce PRM Deal Registration→Opportunity"
+      },
+      {
+        "from": "requisition",
+        "to": "employee",
+        "type": "CONVERTS_TO",
+        "cardinality": "1:1",
+        "description": "A filled requisition becomes a hire. Time to fill ends at the hire date and the new employee is then measured in People metrics.",
+        "provenance": "ATS (Greenhouse, Lever) Requisition→Hire, HRIS employee record"
       }
     ]
   }

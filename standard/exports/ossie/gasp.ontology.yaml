@@ -432,22 +432,6 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Customer} on {Date} has {CustomerStatus}"
-      - name: engaged_contact_count
-        description: Contacts engaged in the period
-        roles:
-          - concept: Date
-          - concept: EngagedContactCount
-        multiplicity: ManyToOne
-        verbalizes:
-          - "{Customer} on {Date} has {EngagedContactCount}"
-      - name: has_exec_sponsor
-        description: An executive sponsor is identified
-        roles:
-          - concept: Date
-          - concept: HasExecSponsor
-        multiplicity: ManyToOne
-        verbalizes:
-          - "{Customer} on {Date} has {HasExecSponsor}"
       - name: last_active_date
         description: Most recent qualifying activity
         roles:
@@ -529,12 +513,169 @@ ontology:
             name: child
         verbalizes:
           - "{Customer} is parent of {Customer:child}"
+      - name: represented_by
+        description: A customer account is represented by named individuals (champions, decision makers, executive sponsors). Enables buying-center coverage metrics and stakeholder mapping.
+        roles:
+          - concept: Contact
+        verbalizes:
+          - "{Customer} is represented by {Contact}"
       - name: belongs_to_segment
         description: Each customer belongs to a segment classification (SMB, Mid-Market, Enterprise) based on size, ARR or fit. Segment is the foundational lens for cohort and benchmark comparisons.
         roles:
           - concept: Segment
         verbalizes:
           - "{Customer} belongs to {Segment}"
+  - concept: Contact
+    type: EntityType
+    description: "Contact (snapshot dataset `contact`). A named individual at a customer account involved in the buying or expansion process. Distinct from User (product user) and Lead (pre-qualification). Also known as: Stakeholder, Decision Maker, Champion."
+    identify_by:
+      - contact_id
+    relationships:
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Contact} belongs to {Customer}"
+      - name: contact_id
+        description: "Contact identifier: a named person at a customer account"
+        roles:
+          - concept: ContactId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Contact} is identified by {ContactId}"
+      - name: contact_role
+        description: The contact's role in the account relationship
+        roles:
+          - concept: Date
+          - concept: ContactRole
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Contact} on {Date} has {ContactRole}"
+      - name: contact_engaged
+        description: The contact had recorded activity (meeting, email, call, QBR) in the trailing 90 days
+        roles:
+          - concept: Date
+          - concept: ContactEngaged
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Contact} on {Date} has {ContactEngaged}"
+  - concept: Plan
+    type: EntityType
+    description: "Plan (snapshot dataset `plan`). A pricing tier offered to customers (e.g. Starter, Pro, Enterprise). Each plan defines a price point and a set of included products and quotas. Also known as: Tier, Pricing Plan, Package."
+    identify_by:
+      - plan_id
+    relationships:
+      - name: plan_id
+        description: Pricing plan identifier; the plan a subscription is priced by
+        roles:
+          - concept: PlanId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Plan} is identified by {PlanId}"
+      - name: plan_name
+        description: Plan display name (Starter, Pro, Enterprise)
+        roles:
+          - concept: Date
+          - concept: PlanName
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Plan} on {Date} has {PlanName}"
+      - name: billing_period
+        description: How often the plan bills
+        roles:
+          - concept: Date
+          - concept: BillingPeriod
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Plan} on {Date} has {BillingPeriod}"
+  - concept: Product
+    type: EntityType
+    description: "Product (snapshot dataset `product`). A distinct purchasable unit within the company's offering (e.g. Analytics Module, Automation Module). A subscription may include multiple products. Also known as: Module, SKU, Feature Bundle."
+    identify_by:
+      - product_id
+    relationships:
+      - name: product_id
+        description: Product identifier; the purchasable unit a license grants access to
+        roles:
+          - concept: ProductId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Product} is identified by {ProductId}"
+      - name: product_name
+        description: Product display name
+        roles:
+          - concept: Date
+          - concept: ProductName
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Product} on {Date} has {ProductName}"
+      - name: product_line
+        description: Product family the product belongs to
+        roles:
+          - concept: Date
+          - concept: ProductLine
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Product} on {Date} has {ProductLine}"
+  - concept: License
+    type: EntityType
+    description: 'License (snapshot dataset `license`). A specific capability, quantity, or configuration granted by a subscription. The "how much" of the relationship. Also known as: Entitlement, Access, Quota.'
+    identify_by:
+      - license_id
+    relationships:
+      - name: product_id
+        description: Product identifier; the purchasable unit a license grants access to
+        roles:
+          - concept: Product
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{License} belongs to {Product}"
+      - name: license_id
+        description: "License identifier: one entitlement a subscription grants"
+        roles:
+          - concept: LicenseId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{License} is identified by {LicenseId}"
+      - name: license_status
+        description: Whether the license currently grants access
+        roles:
+          - concept: Date
+          - concept: LicenseStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{License} on {Date} has {LicenseStatus}"
+      - name: seats_purchased
+        description: Seats the license entitles the customer to
+        roles:
+          - concept: Date
+          - concept: SeatsPurchased
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{License} on {Date} has {SeatsPurchased}"
+      - name: seats_assigned
+        description: Seats assigned to a named user
+        roles:
+          - concept: Date
+          - concept: SeatsAssigned
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{License} on {Date} has {SeatsAssigned}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: Subscription
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{License} belongs to {Subscription}"
+      - name: grants
+        description: A license grants access to one or more products (modules). A subscription can include multiple products, each governed by its own license entitlement.
+        roles:
+          - concept: Product
+        verbalizes:
+          - "{License} grants {Product}"
   - concept: Subscription
     type: EntityType
     description: 'Subscription (snapshot dataset `subscription`). A billable agreement between a customer and your product, with defined terms, pricing, and status. The "what and when" of the relationship. Also known as: Contract, Agreement.'
@@ -582,6 +723,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Subscription} on {Date} has {ForecastRenewalAmount}"
+      - name: plan_id
+        description: Pricing plan identifier; the plan a subscription is priced by
+        roles:
+          - concept: Plan
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} belongs to {Plan}"
       - name: mrr
         description: Monthly recurring revenue of the subscription
         roles:
@@ -663,6 +811,12 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Subscription} on {Date} has {SubscriptionStatus}"
+      - name: grants
+        description: "A subscription grants one or more licenses (seats, entitlements, feature access). Hierarchy Principle 3: licenses are derived from subscriptions."
+        roles:
+          - concept: License
+        verbalizes:
+          - "{Subscription} grants {License}"
       - name: generates_revenue
         description: Subscriptions generate recognized revenue over their term as obligations are fulfilled.
         roles:
@@ -681,6 +835,12 @@ ontology:
           - concept: Cogs
         verbalizes:
           - "{Subscription} incurs {Cogs}"
+      - name: priced_by
+        description: A subscription is priced according to a plan. Many subscriptions can share the same plan. Enables tier-mix analysis, upgrade-path metrics and packaging health.
+        roles:
+          - concept: Plan
+        verbalizes:
+          - "{Subscription} is priced by {Plan}"
   - concept: Opportunity
     type: EntityType
     description: "Opportunity (snapshot dataset `opportunity`). A qualified sales prospect with an estimated value, stage, and expected close date. Also known as: Deal, Pipeline Item."
@@ -695,6 +855,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Opportunity} on {Date} has {AdvancedToNextStage}"
+      - name: channel
+        description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
+        roles:
+          - concept: Date
+          - concept: Channel
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {Channel}"
       - name: close_date
         description: Actual or expected close date of the opportunity; on a project or registration, the close date of the won deal
         roles:
@@ -742,14 +910,6 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Opportunity} belongs to {Lead}"
-      - name: marketing_channel
-        description: First-touch marketing channel
-        roles:
-          - concept: Date
-          - concept: MarketingChannel
-        multiplicity: ManyToOne
-        verbalizes:
-          - "{Opportunity} on {Date} has {MarketingChannel}"
       - name: marketing_influenced
         description: A marketing touch exists on the opportunity
         roles:
@@ -1056,6 +1216,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Employee} on {Date} has hire date {Date:hire_date}"
+      - name: hire_source
+        description: Recruiting channel the employee was hired through
+        roles:
+          - concept: Date
+          - concept: HireSource
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Employee} on {Date} has {HireSource}"
       - name: is_high_performer
         description: Rated high performer
         roles:
@@ -1196,6 +1364,12 @@ ontology:
           - concept: Opportunity
         verbalizes:
           - "{Partner} sources {Opportunity}"
+      - name: submits
+        description: A partner submits deal registrations for opportunities it sourced. Registration volume and approval rate are measured per partner.
+        roles:
+          - concept: DealRegistration
+        verbalizes:
+          - "{Partner} submits {DealRegistration}"
   - concept: Project
     type: EntityType
     description: "Project (snapshot dataset `project`). A professional services engagement with defined scope, timeline, and deliverables. Also known as: Engagement, SOW."
@@ -1321,6 +1495,18 @@ ontology:
           - concept: Customer
         verbalizes:
           - "{Project} serves {Customer}"
+      - name: owns
+        description: A professional services project owns its milestones. Milestone completion and schedule accuracy are measured against the owning project.
+        roles:
+          - concept: ProjectMilestone
+        verbalizes:
+          - "{Project} owns {ProjectMilestone}"
+      - name: produces
+        description: A project produces deliverables the customer accepts or sends back. Rework rate reads deliverables through their project.
+        roles:
+          - concept: Deliverable
+        verbalizes:
+          - "{Project} produces {Deliverable}"
   - concept: Invoice
     type: EntityType
     description: "Invoice (snapshot dataset `invoice`). A billing document representing money owed or collected. Cash flow and collections metrics are measured at this level. Also known as: Transaction, Billing Document."
@@ -1454,7 +1640,7 @@ ontology:
         verbalizes:
           - "{Campaign} is identified by {CampaignId}"
       - name: channel
-        description: Campaign channel
+        description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
         roles:
           - concept: Date
           - concept: Channel
@@ -1537,7 +1723,7 @@ ontology:
           - "{Consultant} is identified by {ConsultantId}"
   - concept: Ticket
     type: EntityType
-    description: "Support ticket (event dataset `ticket`). A discrete support interaction initiated by a customer or user, tracked to resolution. Also known as: Support Case, Issue."
+    description: "Support ticket (event dataset `ticket`). A discrete support interaction initiated by a customer or user, tracked to resolution. Also known as: Support Case."
     identify_by:
       - ticket_id
     relationships:
@@ -1625,6 +1811,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Ticket} has {TicketStatus}"
+      - name: ticket_type
+        description: Ticket category the agent or the help desk assigns
+        roles:
+          - concept: TicketType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Ticket} has {TicketType}"
   - concept: ProductEvent
     type: EntityType
     description: Product usage event (event dataset `product_event`).
@@ -1800,7 +1993,7 @@ ontology:
           - "{SurveyResponse} has {SurveyType}"
   - concept: KbArticle
     type: EntityType
-    description: Knowledge base article (fact dataset `kb_article`).
+    description: "Knowledge base article (fact dataset `kb_article`). A self-service help article. Ticket deflection and self-service rates are measured at this level. Also known as: Help Article, KB Article."
     identify_by:
       - article_id
     relationships:
@@ -1821,7 +2014,7 @@ ontology:
           - "{KbArticle} on {Date} has {Deflections}"
   - concept: Requisition
     type: EntityType
-    description: Job requisition (snapshot dataset `requisition`).
+    description: "Job requisition (snapshot dataset `requisition`). An approved request to hire for a role, open until filled or closed. Recruiting metrics (time to fill, offer acceptance rate) are measured at this level. Also known as: Job Opening, Req."
     identify_by:
       - requisition_id
     relationships:
@@ -1875,9 +2068,15 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Requisition} on {Date} has {RequisitionStatus}"
+      - name: converts_to
+        description: A filled requisition becomes a hire. Time to fill ends at the hire date and the new employee is then measured in People metrics.
+        roles:
+          - concept: Employee
+        verbalizes:
+          - "{Requisition} converts to {Employee}"
   - concept: Incident
     type: EntityType
-    description: Incident (event dataset `incident`).
+    description: "Incident (event dataset `incident`). An unplanned interruption or degradation of service, tracked from start to resolution. Reliability metrics (MTTR, incident rate) are measured at this level. Also known as: Outage, SEV."
     identify_by:
       - incident_id
     relationships:
@@ -1939,7 +2138,7 @@ ontology:
           - "{Incident} has started at {DateTime}"
   - concept: Deployment
     type: EntityType
-    description: Deployment (event dataset `deployment`).
+    description: "Deployment (event dataset `deployment`). A release of code to production. DORA delivery metrics (deployment frequency, lead time for changes, change failure rate) are measured at this level. Also known as: Deploy, Production Change."
     identify_by:
       - deployment_id
     relationships:
@@ -1971,9 +2170,15 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Deployment} belongs to {Incident}"
+      - name: generates
+        description: A deployment can trigger an incident. The deployment row carries the incident it caused, which is what Change Failure Rate counts.
+        roles:
+          - concept: Incident
+        verbalizes:
+          - "{Deployment} generates {Incident}"
   - concept: Vulnerability
     type: EntityType
-    description: Vulnerability (snapshot dataset `vulnerability`).
+    description: "Vulnerability (snapshot dataset `vulnerability`). A security weakness found in the product or its infrastructure, tracked from discovery to patch. Security remediation metrics are measured at this level. Also known as: CVE, Security Finding."
     identify_by:
       - vulnerability_id
     relationships:
@@ -2071,7 +2276,7 @@ ontology:
           - "{ServiceMetrics} on {Date} has {Utilization}"
   - concept: Issue
     type: EntityType
-    description: Issue (bug or request) (event dataset `issue`).
+    description: "Issue (bug or request) (event dataset `issue`). A tracked defect or request in the engineering backlog, with its source and the environment it was found in. Quality metrics (escaped defects, bug rate) are measured at this level. Also known as: Bug, Defect, Feature Request."
     identify_by:
       - issue_id
     relationships:
@@ -2112,7 +2317,7 @@ ontology:
           - "{Issue} has {IssueType}"
   - concept: Feature
     type: EntityType
-    description: Feature (snapshot dataset `feature`).
+    description: "Feature (snapshot dataset `feature`). A unit of product functionality with planned and actual ship dates and a first use by customers. Adoption and roadmap delivery metrics are measured at this level. Also known as: Capability."
     identify_by:
       - feature_id
     relationships:
@@ -2175,9 +2380,15 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Feature} belongs to {Release}"
+      - name: belongs_to
+        description: A feature ships in a release. Roadmap delivery and release predictability roll features up to the release that carried them.
+        roles:
+          - concept: Release
+        verbalizes:
+          - "{Feature} belongs to {Release}"
   - concept: Release
     type: EntityType
-    description: Release (event dataset `release`).
+    description: "Release (event dataset `release`). A versioned bundle of features shipped to customers. Delivery predictability metrics are measured at this level. Also known as: Version."
     identify_by:
       - release_id
     relationships:
@@ -2218,7 +2429,7 @@ ontology:
           - "{RoadmapItem} is identified by {RoadmapItemId}"
   - concept: ProjectMilestone
     type: EntityType
-    description: Project milestone (snapshot dataset `project_milestone`).
+    description: "Project milestone (snapshot dataset `project_milestone`). A dated checkpoint inside a professional services project, with a planned and an actual date. Delivery predictability is measured at this level. Also known as: Milestone."
     identify_by:
       - project_milestone_id
     relationships:
@@ -2332,7 +2543,7 @@ ontology:
           - "{TimeEntry} has {WrittenOffHours}"
   - concept: Deliverable
     type: EntityType
-    description: Deliverable (snapshot dataset `deliverable`).
+    description: "Deliverable (snapshot dataset `deliverable`). An artefact a professional services project hands to the customer, which the customer accepts or sends back for rework. Delivery quality is measured at this level. Also known as: Work Product."
     identify_by:
       - deliverable_id
     relationships:
@@ -2466,6 +2677,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{OnboardingMilestone} has milestone date {Date}"
+      - name: milestone_due_date
+        description: Date the milestone is due under the onboarding plan. A planned milestone carries it before milestone_date is set
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{OnboardingMilestone} has milestone due date {Date}"
       - name: onboarding_id
         description: Onboarding engagement identifier
         roles:
@@ -2509,7 +2727,7 @@ ontology:
           - "{OnboardingSession} has onboarding session date {Date}"
   - concept: Quote
     type: EntityType
-    description: Quote (snapshot dataset `quote`).
+    description: "Quote (snapshot dataset `quote`). A priced offer sent to a prospect or customer before an order. Quote turnaround and discounting are measured at this level. Also known as: Proposal, Pricing Quote."
     identify_by:
       - quote_id
     relationships:
@@ -2560,9 +2778,15 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Quote} on {Date} has {RevisionCount}"
+      - name: converts_to
+        description: An accepted quote becomes an order. The order carries the quote it came from, which is how quote-to-cash cycle time is measured.
+        roles:
+          - concept: Order
+        verbalizes:
+          - "{Quote} converts to {Order}"
   - concept: Order
     type: EntityType
-    description: Order (snapshot dataset `order`).
+    description: "Order (snapshot dataset `order`). An accepted quote in fulfilment, from receipt to completion. Order accuracy and fulfilment time are measured at this level. Also known as: Sales Order."
     identify_by:
       - order_id
     relationships:
@@ -2860,7 +3084,7 @@ ontology:
           - "{PartnerActivity} belongs to {Partner}"
   - concept: DealRegistration
     type: EntityType
-    description: Partner deal registration (snapshot dataset `deal_registration`).
+    description: "Partner deal registration (snapshot dataset `deal_registration`). A partner's claim on an opportunity it sourced, moving from qualification to close. Partner pipeline and conflict metrics are measured at this level. Also known as: Partner Registration."
     identify_by:
       - registration_id
     relationships:
@@ -2911,6 +3135,12 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{DealRegistration} on {Date} has {RegistrationStage}"
+      - name: converts_to
+        description: An approved deal registration is linked to the opportunity it protects. Partner-sourced pipeline is read through this link.
+        roles:
+          - concept: Opportunity
+        verbalizes:
+          - "{DealRegistration} converts to {Opportunity}"
   - concept: Forecast
     type: EntityType
     description: Revenue forecast (fact dataset `forecast`).
@@ -3077,7 +3307,7 @@ ontology:
       - ChangeNature == 'permanent' OR ChangeNature == 'temporary' OR ChangeNature == 'scheduled_reversal'
   - concept: Channel
     type: ValueType
-    description: Campaign channel
+    description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
     extends:
       - String
     requires:
@@ -3214,11 +3444,6 @@ ontology:
       - String
     requires:
       - EmployeeStatus == 'active' OR EmployeeStatus == 'on_leave' OR EmployeeStatus == 'terminated'
-  - concept: EngagedContactCount
-    type: ValueType
-    description: Contacts engaged in the period
-    extends:
-      - Integer
   - concept: EngagementScore
     type: ValueType
     description: Engagement survey score
@@ -3285,11 +3510,84 @@ ontology:
     description: Order needed correction
     extends:
       - Boolean
-  - concept: HasExecSponsor
+  - concept: ContactId
     type: ValueType
-    description: An executive sponsor is identified
+    description: "Contact identifier: a named person at a customer account"
+    extends:
+      - String
+  - concept: ContactRole
+    type: ValueType
+    description: The contact's role in the account relationship
+    extends:
+      - String
+    requires:
+      - ContactRole == 'executive_sponsor' OR ContactRole == 'decision_maker' OR ContactRole == 'champion' OR ContactRole == 'day_to_day' OR ContactRole == 'procurement' OR ContactRole == 'other'
+  - concept: ContactEngaged
+    type: ValueType
+    description: The contact had recorded activity (meeting, email, call, QBR) in the trailing 90 days
     extends:
       - Boolean
+  - concept: PlanId
+    type: ValueType
+    description: Pricing plan identifier; the plan a subscription is priced by
+    extends:
+      - String
+  - concept: PlanName
+    type: ValueType
+    description: Plan display name (Starter, Pro, Enterprise)
+    extends:
+      - String
+  - concept: BillingPeriod
+    type: ValueType
+    description: How often the plan bills
+    extends:
+      - String
+    requires:
+      - BillingPeriod == 'monthly' OR BillingPeriod == 'annual' OR BillingPeriod == 'multi_year'
+  - concept: ProductId
+    type: ValueType
+    description: Product identifier; the purchasable unit a license grants access to
+    extends:
+      - String
+  - concept: ProductName
+    type: ValueType
+    description: Product display name
+    extends:
+      - String
+  - concept: ProductLine
+    type: ValueType
+    description: Product family the product belongs to
+    extends:
+      - String
+  - concept: LicenseId
+    type: ValueType
+    description: "License identifier: one entitlement a subscription grants"
+    extends:
+      - String
+  - concept: LicenseStatus
+    type: ValueType
+    description: Whether the license currently grants access
+    extends:
+      - String
+    requires:
+      - LicenseStatus == 'active' OR LicenseStatus == 'suspended' OR LicenseStatus == 'expired'
+  - concept: SeatsPurchased
+    type: ValueType
+    description: Seats the license entitles the customer to
+    extends:
+      - Integer
+  - concept: SeatsAssigned
+    type: ValueType
+    description: Seats assigned to a named user
+    extends:
+      - Integer
+  - concept: HireSource
+    type: ValueType
+    description: Recruiting channel the employee was hired through
+    extends:
+      - String
+    requires:
+      - HireSource == 'referral' OR HireSource == 'inbound' OR HireSource == 'sourced' OR HireSource == 'agency' OR HireSource == 'internal' OR HireSource == 'campus' OR HireSource == 'other'
   - concept: Hours
     type: ValueType
     description: Hours logged
@@ -3419,13 +3717,6 @@ ontology:
     description: Market midpoint for the role
     extends:
       - Decimal
-  - concept: MarketingChannel
-    type: ValueType
-    description: First-touch marketing channel
-    extends:
-      - String
-    requires:
-      - MarketingChannel == 'paid_ads' OR MarketingChannel == 'organic_search' OR MarketingChannel == 'email' OR MarketingChannel == 'events' OR MarketingChannel == 'content' OR MarketingChannel == 'referral' OR MarketingChannel == 'direct' OR MarketingChannel == 'other'
   - concept: MarketingInfluenced
     type: ValueType
     description: A marketing touch exists on the opportunity
@@ -3931,6 +4222,13 @@ ontology:
       - String
     requires:
       - TicketStatus == 'open' OR TicketStatus == 'pending' OR TicketStatus == 'resolved' OR TicketStatus == 'closed'
+  - concept: TicketType
+    type: ValueType
+    description: Ticket category the agent or the help desk assigns
+    extends:
+      - String
+    requires:
+      - TicketType == 'how_to' OR TicketType == 'bug' OR TicketType == 'billing' OR TicketType == 'account' OR TicketType == 'feature_request' OR TicketType == 'other'
   - concept: Tier
     type: ValueType
     description: Pricing tier or segment
