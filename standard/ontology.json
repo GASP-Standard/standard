@@ -573,9 +573,9 @@
       "resolution_sla_adherence",
       "resolution_time_time_to_resolution",
       "self_service_rate",
-      "support_escalation_rate",
       "ticket_backlog",
       "ticket_distribution_by_type",
+      "ticket_escalation_rate",
       "ticket_volume",
       "tickets_per_agent",
       "tickets_per_customer"
@@ -649,10 +649,10 @@
       "capacity_utilization",
       "on_budget_delivery",
       "on_time_delivery",
-      "professional_services_escalation_rate",
-      "professional_services_milestone_completion_rate",
       "project_duration_accuracy",
+      "project_escalation_rate",
       "project_margin",
+      "project_milestone_completion_rate",
       "projects_per_consultant",
       "realization_rate",
       "reference_ability",
@@ -711,7 +711,7 @@
       "time_to_fill"
     ],
     "project_milestone": [
-      "professional_services_milestone_completion_rate"
+      "project_milestone_completion_rate"
     ],
     "deliverable": [
       "rework_rate"
@@ -5190,9 +5190,9 @@
     "share_of_voice": "Visitors",
     "nps_marketing_context": "CSAT",
     "onboarding_milestone_completion_rate": "Milestones",
-    "professional_services_milestone_completion_rate": "Delivery",
-    "support_escalation_rate": "Resolution",
-    "professional_services_escalation_rate": "Team",
+    "project_milestone_completion_rate": "Delivery",
+    "ticket_escalation_rate": "Resolution",
+    "project_escalation_rate": "Team",
     "product_activation_rate": "Activation"
   },
   "temporalSemantics": {
@@ -7231,7 +7231,7 @@
         "source": "benchmarks"
       }
     ],
-    "escalation-rate": [
+    "ticket-escalation-rate": [
       {
         "type": "benchmarks",
         "ranges": [

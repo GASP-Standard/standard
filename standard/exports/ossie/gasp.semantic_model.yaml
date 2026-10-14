@@ -8792,13 +8792,13 @@ datasets:
             - dialect: OSSIE_SQL_2026
               expression: value
         datatype: Decimal
-        description: Milestone Completion Rate for the period
+        description: Onboarding Milestone Completion Rate for the period
     custom_extensions:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_onboarding_milestone_completion_rate","reason":"all_time","source_dialect":"postgres","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (((milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end) AND milestone_date IS NOT NULL) AND milestone_date <= p.period_end)) AS DOUBLE) / NULLIF((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (((milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end) AND milestone_date IS NOT NULL) AND milestone_date <= p.period_end)) AS FLOAT64) / NULLIF((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (((milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end) AND milestone_date IS NOT NULL) AND milestone_date <= p.period_end)) AS DOUBLE) / NULLIF((SELECT COUNT(onboarding_id) FROM gasp.onboarding_milestone WHERE (milestone_due_date >= p.period_start AND milestone_due_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
-  - name: gasp_staged_gasp_professional_services_milestone_completion_rate
+  - name: gasp_staged_gasp_project_milestone_completion_rate
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
-    description: "Staged dataset for gasp_professional_services_milestone_completion_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    description: "Staged dataset for gasp_project_milestone_completion_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
     fields:
@@ -8824,10 +8824,10 @@ datasets:
             - dialect: OSSIE_SQL_2026
               expression: value
         datatype: Decimal
-        description: Milestone Completion Rate for the period
+        description: Project Milestone Completion Rate for the period
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_professional_services_milestone_completion_rate","reason":"period bound in filter","source_dialect":"postgres","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
+        data: '{"staged":true,"for":"gasp_project_milestone_completion_rate","reason":"period bound in filter","source_dialect":"postgres","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND ((actual_date >= p.period_start AND actual_date <= p.period_end) AND actual_date <= planned_date)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT project_milestone_id) FROM gasp.project_milestone WHERE snapshot_date = p.period_end AND (actual_date >= p.period_start AND actual_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
   - name: gasp_staged_gasp_product_activation_rate
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT user_id) FROM gasp.user WHERE snapshot_date = p.period_end AND ((signup_date >= p.period_start AND signup_date <= p.period_end) AND activation_date IS NOT NULL)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT user_id) FROM gasp.user WHERE snapshot_date = p.period_end AND (signup_date >= p.period_start AND signup_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_product_activation_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -13450,49 +13450,49 @@ metrics:
       dialects:
         - dialect: OSSIE_SQL_2026
           expression: SUM(gasp_staged_gasp_onboarding_milestone_completion_rate.value)
-    description: Milestone Completion Rate. Percentage of due onboarding milestones that customers reach.
+    description: Onboarding Milestone Completion Rate. Percentage of due onboarding milestones that customers reach.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/onboarding/milestone-completion-rate. Staged (all_time): gasp_staged_gasp_onboarding_milestone_completion_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/onboarding/onboarding-milestone-completion-rate. Staged (all_time): gasp_staged_gasp_onboarding_milestone_completion_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
         data: '{"gasp_id":"onboarding_milestone_completion_rate","gasp_version":"1","unit":"percent","formula":"all_time(count(field.onboarding_id where in_period(field.milestone_due_date) and field.milestone_date is not null and field.milestone_date <= period_end)) / all_time(count(field.onboarding_id where in_period(field.milestone_due_date)))","staged":true}'
-  - name: gasp_professional_services_milestone_completion_rate
+  - name: gasp_project_milestone_completion_rate
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_professional_services_milestone_completion_rate.value)
-    description: Milestone Completion Rate. Percentage of milestones completed on schedule.
+          expression: SUM(gasp_staged_gasp_project_milestone_completion_rate.value)
+    description: Project Milestone Completion Rate. Percentage of milestones completed on schedule.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/professional-services/milestone-completion-rate. Staged (period bound in filter): gasp_staged_gasp_professional_services_milestone_completion_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/professional-services/project-milestone-completion-rate. Staged (period bound in filter): gasp_staged_gasp_project_milestone_completion_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"professional_services_milestone_completion_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.project_milestone_id where in_period(field.actual_date) and field.actual_date <= field.planned_date) / count_distinct(field.project_milestone_id where in_period(field.actual_date))","staged":true}'
-  - name: gasp_support_escalation_rate
+        data: '{"gasp_id":"project_milestone_completion_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.project_milestone_id where in_period(field.actual_date) and field.actual_date <= field.planned_date) / count_distinct(field.project_milestone_id where in_period(field.actual_date))","staged":true}'
+  - name: gasp_ticket_escalation_rate
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
           expression: (CAST(COUNT(DISTINCT CASE WHEN ticket.escalated = TRUE THEN ticket.ticket_id END) AS DECIMAL) / NULLIF(COUNT(DISTINCT ticket.ticket_id), 0))
-    description: Escalation Rate. Percentage of tickets escalated to higher tier or engineering.
+    description: Ticket Escalation Rate. Percentage of tickets escalated to higher tier or engineering.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/support/escalation-rate."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/support/ticket-escalation-rate."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"support_escalation_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.ticket_id where field.escalated = true) / count_distinct(field.ticket_id)"}'
-  - name: gasp_professional_services_escalation_rate
+        data: '{"gasp_id":"ticket_escalation_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.ticket_id where field.escalated = true) / count_distinct(field.ticket_id)"}'
+  - name: gasp_project_escalation_rate
     expression:
       dialects:
         - dialect: OSSIE_SQL_2026
           expression: (CAST(COUNT(DISTINCT CASE WHEN project.escalated = TRUE THEN project.project_id END) AS DECIMAL) / NULLIF(COUNT(DISTINCT project.project_id), 0))
-    description: Escalation Rate. Percentage of projects with escalations.
+    description: Project Escalation Rate. Percentage of projects with escalations.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/professional-services/escalation-rate. Reads the project snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/professional-services/project-escalation-rate. Reads the project snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"professional_services_escalation_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.project_id where field.escalated = true) / count_distinct(field.project_id)"}'
+        data: '{"gasp_id":"project_escalation_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.project_id where field.escalated = true) / count_distinct(field.project_id)"}'
   - name: gasp_product_activation_rate
     expression:
       dialects:

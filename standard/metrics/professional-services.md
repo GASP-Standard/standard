@@ -273,13 +273,13 @@ Compute the ratio for each project completed in the period, then average, so eve
 
 ---
 
-### Milestone Completion Rate
+### Project Milestone Completion Rate
 
 **Definition:** Percentage of milestones completed on schedule.
 
 **Formula:**
 ```
-Milestone Completion = Milestones on time / Total milestones × 100
+Project Milestone Completion Rate = Milestones on time / Total milestones × 100
 ```
 
 ---
@@ -312,13 +312,13 @@ Project NPS = % Promoters - % Detractors
 
 ---
 
-### Escalation Rate
+### Project Escalation Rate
 
 **Definition:** Percentage of projects with escalations.
 
 **Formula:**
 ```
-Escalation Rate = Projects with escalations / Total projects × 100
+Project Escalation Rate = Projects with escalations / Total projects × 100
 ```
 
 **Target:** <10%

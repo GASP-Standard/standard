@@ -33,7 +33,7 @@ Restart your MCP client after adding the config.
 
 | Tool | Description |
 |------|-------------|
-| `lookup_metric` | Full record for one metric: department, category, signal type, definition, formulas as written, the canonical formula with unit, forms, variants and breakdowns, benchmarks, validation rules, common mistakes, sources, aliases, the entities it measures, operating and market forms, the recommended sensitivity tier and access scope and the page URL. Matches exactly, ignoring case: formula id, graph node id, name with or without its abbreviation, abbreviation, graph label, alias or slug, with the full record preferred over a cross-reference stub. A name two departments define (Escalation Rate) lists each candidate with department, formula id and URL; prefix the department ("Support Escalation Rate") or pass the formula id. A glossary term returns its definition and a miss returns close names (misspellings included) |
+| `lookup_metric` | Full record for one metric: department, category, signal type, definition, formulas as written, the canonical formula with unit, forms, variants and breakdowns, benchmarks, validation rules, common mistakes, sources, aliases, the entities it measures, operating and market forms, the recommended sensitivity tier and access scope and the page URL. Matches exactly, ignoring case: formula id, graph node id, name with or without its abbreviation, abbreviation, graph label, alias or slug, with the full record preferred over a cross-reference stub. A name two departments define (Activation Rate) lists each candidate with department, formula id and URL; prefix the department ("Product Activation Rate") or pass the formula id. A glossary term returns its definition and a miss returns close names (misspellings included) |
 | `lookup_definition` | Glossary term lookup (e.g. Signal Type, Sensitivity Tier, Access Scope, Metric Owner, CEL): full definition, section, canonical or reference link, where it is used and page URL. Matches the term, its slug or either part of "Term (Abbreviation)" exactly; a metric name points to `lookup_metric` and a miss returns close terms |
 | `list_metrics` | Metric names grouped by department and category, optionally filtered by department (case-insensitive, spaces or hyphens; an unknown name returns close names and the department list) and signal type (`outcome`, `leading`, `efficiency`, `operational`, primary or secondary). The Core tier is the Core department |
 | `get_formula` | Canonical formula in the GASP formula grammar, with unit, O/M forms, named variants, breakdowns (field, bucket and total mode), notes, input metrics with role and polarity, the fields and datasets the formula and each form read and the enum filters each form applies (CAC-O reads `cost_function in (gtm, implementation, onboarding)`, CAC-M `cost_function = gtm`), then the formula as written in the standard. Metrics that cannot be computed carry the reason |
@@ -50,7 +50,7 @@ The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return pat
 
 ## Data
 
-Version 1.14.2.
+Version 1.15.0.
 
 - 301 metrics across 13 departments
 - 93 glossary definitions (80 SaaS domain + 13 GASP framework)

@@ -5,6 +5,25 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-14] A metric's name identifies it, so the four metrics that shared a heading are renamed in v1
+**Decision:** Support's Escalation Rate becomes Ticket Escalation Rate, Professional Services' Escalation Rate becomes Project Escalation Rate, Professional Services' Milestone Completion Rate becomes Project Milestone Completion Rate and Onboarding's Milestone Completion Rate becomes Onboarding Milestone Completion Rate. Slugs follow the headings, three formula ids change (`ticket_escalation_rate`, `project_escalation_rate`, `project_milestone_completion_rate`), the old pages redirect, and the change ships as MCP 1.15.0 with the old and new ids in the changelog. This is the second breaking change to the canon under `GOVERNANCE.md`, taken knowingly rather than deferred to v2.
+
+**Context:** The MCP text pass showed that `lookup_metric("Escalation Rate")` returns two candidates because two different metrics (tickets escalated, projects with an escalation) carry the same heading in two department files, and the same for Milestone Completion Rate (onboarding milestones reached by their due date, project milestones completed on schedule). The loader had been papering over it by prefixing the department onto the formula id when it saw a shared heading, so the ids told the metrics apart and the names did not. The standard's first principle is one canonical name per metric, and an agent, an adapter author or a reader cannot name either metric unambiguously without the department.
+
+**Alternatives considered:**
+- **Aliases now, rename at v2.** Qualified aliases (Ticket Escalation Rate and so on) would give a direct hit while the headings stayed shared. Rejected by the owner: it leaves the canon wrong and teaches the qualified name as a nickname rather than the name.
+- **Keep the department-prefix rule as the answer.** Rejected: ids are for machines; the name is what people and agents type, and the candidates reply is a workaround for a defect in the data.
+- **Defer to v2.** Rejected: v2 has no date, four metrics outside the Core graph have few external references, and the cost of carrying the collision is paid on every lookup.
+
+**Consequences:**
+- `GOVERNANCE.md` now records two exceptions and says what each one must carry (redirect, changelog ids, decision record).
+- The department-prefix rule in `metricFormulaId` no longer fires for a shared heading, but it still has one live case of its other kind: Product's Activation Rate takes `product_activation_rate` because the bare id `activation_rate` is the Onboarding graph node. A shared heading is now a defect to fix; a slug that collides with a graph node id is what the prefix is for.
+- Found on the way: `validationRules` is keyed by slug, so the Support escalation benchmarks had also applied to the Professional Services metric. They now apply to Ticket Escalation Rate only.
+- "Activation Rate" and "Error Rate" still return candidates, on purpose: Product's "Error Rate (User-Facing)" and Onboarding's "Onboarding-to-Active Rate (Activation Rate)" are distinct names whose qualifier the resolver treats as an alternative name, so an agent that types the bare name is correctly asked which one.
+- The Ossie export, the Cypher file, the adapter template and the dashboard tiles pick up the new names through `npm run derive` and the site build.
+
+---
+
 ## [2026-10-13] Site copy that restates the standard is generated where it can be and audited where it cannot
 **Decision:** Three rules for the website. (1) Anything on a page that is the output of a tool or a value from the graph is generated at build time: the adapter validation report, the NRR data requirement table and now the homepage `infer_drivers` demo all come from `src/lib/tool-examples.ts` calling the built MCP server. (2) The TWIN Modifier reads its nodes and edges from `relationships.json`; the two edges the simulator needs that the graph lacks are listed with a reason each and tested, and its baseline is computed from a sample company with the canonical formulas rather than typed. (3) Prose that describes capabilities (tools, grammar, dialects, breakdowns, governance, the Ossie export) has no guard, so a change to any of those is followed by a re-read of the seven surfaces named in `CLAUDE.md`. The tagline is one phrase, "The open standard for SaaS metrics"; the access-control page is labelled "Access Governance" and project governance is linked from the footer.
 

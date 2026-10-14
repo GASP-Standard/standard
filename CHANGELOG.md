@@ -2,7 +2,14 @@
 
 Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package follows [semver](https://semver.org/). Changes to the standard's content are listed under the package version that first shipped them, since the package bundles the standard. `DECISIONS.md` has the reasoning behind each rule.
 
-## [1.14.2] - Unreleased
+## [1.15.0] - Unreleased
+
+### Changed
+- Four metrics are renamed so that every metric in the standard has a name of its own. Support's Escalation Rate is Ticket Escalation Rate (`ticket_escalation_rate`), Professional Services' Escalation Rate is Project Escalation Rate (`project_escalation_rate`), Professional Services' Milestone Completion Rate is Project Milestone Completion Rate (`project_milestone_completion_rate`) and Onboarding's Milestone Completion Rate is Onboarding Milestone Completion Rate (its id `onboarding_milestone_completion_rate` is unchanged). Definitions, formulas and populations are as they were. The old page URLs redirect to the new pages. This is a breaking change to the canon under `GOVERNANCE.md` (a slug and three formula ids change); the reasoning is in `DECISIONS.md` for 2026-10-14. An adapter or query that names one of the old ids needs the new one.
+- The escalation benchmarks in `validationRules` were keyed by the shared slug and so applied to both Escalation Rate metrics; they now apply to Ticket Escalation Rate only.
+- "Escalation Rate" and "Milestone Completion Rate" no longer return candidates from `lookup_metric`: each resolves by close-name suggestion to the two qualified names. "Activation Rate" and "Error Rate" still return candidates, because Product's "Error Rate (User-Facing)" and Onboarding's "Onboarding-to-Active Rate (Activation Rate)" carry those names as qualifiers.
+
+## [1.14.2] - 2026-10-14
 
 ### Changed
 - Every tool description, argument description and fixed reply was checked against what the tool does and rewritten where it was wrong, stale or understated: the exact-match rules and the candidates reply in `lookup_metric`, the breakdown kinds and the not-computable reason in `get_formula`, the lowercase edge types `get_relationships` actually emits (it never printed `COMPONENT_OF`), the four modes of `get_data_requirements`, the whole-word matcher and ranking in `search`, the inclusive period dates in `generate_query`, the full check list in `validate_adapter`, the baseline-input stop and direction flips in `infer_drivers` and `explain_path`, and the definitions behind `coverage_gap`. The README tool table matches.

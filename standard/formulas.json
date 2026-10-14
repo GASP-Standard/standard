@@ -1515,16 +1515,16 @@
       "unit": "percent",
       "notes": "Milestones reached over milestones due: onboarding milestones due in the period that were reached by period end, over all milestones due in the period. Each row of onboarding_milestone is one planned milestone, so planned rows carry milestone_due_date before milestone_date is set; all_time keeps unreached rows that the milestone_date period filter would drop. Add field.onboarding_milestone = '<milestone>' to both sides for a single milestone."
     },
-    "professional_services_milestone_completion_rate": {
+    "project_milestone_completion_rate": {
       "formula": "count_distinct(field.project_milestone_id where in_period(field.actual_date) and field.actual_date <= field.planned_date) / count_distinct(field.project_milestone_id where in_period(field.actual_date))",
       "unit": "percent",
       "notes": "Milestones delivered in the period that met their planned date."
     },
-    "support_escalation_rate": {
+    "ticket_escalation_rate": {
       "formula": "count_distinct(field.ticket_id where field.escalated = true) / count_distinct(field.ticket_id)",
       "unit": "percent"
     },
-    "professional_services_escalation_rate": {
+    "project_escalation_rate": {
       "formula": "count_distinct(field.project_id where field.escalated = true) / count_distinct(field.project_id)",
       "unit": "percent"
     },

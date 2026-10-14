@@ -43,9 +43,8 @@ describe("resolveMetric", () => {
 
   it("reports a name two departments define as ambiguous, with each candidate's department and URL", () => {
     const cases: Array<[string, string[]]> = [
-      ["Escalation Rate", ["Professional Services", "Support"]],
-      ["Milestone Completion Rate", ["Onboarding", "Professional Services"]],
       ["Activation Rate", ["Onboarding", "Product"]],
+      ["Error Rate", ["Engineering", "Product"]],
     ];
     for (const [q, depts] of cases) {
       const r = resolveMetric(data, q);
@@ -69,15 +68,34 @@ describe("resolveMetric", () => {
   });
 
   it("takes a department-qualified formula id, or the name qualified by department", () => {
-    for (const q of ["support_escalation_rate", "Support Escalation Rate", "Escalation Rate (Support)", "support escalation rate"]) {
+    for (const q of ["product_activation_rate", "Product Activation Rate", "Activation Rate (Product)", "product activation rate"]) {
       const r = resolveMetric(data, q);
       expect(r.kind, q).toBe("metric");
-      if (r.kind === "metric") expect(r.metric.department, q).toBe("Support");
+      if (r.kind === "metric") expect(r.metric.department, q).toBe("Product");
     }
-    const ps = resolveMetric(data, "professional_services_escalation_rate");
-    expect(ps.kind === "metric" && ps.metric.department).toBe("Professional Services");
-    const product = resolveMetric(data, "product_activation_rate");
-    expect(product.kind === "metric" && product.metric.department).toBe("Product");
+    for (const q of ["Engineering Error Rate", "Error Rate (Engineering)"]) {
+      const r = resolveMetric(data, q);
+      expect(r.kind === "metric" && r.metric.department, q).toBe("Engineering");
+    }
+  });
+
+  it("gives each renamed metric its own name, formula id and department", () => {
+    const cases: Array<[string, string, string]> = [
+      ["Ticket Escalation Rate", "ticket_escalation_rate", "Support"],
+      ["Project Escalation Rate", "project_escalation_rate", "Professional Services"],
+      ["Onboarding Milestone Completion Rate", "onboarding_milestone_completion_rate", "Onboarding"],
+      ["Project Milestone Completion Rate", "project_milestone_completion_rate", "Professional Services"],
+    ];
+    for (const [name, id, dept] of cases) {
+      for (const q of [name, id]) {
+        const r = resolveMetric(data, q);
+        expect(r.kind, q).toBe("metric");
+        if (r.kind === "metric") {
+          expect(r.metric.department, q).toBe(dept);
+          expect(metricFormulaId(data, r.metric), q).toBe(id);
+        }
+      }
+    }
   });
 
   it("prefers the full record over a cross-reference stub at every tier", () => {
@@ -113,7 +131,7 @@ describe("resolveNode", () => {
   });
 
   it("agrees with resolveMetric on metric names: the same node or the same ambiguity", () => {
-    for (const q of ["Escalation Rate", "Milestone Completion Rate", "Activation Rate"]) {
+    for (const q of ["Activation Rate", "Error Rate"]) {
       const metric = resolveMetric(data, q);
       const node = resolveNodeResult(data, q);
       expect(node.kind, q).toBe("ambiguous");

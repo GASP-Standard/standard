@@ -277,13 +277,13 @@ CES % = Respondents who agree it was easy / Total respondents × 100
 
 ---
 
-### Escalation Rate
+### Ticket Escalation Rate
 
 **Definition:** Percentage of tickets escalated to higher tier or engineering.
 
 **Formula:**
 ```
-Escalation Rate = Escalated tickets / Total tickets × 100
+Ticket Escalation Rate = Escalated tickets / Total tickets × 100
 ```
 
 **Benchmarks:**
@@ -364,6 +364,6 @@ Self-service resolutions are deflections: help center or chatbot sessions that e
 | Resolution Time | Resolution | Problem-solving speed |
 | First Contact Resolution | Resolution | Efficiency |
 | CSAT | Quality | Customer satisfaction |
-| Escalation Rate | Quality | Issue complexity |
+| Ticket Escalation Rate | Quality | Issue complexity |
 | Cost per Ticket | Efficiency | Support economics |
 | Self-Service Rate | Efficiency | Deflection effectiveness |

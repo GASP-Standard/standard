@@ -357,9 +357,11 @@ export function metricFormulaId(data: StandardData, metric: Pick<Metric, "slug" 
   // Identifiers never start with a digit: "30-day-retention" becomes day_30_retention.
   let bare = metric.slug.replace(/-/g, "_").replace(/^(\d+)_day_/, "day_$1_");
   if (/^\d/.test(bare)) bare = `n_${bare}`;
-  // Two departments can define different metrics under one heading (Activation
-  // Rate, Escalation Rate). The metric that owns a graph node keeps the bare id;
-  // the others are qualified by department so each formula has one meaning.
+  // A metric is qualified by department when its bare id would be shared: two
+  // departments defining metrics under one heading (no heading is shared today,
+  // the rule stays as a guard), or a bare id that is another metric's graph node
+  // (Product's "Activation Rate" against the Onboarding node activation_rate,
+  // hence product_activation_rate). The node owner keeps the bare id.
   const rivals = data.metrics.filter((m) => m !== metric && !isMetricStub(m) && m.slug === metric.slug);
   const nodeOwner = data.nodes.some((n) => n.id === bare) || rivals.some((m) => metricNodeId(data, m) === bare);
   if (rivals.length === 0 && !nodeOwner) return bare;
@@ -559,13 +561,13 @@ export type Resolved =
 
 /**
  * Exact matches only, never a substring guess. Five tiers, first hit wins:
- * 1. the formula id or graph node id as typed ("support_escalation_rate",
+ * 1. the formula id or graph node id as typed ("product_activation_rate",
  *    "nps"): unique keys, so never ambiguous;
  * 2. a name: the full name, the name without its abbreviation, the
  *    abbreviation, or the label of the metric's graph node;
  * 3. an alias;
  * 4. the slug;
- * 5. the formula id with spaces for underscores ("Support Escalation Rate").
+ * 5. the formula id with spaces for underscores ("Product Activation Rate").
  * Non-stub metrics are tried through every tier first, then as a name
  * qualified by department; a cross-reference stub answers only when no full
  * record matches. Two full records matching in the same tier are ambiguous.
@@ -589,7 +591,7 @@ export function resolveMetric(data: StandardData, name: string): Resolved {
     if (hits.length === 1) return { kind: "metric", metric: hits[0] };
     if (hits.length > 1) return { kind: "ambiguous", candidates: hits };
   }
-  // A name qualified by its department: "Support Escalation Rate", "Escalation Rate (Support)"
+  // A name qualified by its department: "Product Activation Rate", "Activation Rate (Product)"
   for (const dept of new Set(full.map((m) => m.department))) {
     const d = dept.toLowerCase();
     const rest = q.startsWith(d + " ") ? q.slice(d.length + 1) : q.endsWith(` (${d})`) ? q.slice(0, -(d.length + 3)) : null;

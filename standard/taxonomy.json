@@ -365,7 +365,7 @@
     "onboarding::onboarding-completion-rate": {
       "primary": "outcome"
     },
-    "onboarding::milestone-completion-rate": {
+    "onboarding::onboarding-milestone-completion-rate": {
       "primary": "operational"
     },
     "onboarding::on-time-completion-rate": {
@@ -714,7 +714,7 @@
     "professional-services::project-duration-accuracy": {
       "primary": "operational"
     },
-    "professional-services::milestone-completion-rate": {
+    "professional-services::project-milestone-completion-rate": {
       "primary": "operational"
     },
     "professional-services::project-csat": {
@@ -723,7 +723,7 @@
     "professional-services::project-nps": {
       "primary": "leading"
     },
-    "professional-services::escalation-rate": {
+    "professional-services::project-escalation-rate": {
       "primary": "operational"
     },
     "professional-services::rework-rate": {
@@ -919,7 +919,7 @@
     "support::customer-effort-score-ces": {
       "primary": "leading"
     },
-    "support::escalation-rate": {
+    "support::ticket-escalation-rate": {
       "primary": "operational"
     },
     "support::tickets-per-agent": {

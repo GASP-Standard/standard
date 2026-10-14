@@ -1761,19 +1761,19 @@
       "stagedDataset": "gasp_staged_gasp_onboarding_milestone_completion_rate",
       "reason": "all_time"
     },
-    "professional_services_milestone_completion_rate": {
+    "project_milestone_completion_rate": {
       "kind": "staged",
-      "ossieName": "gasp_professional_services_milestone_completion_rate",
-      "stagedDataset": "gasp_staged_gasp_professional_services_milestone_completion_rate",
+      "ossieName": "gasp_project_milestone_completion_rate",
+      "stagedDataset": "gasp_staged_gasp_project_milestone_completion_rate",
       "reason": "period bound in filter"
     },
-    "support_escalation_rate": {
+    "ticket_escalation_rate": {
       "kind": "direct",
-      "ossieName": "gasp_support_escalation_rate"
+      "ossieName": "gasp_ticket_escalation_rate"
     },
-    "professional_services_escalation_rate": {
+    "project_escalation_rate": {
       "kind": "direct",
-      "ossieName": "gasp_professional_services_escalation_rate"
+      "ossieName": "gasp_project_escalation_rate"
     },
     "product_activation_rate": {
       "kind": "staged",
