@@ -2,6 +2,15 @@
 
 Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package follows [semver](https://semver.org/). Changes to the standard's content are listed under the package version that first shipped them, since the package bundles the standard. `DECISIONS.md` has the reasoning behind each rule.
 
+## [1.14.2] - Unreleased
+
+### Changed
+- Every tool description, argument description and fixed reply was checked against what the tool does and rewritten where it was wrong, stale or understated: the exact-match rules and the candidates reply in `lookup_metric`, the breakdown kinds and the not-computable reason in `get_formula`, the lowercase edge types `get_relationships` actually emits (it never printed `COMPONENT_OF`), the four modes of `get_data_requirements`, the whole-word matcher and ranking in `search`, the inclusive period dates in `generate_query`, the full check list in `validate_adapter`, the baseline-input stop and direction flips in `infer_drivers` and `explain_path`, and the definitions behind `coverage_gap`. The README tool table matches.
+- `get_relationships` prints the page URL of the node and of every neighbour (metric nodes to their metric page, entities and concepts to their glossary page), so no tool names a metric without its URL.
+- `list_metrics` counts a metric cross-referenced from another department once (NRR under Core and Customer Success is one metric, two listings).
+- A glossary term passed to `get_formula`, `get_data_requirements` or `generate_query` is named as one with a pointer to `lookup_definition` instead of a "Did you mean" dead end. A graph name with no close match says to use `search` and `lookup_metric` instead of stopping at "No graph node is named".
+- `coverage_gap` says why an input was unresolved (no match, an entity, outside the graph); `explain_path` explains what the end direction means and what to try when no path is found; entities and concepts in `get_relationships` get entity wording rather than "leaf metric".
+
 ## [1.14.1] - 2026-10-14
 
 ### Changed

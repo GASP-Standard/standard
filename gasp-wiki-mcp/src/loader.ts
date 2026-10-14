@@ -684,7 +684,9 @@ export function suggestNodes(data: StandardData, name: string, limit = 6): strin
   const byWord = data.nodes.filter((n) => n.id.includes(q) || n.label.toLowerCase().includes(q));
   const near = closest(q, data.nodes.map((n) => ({ item: n, names: [n.label, n.id] })), limit).map((c) => c.item);
   const hits = [...new Set([...byWord, ...near])].map((n) => `${n.label} (${n.id})`).slice(0, limit);
-  return hits.length ? ` Did you mean: ${hits.join("; ")}? Pass the exact name or id.` : "";
+  return hits.length
+    ? ` Did you mean: ${hits.join("; ")}? Pass the exact name or id.`
+    : " No node label or id is close to it. The graph holds the Core and department metrics, entities and concepts only; use search to find the metric and lookup_metric to see whether it is in the graph.";
 }
 
 /**

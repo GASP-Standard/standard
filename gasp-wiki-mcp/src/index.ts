@@ -22,7 +22,7 @@ import {
   type PathStep,
   type TraversalCandidate,
 } from "./traversal.js";
-import { SITE, metricUrl, definitionUrl, resolveDocLink } from "./urls.js";
+import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.js";
 import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
 import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
@@ -137,11 +137,17 @@ function formatDefinition(def: Definition): string {
   return parts.join("\n").replace(/\bEOM Standard\b/g, "GASP Standard");
 }
 
+/** The reply when a name given to a metric-only tool is a glossary term or matches nothing. */
+function notAMetric(name: string, resolved: { kind: "definition"; definition: Definition } | { kind: "none" }): string {
+  if (resolved.kind === "definition") return `"${name}" is a glossary term, not a metric: use lookup_definition (${definitionUrl(resolved.definition)}).`;
+  return `No metric is named "${name}".${suggestMatches(data, name)}`;
+}
+
 // --- Tool 1: lookup_metric ---
 server.tool(
   "lookup_metric",
-  "Look up a GASP Standard metric by exact name, abbreviation, alias or formula id. Returns definition, formula, benchmarks, time period, department and page URL. When a name belongs to several departments' metrics (e.g. 'Escalation Rate') it lists each with its department, formula id and URL; qualify by department ('Support Escalation Rate') or pass the formula id. Falls back to glossary terms (e.g. 'Signal Type', 'Metric Owner') when no metric matches; use lookup_definition to ask for a term directly.",
-  { name: z.string().describe("Metric name, abbreviation or formula id (e.g. 'MRR', 'Net Revenue Retention', 'CAC Payback', 'support_escalation_rate')") },
+  "The full record of one GASP Standard metric: department, category, signal type, page URL, definition, the formulas as written, the canonical GASP grammar formula (unit, forms, variants, breakdowns, fields and datasets), benchmarks, validation rules, common mistakes, sources, aliases, the entities it measures, operating and market forms, any adjusted variant and the recommended sensitivity tier and access scope. The name must match exactly, ignoring case: formula id, graph node id, full name, name without its abbreviation, abbreviation, graph label, alias or slug. A name several departments use (e.g. 'Escalation Rate') returns each candidate with department, formula id and URL; prefix the department ('Support Escalation Rate') or pass the formula id. A glossary term (e.g. 'Signal Type') returns its definition and a miss returns close names to retry with. Use get_formula for the formula alone and search when you do not know the name.",
+  { name: z.string().describe("Exact metric name, abbreviation, alias, slug or formula id, case-insensitive (e.g. 'MRR', 'Net Revenue Retention', 'CAC Payback', 'support_escalation_rate'). Prefix the department to pick between metrics that share a name.") },
   async ({ name }) => {
     const resolved = resolveMetric(data, name);
     if (resolved.kind === "ambiguous") {
@@ -291,19 +297,19 @@ server.tool(
 // --- Tool 2: list_metrics ---
 server.tool(
   "list_metrics",
-  "List all GASP Standard metrics, optionally filtered by department and/or signal type. Returns metric names grouped by department and category. The Core tier is the 'Core' department. An unknown department returns the department list.",
+  "List GASP Standard metric names grouped by department and category, with the total, optionally filtered by department, signal type or both. Names only: use lookup_metric or get_formula for a metric's details. A metric cross-referenced from another department is listed under both (NRR under Core and Customer Success). The Core tier is the 'Core' department. An unknown department returns close names and the department list.",
   {
     department: z
       .string()
       .optional()
       .describe(
-        "Filter by exact department name (e.g. 'sales', 'customer success', 'core'). Case-insensitive. Omit to list all."
+        "Department name, case-insensitive, with spaces or hyphens (e.g. 'Sales', 'customer success', 'customer-success', 'Core'). Omit to list every department."
       ),
     signalType: z
       .enum(["outcome", "leading", "efficiency", "operational"])
       .optional()
       .describe(
-        "Filter by signal type. Returns metrics where primary or secondary type matches."
+        "outcome, leading, efficiency or operational. Matches a metric's primary or secondary signal type."
       ),
   },
   async ({ department, signalType }) => {
@@ -346,7 +352,9 @@ server.tool(
       dept.get(m.category)!.push(m.name);
     }
 
-    const parts: string[] = [`# GASP Standard Metrics (${filtered.length} total)\n`];
+    // A metric cross-referenced from another department is listed under both but counted once.
+    const distinct = new Set(filtered.map((m) => metricFormulaId(data, m))).size;
+    const parts: string[] = [`# GASP Standard Metrics (${distinct} total${distinct < filtered.length ? `, ${filtered.length} listings` : ""})\n`];
     for (const [dept, categories] of grouped) {
       parts.push(`## ${dept}`);
       for (const [cat, names] of categories) {
@@ -365,15 +373,15 @@ server.tool(
 // --- Tool 3: get_formula ---
 server.tool(
   "get_formula",
-  "Get the canonical formula for a GASP Standard metric: the machine-readable GASP grammar formula with its unit, operating and market forms and named variants, the metrics, fields and datasets it and each form read, the enum filters each form applies (so forms reading the same fields show where they differ), plus the formula as written in the standard.",
-  { metric: z.string().describe("Metric name, abbreviation or formula id (e.g. 'NRR', 'LTV', 'CAC Payback'). A name several departments use returns the candidates to choose from.") },
+  "The canonical formula of one GASP Standard metric in the GASP grammar, with its unit, operating (O) and market (M) forms, named variants, breakdowns (one row per value of a field or bucket; total() reads the whole population), notes, the metrics it reads with role and polarity, the fields and datasets the formula and each form read, the enum filters each form applies (so forms reading the same fields show where they differ) and the formula as written in the standard. A metric that cannot be computed as one formula gives the reason. Names resolve as in lookup_metric. Use get_data_requirements for field types and example SQL and generate_query for SQL against your own tables.",
+  { metric: z.string().describe("Exact metric name, abbreviation, alias or formula id (e.g. 'NRR', 'LTV', 'CAC Payback', 'aging_buckets'). A name several departments use returns the candidates to choose from.") },
   async ({ metric: name }) => {
     const resolved = resolveMetric(data, name);
     if (resolved.kind === "ambiguous") {
       return { content: [{ type: "text" as const, text: formatAmbiguous(data, name, resolved.candidates) }] };
     }
     if (resolved.kind !== "metric") {
-      return { content: [{ type: "text" as const, text: `No metric is named "${name}".${suggestMatches(data, name)}` }] };
+      return { content: [{ type: "text" as const, text: notAMetric(name, resolved) }] };
     }
     const metric = resolved.metric;
     const parts = [`# ${metric.name}: Formula`, `**URL:** ${metricUrl(metric)}`, ""];
@@ -385,7 +393,7 @@ server.tool(
     if (metric.formulas.length > 0) {
       parts.push("\n## As written in the standard");
       for (let i = 0; i < metric.formulas.length; i++) {
-        if (metric.formulas.length > 1) parts.push(`**Variant ${i + 1}:**`);
+        if (metric.formulas.length > 1) parts.push(`**Formula ${i + 1}:**`);
         parts.push("```\n" + metric.formulas[i] + "\n```");
       }
     }
@@ -416,8 +424,8 @@ function formatValidation(d: StandardData, metric: Metric): string {
 // --- Tool 4: get_relationships ---
 server.tool(
   "get_relationships",
-  "Get the upstream (what drives it) and downstream (what it drives) relationships for a metric, entity, or concept from the GASP relationship graph. Names resolve exactly as in lookup_metric (an ambiguous metric name lists the candidates). For an entity it also lists every metric whose formula reads the entity's datasets, with department and URL. Relationship types: metric signal (DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES), entity lifecycle (CONVERTS_TO, PARENT_OF, BELONGS_TO), entity ownership (OWNS, GRANTS, PRICED_BY), entity interactions (MANAGES, SERVES, ENGAGES_VIA, SUBMITS, REPRESENTED_BY, SOURCES), entity financial flows (GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS).",
-  { metric: z.string().describe("Metric name or ID (e.g. 'arr', 'NRR'), entity (e.g. 'customer', 'subscription'), or concept (e.g. 'revenue', 'bookings')") },
+  "One node of the GASP relationship graph (a metric, entity or concept) with its description, category and level and its direct edges, each neighbour with its edge type and description: upstream (edges into it), the metrics that measure it, downstream (edges out of it) and, for a metric, the entities it measures. For an entity it also lists every metric whose formula reads the entity's datasets, with department and URL. Edge types: drives, reduces, predicts, component and measures (metric signal); converts_to, parent_of and belongs_to (lifecycle); owns, grants and priced_by (ownership); manages, serves, engages_via, submits, represented_by and sources (interaction); generates, produces, contributes_to and incurs (financial flow). Metric names resolve as in lookup_metric; a metric outside the graph says so and a miss lists every node. Use infer_drivers or explain_path to walk more than one hop.",
+  { metric: z.string().describe("Metric name, abbreviation or graph id (e.g. 'NRR', 'arr'), entity (e.g. 'customer', 'subscription') or concept (e.g. 'revenue', 'bookings'). Entity and concept names win over a metric with the same name.") },
   async ({ metric: name }) => {
     const { node, upstream, downstream, measuredBy: readers, ambiguous, outsideGraph } = getRelationships(data, name);
 
@@ -437,12 +445,15 @@ server.tool(
       };
     }
 
+    const kind = node.nodeType ?? "metric";
     const parts: string[] = [
       `# ${node.label}: relationships\n`,
       `**Description:** ${node.description}`,
       `**Category:** ${node.category}`,
-      `**Level:** ${node.level}\n`,
+      `**Level:** ${node.level}`,
+      `**URL:** ${nodeUrl(node)}\n`,
     ];
+    const neighbour = (r: { node: RelationshipNode; type: string }) => `- **${r.node.label}** (${r.type}): ${r.node.description} ${nodeUrl(r.node)}`;
 
     const upDrivers = upstream.filter((r) => r.type !== "measures");
     const measuredBy = upstream.filter((r) => r.type === "measures");
@@ -450,37 +461,29 @@ server.tool(
     const measures = downstream.filter((r) => r.type === "measures");
 
     if (upDrivers.length > 0) {
-      parts.push("## Upstream (what drives this metric)");
-      for (const r of upDrivers) {
-        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
-      }
+      parts.push(kind === "metric" ? "## Upstream (what drives this metric)" : `## Upstream (edges into this ${kind})`);
+      for (const r of upDrivers) parts.push(neighbour(r));
       parts.push("");
     } else {
-      parts.push("## Upstream\nNo upstream drivers (this is a top-level metric).\n");
+      parts.push(kind === "metric" ? "## Upstream\nNo upstream drivers (this is a top-level metric).\n" : `## Upstream\nNo edges lead into this ${kind}.\n`);
     }
 
     if (measuredBy.length > 0) {
       parts.push("## Measured by (metrics that measure this)");
-      for (const r of measuredBy) {
-        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
-      }
+      for (const r of measuredBy) parts.push(neighbour(r));
       parts.push("");
     }
 
     if (downDriven.length > 0) {
-      parts.push("## Downstream (what this metric drives)");
-      for (const r of downDriven) {
-        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
-      }
+      parts.push(kind === "metric" ? "## Downstream (what this metric drives)" : `## Downstream (edges out of this ${kind})`);
+      for (const r of downDriven) parts.push(neighbour(r));
     } else {
-      parts.push("## Downstream\nNo downstream metrics (this is a leaf metric).");
+      parts.push(kind === "metric" ? "## Downstream\nNo downstream metrics (this is a leaf metric)." : `## Downstream\nNo edges lead out of this ${kind}.`);
     }
 
     if (measures.length > 0) {
       parts.push("\n## Measures (what this metric measures)");
-      for (const r of measures) {
-        parts.push(`- **${r.node.label}** (${r.type}): ${r.node.description}`);
-      }
+      for (const r of measures) parts.push(neighbour(r));
     }
 
     if (readers.length > 0) {
@@ -495,20 +498,20 @@ server.tool(
 // --- Tool 5: get_data_requirements ---
 server.tool(
   "get_data_requirements",
-  "Get the data requirements for implementing a GASP Standard metric or department dashboard: each field the canonical formula reads with its type and the GASP dataset it is read from, whether the metric needs a staged dataset (cohort or prior-period comparison), reporting grain, source system, page URL and example SQL. The metric resolves exactly as in lookup_metric (name, abbreviation, alias or formula id); a name several departments use lists the candidates unless department picks one. Department is an exact name, case-insensitive. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get that breakdown's requirement: its fields include the dimension and the example SQL returns one row per value. Pass dialect (postgres, snowflake, bigquery, databricks; postgres also covers Redshift) to get the example SQL in that warehouse's syntax.",
+  "What a warehouse needs to compute GASP Standard metrics: per metric, a row for each field and dataset pair the canonical formula reads with its type, whether it is staged (a cohort or prior-period comparison), source system, grain, frequency, page URL and example SQL compiled from the formula. Pass metric for one metric (resolved as in lookup_metric), department for every metric in it, both to pick between metrics that share a name and neither for every metric with a formula. breakdown names a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR): the fields then include the dimension and the SQL returns one row per value. dialect (postgres, snowflake, bigquery or databricks; postgres is the default and also covers Redshift) sets the example SQL's syntax. A metric with no formula gives the reason. Use generate_query to fill the SQL from your adapter.",
   {
     metric: z
       .string()
       .optional()
-      .describe("Metric name, abbreviation or formula id (e.g. 'ARR', 'Pipeline Coverage Ratio', 'CSAT')"),
+      .describe("Exact metric name, abbreviation, alias or formula id (e.g. 'ARR', 'Pipeline Coverage Ratio', 'CSAT')"),
     department: z
       .string()
       .optional()
       .describe(
-        "Exact department name (e.g. 'Sales', 'Engineering', 'Customer Success'). Alone it lists the department's requirements; with metric it picks between metrics that share a name."
+        "Department name, case-insensitive (e.g. 'Sales', 'Engineering', 'customer success'). Alone it returns every requirement in the department; with metric it picks between metrics that share a name."
       ),
-    breakdown: z.string().optional().describe("Name of a named breakdown the metric declares (e.g. 'by_plan' on MRR); needs metric. The requirement then covers the breakdown's query, one row per value."),
-    dialect: z.enum(DIALECTS).optional().describe("SQL dialect of the example SQL: postgres (default, also Redshift), snowflake, bigquery or databricks; needs metric."),
+    breakdown: z.string().optional().describe("Name of a breakdown the metric declares (e.g. 'by_plan' or 'by_segment' on MRR); needs metric. The requirement then covers the breakdown's query, one row per value. An unknown name lists the declared ones."),
+    dialect: z.enum(DIALECTS).optional().describe("Dialect of the example SQL: postgres (default, also Redshift), snowflake, bigquery or databricks. Any but postgres needs metric."),
   },
   async ({ metric, department, breakdown, dialect }) => {
     const all = data.dataRequirements || [];
@@ -528,7 +531,7 @@ server.tool(
         if (inDept.length === 1) resolved = { kind: "metric", metric: inDept[0] };
       }
       if (resolved.kind === "ambiguous") return text(formatAmbiguous(data, metric, resolved.candidates));
-      if (resolved.kind !== "metric") return text(`No metric is named "${metric}".${suggestMatches(data, metric)}`);
+      if (resolved.kind !== "metric") return text(notAMetric(metric, resolved));
       const id = metricFormulaId(data, resolved.metric);
       filtered = all.filter((dr) => dr.formulaId === id);
       if (filtered.length === 0) {
@@ -559,7 +562,7 @@ server.tool(
     }
 
     const parts: string[] = [
-      `# Data Requirements (${filtered.length} entries)\n`,
+      `# Data Requirements (${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}${metric && dialect ? `, example SQL in ${dialect}` : ""})\n`,
     ];
 
     // Group by department
@@ -581,8 +584,8 @@ server.tool(
 // --- Tool 6: search ---
 server.tool(
   "search",
-  "Search across all GASP Standard metrics and glossary definitions by whole words. Returns up to 10 results, one per metric or term, each with what matched and its URL: name and alias hits rank above definition hits, which rank above formula and field hits. When nothing matches (e.g. a misspelling) it returns the closest names labelled 'Did you mean'.",
-  { query: z.string().describe("Search query (e.g. 'churn', 'retention', 'pipeline coverage')") },
+  "Find GASP Standard metrics and glossary terms when you do not know the exact name. The query matches as a phrase of whole words, the last word allowing a plural or verb ending ('churn' finds 'churned'), against metric names, aliases, definitions, formulas, the fields each formula reads, categories and departments, plus glossary terms, definitions and sections. Returns up to 10 results, one per metric or term, each with its type, department, what matched, a snippet and its URL. Names, aliases and terms rank first, then words within them, then definitions, then formulas and fields. When nothing matches (e.g. a misspelling) it returns up to 6 close names labelled 'Did you mean'. Pass a result's name to lookup_metric or lookup_definition.",
+  { query: z.string().describe("Words to find (e.g. 'churn', 'retention', 'pipeline coverage', 'opportunity_stage')") },
   async ({ query: q }) => {
     const results = search(data, q, 10);
 
@@ -591,7 +594,7 @@ server.tool(
         content: [
           {
             type: "text" as const,
-            text: `No results found for "${q}".`,
+            text: `No results found for "${q}". Try fewer or broader words, or list_metrics to browse by department.`,
           },
         ],
       };
@@ -614,12 +617,12 @@ server.tool(
 // --- Tool 7: generate_query ---
 server.tool(
   "generate_query",
-  "Generate SQL for a GASP metric from your adapter. The query is compiled from the metric's canonical formula: one scalar subquery per aggregate, each on the warehouse table you mapped to that GASP dataset, with :period_start and :period_end parameters. Fields you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from. Pass breakdown with the name of a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) to get one row per value of its field. The SQL dialect (postgres, snowflake, bigquery, databricks; postgres also covers Redshift) is the dialect argument, else the adapter's warehouse when it names one of them, else postgres; the output says which it used.",
+  "SQL for one GASP Standard metric against your warehouse, compiled from its canonical formula and filled from your adapter: one scalar subquery per aggregate, each reading the table mapped to its GASP dataset, with :period_start and :period_end date parameters (both inclusive). Pairs you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from; the output lists them with any dataset that has no table and any mapping conflict, plus the URL, dialect, datasets, grain and the mapping it used. breakdown names a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) and returns one row per value. The dialect (postgres, snowflake, bigquery or databricks; postgres also covers Redshift) is the dialect argument, else the adapter's warehouse when it names one of them, else postgres. Check the adapter with validate_adapter first.",
   {
-    metric: z.string().describe("Metric name or abbreviation (e.g. 'NRR', 'CAC', 'Pipeline Value', 'ARR')"),
-    adapter: z.string().describe("Your GASP adapter JSON string (see validate_adapter)"),
-    breakdown: z.string().optional().describe("Name of a named breakdown the metric declares (e.g. 'by_plan' on MRR). The query returns one row per value of the breakdown's field."),
-    dialect: z.enum(DIALECTS).optional().describe("SQL dialect: postgres (also Redshift), snowflake, bigquery or databricks. Defaults to the adapter's warehouse when it names one of them, else postgres."),
+    metric: z.string().describe("Exact metric name, abbreviation, alias or formula id (e.g. 'NRR', 'CAC', 'Pipeline Value', 'ARR'), resolved as in lookup_metric"),
+    adapter: z.string().describe("Your GASP adapter as a JSON string (schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json; check it with validate_adapter)"),
+    breakdown: z.string().optional().describe("Name of a breakdown the metric declares (e.g. 'by_plan' on MRR). The query returns one row per value of the breakdown's field or bucket. An unknown name lists the declared ones."),
+    dialect: z.enum(DIALECTS).optional().describe("SQL dialect: postgres (also Redshift), snowflake, bigquery or databricks. Omit to use the adapter's warehouse when it names one of them (postgresql and redshift read as postgres), else postgres."),
   },
   async ({ metric: metricName, adapter: adapterJson, breakdown, dialect: requestedDialect }) => {
     const resolved = resolveMetric(data, metricName);
@@ -627,10 +630,10 @@ server.tool(
       return { content: [{ type: "text" as const, text: formatAmbiguous(data, metricName, resolved.candidates) }] };
     }
     if (resolved.kind !== "metric") {
-      return { content: [{ type: "text" as const, text: `No metric is named "${metricName}".${suggestMatches(data, metricName)}` }] };
+      return { content: [{ type: "text" as const, text: notAMetric(metricName, resolved) }] };
     }
     let adapter: any;
-    try { adapter = JSON.parse(adapterJson); } catch { return { content: [{ type: "text" as const, text: "Invalid adapter JSON." }] }; }
+    try { adapter = JSON.parse(adapterJson); } catch { return { content: [{ type: "text" as const, text: "Invalid adapter JSON: pass the adapter as a JSON string." }] }; }
     if (!Array.isArray(adapter?.mappings)) {
       return { content: [{ type: "text" as const, text: 'Adapter must have a "mappings" array. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json' }] };
     }
@@ -657,9 +660,9 @@ server.tool(
     if (template.breakdown) parts.push(`**Breakdown${breakdown ? ` \`${breakdown}\`` : ""}:** the query returns one row per \`${template.breakdown.field}\` value${template.breakdown.via ? `, with its \`${template.breakdown.via.key}\` (read from ${template.breakdown.via.dataset})` : ""}.`);
     if (template.staged) parts.push("**Note:** this metric uses a cohort or a prior-period comparison; the query is correct but each aggregate re-reads the table. A staged dataset makes it cheaper.");
     if (r.missingFields.length) parts.push(`**Unmapped fields (left as placeholders):** \`${r.missingFields.join("\`, \`")}\``);
-    if (r.missingTables.length) parts.push(`**Datasets with no table:** ${r.missingTables.join(", ")}. Add them under \"datasets\" in the adapter or map a field from each.`);
+    if (r.missingTables.length) parts.push(`**Datasets with no table:** ${r.missingTables.join(", ")}. Name a table for each under \"datasets\" in the adapter, or map one of its fields with a schema.table column reference.`);
     for (const c of r.conflicts) parts.push(`**Conflict:** ${c}`);
-    parts.push("", "Parameters: `:period_start` and `:period_end` are dates bounding the reporting period.", "", "```sql\n" + r.sql + "\n```");
+    parts.push("", "Parameters: `:period_start` and `:period_end` are the first and last dates of the reporting period, both inclusive.", "", "```sql\n" + r.sql + "\n```");
     if (r.mapped.length) {
       parts.push("\n**Field mapping used:**");
       for (const m of r.mapped) parts.push(`- \`${m.field}\` (${m.dataset}) → \`${m.ref}\`${m.transform ? ` (transform: ${m.transform})` : ""}`);
@@ -671,7 +674,7 @@ server.tool(
 // --- Tool 8: validate_adapter ---
 server.tool(
   "validate_adapter",
-  "Validate a GASP adapter against the standard. First applies the adapter JSON Schema (https://gaspwiki.com/schemas/gasp-adapter-v1.json, version 1.1) and lists each violation with its JSON path: missing version or mappings, unknown version values, keys the schema does not allow and values of the wrong type. Then, whether or not the schema passed, it reports gaspField values not in the ontology, unknown datasets, fields mapped to a dataset that does not carry them, bare column names on fields that live on several datasets, datasets whose fields point at different tables, scores every metric against the field and dataset pairs its canonical formula reads (fully covered, partially covered, not covered), lists enum fields mapped without a transform, covered metrics with no declared owner and owners naming unknown metrics, and ranks the next pairs to map. Coverage needs a mappings array; without one only the schema result is returned.",
+  "Check a GASP adapter against the standard and score its coverage. It first applies the adapter JSON Schema (https://gaspwiki.com/schemas/gasp-adapter-v1.json, versions 1.0 and 1.1) and lists each violation with its JSON path: missing version or mappings, unknown version values, keys the schema does not allow and values of the wrong type. Then, whether or not the schema passed, it reports gaspField values not in the ontology, unknown datasets, fields mapped to a dataset that does not carry them, bare column names on fields that live on several datasets, datasets whose fields point at different tables and pairs mapped twice. It counts the field and dataset pairs mapped and the datasets with a table, scores every metric with a formula against the pairs its compiled SQL reads (fully covered, partially covered with the missing pairs, not covered), lists enum fields mapped without a transform, covered metrics with no declared owner and owners naming unknown metrics. It also ranks up to 15 unmapped pairs by how many partially covered metrics need them. Without a mappings array only the schema result is returned. Run it before generate_query.",
   { adapter: z.string().describe("The adapter JSON as a string. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json") },
   async ({ adapter: adapterJson }) => {
     let adapter: any;
@@ -684,11 +687,11 @@ server.tool(
 // --- Tool 9: infer_drivers ---
 server.tool(
   "infer_drivers",
-  "Diagnose what could explain an observed metric movement. Walks the GASP relationship graph in reverse and ranks upstream metrics whose movement (in the inferred direction) is consistent with the observation. Returns ranked candidates with full path and per-step edge classifications. Structural reasoning, not numeric forecasting: scores are attenuation products, not magnitude estimates. Compose with explain_path to scrutinise a chain or coverage_gap to check whether a candidate is being measured. For counterfactual 'what if' simulation, use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier instead.",
+  "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
   {
-    metric: z.string().describe("Metric name, abbreviation, or graph id (e.g. 'ARR', 'NRR', 'arr')"),
-    direction: z.enum(["up", "down"]).describe("Observed direction of movement"),
-    maxDepth: z.number().int().min(1).max(8).optional().describe("Maximum traversal depth (default 6)"),
+    metric: z.string().describe("Metric name, abbreviation or graph id (e.g. 'ARR', 'Net Revenue Retention', 'nrr'), resolved as in lookup_metric. It must be a metric in the relationship graph."),
+    direction: z.enum(["up", "down"]).describe("Observed movement of the metric: up or down"),
+    maxDepth: z.number().int().min(1).max(8).optional().describe("Maximum number of edges to walk back, 1 to 8 (default 6)"),
   },
   async ({ metric: name, direction: dirStr, maxDepth }) => {
     const { node, text: missing } = resolveNode(name);
@@ -697,7 +700,7 @@ server.tool(
     }
     if (!traversalCtx.metricNodeIds.has(node.id)) {
       return {
-        content: [{ type: "text" as const, text: `"${node.label}" is not a metric node. infer_drivers operates on metrics only. Try get_relationships for entity/concept nodes.` }],
+        content: [{ type: "text" as const, text: `"${node.label}" is ${node.nodeType === "concept" ? "a concept" : "an entity"}, not a metric. infer_drivers works on metric nodes only; use get_relationships for an entity or concept.` }],
       };
     }
 
@@ -733,11 +736,11 @@ server.tool(
 // --- Tool 10: explain_path ---
 server.tool(
   "explain_path",
-  "Explain how one metric reaches another by enumerating edge chains in the GASP relationship graph. Each step carries the canonical edge type and a classification bucket (metric_signal / structural / lifecycle / behavioral / assignment / generative). Returns up to 5 distinct paths sorted by length then attenuation. Empty if disconnected in the forward direction. Compose with infer_drivers to scrutinise a candidate chain.",
+  "How a movement in one graph node reaches another: up to 5 chains of edges followed forward from `from` to `to`, shortest first, then by highest score. Each step gives the edge type, its classification (metric_signal, structural, lifecycle, behavioral, assignment or generative), its attenuation and whether it inverts direction; each path gives its score and the direction the target moves when the source rises. A baseline edge (MRR into NRR) can only start a path. Names resolve as in get_relationships, so entities and concepts work too. No path means no forward chain within maxDepth: try the reverse. Use it on a candidate from infer_drivers.",
   {
-    from: z.string().describe("Source metric or node (name, abbreviation, or id)"),
-    to: z.string().describe("Target metric or node"),
-    maxDepth: z.number().int().min(1).max(8).optional().describe("Maximum chain length (default 6)"),
+    from: z.string().describe("Starting node: a metric name, abbreviation or graph id, or an entity or concept (e.g. 'Health Score', 'customer')"),
+    to: z.string().describe("Target node, in the same forms as from (e.g. 'NRR')"),
+    maxDepth: z.number().int().min(1).max(8).optional().describe("Maximum chain length in edges, 1 to 8 (default 6)"),
   },
   async ({ from, to, maxDepth }) => {
     const fromHit = resolveNode(from);
@@ -754,13 +757,14 @@ server.tool(
       return {
         content: [{
           type: "text" as const,
-          text: `# ${fromNode.label} → ${toNode.label}\n\nNo forward path found within depth ${maxDepth ?? 6}. They may be disconnected in this direction (try the reverse, or use coverage_gap to inspect connectivity).`,
+          text: `# ${fromNode.label} → ${toNode.label}\n\nNo forward path found within depth ${maxDepth ?? 6}. They may be connected only in the other direction (swap from and to) or the chain may be longer than maxDepth.`,
         }],
       };
     }
 
     const parts: string[] = [
       `# ${fromNode.label} → ${toNode.label}: ${paths.length} path${paths.length === 1 ? "" : "s"}\n`,
+      `_End direction: how ${toNode.label} moves when ${fromNode.label} rises along that path. Scores are products of edge attenuations and say nothing about magnitude._\n`,
     ];
 
     for (let i = 0; i < paths.length; i++) {
@@ -784,9 +788,9 @@ server.tool(
 // --- Tool 11: coverage_gap ---
 server.tool(
   "coverage_gap",
-  "Audit a metric set against the GASP relationship graph. Returns three groups: upstream_missing (one-hop drivers not in the set), downstream_missing (one-hop downstream metrics not in the set), and disconnected (in-graph metrics with no path of any length to/from the set). Operates on metric nodes only; entities and concepts are ignored. Use to identify gaps before instrumenting a dashboard, then compose with infer_drivers or explain_path to investigate specific candidates.",
+  "Audit a set of tracked metrics against the GASP relationship graph. Returns three lists: upstream missing (metrics with a direct edge into the set that the set leaves out), downstream missing (metrics with a direct edge from the set that it leaves out) and disconnected (graph metrics with no path of any length, in either direction and through any node, to the set; the first 25 shown). Names resolve as in lookup_metric; an input that is ambiguous, outside the graph, not a metric or unknown is listed as unresolved with the reason. Use it before instrumenting a dashboard, then infer_drivers or explain_path on the candidates.",
   {
-    metrics: z.array(z.string()).min(1).describe("Metric names, abbreviations, or graph ids (e.g. ['ARR', 'NRR', 'CAC'])"),
+    metrics: z.array(z.string()).min(1).describe("The metrics you track, as names, abbreviations or graph ids (e.g. ['ARR', 'NRR', 'CAC'])"),
   },
   async ({ metrics }) => {
     const resolved: string[] = [];
@@ -797,13 +801,18 @@ server.tool(
         resolved.push(node.id);
       } else {
         const r = resolveNodeResult(data, m);
-        unresolved.push(r.kind === "ambiguous" ? `${m} (ambiguous: ${r.candidates.map((c) => `\`${metricFormulaId(data, c)}\``).join(" or ")})` : m);
+        unresolved.push(
+          r.kind === "ambiguous" ? `${m} (ambiguous: ${r.candidates.map((c) => `\`${metricFormulaId(data, c)}\``).join(" or ")})`
+          : r.kind === "node" ? `${m} (${r.node.nodeType === "concept" ? "a concept" : "an entity"}, not a metric)`
+          : r.metric ? `${m} (not in the relationship graph)`
+          : `${m} (no match)`,
+        );
       }
     }
 
     if (resolved.length === 0) {
       return {
-        content: [{ type: "text" as const, text: `No metric nodes resolved from input: ${metrics.join(", ")}. Try ids like 'arr', 'nrr', 'cac' or labels like 'NRR'.` }],
+        content: [{ type: "text" as const, text: `No input resolved to a metric in the relationship graph: ${unresolved.join(", ")}. Pass graph ids ('arr', 'nrr', 'cac') or names ('NRR', 'Net Revenue Retention').` }],
       };
     }
 
@@ -823,17 +832,17 @@ server.tool(
     parts.push("");
 
     parts.push(`## Upstream missing (${result.upstreamMissing.length})`);
-    parts.push(`_Direct drivers of the tracked set that aren't tracked. Add to capture root-cause signal._\n`);
+    parts.push(`_Metrics with a direct edge into the tracked set that you do not track. Adding them shows what moves the set._\n`);
     parts.push(formatList(result.upstreamMissing));
     parts.push("");
 
     parts.push(`## Downstream missing (${result.downstreamMissing.length})`);
-    parts.push(`_Metrics directly fed by the tracked set, not tracked. Add to see what the inputs translate into._\n`);
+    parts.push(`_Metrics with a direct edge from the tracked set that you do not track. Adding them shows what the set moves._\n`);
     parts.push(formatList(result.downstreamMissing));
     parts.push("");
 
     parts.push(`## Disconnected (${result.disconnected.length})`);
-    parts.push(`_In-graph metrics with no path (any length, either direction) to the tracked set._\n`);
+    parts.push(`_Graph metrics with no path of any length, in either direction, to the tracked set._\n`);
     if (result.disconnected.length > 25) {
       parts.push(formatList(result.disconnected.slice(0, 25)));
       parts.push(`\n_…and ${result.disconnected.length - 25} more._`);
@@ -849,8 +858,8 @@ server.tool(
 // --- Tool 12: lookup_definition ---
 server.tool(
   "lookup_definition",
-  "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'Logo Churn Rate', 'CEL'). Returns the full definition, its section, related links and page URL. Use lookup_metric for metrics.",
-  { term: z.string().describe("Term name, abbreviation or slug (e.g. 'Signal Type', 'CEL', 'metric-owner')") },
+  "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'CEL'): the full definition and body, its section, the canonical or reference link, where it is used and the page URL. The term must match exactly, ignoring case: the term, its slug or either part of 'Term (Abbreviation)', so 'CEL' finds 'CEL (Commercial Event Ledger)'. A metric name points you to lookup_metric and a miss returns close names. Some metrics also have a short glossary entry (Logo Churn Rate, Win Rate); lookup_metric gives their formula and benchmarks.",
+  { term: z.string().describe("Exact term, abbreviation or slug, case-insensitive (e.g. 'Signal Type', 'CEL', 'metric-owner')") },
   async ({ term }) => {
     const def = findDefinition(data, term);
     if (!def) {

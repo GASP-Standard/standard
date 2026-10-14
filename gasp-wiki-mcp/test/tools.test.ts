@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { loadStandard, resolveNode, resolveNodeResult, findDefinition, getRelationships, search, metricFormulaId, isMetricStub } from "../src/loader.js";
+import { loadStandard, resolveNode, resolveNodeResult, findDefinition, getRelationships, search, metricFormulaId, isMetricStub, suggestNodes } from "../src/loader.js";
+import { metricUrl, nodeUrl } from "../src/urls.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "../src/tools.js";
@@ -393,7 +394,7 @@ describe("get_formula total-mode breakdowns", () => {
   it("prints the total mode on CAC's by_cost_centre breakdown", () => {
     const r = resolveMetric(data, "CAC (Customer Acquisition Cost)");
     if (r.kind !== "metric") throw new Error("CAC did not resolve");
-    expect(formatCanonicalFormula(data, r.metric).join("\n")).toContain("`by_cost_centre` by `cost_centre` (total mode: other aggregates stay whole)");
+    expect(formatCanonicalFormula(data, r.metric).join("\n")).toContain("`by_cost_centre` by `cost_centre` (total mode: aggregates on a dataset without `cost_centre` read the whole population)");
   });
 });
 
@@ -534,6 +535,32 @@ describe("entity measured-by list", () => {
       expect(rel.measuredBy.every((m) => !isMetricStub(m) && m.department)).toBe(true);
     }
     expect(getRelationships(data, "arr").measuredBy).toEqual([]);
+  });
+});
+
+describe("graph tool replies", () => {
+  it("get_relationships neighbours all carry a page URL", () => {
+    const rel = getRelationships(data, "nrr");
+    const all = [...rel.upstream, ...rel.downstream].map((r) => r.node);
+    expect(all.length).toBeGreaterThan(0);
+    for (const n of all) expect(nodeUrl(n).startsWith("https://gaspwiki.com/v1/"), n.id).toBe(true);
+    expect(nodeUrl(rel.node!)).toBe(metricUrl(data.metrics.find((m) => m.slug === rel.node!.slug && m.department === rel.node!.department)!));
+  });
+
+  it("a graph miss with no close name still says what to do next", () => {
+    const text = suggestNodes(data, "Revenue Velocity");
+    expect(text).toContain("search");
+    expect(text).toContain("lookup_metric");
+    expect(suggestNodes(data, "churned")).toContain("Did you mean");
+  });
+
+  it("list_metrics counts a cross-referenced metric once", () => {
+    const outcome = data.metrics.filter((m) => m.signalType === "outcome" || m.signalTypeSecondary === "outcome");
+    const listings = outcome.length;
+    const distinct = new Set(outcome.map((m) => metricFormulaId(data, m))).size;
+    expect(distinct).toBeLessThan(listings);
+    const nrr = outcome.filter((m) => metricFormulaId(data, m) === "nrr");
+    expect(nrr.length).toBeGreaterThan(1);
   });
 });
 

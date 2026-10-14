@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadStandard, findDefinition, search } from "../src/loader.js";
-import { SITE, metricUrl, definitionUrl, resolveDocLink } from "../src/urls.js";
+import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "../src/urls.js";
 import type { StandardData } from "../src/types.js";
 
 // Regression: agents were handed definitions with no URL and guessed their
@@ -33,6 +33,7 @@ function emittedUrls(d: StandardData): Array<{ from: string; url: string }> {
       if (url) out.push({ from: `link on ${def.term}`, url });
     }
   }
+  for (const n of d.nodes) out.push({ from: `node ${n.id}`, url: nodeUrl(n) });
   return out;
 }
 
@@ -51,6 +52,20 @@ function staticRoutes(): Set<string> {
   walk(PAGES, "");
   return routes;
 }
+
+describe("graph node URLs", () => {
+  it("every metric node links to its canonical metric page and every entity or concept to a glossary page", () => {
+    const metricPaths = new Set(data.metrics.map((m) => new URL(metricUrl(m)).pathname));
+    for (const n of data.nodes) {
+      const path = new URL(nodeUrl(n)).pathname;
+      if (!n.nodeType || n.nodeType === "metric") expect(metricPaths.has(path), n.id).toBe(true);
+      else expect(path.startsWith("/v1/definitions"), n.id).toBe(true);
+    }
+    const withDefinition = data.nodes.filter((n) => n.nodeType && n.definition);
+    expect(withDefinition.length).toBeGreaterThan(0);
+    for (const n of withDefinition) expect(nodeUrl(n)).toBe(`${SITE}/v1/definitions/${n.definition}`);
+  });
+});
 
 describe("URL helpers", () => {
   it("gives the four framework terms their definition pages", () => {

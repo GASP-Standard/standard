@@ -5,7 +5,7 @@
  * utils/metric-helpers.ts) so agents get working links instead of guessing.
  * test/urls.test.ts checks every emitted URL against the site's routes.
  */
-import type { Metric, Definition } from "./types.js";
+import type { Metric, Definition, RelationshipNode } from "./types.js";
 
 export const SITE = "https://gaspwiki.com";
 
@@ -20,6 +20,17 @@ export function metricUrl(m: Pick<Metric, "department" | "slug">): string {
 
 export function definitionUrl(d: Pick<Definition, "slug">): string {
   return `${SITE}/v1/definitions/${d.slug}`;
+}
+
+/**
+ * The page behind a relationship graph node, the same rule the site uses to
+ * generate src/data/metric-links.ts: a metric node links to its canonical
+ * metric page, an entity or concept node to its glossary page when it has one
+ * and to the glossary index otherwise.
+ */
+export function nodeUrl(n: Pick<RelationshipNode, "nodeType" | "department" | "slug" | "definition">): string {
+  if ((!n.nodeType || n.nodeType === "metric") && n.department && n.slug) return metricUrl({ department: n.department, slug: n.slug });
+  return n.definition ? definitionUrl({ slug: n.definition }) : `${SITE}/v1/definitions`;
 }
 
 /**

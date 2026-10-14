@@ -24,7 +24,7 @@ export { resolveMetric, abbreviation, baseName, type Resolved } from "./loader.j
 export function suggestMatches(data: StandardData, name: string, limit = 6): string {
   if (!name.trim()) return "";
   const hits = closestNames(data, name, limit).map(({ metric, definition }) => (metric ? `${metric.name} (${metric.department})` : `${definition!.term} (glossary)`));
-  if (hits.length === 0) return " Try the 'search' tool.";
+  if (hits.length === 0) return " No close names. Try search with a word from the name.";
   return ` Did you mean: ${hits.join("; ")}? Pass the exact name.`;
 }
 
@@ -49,7 +49,9 @@ export function formatCanonicalFormula(data: StandardData, metric: Metric): stri
     return parts;
   }
   parts.push("```\n" + f.formula + "\n```", `**Unit:** ${f.unit}${f.unit === "percent" ? " (the formula yields an unscaled ratio)" : ""}`);
-  const totalMode = " (total mode: other aggregates stay whole)";
+  /** Total mode: an aggregate whose dataset lacks the dimension stays whole. A bucket's dimension is its expression's fields. */
+  const totalMode = (b: BreakdownSpec, field: string) =>
+    ` (total mode: aggregates on a dataset without ${typeof b === "object" && "expression" in b ? "the bucket expression's fields" : `\`${field}\``} read the whole population)`;
   const bucketText = (b: Record<string, [number, number | null]>) =>
     Object.entries(b).map(([label, [lo, hi]]) => `\`${label}\` ${hi === null ? `${lo} and over` : `${lo} to ${hi}`}`).join(", ");
   /** Field and description of a breakdown spec; `column` names a bucketed breakdown's output column. */
@@ -60,12 +62,12 @@ export function formatCanonicalFormula(data: StandardData, metric: Metric): stri
   };
   if (f.breakdown) {
     const { field, total, text } = spec(f.breakdown, "bucket");
-    parts.push(`**Breakdown by:** ${text}${total ? totalMode : ""}. The formula is computed once per ${field} value, one row per value; aggregates under total() read the whole population.`);
+    parts.push(`**Breakdown by:** ${text}${total ? totalMode(f.breakdown, field) : ""}. The formula is computed once per ${field} value, one row per value; aggregates under total() read the whole population.`);
   }
   if (f.forms) for (const [k, v] of Object.entries(f.forms)) parts.push(`**${k === "O" ? "Operating form (O)" : "Market form (M)"}:**`, "```\n" + v + "\n```");
   if (f.variants) for (const [k, v] of Object.entries(f.variants)) parts.push(`**Variant \`${k}\`:**`, "```\n" + v + "\n```");
   if (f.breakdowns && Object.keys(f.breakdowns).length) {
-    const list = Object.entries(f.breakdowns).map(([k, v]) => { const s = spec(v, k); return `\`${k}\` by ${s.text}${s.total ? totalMode : ""}`; }).join(", ");
+    const list = Object.entries(f.breakdowns).map(([k, v]) => { const s = spec(v, k); return `\`${k}\` by ${s.text}${s.total ? totalMode(v, s.field) : ""}`; }).join(", ");
     parts.push(`**Breakdowns:** ${list}. Each computes the main formula once per value of its field, one row per value.`);
   }
   if (f.notes) parts.push(`**Notes:** ${f.notes}`);
@@ -424,7 +426,7 @@ export function formatValidationReport(result: AdapterValidation, adapter: Adapt
   if (enumNoTransform.length) p.push(`## Enum fields mapped without a transform (${enumNoTransform.length})`, "The column must already produce GASP's declared values; otherwise add a CASE transform:", ...enumNoTransform.map((e) => `- \`${e.field}\`: ${e.values.join(", ")}`), "");
   if (unowned.length) p.push(`## Covered metrics without an owner (${unowned.length})`, "Add metricOwners entries so someone resolves definition disputes:", unowned.join(", "), "");
   if (badOwners.length) p.push(`## Owners naming unknown metrics (${badOwners.length})`, ...badOwners.map((o) => `- "${o.metric}" (${o.team})`), "");
-  if (nextToMap.length) p.push("## Highest-value fields to map next", "Each field@dataset pair unlocks this many partially covered metrics:", ...nextToMap.map((n) => `- \`${n.pair}\` (${n.unlocks})`), "");
+  if (nextToMap.length) p.push("## Highest-value fields to map next", "Each field@dataset pair with the number of partially covered metrics that still need it:", ...nextToMap.map((n) => `- \`${n.pair}\` (${n.unlocks})`), "");
   return p.join("\n");
 }
 
