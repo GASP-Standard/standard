@@ -2,7 +2,7 @@
 
 Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package follows [semver](https://semver.org/). Changes to the standard's content are listed under the package version that first shipped them, since the package bundles the standard. `DECISIONS.md` has the reasoning behind each rule.
 
-## [1.14.1] - Unreleased
+## [1.14.1] - 2026-10-14
 
 ### Changed
 - Tool descriptions and output headers use colons in place of em dashes (`# NRR: relationships`, `# Coverage gap: 3 metrics`, `## Path 1: 4 steps`), as does the Cypher export header.
