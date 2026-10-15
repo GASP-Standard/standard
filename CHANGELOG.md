@@ -2,7 +2,7 @@
 
 Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package follows [semver](https://semver.org/). Changes to the standard's content are listed under the package version that first shipped them, since the package bundles the standard. `DECISIONS.md` has the reasoning behind each rule.
 
-## [Unreleased]
+## [1.16.0] - 2026-10-15
 
 ### Added
 - Five metrics (306 in all). Core: Reactivation MRR (`reactivation_mrr`, the CEL `reactivation` event as the fifth MRR movement), Total Customers (`total_customers`), New Customers (`new_customers`) and Churned Customers (`churned_customers`), each with a `by_segment` breakdown. Product: Trial-to-Paid Conversion Rate (`trial_to_paid_conversion_rate`), counting trials by the date they ended, with a `by_start_date` variant. All five are graph nodes with access classifications; New Customers drives New MRR, Churned Customers drives Churned MRR and Trial-to-Paid drives New Customers.

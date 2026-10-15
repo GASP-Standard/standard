@@ -50,7 +50,7 @@ The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return pat
 
 ## Data
 
-Version 1.15.0.
+Version 1.16.0.
 
 - 306 metrics across 13 departments
 - 94 glossary definitions (81 SaaS domain + 13 GASP framework)
