@@ -61,7 +61,8 @@
     "plan": "gasp_plans",
     "product": "gasp_products",
     "license": "gasp_licenses",
-    "lifecycle_event": "gasp_lifecycle_events"
+    "lifecycle_event": "gasp_lifecycle_events",
+    "trial": "gasp_trials"
   },
   "mappings": [
     {
@@ -430,6 +431,11 @@
       "gaspField": "customer_id",
       "dataset": "contact",
       "warehouseRef": "gasp_contacts.account_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "trial",
+      "warehouseRef": "gasp_trials.account_id"
     },
     {
       "gaspField": "customer_status",
@@ -1746,6 +1752,22 @@
     {
       "gaspField": "training_completed",
       "warehouseRef": "gasp_partners.training_completed"
+    },
+    {
+      "gaspField": "trial_end_date",
+      "warehouseRef": "gasp_trials.trial_end_date"
+    },
+    {
+      "gaspField": "trial_id",
+      "warehouseRef": "gasp_trials.trial_id"
+    },
+    {
+      "gaspField": "trial_start_date",
+      "warehouseRef": "gasp_trials.trial_start_date"
+    },
+    {
+      "gaspField": "trial_status",
+      "warehouseRef": "gasp_trials.outcome"
     },
     {
       "gaspField": "underrepresented_group",

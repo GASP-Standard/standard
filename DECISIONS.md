@@ -5,6 +5,25 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-14] Reactivation is the fifth MRR movement, customer counts are metrics and trials convert by the date they end
+**Decision:** Add Reactivation MRR, Total Customers, New Customers, Churned Customers (Core) and Trial-to-Paid Conversion Rate (Product). Net New MRR becomes new + expansion + reactivation − churned − contraction, recorded as a defect fix rather than deferred to v2. ARPA, CAC and Logo Churn Rate reference the count metrics instead of inlining the aggregates. Trial-to-Paid counts trials by the date they ended, over a new `trial` dataset.
+
+**Context:** A check of the framework against the usual reference sets (a16z, Bessemer, KeyBanc and SaaS Capital surveys, Skok, the MRR tools, DORA, OpenView PLG) found the universal set covered except for three things. The CEL already had a `reactivation` event type and NRR-M already consumed cohort reactivation, yet no movement metric reported it and Net New MRR ignored it, so the waterfall did not reconcile whenever a churned customer came back. The three per-customer ratios all divided by customer counts that were not metrics, so a board's "new logos" number had no canonical home and the graph could not show that New Customers drives CAC. A product-led company's first conversion metric was absent; Activation Rate measures reaching value, not paying.
+
+**Alternatives considered:**
+- **Add Reactivation MRR beside Net New MRR and leave the formula.** Rejected by the owner: the definition says "all movements", and a waterfall that fails to net is a defect, not a convention.
+- **Standalone count metrics without touching ARPA, CAC and Logo Churn.** Rejected: the numbers are identical either way, and referencing the counts gives the graph the edges the formulas implied and lets `infer_drivers` walk from CAC to New Customers.
+- **Count trials by start date.** Rejected: it understates recent periods while trials are running. Kept as a declared variant.
+- **SaaS Quick Ratio, cRPO, TCV, contract term, customer concentration.** Left out on the owner's call: duplicative, late-stage or diligence numbers rather than operating standards.
+
+**Consequences:**
+- Third recorded exception to the no-breaking-changes rule in `GOVERNANCE.md`: a numerator changed. An implementation of the old Net New MRR formula reports a lower number than the standard whenever it has reactivation events.
+- `trial` is a fact dataset whose date is the start date; the formula wraps its aggregates in `all_time()` so a trial that started in an earlier period counts in the period it ended.
+- The demo dashboard carves $750 a month of reactivation out of expansion so every waterfall still nets and NRR-O still rounds to 107%; the TWIN Modifier does not model the fifth movement and says so.
+- 306 metrics, 94 definitions, 268 fields, 52 datasets, 100 graph nodes, 200 edges, 294 formula entries, 279 templates.
+
+---
+
 ## [2026-10-14] A metric's name identifies it, so the four metrics that shared a heading are renamed in v1
 **Decision:** Support's Escalation Rate becomes Ticket Escalation Rate, Professional Services' Escalation Rate becomes Project Escalation Rate, Professional Services' Milestone Completion Rate becomes Project Milestone Completion Rate and Onboarding's Milestone Completion Rate becomes Onboarding Milestone Completion Rate. Slugs follow the headings, three formula ids change (`ticket_escalation_rate`, `project_escalation_rate`, `project_milestone_completion_rate`), the old pages redirect, and the change ships as MCP 1.15.0 with the old and new ids in the changelog. This is the second breaking change to the canon under `GOVERNANCE.md`, taken knowingly rather than deferred to v2.
 

@@ -2,7 +2,19 @@
 
 Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package follows [semver](https://semver.org/). Changes to the standard's content are listed under the package version that first shipped them, since the package bundles the standard. `DECISIONS.md` has the reasoning behind each rule.
 
-## [1.15.0] - Unreleased
+## [Unreleased]
+
+### Added
+- Five metrics (306 in all). Core: Reactivation MRR (`reactivation_mrr`, the CEL `reactivation` event as the fifth MRR movement), Total Customers (`total_customers`), New Customers (`new_customers`) and Churned Customers (`churned_customers`), each with a `by_segment` breakdown. Product: Trial-to-Paid Conversion Rate (`trial_to_paid_conversion_rate`), counting trials by the date they ended, with a `by_start_date` variant. All five are graph nodes with access classifications; New Customers drives New MRR, Churned Customers drives Churned MRR and Trial-to-Paid drives New Customers.
+- A `trial` dataset with `trial_id`, `trial_start_date`, `trial_end_date` and `trial_status` (active, converted, expired, cancelled); `customer_id` sits on it (268 fields, 52 datasets). A Trial glossary entry (94 definitions).
+- A curated `marketing_cac drives cac` edge in `relationships.json`. `infer_drivers` on CAC now names Marketing CAC, and the TWIN Modifier walks the graph edge in place of its own. 100 nodes, 200 edges.
+
+### Changed
+- Net New MRR is `new + expansion + reactivation - churned - contraction`. The formula had left reactivation out, so carry MRR plus the movements only reached ending MRR when reactivation was zero; the definition ("after accounting for all movements") already said what the formula now computes. Under `GOVERNANCE.md` a changed numerator is a breaking change: an implementation that followed the old formula now reports a different number when it has reactivation events. `DECISIONS.md` for 2026-10-14 has the reasoning.
+- ARPA divides by `metric.total_customers`, CAC (base, O and M forms) by `metric.new_customers` and Logo Churn Rate is `metric.churned_customers / metric.total_customers at period_start`. Every number is unchanged; the graph gains the component edges the formulas implied. The temporal semantic for the movements is "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)", and the counts carry "Customer Count" and "Customer Movements (New, Churned)".
+- The fixture has a trial table (one converted trial per customer, six lost trials) and the execute test pins the five new metrics and the Net New MRR reconciliation for June 2026 (25 pinned metrics).
+
+## [1.15.0] - 2026-10-14
 
 ### Changed
 - Four metrics are renamed so that every metric in the standard has a name of its own. Support's Escalation Rate is Ticket Escalation Rate (`ticket_escalation_rate`), Professional Services' Escalation Rate is Project Escalation Rate (`project_escalation_rate`), Professional Services' Milestone Completion Rate is Project Milestone Completion Rate (`project_milestone_completion_rate`) and Onboarding's Milestone Completion Rate is Onboarding Milestone Completion Rate (its id `onboarding_milestone_completion_rate` is unchanged). Definitions, formulas and populations are as they were. The old page URLs redirect to the new pages. This is a breaking change to the canon under `GOVERNANCE.md` (a slug and three formula ids change); the reasoning is in `DECISIONS.md` for 2026-10-14. An adapter or query that names one of the old ids needs the new one.

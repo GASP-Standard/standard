@@ -28,6 +28,15 @@
     "core::arpa-average-revenue-per-account": {
       "primary": "outcome"
     },
+    "core::total-customers": {
+      "primary": "outcome"
+    },
+    "core::new-customers": {
+      "primary": "outcome"
+    },
+    "core::churned-customers": {
+      "primary": "outcome"
+    },
     "core::mrr-growth-rate": {
       "primary": "outcome"
     },
@@ -41,6 +50,9 @@
       "primary": "outcome"
     },
     "core::contraction-mrr": {
+      "primary": "outcome"
+    },
+    "core::reactivation-mrr": {
       "primary": "outcome"
     },
     "core::carry-mrr": {
@@ -596,6 +608,9 @@
     },
     "product::activation-rate": {
       "primary": "outcome"
+    },
+    "product::trial-to-paid-conversion-rate": {
+      "primary": "leading"
     },
     "product::feature-adoption-rate": {
       "primary": "leading"

@@ -408,6 +408,7 @@
       "cac",
       "cac_payback",
       "carry_mrr",
+      "churned_customers",
       "churned_mrr",
       "contact_coverage",
       "contraction_mrr",
@@ -427,6 +428,7 @@
       "ltv_cac_ratio",
       "marketing_cac",
       "net_new_mrr",
+      "new_customers",
       "new_mrr",
       "nrr",
       "on_time_completion_rate",
@@ -437,6 +439,7 @@
       "order_to_activation_time",
       "pqas",
       "qbr_completion",
+      "reactivation_mrr",
       "revenue_churn_rate",
       "session_attendance_rate",
       "task_completion_rate",
@@ -444,6 +447,8 @@
       "time_spent_per_onboarding",
       "time_to_full_adoption",
       "time_to_go_live",
+      "total_customers",
+      "trial_to_paid_conversion_rate",
       "ttfv",
       "upsell_rate"
     ],
@@ -458,6 +463,7 @@
       "cac",
       "cac_payback",
       "carry_mrr",
+      "churned_customers",
       "churned_mrr",
       "contraction_mrr",
       "cross_sell_rate",
@@ -475,8 +481,10 @@
       "mrr",
       "mrr_growth_rate",
       "net_new_mrr",
+      "new_customers",
       "new_mrr",
       "nrr",
+      "reactivation_mrr",
       "recognized_vs_billed",
       "renewal_forecast_accuracy",
       "renewal_notification_rate",
@@ -1441,7 +1449,8 @@
         "survey_response",
         "product_event",
         "revenue_schedule",
-        "contact"
+        "contact",
+        "trial"
       ],
       "sources": [
         "billing",
@@ -1453,7 +1462,7 @@
         "survey_tool"
       ],
       "description": "Customer (account) identifier. Primary business noun; CEL name",
-      "metricCount": 26
+      "metricCount": 29
     },
     {
       "id": "customer_status",
@@ -1472,7 +1481,7 @@
         "dormant"
       ],
       "description": "Customer lifecycle status; active means at least one active subscription",
-      "metricCount": 18
+      "metricCount": 19
     },
     {
       "id": "deflections",
@@ -1695,7 +1704,7 @@
         "product_analytics"
       ],
       "description": "Date the event occurred",
-      "metricCount": 60
+      "metricCount": 63
     },
     {
       "id": "event_id",
@@ -1735,7 +1744,7 @@
         "renewal"
       ],
       "description": "Revenue movement classifier (CEL Revenue_Event.event_type)",
-      "metricCount": 18
+      "metricCount": 21
     },
     {
       "id": "expansion_classification",
@@ -2613,7 +2622,7 @@
         "billing"
       ],
       "description": "Change in MRR; negative for contraction and churn",
-      "metricCount": 14
+      "metricCount": 15
     },
     {
       "id": "mrr_end",
@@ -3869,7 +3878,7 @@
       ],
       "dimension": true,
       "description": "Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.",
-      "metricCount": 16
+      "metricCount": 20
     },
     {
       "id": "severity",
@@ -3949,7 +3958,7 @@
         "derived"
       ],
       "description": "As-of date of the snapshot row",
-      "metricCount": 170
+      "metricCount": 171
     },
     {
       "id": "sql_date",
@@ -4312,6 +4321,64 @@
       "metricCount": 1
     },
     {
+      "id": "trial_end_date",
+      "type": "date",
+      "datasets": [
+        "trial"
+      ],
+      "sources": [
+        "billing",
+        "product_analytics"
+      ],
+      "description": "Date the trial ended: the conversion date, the expiry date or the day it was cancelled",
+      "metricCount": 1
+    },
+    {
+      "id": "trial_id",
+      "type": "string",
+      "datasets": [
+        "trial"
+      ],
+      "sources": [
+        "billing",
+        "product_analytics"
+      ],
+      "description": "Trial identifier",
+      "metricCount": 1
+    },
+    {
+      "id": "trial_start_date",
+      "type": "date",
+      "datasets": [
+        "trial"
+      ],
+      "sources": [
+        "billing",
+        "product_analytics"
+      ],
+      "description": "Date the trial started",
+      "metricCount": 1
+    },
+    {
+      "id": "trial_status",
+      "type": "enum",
+      "datasets": [
+        "trial"
+      ],
+      "sources": [
+        "billing",
+        "product_analytics"
+      ],
+      "values": [
+        "active",
+        "converted",
+        "expired",
+        "cancelled"
+      ],
+      "description": "Outcome of the trial: active while it runs, then converted, expired or cancelled",
+      "metricCount": 1
+    },
+    {
       "id": "underrepresented_group",
       "type": "boolean",
       "datasets": [
@@ -4505,6 +4572,15 @@
         "customer"
       ],
       "label": "Lifecycle state change"
+    },
+    "trial": {
+      "kind": "fact",
+      "date": "trial_end_date",
+      "key": "trial_id",
+      "entities": [
+        "customer"
+      ],
+      "label": "Trial"
     },
     "customer": {
       "kind": "snapshot",
@@ -4909,12 +4985,16 @@
     "arr": "ARR",
     "arpa": "ARR / MRR",
     "mrr_growth_rate": "ARR / MRR",
-    "new_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
-    "expansion_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
-    "churned_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
-    "contraction_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
-    "carry_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
-    "net_new_mrr": "Revenue Components (New, Expansion, Contraction, Churn)",
+    "new_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
+    "reactivation_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
+    "total_customers": "Customer Count",
+    "new_customers": "Customer Movements (New, Churned)",
+    "churned_customers": "Customer Movements (New, Churned)",
+    "expansion_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
+    "churned_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
+    "contraction_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
+    "carry_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
+    "net_new_mrr": "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)",
     "bundle_pricing_and_mrr_allocation": "ARR / MRR",
     "nrr": "NRR / GRR (trailing 12 months)",
     "grr": "NRR / GRR (trailing 12 months)",
@@ -5193,7 +5273,8 @@
     "project_milestone_completion_rate": "Delivery",
     "ticket_escalation_rate": "Resolution",
     "project_escalation_rate": "Team",
-    "product_activation_rate": "Activation"
+    "product_activation_rate": "Activation",
+    "trial_to_paid_conversion_rate": "Activation"
   },
   "temporalSemantics": {
     "ARR / MRR": {
@@ -5202,7 +5283,7 @@
       "aggregation": "snapshot",
       "period": "month"
     },
-    "Revenue Components (New, Expansion, Contraction, Churn)": {
+    "Revenue Components (New, Expansion, Reactivation, Contraction, Churn)": {
       "grain": "Per event, aggregate monthly",
       "frequency": "Daily sync",
       "aggregation": "aggregate",
@@ -5240,6 +5321,18 @@
       "period": "month"
     },
     "Logo Churn": {
+      "grain": "Per event, aggregate monthly",
+      "frequency": "Daily sync",
+      "aggregation": "aggregate",
+      "period": "month"
+    },
+    "Customer Count": {
+      "grain": "End-of-month snapshot",
+      "frequency": "Daily sync",
+      "aggregation": "snapshot",
+      "period": "month"
+    },
+    "Customer Movements (New, Churned)": {
       "grain": "Per event, aggregate monthly",
       "frequency": "Daily sync",
       "aggregation": "aggregate",
@@ -7392,6 +7485,10 @@
       "new_mrr":                     { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "expansion_mrr":               { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "churned_mrr":                 { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "reactivation_mrr":            { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "total_customers":             { "sensitivityTier": "internal",     "accessScope": "unscoped" },
+      "new_customers":               { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "churned_customers":           { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "contraction_mrr":             { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "net_new_mrr":                 { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "nrr":                         { "sensitivityTier": "confidential", "accessScope": "unscoped" },
@@ -7430,6 +7527,7 @@
       "ttfv":                        { "sensitivityTier": "internal",     "accessScope": "department-scoped" },
       "onboarding_completion":       { "sensitivityTier": "internal",     "accessScope": "department-scoped" },
       "activation_rate":             { "sensitivityTier": "internal",     "accessScope": "unscoped" },
+      "trial_to_paid_conversion_rate": { "sensitivityTier": "internal",     "accessScope": "unscoped" },
       "dau_mau":                     { "sensitivityTier": "internal",     "accessScope": "unscoped" },
       "feature_adoption":            { "sensitivityTier": "internal",     "accessScope": "unscoped" },
       "pqas":                        { "sensitivityTier": "internal",     "accessScope": "department-scoped" },
@@ -7469,12 +7567,17 @@
       ]
     },
     "arpa": {
-      "expression": "metric.mrr / count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
+      "expression": "metric.mrr / metric.total_customers",
       "inputs": [
         {
           "ref": "mrr",
           "role": "numerator",
           "polarity": "positive"
+        },
+        {
+          "ref": "total_customers",
+          "role": "denominator",
+          "polarity": "negative"
         }
       ],
       "fields": [
@@ -7518,8 +7621,14 @@
       ]
     },
     "cac": {
-      "expression": "sum(field.cost where field.cost_function = 'gtm') / count_distinct(field.customer_id where field.event_type = 'new')",
-      "inputs": [],
+      "expression": "sum(field.cost where field.cost_function = 'gtm') / metric.new_customers",
+      "inputs": [
+        {
+          "ref": "new_customers",
+          "role": "denominator",
+          "polarity": "negative"
+        }
+      ],
       "fields": [
         "cost",
         "cost_function",
@@ -7559,6 +7668,15 @@
         "revenue",
         "snapshot_date",
         "subscription_status"
+      ]
+    },
+    "churned_customers": {
+      "expression": "count_distinct(field.customer_id where field.event_type = 'churn')",
+      "inputs": [],
+      "fields": [
+        "customer_id",
+        "event_date",
+        "event_type"
       ]
     },
     "churned_mrr": {
@@ -7798,8 +7916,20 @@
       ]
     },
     "logo_churn_rate": {
-      "expression": "count_distinct(field.customer_id where field.event_type = 'churn') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
-      "inputs": [],
+      "expression": "metric.churned_customers / metric.total_customers at period_start",
+      "inputs": [
+        {
+          "ref": "churned_customers",
+          "role": "numerator",
+          "polarity": "positive"
+        },
+        {
+          "ref": "total_customers",
+          "role": "denominator",
+          "polarity": "negative",
+          "baseline": true
+        }
+      ],
       "fields": [
         "customer_id",
         "customer_status",
@@ -7968,7 +8098,7 @@
       ]
     },
     "net_new_mrr": {
-      "expression": "metric.new_mrr + metric.expansion_mrr - metric.churned_mrr - metric.contraction_mrr",
+      "expression": "metric.new_mrr + metric.expansion_mrr + metric.reactivation_mrr - metric.churned_mrr - metric.contraction_mrr",
       "inputs": [
         {
           "ref": "churned_mrr",
@@ -7989,12 +8119,26 @@
           "ref": "new_mrr",
           "role": "addend",
           "polarity": "positive"
+        },
+        {
+          "ref": "reactivation_mrr",
+          "role": "addend",
+          "polarity": "positive"
         }
       ],
       "fields": [
         "event_date",
         "event_type",
         "mrr_change"
+      ]
+    },
+    "new_customers": {
+      "expression": "count_distinct(field.customer_id where field.event_type = 'new')",
+      "inputs": [],
+      "fields": [
+        "customer_id",
+        "event_date",
+        "event_type"
       ]
     },
     "new_mrr": {
@@ -8144,6 +8288,15 @@
         "quota"
       ]
     },
+    "reactivation_mrr": {
+      "expression": "sum(field.mrr_change where field.event_type = 'reactivation')",
+      "inputs": [],
+      "fields": [
+        "event_date",
+        "event_type",
+        "mrr_change"
+      ]
+    },
     "renewal_rate": {
       "expression": "count_distinct(field.subscription_id where field.renewed = true and in_period(field.contract_end)) / count_distinct(field.subscription_id where in_period(field.contract_end))",
       "inputs": [],
@@ -8269,6 +8422,24 @@
       "fields": [
         "created_at",
         "ticket_id"
+      ]
+    },
+    "total_customers": {
+      "expression": "count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
+      "inputs": [],
+      "fields": [
+        "customer_id",
+        "customer_status",
+        "snapshot_date"
+      ]
+    },
+    "trial_to_paid_conversion_rate": {
+      "expression": "count_distinct(field.trial_id where field.trial_status = 'converted' and in_period(field.trial_end_date)) / count_distinct(field.trial_id where field.trial_status in ('converted', 'expired', 'cancelled') and in_period(field.trial_end_date))",
+      "inputs": [],
+      "fields": [
+        "trial_end_date",
+        "trial_id",
+        "trial_status"
       ]
     },
     "ttfv": {

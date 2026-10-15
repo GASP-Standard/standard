@@ -268,6 +268,35 @@ concept_mappings:
               concept: StateCategory
               expression: lifecycle_event.state_category
             relationship: state_category
+  - concept: Trial
+    object_mappings:
+      - referent_mappings:
+          - relationship: trial_id
+            expression: trial.trial_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: trial_id
+              expression: trial.trial_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: trial.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: trial.trial_end_date
+            children:
+              - object_mapping:
+                  concept: Date
+                  expression: trial.trial_start_date
+                relationship: trial_start_date
+              - object_mapping:
+                  concept: TrialStatus
+                  expression: trial.trial_status
+                relationship: trial_status
   - concept: Customer
     object_mappings:
       - referent_mappings:

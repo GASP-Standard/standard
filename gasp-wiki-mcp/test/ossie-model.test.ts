@@ -222,7 +222,7 @@ describe("Ossie model: metrics", () => {
     expect(coverage.win_rate).toMatchObject({ kind: "staged", reason: "period bound in filter" });
     expect(coverage.cac.kind).toBe("direct");
     expect(expr("gasp_cac")).toBe(
-      "(CAST(SUM(CASE WHEN cost_event.cost_function = 'gtm' THEN cost_event.cost ELSE 0 END) AS DECIMAL) / NULLIF(COUNT(DISTINCT CASE WHEN revenue_event.event_type = 'new' THEN revenue_event.customer_id END), 0))",
+      "(CAST(SUM(CASE WHEN cost_event.cost_function = 'gtm' THEN cost_event.cost ELSE 0 END) AS DECIMAL) / NULLIF((COUNT(DISTINCT CASE WHEN revenue_event.event_type = 'new' THEN revenue_event.customer_id END)), 0))",
     );
     expect(ext(metricByName.get("gasp_nrr_m")!)).toMatchObject({ gasp_id: "nrr", form: "M", unit: "percent", staged: true });
   });

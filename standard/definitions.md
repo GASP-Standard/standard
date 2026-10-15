@@ -79,7 +79,7 @@ MRR from existing customers that renewed unchanged. No expansion, contraction or
 
 ### Net New MRR
 The net change in MRR after all movements.
-- **Formula:** New MRR + Expansion MRR - Churned MRR - Contraction MRR
+- **Formula:** New MRR + Expansion MRR + Reactivation MRR - Churned MRR - Contraction MRR
 - **Canonical definition:** [Core Metrics](metrics/core.md#net-new-mrr)
 - **Used in:** Core
 
@@ -204,6 +204,12 @@ A customer in good standing at a point in time.
 ### User
 An individual person using the product within a customer account.
 - **Distinct from:** Customer (account level)
+
+### Trial
+An account evaluating the product for free for a set period before it decides to pay.
+- **Outcomes:** converted (became a customer), expired (the period ended), cancelled (closed early)
+- **Not:** A customer, until it converts; a proof of concept run by sales, which is an opportunity stage
+- **Canonical definition:** [Product Metrics](metrics/product.md#trial-to-paid-conversion-rate)
 
 ### Active User
 A user who performed a qualifying action in the defined period.

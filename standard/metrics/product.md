@@ -122,6 +122,30 @@ Activation Rate = Users reaching activation / New users × 100
 
 ---
 
+### Trial-to-Paid Conversion Rate
+
+**Definition:** The percentage of trials that ended in the period and became paying customers.
+
+**Formula:**
+```
+Trial-to-Paid Conversion Rate = Trials converted / Trials ended (converted + expired + cancelled) × 100
+```
+
+**Also known as:** Free-to-Paid Conversion Rate, Trial Conversion Rate
+
+**Cohort:** Trials are counted by the date they ended, not started, so every trial in the denominator has an outcome. A trial that converts before its end date ends on the day it converts. Counting by start date understates recent periods while trials are still running; report it as a variant and say so.
+
+**Scope:** Time-boxed free trials and freemium accounts that upgrade. A proof of concept run by sales is an opportunity stage, not a trial.
+
+**Benchmarks:**
+- Opt-in free trial (no card): 10-25% (per OpenView / Lenny's PLG benchmarks)
+- Opt-out trial (card required): 40-60%
+- Freemium to paid: 2-5%
+
+**What it tells you:** Whether the product sells itself once someone tries it. It is the first conversion metric of a product-led motion. Read it with [Activation Rate](#activation-rate), since trials that never activate rarely convert.
+
+---
+
 ## Adoption Metrics
 
 ### Feature Adoption Rate
@@ -437,6 +461,7 @@ Track by theme/category to identify patterns.
 | DAU/MAU (Stickiness) | Usage | User engagement frequency |
 | MAU | Usage | User engagement breadth |
 | Activation Rate | Adoption | New user success |
+| Trial-to-Paid Conversion Rate | Adoption | Product-led conversion |
 | Core Feature Adoption | Adoption | Full product utilization |
 | Session Frequency | Engagement | Return rate |
 | PQAs | Engagement | Product-driven sales signals |

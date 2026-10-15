@@ -62,6 +62,7 @@ Two rules shape how the tools walk the graph:
 **What increases it:**
 - New MRR (acquisition)
 - Expansion MRR (upsell/cross-sell)
+- Reactivation MRR (churned customers returning)
 
 **What decreases it:**
 - Churned MRR (lost customers)
@@ -69,7 +70,7 @@ Two rules shape how the tools walk the graph:
 
 **Formula:**
 ```
-Net New MRR = New MRR + Expansion MRR - Churned MRR - Contraction MRR
+Net New MRR = New MRR + Expansion MRR + Reactivation MRR - Churned MRR - Contraction MRR
 ```
 
 ARR moves by twelve times Net New MRR, because ARR is MRR × 12.

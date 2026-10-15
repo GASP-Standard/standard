@@ -1,8 +1,8 @@
 {
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
   "counts": {
-    "direct": 181,
-    "staged": 163,
+    "direct": 190,
+    "staged": 164,
     "notComputable": 15
   },
   "stagedReasons": {
@@ -16,7 +16,7 @@
     "bucket": 1,
     "window": 5,
     "distinct pair": 1,
-    "all_time": 3
+    "all_time": 4
   },
   "metrics": {
     "mrr": {
@@ -57,6 +57,30 @@
       "kind": "direct",
       "ossieName": "gasp_arpa_by_segment"
     },
+    "total_customers": {
+      "kind": "direct",
+      "ossieName": "gasp_total_customers"
+    },
+    "total_customers:by_segment": {
+      "kind": "direct",
+      "ossieName": "gasp_total_customers_by_segment"
+    },
+    "new_customers": {
+      "kind": "direct",
+      "ossieName": "gasp_new_customers"
+    },
+    "new_customers:by_segment": {
+      "kind": "direct",
+      "ossieName": "gasp_new_customers_by_segment"
+    },
+    "churned_customers": {
+      "kind": "direct",
+      "ossieName": "gasp_churned_customers"
+    },
+    "churned_customers:by_segment": {
+      "kind": "direct",
+      "ossieName": "gasp_churned_customers_by_segment"
+    },
     "mrr_growth_rate": {
       "kind": "staged",
       "ossieName": "gasp_mrr_growth_rate",
@@ -94,6 +118,14 @@
     "contraction_mrr:by_segment": {
       "kind": "direct",
       "ossieName": "gasp_contraction_mrr_by_segment"
+    },
+    "reactivation_mrr": {
+      "kind": "direct",
+      "ossieName": "gasp_reactivation_mrr"
+    },
+    "reactivation_mrr:by_segment": {
+      "kind": "direct",
+      "ossieName": "gasp_reactivation_mrr_by_segment"
     },
     "carry_mrr": {
       "kind": "staged",
@@ -1780,6 +1812,16 @@
       "ossieName": "gasp_product_activation_rate",
       "stagedDataset": "gasp_staged_gasp_product_activation_rate",
       "reason": "period bound in filter"
+    },
+    "trial_to_paid_conversion_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_trial_to_paid_conversion_rate"
+    },
+    "trial_to_paid_conversion_rate:by_start_date": {
+      "kind": "staged",
+      "ossieName": "gasp_trial_to_paid_conversion_rate_by_start_date",
+      "stagedDataset": "gasp_staged_gasp_trial_to_paid_conversion_rate_by_start_date",
+      "reason": "all_time"
     }
   }
 }

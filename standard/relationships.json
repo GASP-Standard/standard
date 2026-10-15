@@ -65,6 +65,30 @@
       "slug": "arpa-average-revenue-per-account"
     },
     {
+      "id": "total_customers",
+      "label": "Total Customers",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "total-customers"
+    },
+    {
+      "id": "new_customers",
+      "label": "New Customers",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "new-customers"
+    },
+    {
+      "id": "churned_customers",
+      "label": "Churned Customers",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "churned-customers"
+    },
+    {
       "id": "mrr_growth_rate",
       "label": "MRR Growth Rate",
       "department": "Core",
@@ -119,6 +143,14 @@
       "signalType": "outcome",
       "level": 3,
       "slug": "contraction-mrr"
+    },
+    {
+      "id": "reactivation_mrr",
+      "label": "Reactivation MRR",
+      "department": "Core",
+      "signalType": "outcome",
+      "level": 3,
+      "slug": "reactivation-mrr"
     },
     {
       "id": "cac",
@@ -399,6 +431,14 @@
       "signalType": "leading",
       "level": 4,
       "slug": "product-qualified-accounts-pqas"
+    },
+    {
+      "id": "trial_to_paid_conversion_rate",
+      "label": "Trial-to-Paid Conversion Rate",
+      "department": "Product",
+      "signalType": "leading",
+      "level": 4,
+      "slug": "trial-to-paid-conversion-rate"
     },
     {
       "id": "forecast_accuracy",
@@ -718,6 +758,11 @@
       "type": "drives"
     },
     {
+      "source": "marketing_cac",
+      "target": "cac",
+      "type": "drives"
+    },
+    {
       "source": "pipeline_value",
       "target": "new_mrr",
       "type": "drives"
@@ -935,6 +980,21 @@
       "type": "drives"
     },
     {
+      "source": "new_customers",
+      "target": "new_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "churned_customers",
+      "target": "churned_mrr",
+      "type": "drives"
+    },
+    {
+      "source": "trial_to_paid_conversion_rate",
+      "target": "new_customers",
+      "type": "drives"
+    },
+    {
       "source": "enps",
       "target": "employee_turnover",
       "type": "reduces"
@@ -955,8 +1015,18 @@
       "type": "component"
     },
     {
+      "source": "total_customers",
+      "target": "arpa",
+      "type": "component"
+    },
+    {
       "source": "mrr",
       "target": "arr",
+      "type": "component"
+    },
+    {
+      "source": "new_customers",
+      "target": "cac",
       "type": "component"
     },
     {
@@ -997,6 +1067,16 @@
     {
       "source": "mrr",
       "target": "grr",
+      "type": "component"
+    },
+    {
+      "source": "churned_customers",
+      "target": "logo_churn_rate",
+      "type": "component"
+    },
+    {
+      "source": "total_customers",
+      "target": "logo_churn_rate",
       "type": "component"
     },
     {
@@ -1056,6 +1136,11 @@
     },
     {
       "source": "new_mrr",
+      "target": "net_new_mrr",
+      "type": "component"
+    },
+    {
+      "source": "reactivation_mrr",
       "target": "net_new_mrr",
       "type": "component"
     },
@@ -1145,6 +1230,11 @@
       "type": "measures"
     },
     {
+      "source": "churned_customers",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "churned_mrr",
       "target": "entity_customer",
       "type": "measures"
@@ -1200,6 +1290,11 @@
       "type": "measures"
     },
     {
+      "source": "new_customers",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "new_mrr",
       "target": "entity_customer",
       "type": "measures"
@@ -1225,7 +1320,22 @@
       "type": "measures"
     },
     {
+      "source": "reactivation_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "revenue_churn_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "total_customers",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "trial_to_paid_conversion_rate",
       "target": "entity_customer",
       "type": "measures"
     },
@@ -1256,6 +1366,11 @@
     },
     {
       "source": "cac_payback",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "churned_customers",
       "target": "entity_subscription",
       "type": "measures"
     },
@@ -1325,12 +1440,22 @@
       "type": "measures"
     },
     {
+      "source": "new_customers",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
       "source": "new_mrr",
       "target": "entity_subscription",
       "type": "measures"
     },
     {
       "source": "nrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "reactivation_mrr",
       "target": "entity_subscription",
       "type": "measures"
     },

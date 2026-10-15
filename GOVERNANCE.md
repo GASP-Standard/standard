@@ -28,7 +28,7 @@ A breaking change to the canon is one that makes an existing implementation sile
 - changing what a formula means (a different numerator, denominator, population or period treatment)
 - removing a field or dataset from `ontology.json`, or removing an enum value
 
-Breaking changes are batched for a `/v2/` path. Until then they are avoided. Where one has been unavoidable, the old URL redirects to the new page, `CHANGELOG.md` names the old and new ids and `DECISIONS.md` records why. Two cases so far: Headcount by Department, retired into a breakdown of Total Headcount on 2026-10-13, and the four metrics renamed on 2026-10-14 because two pairs shared a heading (Escalation Rate in Support and Professional Services, Milestone Completion Rate in Onboarding and Professional Services), which broke the rule that a metric's name identifies it.
+Breaking changes are batched for a `/v2/` path. Until then they are avoided. Where one has been unavoidable, the old URL redirects to the new page, `CHANGELOG.md` names the old and new ids and `DECISIONS.md` records why. Three cases so far: Headcount by Department, retired into a breakdown of Total Headcount on 2026-10-13; the four metrics renamed on 2026-10-14 because two pairs shared a heading (Escalation Rate in Support and Professional Services, Milestone Completion Rate in Onboarding and Professional Services), which broke the rule that a metric's name identifies it; and Net New MRR on 2026-10-14, whose formula gained the reactivation term its definition had always described, so the MRR waterfall reconciles.
 
 Additive changes ship within `v1`: a new metric, a new field, a new breakdown, a new formula for a metric that was not computable, a clarified definition that does not change the number.
 

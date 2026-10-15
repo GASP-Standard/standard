@@ -24,12 +24,36 @@
       "notes": "ARR-M equals this formula. ARR-O subtracts the MRR change tagged pricing_adjustment or recontracting in the trailing 12 months for customers active at period end, so ARR-M minus ARR-O is the Durability Gap (core.md), a growth decomposition measured over the trailing year. by_segment returns one row per customer segment through MRR."
     },
     "arpa": {
-      "formula": "metric.mrr / count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
+      "formula": "metric.mrr / metric.total_customers",
       "unit": "currency",
       "breakdowns": {
         "by_segment": "field.segment"
       },
       "notes": "by_segment returns one row per customer segment, since a blended ARPA across SMB and enterprise describes neither."
+    },
+    "total_customers": {
+      "formula": "count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
+      "unit": "count",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Active customers at period end, one per billing entity. ARPA divides by it and Logo Churn Rate reads it at period start. by_segment returns one row per customer segment."
+    },
+    "new_customers": {
+      "formula": "count_distinct(field.customer_id where field.event_type = 'new')",
+      "unit": "count",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Customers whose first paid subscription started in the period (a new revenue event). Reactivated customers return through a reactivation event and are not new. CAC divides by it. by_segment returns one row per customer segment."
+    },
+    "churned_customers": {
+      "formula": "count_distinct(field.customer_id where field.event_type = 'churn')",
+      "unit": "count",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "Customers whose last active subscription ended in the period (a churn event). The numerator of Logo Churn Rate. by_segment returns one row per customer segment."
     },
     "mrr_growth_rate": {
       "formula": "(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)",
@@ -67,13 +91,22 @@
       },
       "notes": "Contraction events carry a negative mrr_change; the metric reports a positive amount. by_segment returns one row per customer segment, so downgrades concentrated in one segment are visible."
     },
+    "reactivation_mrr": {
+      "formula": "sum(field.mrr_change where field.event_type = 'reactivation')",
+      "unit": "currency",
+      "breakdowns": {
+        "by_segment": "field.segment"
+      },
+      "notes": "The reactivation event in the CEL: a churned customer's new subscription. Counted apart from New MRR (acquisition) and Expansion MRR (existing customers). by_segment returns one row per customer segment."
+    },
     "carry_mrr": {
       "formula": "metric.mrr at period_start - metric.churned_mrr - metric.contraction_mrr",
       "unit": "currency"
     },
     "net_new_mrr": {
-      "formula": "metric.new_mrr + metric.expansion_mrr - metric.churned_mrr - metric.contraction_mrr",
-      "unit": "currency"
+      "formula": "metric.new_mrr + metric.expansion_mrr + metric.reactivation_mrr - metric.churned_mrr - metric.contraction_mrr",
+      "unit": "currency",
+      "notes": "Five movements: carry MRR plus new, expansion and reactivation MRR is ending MRR."
     },
     "bundle_pricing_and_mrr_allocation": {
       "notComputable": "An allocation method applied when recording item-level MRR (Item SSP / sum of SSPs x bundle price), not a reported metric."
@@ -106,7 +139,7 @@
       "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each snapshot and event counts in the segment it carries."
     },
     "logo_churn_rate": {
-      "formula": "count_distinct(field.customer_id where field.event_type = 'churn') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
+      "formula": "metric.churned_customers / metric.total_customers at period_start",
       "unit": "percent",
       "breakdowns": {
         "by_segment": "field.segment"
@@ -127,11 +160,11 @@
       "notes": "Reported as a score from -100 to 100, so the x 100 is part of the definition."
     },
     "cac": {
-      "formula": "sum(field.cost where field.cost_function = 'gtm') / count_distinct(field.customer_id where field.event_type = 'new')",
+      "formula": "sum(field.cost where field.cost_function = 'gtm') / metric.new_customers",
       "unit": "currency",
       "forms": {
-        "O": "(sum(field.cost where field.cost_function = 'gtm') + sum(field.cost where field.cost_function in ('implementation', 'onboarding'))) / count_distinct(field.customer_id where field.event_type = 'new')",
-        "M": "sum(field.cost where field.cost_function = 'gtm') / count_distinct(field.customer_id where field.event_type = 'new')"
+        "O": "(sum(field.cost where field.cost_function = 'gtm') + sum(field.cost where field.cost_function in ('implementation', 'onboarding'))) / metric.new_customers",
+        "M": "sum(field.cost where field.cost_function = 'gtm') / metric.new_customers"
       },
       "breakdowns": {
         "by_cost_centre": {
@@ -1532,6 +1565,14 @@
       "formula": "count_distinct(field.user_id where in_period(field.signup_date) and field.activation_date is not null) / count_distinct(field.user_id where in_period(field.signup_date))",
       "unit": "percent",
       "notes": "Users who signed up in the period and reached the activation milestone. The milestone is product-specific and must be defined explicitly."
+    },
+    "trial_to_paid_conversion_rate": {
+      "formula": "count_distinct(field.trial_id where field.trial_status = 'converted' and in_period(field.trial_end_date)) / count_distinct(field.trial_id where field.trial_status in ('converted', 'expired', 'cancelled') and in_period(field.trial_end_date))",
+      "unit": "percent",
+      "variants": {
+        "by_start_date": "all_time(count_distinct(field.trial_id where field.trial_status = 'converted' and in_period(field.trial_start_date))) / all_time(count_distinct(field.trial_id where in_period(field.trial_start_date)))"
+      },
+      "notes": "Trials are counted by the date they ended (the trial dataset's date), so every trial in the denominator has an outcome; a trial that converts ends on the day it converts. The by_start_date variant counts trials started in the period, lifting the end-date period filter with all_time(); it understates recent periods while trials are still running."
     }
   }
 }

@@ -83,6 +83,7 @@ export const TABLES: Record<string, string> = {
   product: "gasp_products",
   license: "gasp_licenses",
   lifecycle_event: "gasp_lifecycle_events",
+  trial: "gasp_trials",
 };
 
 /**
@@ -104,6 +105,7 @@ export const COLUMNS: Record<string, Record<string, string>> = {
   time_entry: { project_id: "project_ref", hours: "hours_logged" },
   deal_registration: { close_date: "closed_on", partner_id: "partner_ref" },
   onboarding: { snapshot_date: "snap_date", contract_start: "contract_began" },
+  trial: { customer_id: "account_id", trial_status: "outcome" },
 };
 
 export function columnName(dataset: string, field: string): string {
@@ -199,6 +201,16 @@ const storyOf = (c: string) => CUSTOMER_STORIES[c] ?? PRIOR_CUSTOMERS[c];
  * 2026-06-12), c11 renews by hand after a late notice, c12 renews automatically.
  * Every other subscription runs 12 months from acquisition.
  */
+/** The lost trials never became customers; converted trials run TRIAL_DAYS and end on the acquisition date. */
+export const LOST_TRIALS: Array<{ customer: string; end: string; status: "expired" | "cancelled" }> = [
+  { customer: "c22", end: "2026-03-09", status: "expired" },
+  { customer: "c23", end: "2026-03-27", status: "expired" },
+  { customer: "c24", end: "2026-05-14", status: "cancelled" },
+  { customer: "c25", end: "2026-06-04", status: "expired" },
+  { customer: "c26", end: "2026-06-18", status: "expired" },
+  { customer: "c27", end: "2026-06-25", status: "cancelled" },
+];
+
 export interface Renewal { end: string; renewed: boolean; auto: boolean; notified: boolean; trigger: string; complete: string | null; forecast: number; amount: number }
 export const RENEWALS: Record<string, Renewal> = {
   c08: { end: "2026-06-07", renewed: false, auto: false, notified: true, trigger: "2026-05-08", complete: null, forecast: 7200, amount: 0 },
@@ -1138,6 +1150,24 @@ function generateExtensions(t: Record<string, Row[]>): void {
         event_id: `lsc${pad(lsc)}`, event_date: m.date, customer_id: c, prior_state: tr[0], new_state: tr[1], state_category: tr[2],
       }));
     }
+  }
+
+  // trials: every customer converted from a 14-day trial that ended on its acquisition
+  // date (`TRIAL_DAYS`); the accounts in `LOST_TRIALS` tried and did not convert. Every
+  // value comes from the stories, so no PRNG draw.
+  let tr = 0;
+  for (const c of [...CUSTOMERS, ...Object.keys(PRIOR_CUSTOMERS)]) {
+    const acquired = storyOf(c)[0].date;
+    tr++;
+    t.trial.push(row("trial", `t${tr}`, {
+      trial_id: `t${pad(tr)}`, customer_id: c, trial_start_date: addDays(acquired, -TRIAL_DAYS), trial_end_date: acquired, trial_status: "converted",
+    }));
+  }
+  for (const lost of LOST_TRIALS) {
+    tr++;
+    t.trial.push(row("trial", `t${tr}`, {
+      trial_id: `t${pad(tr)}`, customer_id: lost.customer, trial_start_date: addDays(lost.end, -TRIAL_DAYS), trial_end_date: lost.end, trial_status: lost.status,
+    }));
   }
 }
 

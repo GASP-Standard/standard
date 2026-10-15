@@ -245,6 +245,29 @@ Contraction MRR is reported per customer segment.
 
 ---
 
+### Reactivation MRR
+
+**Definition:** MRR regained from customers who had churned and signed up again in the period.
+
+**Formula:**
+```
+Reactivation MRR = Sum of (first month MRR from previously churned customers who returned this period)
+```
+
+**Also known as:** Resurrected MRR, Win-back MRR, Reactivated MRR
+
+A reactivation is the `reactivation` event in the [Commercial Event Ledger](../cel.md): the customer's status was `churned` and a new subscription starts. It is counted apart from New MRR, so win-back and acquisition can be judged on their own, and apart from Expansion MRR, which only existing customers generate.
+
+Reactivation MRR is reported per customer segment.
+
+**What it tells you:** How much lost revenue comes back. A rising share of net new MRR from reactivation usually means churn was recoverable (billing failures, seasonal pauses) rather than lost for good.
+
+**Dual-lens note:** Net Revenue Retention (NRR) in its Market form counts reactivation of customers who were in the period-start cohort; the Operating form leaves it out, as [NRR](#net-revenue-retention-nrr) sets out.
+
+**Sources:** [ChartMogul](https://chartmogul.com/blog/mrr-movements/), [Baremetrics](https://baremetrics.com/academy/saas-calculate-mrr)
+
+---
+
 ### Carry MRR
 
 **Definition:** The part of beginning MRR that existing customers kept paying in the period: beginning MRR less churned and contraction MRR, before any expansion.
@@ -270,11 +293,13 @@ Carry MRR = Beginning MRR - Churned MRR - Contraction MRR
 
 **Formula:**
 ```
-Net New MRR = New MRR + Expansion MRR - Churned MRR - Contraction MRR
+Net New MRR = New MRR + Expansion MRR + Reactivation MRR - Churned MRR - Contraction MRR
 ```
 
 **Example:**
-$50,000 starting + $2,500 new + $5,000 expansion - $1,000 churned - $500 contraction = $56,000 ending
+$50,000 starting + $2,500 new + $5,000 expansion + $300 reactivation - $1,000 churned - $500 contraction = $56,300 ending
+
+Ending MRR = Carry MRR + New MRR + Expansion MRR + Reactivation MRR, so the five movements and Carry MRR always reconcile to the period-end MRR.
 
 **What it tells you:** Whether MRR grew or shrank over the period and by how much, after every movement is counted.
 
@@ -336,6 +361,67 @@ The bundle discount ($100) is distributed proportionally across all items.
 - [Chargebee: Standalone Selling Price](https://www.chargebee.com/docs/revrec/revenue-recognition/standalone-selling-price)
 - [Zuora: Fair Value / SSP in Multiple-Element Arrangements](https://www.zuora.com/resource/fair-value-standalone-selling-price-multiple-element-arrangements-revpro/)
 - [Maxio: SaaS Revenue Recognition and ASC 606](https://www.maxio.com/blog/saas-revenue-recognition-asc-606)
+
+---
+
+## Customer Count Metrics
+
+The three counts behind every per-customer ratio. ARPA divides by Total Customers, CAC by New Customers and Logo Churn Rate by Total Customers at the start of the period, so the counts are metrics in their own right. They reconcile the way the MRR movements do: Total Customers at period end = Total Customers at period start + New Customers - Churned Customers, plus any reactivated customers, who return to the active count.
+
+### Total Customers
+
+**Definition:** The number of active customers at the end of the period.
+
+**Formula:**
+```
+Total Customers = Count of customers with customer_status = active at period end
+```
+
+**Also known as:** Customer Count, Active Customers, Logos
+
+**Counting:** One customer is one billing entity, whatever its number of users, seats or subscriptions (see [Customer](../definitions.md#customer)). Trial and free accounts are not customers until they pay.
+
+Total Customers is reported per customer segment.
+
+**What it tells you:** The size of the base. Watch it beside MRR, since a base growing faster than MRR means ARPA is falling.
+
+---
+
+### New Customers
+
+**Definition:** The number of customers acquired in the period: customers whose first paid subscription started in the period.
+
+**Formula:**
+```
+New Customers = Count of customers with a new revenue event in the period
+```
+
+**Also known as:** New Logos, Logo Acquisitions, Gross Adds
+
+**Not:** Reactivated customers, who return through a `reactivation` event and are counted in Reactivation MRR; expansion of an existing customer, however large.
+
+New Customers is reported per customer segment.
+
+**What it tells you:** The output of the acquisition engine in logos rather than dollars. New Customers x ACV equals New MRR x 12, so when the two trends part, deal size has moved.
+
+---
+
+### Churned Customers
+
+**Definition:** The number of customers lost in the period: customers whose last active subscription ended.
+
+**Formula:**
+```
+Churned Customers = Count of customers with a churn event in the period
+```
+
+**Also known as:** Lost Logos, Logo Churn (count)
+
+**Not:** Customers who downgraded but kept at least one active subscription (contraction).
+
+Churned Customers is reported per customer segment.
+
+**What it tells you:** The numerator of [Logo Churn Rate](#logo-churn-rate-customer-churn). Logo churn concentrated in one segment shows here before it moves the blended rate.
 
 ---
 
@@ -1092,6 +1178,9 @@ A company with 30% ARR growth and heavy implementation costs might report Rule o
 |--------|----------|---------------------|
 | MRR | Revenue | Business scale |
 | MRR Growth Rate | Revenue | Growth velocity |
+| Net New MRR | Revenue | Net movement, five components |
+| Total Customers | Customer Count | Size of the base |
+| New Customers | Customer Count | Acquisition in logos |
 | NRR | Retention | Revenue sustainability |
 | GRR | Retention | Customer relationship health |
 | Logo Churn | Retention | Customer loss rate |

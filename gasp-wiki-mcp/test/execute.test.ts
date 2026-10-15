@@ -39,6 +39,7 @@ const mrrOn = (day: string, customers?: Set<unknown>) =>
 const revenueEvents = (start: string, end: string, type: string, customers?: Set<unknown>) =>
   T.revenue_event.filter((r) => between(r.event_date, start, end) && r.event_type === type && (!customers || customers.has(r.customer_id)));
 const gtmCost = (start: string, end: string) => sum(T.cost_event.filter((r) => between(r.event_date, start, end) && r.cost_function === "gtm"), "cost");
+const trialsEnded = (start: string, end: string) => T.trial.filter((r) => between(r.trial_end_date, start, end) && r.trial_status !== "active");
 const qualifyingUsers = (start: string, end: string) =>
   distinct(T.product_event.filter((r) => between(r.event_date, start, end) && r.product_event_type === "qualifying"), "user_id");
 
@@ -100,6 +101,7 @@ describe("fixture", () => {
     expect(mrrOn(START)).toBe(15100);
     expect(mrrOn(END)).toBe(24200);
     expect(activeCustomersOn(END).length).toBe(18);
+    expect(trialsEnded(...JUNE).map((r) => r.trial_status).sort()).toEqual(["cancelled", "converted", "converted", "expired", "expired"]);
     expect(expectedNrr(...H1)).toBeCloseTo(14900 / 15100, 10);
     expect(expectedNrr(...H1, true)).toBeCloseTo(12100 / 15100, 10);
     expect(expectedWinRate(...JUNE)).toBeCloseTo(2 / 5, 10);
@@ -188,6 +190,31 @@ describe("hand-computed metric values", () => {
   it("CAC, June", async () => {
     expect(expectedCac(...JUNE)).toBe((3800 + 2600) / 2);
     expect(await run("cac", ...JUNE)).toBeCloseTo(expectedCac(...JUNE), 6);
+  });
+
+  it("customer counts: total at period end, new and churned in the period", async () => {
+    expect(await run("total_customers", ...JUNE)).toBe(activeCustomersOn(END).length);
+    expect(await run("new_customers", ...JUNE)).toBe(distinct(revenueEvents(...JUNE, "new"), "customer_id"));
+    expect(await run("new_customers", ...JUNE)).toBe(2);
+    expect(await run("churned_customers", ...JUNE)).toBe(distinct(revenueEvents(...JUNE, "churn"), "customer_id"));
+    expect(await run("churned_customers", ...JUNE)).toBe(1);
+    const q2 = await run("logo_churn_rate", ...Q2);
+    expect(q2).toBeCloseTo((await run("churned_customers", ...Q2))! / activeCustomersOn(Q2[0]).length, 10);
+  });
+
+  it("reactivation MRR is the fifth movement and net new MRR reconciles to the MRR change", async () => {
+    expect(await run("reactivation_mrr", ...JUNE)).toBe(sum(revenueEvents(...JUNE, "reactivation"), "mrr_change"));
+    expect(await run("reactivation_mrr", ...JUNE)).toBe(600);
+    const movements = await Promise.all(["new_mrr", "expansion_mrr", "reactivation_mrr", "churned_mrr", "contraction_mrr"].map((id) => run(id, ...JUNE)));
+    const [n, e, r, c, k] = movements.map((v) => v!);
+    expect(await run("net_new_mrr", ...JUNE)).toBeCloseTo(n + e + r - c - k, 6);
+    expect(await run("net_new_mrr", ...JUNE)).toBeCloseTo(mrrOn(END) - mrrOn("2026-05-31"), 6);
+  });
+
+  it("trial-to-paid conversion counts trials by the date they ended", async () => {
+    const ended = trialsEnded(...JUNE);
+    expect(await run("trial_to_paid_conversion_rate", ...JUNE)).toBeCloseTo(ended.filter((r) => r.trial_status === "converted").length / ended.length, 10);
+    expect(await run("trial_to_paid_conversion_rate", ...JUNE)).toBeCloseTo(2 / 5, 10);
   });
 
   it("CAC Payback, June", async () => {

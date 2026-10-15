@@ -390,6 +390,43 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{LifecycleEvent} has {StateCategory}"
+  - concept: Trial
+    type: EntityType
+    description: Trial (fact dataset `trial`).
+    identify_by:
+      - trial_id
+    relationships:
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Trial} belongs to {Customer}"
+      - name: trial_id
+        description: Trial identifier
+        roles:
+          - concept: TrialId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{Trial} is identified by {TrialId}"
+      - name: trial_start_date
+        description: Date the trial started
+        roles:
+          - concept: Date
+          - concept: Date
+            name: trial_start_date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Trial} on {Date} has trial start date {Date:trial_start_date}"
+      - name: trial_status
+        description: "Outcome of the trial: active while it runs, then converted, expired or cancelled"
+        roles:
+          - concept: Date
+          - concept: TrialStatus
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Trial} on {Date} has {TrialStatus}"
   - concept: Customer
     type: EntityType
     description: 'Customer (snapshot dataset `customer`). A distinct billing entity with one or more subscriptions. The "who" of your business relationship. Also known as: Account, Organization.'
@@ -4284,6 +4321,18 @@ ontology:
     description: Required training completed
     extends:
       - Boolean
+  - concept: TrialId
+    type: ValueType
+    description: Trial identifier
+    extends:
+      - String
+  - concept: TrialStatus
+    type: ValueType
+    description: "Outcome of the trial: active while it runs, then converted, expired or cancelled"
+    extends:
+      - String
+    requires:
+      - TrialStatus == 'active' OR TrialStatus == 'converted' OR TrialStatus == 'expired' OR TrialStatus == 'cancelled'
   - concept: UnderrepresentedGroup
     type: ValueType
     description: Self-identified member of an underrepresented group
