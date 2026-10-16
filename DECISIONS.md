@@ -19,7 +19,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 **Consequences:**
 - Third recorded exception to the no-breaking-changes rule in `GOVERNANCE.md`: a numerator changed. An implementation of the old Net New MRR formula reports a lower number than the standard whenever it has reactivation events.
 - `trial` is a fact dataset whose date is the start date; the formula wraps its aggregates in `all_time()` so a trial that started in an earlier period counts in the period it ended.
-- The demo dashboard carves $750 a month of reactivation out of expansion so every waterfall still nets and NRR-O still rounds to 107%; the TWIN Modifier does not model the fifth movement and says so.
+- The demo dashboard carves $750 a month of reactivation out of expansion so every waterfall still nets and NRR-O still rounds to 107%. The TWIN Modifier gained the fifth movement on 2026-10-15 (a node, a baseline input and one shared `netNewMrr()` sum); its NRR remains the Operating form, which excludes reactivation, as does the graph.
 - 306 metrics, 94 definitions, 268 fields, 52 datasets, 100 graph nodes, 200 edges, 294 formula entries, 279 templates.
 
 ---
