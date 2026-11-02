@@ -208,12 +208,13 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
             ...(breakdown ? [{ name: breakdown, expression: sql(breakdown), datatype: bf ? ossieDataType(bf.type) : "String" as const, description: bf?.description ?? `Bucket label of ${label}` }] : []),
             { name: "value", expression: sql("value"), datatype: "Decimal", description: `${label}${qualifier} for the period${breakdown ? ` and ${breakdown}` : ""}` },
           ],
-          // Ossie's dataset `source` is one string, so the other dialects' sources travel here (docs/ossie-spike.md).
+          // Ossie's dataset `source` is one string with no dialect property, so the extension names the
+          // registered dialect `source` is written in and carries the other dialects' sources (docs/ossie-spike.md).
           custom_extensions: gasp({
             staged: true, for: name, reason: emission.reason,
-            source_dialect: "postgres",
-            sources: Object.fromEntries(Object.entries(OSSIE_DIALECT_OF).map(([d, ossie]) => [
-              ossie, stagedSource(compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas, dialect: d as DialectName }, e.variant).sql),
+            source_dialect: OSSIE_DIALECT_OF.postgres,
+            sources: Object.fromEntries((Object.keys(OSSIE_DIALECT_OF) as DialectName[]).filter((d) => d !== "postgres").map((d) => [
+              OSSIE_DIALECT_OF[d], stagedSource(compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas, dialect: d }, e.variant).sql),
             ])),
           }),
         });

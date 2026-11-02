@@ -5,6 +5,22 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-10-17] The Ossie export emits the portable form wherever the language can state it, and vendor dialects only for staged execution SQL
+**Decision:** Every metric the Ossie export can state in one expression is emitted as `OSSIE_SQL_2026` alone, with no vendor-dialect copy beside it. Vendor dialects (Postgres, Snowflake, BigQuery, Databricks) appear in exactly one place, the compiled source of a staged dataset, because that source is a query that must run on a warehouse. This is how the exporter already behaved; it is now a stated commitment, made publicly on the Ossie dev list in reply to Chris Eubank on 2026-10-17 and restated in the PR #598 description.
+
+**Context:** Three dialect registrations arrived upstream in one week (ClickHouse, Postgres and Redshift, Trino). A Databricks committer asked on each whether vendor dialects are about expressivity or execution, and whether exporters should be required to emit the portable form alongside vendor SQL to avoid an N by N translation problem. GASP was the only one of the three with a working exporter to answer from.
+
+**Alternatives considered:**
+- **Emit every metric in all four dialects as well as the portable form.** Rejected: it would quadruple the model for no consumer benefit, and it is the pattern the committer was arguing against.
+- **Emit staged sources in Postgres only and let consumers translate.** Rejected: the staged source is execution, a consumer cannot run Postgres SQL on BigQuery, and the compiler already produces the other three from one grammar.
+
+**Consequences:**
+- Adding a vendor dialect to a direct metric is now a reversal of a public position, not a convenience.
+- Upstream #617 (merged 2026-10-26) removed the Dialect enum; a dialect is any string, registered in `extensions/dialects.md`, the validator's `SQLGLOT_DIALECTS` and the Python `OssieDialect`. GASP's PR follows that shape. When it merges, `OSSIE_DIALECT_OF` in `src/dialect.ts` gains `postgres` and the staged sources carry it in the model rather than the GASP extension.
+- The 164 staged entries, grouped by reason in `coverage.json`, are the list of constructs the portable language would need before the vendor sources could go; the introduction post offers them as a conformance set.
+
+---
+
 ## [2026-10-14] Reactivation is the fifth MRR movement, customer counts are metrics and trials convert by the date they end
 **Decision:** Add Reactivation MRR, Total Customers, New Customers, Churned Customers (Core) and Trial-to-Paid Conversion Rate (Product). Net New MRR becomes new + expansion + reactivation − churned − contraction, recorded as a defect fix rather than deferred to v2. ARPA, CAC and Logo Churn Rate reference the count metrics instead of inlining the aggregates. Trial-to-Paid counts trials by the date they ended, over a new `trial` dataset.
 

@@ -2,13 +2,14 @@
 
 The upstream validator for Apache Ossie documents, copied unchanged so GASP exports can be checked offline and reproducibly.
 
-- Source: https://github.com/apache/ossie at commit `2b1f9bf` (2026-10-12)
+- Source: https://github.com/apache/ossie at commit `99c21c2` (2026-11-02)
 - Licence: Apache License 2.0 (`LICENSE`, `NOTICE` copied from the upstream root)
 - Vendored files, same relative paths as upstream so the script finds its schemas:
   - `validation/validate.py`
   - `core-spec/ossie-schema.json`
   - `ontology/ontology.json`
   - `ontology/mapping.json`
+  - `python/src/ossie/_loading.py` (the duplicate-key YAML loader the script imports from the checkout layout)
 
 Nothing here is edited. The directory is outside the npm tarball (`package.json` `files` lists only `build/**` entries and the data bundle).
 
@@ -25,11 +26,11 @@ uv run validation/validate.py --schema ontology/mapping.json path/to/mapping.yam
 
 Exit status is non-zero when a file fails. From TypeScript use `validateUpstream(file, "model" | "ontology" | "mapping")` in `src/ossie/validate.ts`, which skips cleanly when `uv` is not installed.
 
-The upstream validator checks document shape, the ontology's internal references and SQL syntax. It does not cross-check metrics, relationships or mappings against each other. `src/ossie/check.ts` (`checkExport`) does that.
+The upstream validator checks document shape, unique names, the ontology's internal references, SQL syntax, and since `99c21c2` the model's own references (a metric or relationship naming a dataset or field the model lacks) and the mapping against the ontology and model its `iri`s point at. The mapping's iris are relative, so validate it from a directory holding all three files. `src/ossie/check.ts` (`checkExport`) runs GASP's cross-reference checks beside it (see the table in `docs/ossie-spike.md` for what each one catches).
 
 ## Refresh
 
 1. Pull `apache/ossie` and note the new commit.
-2. Copy the four files and `LICENSE` / `NOTICE` over the vendored ones.
+2. Copy the five files and `LICENSE` / `NOTICE` over the vendored ones.
 3. Update the commit and date above, and `OSSIE_VERSION` in `src/ossie/types.ts` if the schema version moved.
 4. Run `npm test` in `gasp-wiki-mcp` (`test/ossie-check.test.ts` runs the validator on the spike documents).

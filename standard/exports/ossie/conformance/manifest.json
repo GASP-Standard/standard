@@ -1,0 +1,318 @@
+{
+  "description": "GASP conformance set for Apache Ossie: one case per construct OSSIE_SQL_2026 cannot state (the staged reasons in the GASP export), each with a complete model, a standard SQL reference query, the expected result on the GASP fixture and the rows it reads. Written by npm run conformance in gasp-wiki-mcp.",
+  "period": {
+    "start": "2026-01-01",
+    "end": "2026-06-30"
+  },
+  "data": {
+    "customer": {
+      "rows": 365,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+    },
+    "invoice": {
+      "rows": 328,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+    },
+    "opportunity": {
+      "rows": 218,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+    },
+    "product_event": {
+      "rows": 2977,
+      "slice": "rows dated from 2025-12-01"
+    },
+    "revenue_event": {
+      "rows": 26,
+      "slice": "rows dated from 2025-12-01"
+    },
+    "service_metrics": {
+      "rows": 18,
+      "slice": "rows dated from 2025-12-01"
+    },
+    "subscription": {
+      "rows": 341,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+    },
+    "ticket": {
+      "rows": 31,
+      "slice": "rows dated from 2025-12-01"
+    },
+    "user": {
+      "rows": 399,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+    }
+  },
+  "cases": [
+    {
+      "id": "c01_cohort_nrr",
+      "reason": "cohort",
+      "construct": "a cohort fixed at the opening of the period and followed through its events (Net Revenue Retention)",
+      "metric": "gasp_nrr",
+      "gasp_id": "nrr",
+      "formula": "(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "unit": "percent",
+      "datasets": [
+        "revenue_event",
+        "customer",
+        "subscription"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.9867549668874173
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/net-revenue-retention-nrr"
+    },
+    {
+      "id": "c02_lag_mrr_growth_rate",
+      "reason": "lag",
+      "construct": "the same aggregate one period earlier (period-over-period growth)",
+      "metric": "gasp_mrr_growth_rate",
+      "gasp_id": "mrr_growth_rate",
+      "formula": "(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)",
+      "unit": "percent",
+      "datasets": [
+        "subscription"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.11009174311926606
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/mrr-growth-rate"
+    },
+    {
+      "id": "c03_at_period_start_logo_churn_rate",
+      "reason": "at period_start",
+      "construct": "a snapshot read at the opening of the period beside events inside it",
+      "metric": "gasp_logo_churn_rate",
+      "gasp_id": "logo_churn_rate",
+      "formula": "metric.churned_customers / metric.total_customers at period_start",
+      "unit": "percent",
+      "datasets": [
+        "revenue_event",
+        "customer"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.25
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/logo-churn-rate-customer-churn"
+    },
+    {
+      "id": "c04_total_ticket_distribution_by_type",
+      "reason": "total",
+      "construct": "a share of the ungrouped total inside a breakdown",
+      "metric": "gasp_ticket_distribution_by_type",
+      "gasp_id": "ticket_distribution_by_type",
+      "formula": "count_distinct(field.ticket_id) / total(metric.ticket_volume)",
+      "unit": "percent",
+      "datasets": [
+        "ticket"
+      ],
+      "columns": [
+        "ticket_type",
+        "value"
+      ],
+      "expected": [
+        {
+          "ticket_type": "account",
+          "value": 0.0967741935483871
+        },
+        {
+          "ticket_type": "billing",
+          "value": 0.12903225806451613
+        },
+        {
+          "ticket_type": "bug",
+          "value": 0.25806451612903225
+        },
+        {
+          "ticket_type": "feature_request",
+          "value": 0.0967741935483871
+        },
+        {
+          "ticket_type": "how_to",
+          "value": 0.3225806451612903
+        },
+        {
+          "ticket_type": "other",
+          "value": 0.0967741935483871
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/support/ticket-distribution-by-type"
+    },
+    {
+      "id": "c05_period_bound_in_filter_win_rate",
+      "reason": "period bound in filter",
+      "construct": "the reporting period bound to a field other than the dataset's time field (opportunities by close date on a snapshot)",
+      "metric": "gasp_win_rate",
+      "gasp_id": "win_rate",
+      "formula": "count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in ('closed_won', 'closed_lost') and in_period(field.close_date))",
+      "unit": "percent",
+      "datasets": [
+        "opportunity"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.5
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/sales/win-rate"
+    },
+    {
+      "id": "c06_to_date_ticket_backlog",
+      "reason": "to_date",
+      "construct": "an aggregate cumulative from the start of history to the period end",
+      "metric": "gasp_ticket_backlog",
+      "gasp_id": "ticket_backlog",
+      "formula": "count_distinct(field.ticket_id where field.ticket_status in ('open', 'pending')) at period_end",
+      "unit": "count",
+      "datasets": [
+        "ticket"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 7
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/support/ticket-backlog"
+    },
+    {
+      "id": "c07_period_days_uptime",
+      "reason": "period_days",
+      "construct": "the number of days in the reporting period as a value",
+      "metric": "gasp_uptime",
+      "gasp_id": "uptime",
+      "formula": "1 - sum(field.downtime_minutes) / (period_days * 1440)",
+      "unit": "percent",
+      "datasets": [
+        "service_metrics"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.9997582872928177
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/engineering/uptime-availability"
+    },
+    {
+      "id": "c08_bucket_aging_buckets",
+      "reason": "bucket",
+      "construct": "a dimension defined by ranges over a per-row expression",
+      "metric": "gasp_aging_buckets",
+      "gasp_id": "aging_buckets",
+      "formula": "sum(field.outstanding_amount) / total(sum(field.outstanding_amount))",
+      "unit": "percent",
+      "datasets": [
+        "invoice"
+      ],
+      "columns": [
+        "bucket",
+        "value"
+      ],
+      "expected": [
+        {
+          "bucket": "current",
+          "value": 1
+        },
+        {
+          "bucket": "days_31_60",
+          "value": 0
+        },
+        {
+          "bucket": "days_61_90",
+          "value": 0
+        },
+        {
+          "bucket": "days_90_plus",
+          "value": 0
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/revops/aging-buckets"
+    },
+    {
+      "id": "c09_window_dau_mau",
+      "reason": "window",
+      "construct": "trailing windows of different lengths ending at the period end (one day over thirty)",
+      "metric": "gasp_dau_mau",
+      "gasp_id": "dau_mau",
+      "formula": "metric.daily_active_users_dau / metric.monthly_active_users_mau",
+      "unit": "percent",
+      "datasets": [
+        "product_event"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.23809523809523808
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/product/daumau-ratio-stickiness"
+    },
+    {
+      "id": "c10_distinct_pair_breadth_of_adoption",
+      "reason": "distinct pair",
+      "construct": "a count of distinct tuples (account and feature pairs)",
+      "metric": "gasp_breadth_of_adoption",
+      "gasp_id": "breadth_of_adoption",
+      "formula": "count_distinct(field.customer_id, field.feature_id) / metric.active_accounts",
+      "unit": "ratio",
+      "datasets": [
+        "product_event"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 4.785714285714286
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/product/breadth-of-adoption"
+    },
+    {
+      "id": "c11_all_time_user_retention_day_n",
+      "reason": "all_time",
+      "construct": "an unbounded range beside a bounded one (users who signed up in the period, active any time after)",
+      "metric": "gasp_user_retention_day_n",
+      "gasp_id": "user_retention_day_n",
+      "formula": "all_time(count_distinct(field.user_id where field.product_event_type = 'qualifying' and in_period(field.signup_date) and (field.event_date - field.signup_date) = 30)) / count_distinct(field.user_id where in_period(field.signup_date))",
+      "unit": "percent",
+      "datasets": [
+        "user",
+        "product_event"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.7142857142857143
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/product/user-retention-day-n"
+    }
+  ]
+}

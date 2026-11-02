@@ -1,8 +1,11 @@
 /**
  * GASP's own cross-reference checks for an Ossie export. The upstream validator
- * checks document shape and the ontology's internal references; it does not check
- * that metrics, relationships and mappings point at things that exist.
- * See docs/ossie-spike.md (probe table).
+ * (vendored at ossie-validator/) checks document shape, unique names, the
+ * ontology's internal references, SQL syntax, relationship columns and, since
+ * 99c21c2, the mapping against the ontology and model its iris name. It still
+ * passes a metric written as a scalar subquery or with a FROM or WHERE clause, a
+ * broken dataset source query and a metric naming an unknown dataset (warning
+ * only), so these checks run beside it. See docs/ossie-spike.md (probe table).
  */
 import type {
   OssieConcept,
@@ -141,7 +144,8 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
       const s = stripLiterals(d.expression);
       if (/\bSELECT\b/i.test(s)) p.push(`Model: metric "${m.name}" contains SELECT; the portable expression language forbids subqueries`);
       if (/\bFROM\b/i.test(s)) p.push(`Model: metric "${m.name}" contains a FROM clause; the portable expression language forbids subqueries`);
-      if (/\bWHERE\b/i.test(s)) p.push(`Model: metric "${m.name}" contains a WHERE clause; use CASE WHEN inside the aggregate`);
+      // `FILTER (WHERE ...)` is the aggregate filter clause the expression language requires; a bare WHERE is a query.
+      if (/\bWHERE\b/i.test(s.replace(/\bFILTER\s*\(\s*WHERE\b/gi, "FILTER ("))) p.push(`Model: metric "${m.name}" contains a WHERE clause; filter the aggregate with FILTER (WHERE ...)`);
       const bad = new Set<string>();
       for (const [ds, f] of refsIn(d.expression)) {
         const key = `${ds}.${f}`;

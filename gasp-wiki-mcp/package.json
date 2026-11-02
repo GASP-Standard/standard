@@ -1,7 +1,7 @@
 {
   "name": "gasp-standard-mcp",
   "version": "1.16.0",
-  "description": "MCP server for the GASP Standard — SaaS metrics definitions, formulas, benchmarks, entity relationships, business model graph, access governance, and query generation",
+  "description": "MCP server for the GASP Standard \u2014 SaaS metrics definitions, formulas, benchmarks, entity relationships, business model graph, access governance, and query generation",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Gareth O'Shea",
@@ -46,6 +46,8 @@
     "test": "vitest run",
     "derive": "tsx src/derive.ts",
     "derive:check": "tsx src/derive.ts --check",
+    "conformance": "tsx scripts/ossie-conformance.ts",
+    "conformance:check": "tsx scripts/ossie-conformance.ts --check",
     "export-data": "node build/export-data.js",
     "prepublishOnly": "npm run build && npm run export-data"
   },

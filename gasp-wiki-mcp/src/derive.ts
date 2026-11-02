@@ -22,6 +22,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { exportOssie, ossieYaml } from "./ossie/index.js";
+import { exportExample, exampleReadme, EXAMPLE_BASENAME } from "./ossie/example.js";
 import { join } from "node:path";
 import { loadStandard, metricFormulaId, isMetricStub } from "./loader.js";
 import { parseFormula, analyzeFormula } from "./formula.js";
@@ -40,6 +41,10 @@ export const DERIVED_FILES = {
   ossieModel: join(exportsDir, "ossie", "gasp.semantic_model.yaml"),
   ossieMapping: join(exportsDir, "ossie", "gasp.mapping.yaml"),
   ossieCoverage: join(exportsDir, "ossie", "coverage.json"),
+  exampleOntology: join(exportsDir, "ossie", "example", `${EXAMPLE_BASENAME}.ontology.yaml`),
+  exampleModel: join(exportsDir, "ossie", "example", `${EXAMPLE_BASENAME}.semantic_model.yaml`),
+  exampleMapping: join(exportsDir, "ossie", "example", `${EXAMPLE_BASENAME}.mapping.yaml`),
+  exampleReadme: join(exportsDir, "ossie", "example", "README.md"),
 };
 /** The canonical adapter schema, the only copy in the standard; the website serves it at /schemas/gasp-adapter-v1.json. */
 export const SCHEMA_SOURCE = join(root, "standard", "gasp-adapter-schema.json");
@@ -234,12 +239,15 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
   };
   // ── Apache Ossie export ───────────────────────────────────────────────────
   const ossie = exportOssie(data);
+  const example = exportExample(data, ossie);
   const coverage = { description: "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.", ...summarise(ossie.coverage), metrics: ossie.coverage };
 
   return {
     ontology, relationships, cypher, template: JSON.stringify(template, null, 2) + "\n",
     ossieOntology: ossieYaml(ossie.ontology), ossieModel: ossieYaml(ossie.model), ossieMapping: ossieYaml(ossie.mapping),
     ossieCoverage: JSON.stringify(coverage, null, 2) + "\n",
+    exampleOntology: ossieYaml(example.ontology), exampleModel: ossieYaml(example.model), exampleMapping: ossieYaml(example.mapping),
+    exampleReadme: exampleReadme(example, data),
   };
 }
 

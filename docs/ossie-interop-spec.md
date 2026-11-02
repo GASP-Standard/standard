@@ -144,7 +144,7 @@ The v1 adapter and the Ossie mapping merge into one format: an Ossie mapping doc
 
 **Imports.** Because the mapping document references the GASP ontology by `name` and `iri`, a company's file no longer carries a copy of it. What remains for proposal P4 is catalog resolution by name and converter support for standalone mapping documents, which upstream says is not yet available.
 
-**Validation.** `validate_adapter` becomes `validate_mapping`: Ossie schema validity first, then GASP's own cross-reference checks (the upstream validator does not confirm that a mapping's concepts and relationships exist in the ontology, or that a metric's dataset and field references exist; `gasp-wiki-mcp/src/ossie/check.ts` does), then coverage computed from the concept mappings, then field types and recommended owners.
+**Validation.** `validate_adapter` becomes `validate_mapping`: Ossie schema validity first, then GASP's own cross-reference checks (since `99c21c2` the upstream validator confirms that a mapping's concepts, relationships and field expressions resolve in the documents its `iri`s name and that a relationship's columns exist; it only warns on a metric naming an unknown dataset and passes a scalar subquery or a broken `source` query, which `gasp-wiki-mcp/src/ossie/check.ts` catches), then coverage computed from the concept mappings, then field types and recommended owners.
 
 ### Metric compiler
 
@@ -302,7 +302,7 @@ Ship one synthetic SaaS dataset (seeded, ~1,000 accounts, 24 months of CEL event
 
 - Say "works with Apache Ossie (incubating)". ASF does not certify, so "Ossie-certified" is unavailable; follow its [trademark policy](https://www.apache.org/foundation/marks/) and use the full name on first mention.
 - Name a tool as running GASP only for a round trip that passes in GASP's CI or a demo the tool's maintainers have seen.
-- Publish a conformance badge driven by Ossie's own `validation/` tooling plus GASP's cross-reference checks: "Validates against Apache Ossie 0.x". The upstream validator checks document shape, ontology references and SQL syntax only (`docs/ossie-spike.md`), so the badge names both.
+- Publish a conformance badge driven by Ossie's own `validation/` tooling plus GASP's cross-reference checks: "Validates against Apache Ossie 0.x". The upstream validator checks document shape, ontology and model references, mapping cross-references and SQL syntax, and leaves the portable-subset and `source` query checks to GASP (`docs/ossie-spike.md`, probe table), so the badge names both.
 
 **5. Launch**
 

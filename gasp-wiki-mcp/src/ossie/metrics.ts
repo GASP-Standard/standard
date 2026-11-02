@@ -13,8 +13,10 @@
  *     that the query layer selects one snapshot date (the period end).
  *   - no `over cohort` anywhere, including inside referenced metrics.
  *
- * Filters become conditional aggregates (`SUM(CASE WHEN w THEN x ELSE 0 END)`,
- * `COUNT(CASE WHEN w THEN x END)`), metric references are inlined, division
+ * Filters become the aggregate filter clause the expression language requires
+ * (`SUM(x) FILTER (WHERE w)`, SQL:2003 T612; since apache/ossie#382), so an
+ * aggregate over no matching rows is NULL as it is in the compiled SQL, where the
+ * filter is the subquery's WHERE clause. Metric references are inlined, division
  * casts the numerator to DECIMAL and guards zero with NULLIF, and date
  * subtraction uses DATEDIFF (timestamps in seconds / 86400, so elapsed days
  * stay fractional as the grammar defines). Anything else is staged: model.ts
@@ -275,12 +277,9 @@ class Emitter {
     }
     const arg = this.expr(n.arg, s);
     const w = where ? this.expr(where, s, true) : undefined;
-    const filtered = (orElse: string) => (w ? `CASE WHEN ${w} THEN ${arg}${orElse} END` : arg);
-    if (n.kind === "percentile") return `PERCENTILE_CONT(${n.p}) WITHIN GROUP (ORDER BY ${filtered("")})`;
-    switch (n.fn) {
-      case "sum": return `SUM(${filtered(" ELSE 0")})`;
-      case "count_distinct": return `COUNT(DISTINCT ${filtered("")})`;
-      default: return `${n.fn.toUpperCase()}(${filtered("")})`;
-    }
+    const filter = w ? ` FILTER (WHERE ${w})` : "";
+    if (n.kind === "percentile") return `PERCENTILE_CONT(${n.p}) WITHIN GROUP (ORDER BY ${arg})${filter}`;
+    if (n.fn === "count_distinct") return `COUNT(DISTINCT ${arg})${filter}`;
+    return `${n.fn.toUpperCase()}(${arg})${filter}`;
   }
 }

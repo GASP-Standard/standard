@@ -112,8 +112,9 @@ export const DIALECT: Record<DialectName, Dialect> = {
   },
 };
 
-/** Ossie's Dialect enum value for each dialect; postgres has none (the staged source keeps it). */
-export const OSSIE_DIALECT_OF: Partial<Record<DialectName, "SNOWFLAKE" | "BIGQUERY" | "DATABRICKS">> = {
+/** The registered Ossie dialect name (extensions/dialects.md) for each compiler dialect. POSTGRES and REDSHIFT were registered by apache/ossie#598 (2026-11-01); the postgres compiler output covers both. */
+export const OSSIE_DIALECT_OF: Record<DialectName, "POSTGRES" | "SNOWFLAKE" | "BIGQUERY" | "DATABRICKS"> = {
+  postgres: "POSTGRES",
   snowflake: "SNOWFLAKE",
   bigquery: "BIGQUERY",
   databricks: "DATABRICKS",

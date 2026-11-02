@@ -6,6 +6,7 @@ import { stringify } from "yaml";
 import { loadStandard } from "../src/loader.js";
 import { exportOntology, unmappedEdges, edgesWithoutJoin, planOntology } from "../src/ossie/ontology.js";
 import { exportMapping } from "../src/ossie/mapping.js";
+import { exportModel } from "../src/ossie/model.js";
 import type { OssieConcept, OssieLinkMapping, OssieObjectMapping, OssieOntologyRelationship, OssieReferentMapping } from "../src/ossie/types.js";
 
 const BUILT_INS = new Set(["Any", "Boolean", "Date", "DateTime", "Decimal", "Float", "Integer", "String"]);
@@ -242,6 +243,9 @@ describe.skipIf(!hasUv)("upstream Ossie validator", () => {
   const mappingFile = join(dir, "gasp.mapping.yaml");
   writeFileSync(ontologyFile, stringify(ontology, { lineWidth: 0 }));
   writeFileSync(mappingFile, stringify(mapping, { lineWidth: 0 }));
+  // The mapping's iris are relative (./gasp.ontology.yaml, ./gasp.semantic_model.yaml) and the
+  // validator cross-checks the mapping against both documents, so the model sits beside it too.
+  writeFileSync(join(dir, "gasp.semantic_model.yaml"), stringify(exportModel(data).model, { lineWidth: 0 }));
 
   it("validates the ontology", async () => {
     const r = await validateUpstream(ontologyFile, "ontology");

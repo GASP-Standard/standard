@@ -1,6 +1,6 @@
 # Ossie spike: does the mapping format do what the interop spec assumes?
 
-Date: 2026-10-13. Against `apache/ossie` main at `2b1f9bf` (2026-10-12). Spec under test: the interop spec at v0.3, now `docs/ossie-interop-spec.md` (v0.4).
+Date: 2026-10-13. Against `apache/ossie` main at `2b1f9bf` (2026-10-12). Spec under test: the interop spec at v0.3, now `docs/ossie-interop-spec.md` (v0.4). Probes re-run 2026-11-02 against `99c21c2` (2026-11-02) when the vendored validator was re-pinned; the table below carries both results.
 
 Method: hand-write a subset of the GASP ontology, a semantic model with the datasets Net Revenue Retention (NRR) reads plus one staged cohort dataset and a mapping between them. Run all three through Ossie's own validator. Then break the files on purpose ten ways and see what the validator catches. The three files are in `gasp-wiki-mcp/test/fixture/ossie-spike/` (the fixture `test/ossie-check.test.ts` probes) and pass as written.
 
@@ -11,24 +11,25 @@ The plan holds, with three corrections to the spec and one lowered expectation.
 1. **The mapping format moved.** The spec was written against embedded `ontology_mappings` inside the ontology document. That form is now deprecated. A mapping is its own document (`ontology/mapping.json`) with an `ontology_ref` and a `semantic_model_ref`, each naming the referenced document and optionally giving an `iri` to resolve it from. The `gasp-wiki-mcp/test/fixture/ossie-spike/gasp.mapping.yaml` file shows the shape.
 2. **The "no imports" gap is mostly closed.** Because a mapping document references the GASP ontology by name and location, a customer's file no longer needs a bundled copy of it. Proposal P4 (ontology imports) shrinks to "catalog resolution by name", which the spec text already anticipates. The spec's bundler is no longer needed for the customer mapping. One caveat from the upstream text: parser and converter support for standalone mapping documents "is not yet available", so tools that consume mappings today still want the embedded form. The exporter should be able to write both until that lands.
 3. **The portable dialect is `OSSIE_SQL_2026`, not `ANSI_SQL`.** The dialect enum now has twelve values. `OSSIE_SQL_2026` is the only one whose semantics the spec defines (`core-spec/expression_language.md`, status Proposed Final). Everything else is opaque to Ossie and may be ignored by implementations. The compiler should emit `OSSIE_SQL_2026` first and warehouse dialects beside it. `POSTGRES` and `REDSHIFT` are still absent, so proposal P0 stands.
-4. **"Validates against the Ossie schema" is a weak gate.** See the probe table. The validator checks document shape, the ontology's internal references and SQL syntax. It does not check that a metric's `dataset.field` references exist, that a relationship's columns exist, that a mapping's concepts or relationships exist in the ontology it references, or that an expression stays inside the portable subset (a scalar subquery passes). The exporter needs its own cross-reference checks and the conformance badge wording should say what was checked.
+4. **"Validates against the Ossie schema" is a weak gate.** See the probe table. At `2b1f9bf` the validator checked document shape, the ontology's internal references and SQL syntax. It did not check that a metric's `dataset.field` references exist, that a relationship's columns exist, that a mapping's concepts or relationships exist in the ontology it references, or that an expression stays inside the portable subset (a scalar subquery passes). The exporter needs its own cross-reference checks and the conformance badge wording should say what was checked. Recheck at `99c21c2`: the gap has narrowed. Upstream #595 cross-checks a mapping against the ontology and model its `iri`s point at, and #608 checks a relationship's columns and (as a warning) a metric's dataset references. A scalar subquery, a broken `source` query and an unknown dataset in a metric still pass, so `check.ts` stays.
 
 ## What the validator catches
 
-| Breakage | Caught |
-| --- | --- |
-| Ontology: a role played by an undeclared concept | Yes |
-| Ontology: `identify_by` naming an unknown relationship | Yes |
-| Ontology: garbage text in `derived_by` | No. Ontology expressions are not parsed |
-| Semantic model: metric expression with broken SQL | Yes, by sqlglot |
-| Semantic model: metric referencing a dataset that does not exist | No |
-| Semantic model: metric written as a scalar subquery, which the expression language forbids | No |
-| Semantic model: broken SQL in a dataset `source` query | No |
-| Semantic model: relationship `from_columns` naming a field that does not exist | No |
-| Mapping: `concept` not in the referenced ontology | No |
-| Mapping: `relationship` not declared on the concept | No |
+| Breakage | Caught at `2b1f9bf` (2026-10-13) | Caught at `99c21c2` (2026-11-02) |
+| --- | --- | --- |
+| Ontology: a role played by an undeclared concept | Yes | Yes |
+| Ontology: `identify_by` naming an unknown relationship | Yes | Yes |
+| Ontology: garbage text in `derived_by` | No. Ontology expressions are not parsed | No |
+| Semantic model: metric expression with broken SQL | Yes, by sqlglot | Yes |
+| Semantic model: metric referencing a dataset that does not exist | No | Warning only ("references unknown dataset"); the file passes |
+| Semantic model: metric written as a scalar subquery, which the expression language forbids | No | No |
+| Semantic model: broken SQL in a dataset `source` query | No | No |
+| Semantic model: relationship `from_columns` naming a field that does not exist | No | Yes (#608) |
+| Mapping: `concept` not in the referenced ontology | No | Yes (#595) |
+| Mapping: `relationship` not declared on the concept | No | Yes (#595) |
+| Mapping: expression naming a field the model lacks | Not probed | Yes (#595) |
 
-The validator runs locally with `uv run validation/validate.py [--schema ontology/ontology.json | ontology/mapping.json] <file>`; the script declares its own dependencies.
+The validator runs locally with `uv run validation/validate.py [--schema ontology/ontology.json | ontology/mapping.json] <file>`; the script declares its own dependencies. Since `99c21c2` the mapping checks resolve `ontology_ref.iri` and `semantic_model_ref.iri` relative to the mapping file, so a mapping validated on its own in an empty directory fails with "does not resolve"; validate it beside the two documents it names, which `test/ossie-ontology.test.ts` now does. The vendored copy also carries `python/src/ossie/_loading.py`, the duplicate-key YAML loader the script imports from the checkout layout.
 
 ## What this means for each piece of the plan
 
@@ -49,7 +50,10 @@ With the staged dataset in place, NRR-O and NRR-M are each one line: `SUM(gasp_a
 
 Written 2026-10-13, after the exporters and the compiler dialects shipped the same day. The findings above stand; three things changed around them.
 
-- **Dialect sources live in a custom extension.** A dataset `source` is one string with no dialect (`Dataset.source` in `core-spec/ossie-schema.json`, "database.schema.table or query"), while metric and field expressions carry a `dialects` array. A staged dataset's source is a compiled query and warehouses spell date arithmetic, the double cast and percentiles differently (`gasp-wiki-mcp/src/dialect.ts`). The exporter keeps the Postgres query in `source` (it also runs on Redshift) and puts the Snowflake, BigQuery and Databricks versions in the staged dataset's GASP `custom_extensions` under `sources`, keyed by Ossie dialect name. A `dialects` form for `source`, matching expressions, would let a consumer pick its own without reading a vendor extension. It is a candidate for the upstream proposals.
+- **Dialect sources live in a custom extension.** A dataset `source` is one string with no dialect (`Dataset.source` in `core-spec/ossie-schema.json`, "database.schema.table or query"), while metric and field expressions carry a `dialects` array. A staged dataset's source is a compiled query and warehouses spell date arithmetic, the double cast and percentiles differently (`gasp-wiki-mcp/src/dialect.ts`). The exporter keeps the Postgres query in `source` (it also runs on Redshift) and puts the Snowflake, BigQuery and Databricks versions in the staged dataset's GASP `custom_extensions` under `sources`, keyed by Ossie dialect name. Since 2026-11-02 the extension's `source_dialect` is `POSTGRES`, the name `apache/ossie#598` registered in `extensions/dialects.md`, instead of GASP's internal `postgres`. A `dialects` form for `source`, matching expressions, would let a consumer pick its own without reading a vendor extension. It is a candidate for the upstream proposals.
+- **Filtered aggregates use `FILTER (WHERE ...)`** (2026-11-02). `expression_language.md` made the SQL:2003 filter clause a required aggregate modifier on 2026-10-19 (#382), with the `CASE` form as a non-normative equivalent. The exporter now emits `SUM(x) FILTER (WHERE w)` for every filtered direct metric (139), which the validator at `99c21c2` parses for SUM, COUNT DISTINCT, MEDIAN, PERCENTILE_CONT and a cast ratio. The semantics moved with it: a filtered SUM over no matching rows is NULL, as the compiled SQL already returned, where the `ELSE 0` form gave 0. Upstream's own portability rung M3 still uses the `CASE` form, so a converter graded on M3 may rewrite GASP's expressions; that is a measurement, not a defect.
+- **The Core department is an example set** (2026-11-02). `standard/exports/ossie/example/gasp_saas.*` is the full export filtered to the Core metrics and the six datasets they read, in the layout of upstream `examples/flights.*`, validated like the full files. It is the draft of the `examples/` contribution; the ASF licence header goes on at contribution time.
+- **The staged reasons have a conformance set** (2026-11-02). `standard/exports/ossie/conformance/` carries one executed case per reason in the shapes of upstream's `compliance/portability` (one model per construct) and `compliance/query` (reference query, `expected.sql` as a VALUES list, shared data scripts). It is the fixture set the introduction post offers for the held rungs M4 to M8.
 - **Breakdowns can be bucketed or reached through a key.** A bucketed breakdown groups by a `CASE` over a per-row expression (Aging Buckets over invoice age), which no Ossie dimension expresses, so the export stages it with the reason `bucket`. A breakdown whose label lives on another dataset (MRR by plan name, read from `plan` through `plan_id`) stays direct where the expression allows: the metric's description tells the consumer to join on the key through the model's relationship and group on the label; a staged version carries both the key and the label column.
 - **Timestamp period bounds were fixed.** Every period filter on a timestamp-dated dataset used `<= period_end`, which is midnight at the start of the last day, so the compiled SQL dropped rows later that day in every dialect. The compiler now emits `>= period_start` and `< period_end + 1 day` on timestamp columns for the period, window, to_date and point bounds. The staged sources in the Ossie model changed with it. The executed fixture tests prove the fix with two rows on the last day of June.
 
