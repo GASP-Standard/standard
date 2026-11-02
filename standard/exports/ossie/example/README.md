@@ -57,6 +57,16 @@ Every metric is an `OSSIE_SQL_2026` expression where the language can state it; 
 | Gross Margin (Market form) | `(sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure')) / sum(field.revenue)` |
 | Rule of 40 | `(metric.arr - lag(metric.arr, 1 year)) / lag(metric.arr, 1 year) + metric.ebitda_margin` |
 
+## Running it
+
+`demo/` runs the model on a standard SQL engine. `demo/data.sql` creates the 6 tables under `gasp.<dataset>` with the fixture rows the metrics need, plus `gasp.period_spine` holding the reporting period (2026-01-01 to 2026-06-30); `demo/metrics.sql` returns one row per metric, each direct metric as its expression with every aggregate evaluated over its dataset's rows for the period and each staged metric as its staged dataset's row; `demo/expected.sql` is the result as a VALUES list. On DuckDB, the engine the upstream query compliance suite uses:
+
+```bash
+cat demo/data.sql demo/metrics.sql | duckdb
+```
+
+or without the CLI, `uv run --with duckdb python -c "import duckdb; c = duckdb.connect(); c.execute(open('demo/data.sql').read()); print(c.sql(open('demo/metrics.sql').read()))"`. The same scripts run on Postgres. The GASP test suite checks the DuckDB result against `expected.sql` on every build, and the expected values against the GASP compiled SQL on the full fixture.
+
 ## Validating
 
 From a clone of apache/ossie, with the three files in one directory:

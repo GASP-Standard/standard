@@ -5,10 +5,13 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 ## [Unreleased]
 
 ### Added
+- A runnable demo for the Ossie example at `standard/exports/ossie/example/demo/`: data, one query per Core metric and the expected values, for DuckDB or Postgres; written by `npm run conformance` and checked on DuckDB in the test suite.
+- Ossie portability profile: `coverage.json` tags each direct metric with the upstream `compliance/portability` rung (M0 to M3) its construct needs and lists the constructs the held rungs will measure, with a summary under `portability`.
 - A compact example for Apache Ossie at `standard/exports/ossie/example/`, written by `npm run derive`: the Core department (39 metrics over 6 datasets) as an ontology, a semantic model and a mapping in the layout of the upstream flights example, cut from the full export so every statement matches it.
 - A conformance set for Apache Ossie at `standard/exports/ossie/conformance/`, written by `npm run conformance`: one case per construct the portable language cannot state (the eleven staged reasons), each a complete Ossie model, a Postgres reference query, the expected result as standard SQL and the fixture rows it reads. `manifest.json` and `README.md` describe the cases.
 
 ### Changed
+- Test fixture: two expansion events now carry the `pricing_adjustment` and `recontracting` classifications, so the Operating forms of ARR and NRR compute on it (the conformance data and the example demo carry the rows).
 - Every filtered direct metric in the Ossie export uses the aggregate filter clause, `SUM(x) FILTER (WHERE w)`, which `OSSIE_SQL_2026` requires since apache/ossie#382, in place of `SUM(CASE WHEN w THEN x ELSE 0 END)`. A filtered aggregate over no matching rows is NULL rather than 0, matching the compiled SQL templates. `checkExport` accepts the clause and rejects `CASE WHEN` filtering.
 - The Ossie export labels every staged dataset's `source` with the registered Ossie dialect name `POSTGRES` (`source_dialect` in the GASP extension), which `apache/ossie#598` added to `extensions/dialects.md` on 2026-11-01. `OSSIE_DIALECT_OF` in `src/dialect.ts` now covers all four compiler dialects. The Snowflake, BigQuery and Databricks sources still travel under `sources` because a dataset `source` is one string.
 - The vendored upstream validator is pinned at `apache/ossie@99c21c2` (2026-11-02), up from `2b1f9bf`. It now cross-checks the mapping against the ontology and model its `iri`s name and checks relationship columns against the model's fields; the three GASP exports pass unchanged. The vendored copy gains `python/src/ossie/_loading.py`, which the script imports.

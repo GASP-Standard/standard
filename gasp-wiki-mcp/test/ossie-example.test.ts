@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildExampleDemo, EXAMPLE_DEMO_DIR, readExampleDemo } from "../scripts/ossie-conformance.js";
 import { loadStandard, metricFormulaId, isMetricStub } from "../src/loader.js";
 import { exportOssie } from "../src/ossie/index.js";
 import { exportExample, EXAMPLE_DEPARTMENT, EXAMPLE_BASENAME } from "../src/ossie/example.js";
@@ -52,4 +55,39 @@ describe("Ossie example (GASP SaaS core)", () => {
       expect(r.ok, `${join("example", kind)}\n${r.output}`).toBe(true);
     }
   }, 180_000);
+});
+
+// The demo (standard/exports/ossie/example/demo) runs every Core metric as a
+// standalone query. scripts/ossie-conformance.ts writes it with the expected
+// values from the compiled SQL on the full fixture; this checks it is current
+// and that DuckDB, the engine the upstream query compliance suite uses, returns
+// those values.
+describe("Ossie example demo", () => {
+  it("is current (npm run conformance)", async () => {
+    const files = await buildExampleDemo();
+    const current = readExampleDemo();
+    expect(Object.keys(current).sort()).toEqual(Object.keys(files).sort());
+    for (const k of Object.keys(files)) expect(current[k], k).toBe(files[k]);
+  }, 180_000);
+
+  const close = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+  const onDuckDb = uvAvailable() ? it : it.skip;
+  onDuckDb("returns the expected values on DuckDB", () => {
+    const py = [
+      "import duckdb, json, sys",
+      "c = duckdb.connect()",
+      "c.execute(open(sys.argv[1]).read())",
+      "rows = c.execute(open(sys.argv[2]).read()).fetchall()",
+      "print(json.dumps([[m, None if v is None else float(v)] for m, v in rows]))",
+    ].join("\n");
+    const r = spawnSync("uv", ["run", "--quiet", "--with", "duckdb", "python", "-c", py, join(EXAMPLE_DEMO_DIR, "data.sql"), join(EXAMPLE_DEMO_DIR, "metrics.sql")], { encoding: "utf-8" });
+    expect(r.status, r.stderr).toBe(0);
+    const got = JSON.parse(r.stdout.trim().split("\n").pop()!) as Array<[string, number | null]>;
+    const expected = [...readFileSync(join(EXAMPLE_DEMO_DIR, "expected.sql"), "utf-8").matchAll(/\('([a-z0-9_]+)', (CAST\(NULL AS DECIMAL\)|[-0-9.E+]+)\)/g)]
+      .map((m) => [m[1], m[2].startsWith("CAST") ? null : Number(m[2])] as [string, number | null]);
+    expect(expected.length).toBeGreaterThan(30);
+    expect(got.map((g) => g[0])).toEqual(expected.map((e) => e[0]));
+    const off = expected.filter((e, i) => (e[1] === null ? got[i][1] !== null : got[i][1] === null || !close(got[i][1]!, e[1])));
+    expect(off.map((e) => e[0]), "metrics whose DuckDB value differs from expected.sql").toEqual([]);
+  }, 300_000);
 });

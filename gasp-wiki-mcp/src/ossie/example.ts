@@ -16,6 +16,7 @@
  * datasets and concepts the example has. checkExport runs on the result, so a
  * dangling reference fails the derive.
  */
+import { DEMO_PERIOD } from "./demo.js";
 import { isMetricStub, metricFormulaId } from "../loader.js";
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
@@ -185,6 +186,16 @@ Every metric is an \`OSSIE_SQL_2026\` expression where the language can state it
 | Metric | GASP formula |
 | --- | --- |
 ${rows.join("\n")}
+
+## Running it
+
+\`demo/\` runs the model on a standard SQL engine. \`demo/data.sql\` creates the ${ex.datasets.length} tables under \`gasp.<dataset>\` with the fixture rows the metrics need, plus \`gasp.period_spine\` holding the reporting period (${DEMO_PERIOD.start} to ${DEMO_PERIOD.end}); \`demo/metrics.sql\` returns one row per metric, each direct metric as its expression with every aggregate evaluated over its dataset's rows for the period and each staged metric as its staged dataset's row; \`demo/expected.sql\` is the result as a VALUES list. On DuckDB, the engine the upstream query compliance suite uses:
+
+\`\`\`bash
+cat demo/data.sql demo/metrics.sql | duckdb
+\`\`\`
+
+or without the CLI, \`uv run --with duckdb python -c "import duckdb; c = duckdb.connect(); c.execute(open('demo/data.sql').read()); print(c.sql(open('demo/metrics.sql').read()))"\`. The same scripts run on Postgres. The GASP test suite checks the DuckDB result against \`expected.sql\` on every build, and the expected values against the GASP compiled SQL on the full fixture.
 
 ## Validating
 

@@ -13,15 +13,20 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import { dirname, join, relative, resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
+import { compileMetric } from "../src/compile.js";
 import { exportOssie, ossieYaml } from "../src/ossie/index.js";
+import { exportExample } from "../src/ossie/example.js";
+import { demoExpectedSql, demoMetrics, demoMetricsSql, DEMO_PERIOD } from "../src/ossie/demo.js";
+import { stagedSource } from "../src/ossie/model.js";
 import {
   CONFORMANCE_PERIOD, buildConformanceCases, dataSql, expectedSql, manifest, periodSpineSql, readme, referenceSql, type ConformanceCase,
 } from "../src/ossie/conformance.js";
 import type { OntologyDataset, OntologyField } from "../src/types.js";
-import { fixture } from "../test/fixture-db.js";
+import { addOssieViews, fixture, fixtureDb, scalar } from "../test/fixture-db.js";
 
 const root = resolve(new URL(".", import.meta.url).pathname, "..", "..");
 export const CONFORMANCE_DIR = join(root, "standard", "exports", "ossie", "conformance");
+export const EXAMPLE_DEMO_DIR = join(root, "standard", "exports", "ossie", "example", "demo");
 
 type Row = Record<string, unknown>;
 
@@ -113,34 +118,106 @@ export async function buildConformance(): Promise<Record<string, string>> {
   return files;
 }
 
-/** Files on disk under CONFORMANCE_DIR, keyed like buildConformance's result. */
-export function readConformance(): Record<string, string> {
-  if (!existsSync(CONFORMANCE_DIR)) return {};
+const close = (a: number | null, b: number | null): boolean =>
+  a === null || b === null ? a === b : Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+
+/** Every file of the example demo, keyed by path relative to EXAMPLE_DEMO_DIR. */
+export async function buildExampleDemo(): Promise<Record<string, string>> {
+  const data = loadStandard();
+  const exp = exportOssie(data);
+  const ex = exportExample(data, exp);
+  const fields = Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])) as Record<string, OntologyField>;
+  const datasets = data.ontology!.datasets!;
+  const ctx = { fields, datasets, formulas: data.formulas! };
+  const metrics = demoMetrics(ex.model, datasets, fields);
+
+  // Expected values: the GASP compiled SQL per entry on the full fixture, through the gasp.<dataset> views.
+  const full = await fixtureDb();
+  await addOssieViews(full);
+  await full.exec(`CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE); INSERT INTO gasp.period_spine VALUES ('${DEMO_PERIOD.start}', '${DEMO_PERIOD.end}')`);
+  const expected: Array<{ metric: string; value: number | null }> = [];
+  for (const key of ex.entries) {
+    const c = exp.coverage[key];
+    if (c.kind === "notComputable") continue;
+    const [id, variant] = key.split(":");
+    const compiled = stagedSource(compileMetric(id, ctx, variant).sql);
+    expected.push({ metric: c.ossieName, value: await scalar(full, `SELECT value FROM (${compiled}) s WHERE period_start = DATE '${DEMO_PERIOD.start}'`) });
+  }
+  expected.sort((a, b) => a.metric.localeCompare(b.metric));
+  if (expected.length !== metrics.length) throw new Error(`${metrics.length} demo metrics but ${expected.length} expected values`);
+  // The demo queries must give the same numbers on the full fixture.
+  const check = async (db: PGlite, what: string) => {
+    const res = await db.query<{ metric: string; value: unknown }>(demoMetricsSql(metrics));
+    const got = res.rows.map((r) => ({ metric: r.metric, value: r.value === null ? null : Number(r.value) }));
+    const bad = expected.filter((e, i) => got[i]?.metric !== e.metric || !close(got[i].value, e.value)).map((e) => e.metric);
+    if (what === "full" && bad.length) throw new Error(`Demo queries disagree with the compiled SQL on the full fixture: ${bad.join(", ")}`);
+    return bad;
+  };
+  await check(full, "full");
+  await full.close();
+
+  // Slice the datasets the example reads, widening any the slice does not reproduce.
+  const fieldsOf = (ds: string) => data.ontology!.fields!.filter((f) => f.datasets?.includes(ds));
+  const script = (ds: string, rows: Row[], note: string) => dataSql(ds, datasets[ds], fieldsOf(ds), rows, note);
+  const slices: Record<string, { rows: Row[]; note: string }> = Object.fromEntries(ex.datasets.map((ds) => [ds, leanSlice(datasets[ds], fixture.tables[ds])]));
+  const dataScript = () => [periodSpineSql(), ...ex.datasets.map((ds) => script(ds, slices[ds].rows, slices[ds].note))].join("\n");
+  for (let round = 0; round < 3; round++) {
+    const db = await dbFrom([dataScript()]);
+    const bad = await check(db, "slice");
+    await db.close();
+    if (bad.length === 0) break;
+    if (round === 2) throw new Error(`Demo slices do not reproduce the full results for ${bad.join(", ")}`);
+    for (const ds of ex.datasets) slices[ds] = { rows: fixture.tables[ds], note: "all fixture rows" };
+  }
+
+  return {
+    "data.sql": dataScript(),
+    "metrics.sql": demoMetricsSql(metrics),
+    "expected.sql": demoExpectedSql(expected),
+  };
+}
+
+/** Files on disk under a directory, keyed by relative path. */
+function readDir(dir: string): Record<string, string> {
+  if (!existsSync(dir)) return {};
   const out: Record<string, string> = {};
-  const walk = (dir: string) => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
+  const walk = (d: string) => {
+    for (const name of readdirSync(d)) {
+      const p = join(d, name);
       if (statSync(p).isDirectory()) walk(p);
-      else out[relative(CONFORMANCE_DIR, p)] = readFileSync(p, "utf-8");
+      else out[relative(dir, p)] = readFileSync(p, "utf-8");
     }
   };
-  walk(CONFORMANCE_DIR);
+  walk(dir);
   return out;
+}
+
+/** Files on disk under EXAMPLE_DEMO_DIR, keyed like buildExampleDemo's result. */
+export const readExampleDemo = (): Record<string, string> => readDir(EXAMPLE_DEMO_DIR);
+
+/** Files on disk under CONFORMANCE_DIR, keyed like buildConformance's result. */
+export const readConformance = (): Record<string, string> => readDir(CONFORMANCE_DIR);
+
+/** Write or check one generated directory; returns the number of files that differ. */
+function sync(label: string, dir: string, files: Record<string, string>, current: Record<string, string>, check: boolean): number {
+  const changed = [...new Set([...Object.keys(files), ...Object.keys(current)])].filter((k) => files[k] !== current[k]).sort();
+  const bytes = Object.values(files).reduce((n, s) => n + Buffer.byteLength(s), 0);
+  const size = `${Object.keys(files).length} files, ${Math.round(bytes / 1024)} KB`;
+  if (check) {
+    if (changed.length) console.error(`${label} out of date: ${changed.join(", ")}. Run npm run conformance.`);
+    else console.log(`${label} is current (${size}).`);
+    return changed.length;
+  }
+  for (const k of Object.keys(current)) if (!(k in files)) rmSync(join(dir, k));
+  for (const k of changed) if (k in files) { mkdirSync(dirname(join(dir, k)), { recursive: true }); writeFileSync(join(dir, k), files[k]); }
+  console.log(changed.length ? `${label}: updated ${changed.length} file(s) (${size}).` : `${label}: no changes.`);
+  return changed.length;
 }
 
 const isMain = process.argv[1]?.endsWith("ossie-conformance.ts") || process.argv[1]?.endsWith("ossie-conformance.js");
 if (isMain) {
   const check = process.argv.includes("--check");
-  const files = await buildConformance();
-  const current = readConformance();
-  const changed = [...new Set([...Object.keys(files), ...Object.keys(current)])].filter((k) => files[k] !== current[k]).sort();
-  const bytes = Object.values(files).reduce((n, s) => n + Buffer.byteLength(s), 0);
-  if (check) {
-    if (changed.length) { console.error(`Conformance set out of date: ${changed.join(", ")}. Run npm run conformance.`); process.exit(1); }
-    console.log(`Conformance set is current (${Object.keys(files).length} files, ${Math.round(bytes / 1024)} KB).`);
-  } else {
-    for (const k of Object.keys(current)) if (!(k in files)) rmSync(join(CONFORMANCE_DIR, k));
-    for (const k of changed) if (k in files) { mkdirSync(dirname(join(CONFORMANCE_DIR, k)), { recursive: true }); writeFileSync(join(CONFORMANCE_DIR, k), files[k]); }
-    console.log(changed.length ? `Updated ${changed.length} file(s) (${Object.keys(files).length} files, ${Math.round(bytes / 1024)} KB).` : "No changes.");
-  }
+  const stale = sync("Conformance set", CONFORMANCE_DIR, await buildConformance(), readConformance(), check)
+    + sync("Example demo", EXAMPLE_DEMO_DIR, await buildExampleDemo(), readExampleDemo(), check);
+  if (check && stale) process.exit(1);
 }

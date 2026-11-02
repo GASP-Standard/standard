@@ -10,7 +10,7 @@
  *   standard/exports/ossie/gasp.ontology.yaml       Apache Ossie ontology (src/ossie/)
  *   standard/exports/ossie/gasp.semantic_model.yaml Ossie reference model with every canonical metric
  *   standard/exports/ossie/gasp.mapping.yaml        Ossie mapping of the ontology onto the model
- *   standard/exports/ossie/coverage.json            how each formula was exported (direct, staged, not computable)
+ *   standard/exports/ossie/coverage.json            how each formula was exported (direct with its portability rung, staged, not computable)
  *
  * The website build (gasp-wiki-frontend/scripts/generate-content.ts) copies
  * standard/exports/ to public/downloads/ and standard/gasp-adapter-schema.json
@@ -22,6 +22,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { exportOssie, ossieYaml } from "./ossie/index.js";
+import { summarisePortability } from "./ossie/portability.js";
 import { exportExample, exampleReadme, EXAMPLE_BASENAME } from "./ossie/example.js";
 import { join } from "node:path";
 import { loadStandard, metricFormulaId, isMetricStub } from "./loader.js";
@@ -240,7 +241,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
   // ── Apache Ossie export ───────────────────────────────────────────────────
   const ossie = exportOssie(data);
   const example = exportExample(data, ossie);
-  const coverage = { description: "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.", ...summarise(ossie.coverage), metrics: ossie.coverage };
+  const coverage = { description: "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.", ...summarise(ossie.coverage), portability: summarisePortability(ossie.coverage), metrics: ossie.coverage };
 
   return {
     ontology, relationships, cypher, template: JSON.stringify(template, null, 2) + "\n",

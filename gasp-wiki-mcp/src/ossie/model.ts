@@ -18,6 +18,7 @@ import { metricUrl } from "../urls.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { breakdownOf, emitMetric, formulaSource, type EmitContext } from "./metrics.js";
 import { metricName, ossieDataType, physicalSource } from "./names.js";
+import { profileExpression } from "./portability.js";
 import {
   GASP_VENDOR, OSSIE_DIALECT, OSSIE_VERSION,
   type MetricCoverage, type OssieDataset, type OssieExpression, type OssieExtension, type OssieField,
@@ -188,7 +189,7 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
       let expression: string;
       if (emission.kind === "direct") {
         expression = emission.expression;
-        coverage[e.key] = { kind: "direct", ossieName: name };
+        coverage[e.key] = { kind: "direct", ossieName: name, ...profileExpression(expression) };
         if (emission.snapshots.length) {
           instructions.push(`Reads the ${emission.snapshots.join(" and ")} snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts.`);
         }

@@ -1,5 +1,5 @@
 {
-  "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
+  "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
   "counts": {
     "direct": 190,
     "staged": 164,
@@ -18,22 +18,55 @@
     "distinct pair": 1,
     "all_time": 4
   },
+  "portability": {
+    "description": "Direct entries by the highest rung of the upstream portability ladder (compliance/portability, M0 to M3) whose construct they use, and the constructs the published rungs do not measure yet. A filtered aggregate is written FILTER (WHERE ...) as the expression language requires; the M3 fixture uses the CASE WHEN form.",
+    "rungs": {
+      "M0": 4,
+      "M2": 47,
+      "M3": 139
+    },
+    "constructs": {
+      "filtered aggregate": 139,
+      "count distinct": 77,
+      "arithmetic over aggregates": 122,
+      "cross-dataset": 35,
+      "date scalar": 17,
+      "percentile": 10
+    }
+  },
   "metrics": {
     "mrr": {
       "kind": "direct",
-      "ossieName": "gasp_mrr"
+      "ossieName": "gasp_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "mrr:by_plan": {
       "kind": "direct",
-      "ossieName": "gasp_mrr_by_plan"
+      "ossieName": "gasp_mrr_by_plan",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "mrr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_mrr_by_segment"
+      "ossieName": "gasp_mrr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "arr": {
       "kind": "direct",
-      "ossieName": "gasp_arr"
+      "ossieName": "gasp_arr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "arr:O": {
       "kind": "staged",
@@ -43,43 +76,97 @@
     },
     "arr:M": {
       "kind": "direct",
-      "ossieName": "gasp_arr_m"
+      "ossieName": "gasp_arr_m",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "arr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_arr_by_segment"
+      "ossieName": "gasp_arr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "arpa": {
       "kind": "direct",
-      "ossieName": "gasp_arpa"
+      "ossieName": "gasp_arpa",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "arpa:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_arpa_by_segment"
+      "ossieName": "gasp_arpa_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "total_customers": {
       "kind": "direct",
-      "ossieName": "gasp_total_customers"
+      "ossieName": "gasp_total_customers",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "total_customers:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_total_customers_by_segment"
+      "ossieName": "gasp_total_customers_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "new_customers": {
       "kind": "direct",
-      "ossieName": "gasp_new_customers"
+      "ossieName": "gasp_new_customers",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "new_customers:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_new_customers_by_segment"
+      "ossieName": "gasp_new_customers_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "churned_customers": {
       "kind": "direct",
-      "ossieName": "gasp_churned_customers"
+      "ossieName": "gasp_churned_customers",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "churned_customers:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_churned_customers_by_segment"
+      "ossieName": "gasp_churned_customers_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "mrr_growth_rate": {
       "kind": "staged",
@@ -89,43 +176,87 @@
     },
     "new_mrr": {
       "kind": "direct",
-      "ossieName": "gasp_new_mrr"
+      "ossieName": "gasp_new_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "new_mrr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_new_mrr_by_segment"
+      "ossieName": "gasp_new_mrr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "expansion_mrr": {
       "kind": "direct",
-      "ossieName": "gasp_expansion_mrr"
+      "ossieName": "gasp_expansion_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "expansion_mrr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_expansion_mrr_by_segment"
+      "ossieName": "gasp_expansion_mrr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "churned_mrr": {
       "kind": "direct",
-      "ossieName": "gasp_churned_mrr"
+      "ossieName": "gasp_churned_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "churned_mrr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_churned_mrr_by_segment"
+      "ossieName": "gasp_churned_mrr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "contraction_mrr": {
       "kind": "direct",
-      "ossieName": "gasp_contraction_mrr"
+      "ossieName": "gasp_contraction_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "contraction_mrr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_contraction_mrr_by_segment"
+      "ossieName": "gasp_contraction_mrr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "reactivation_mrr": {
       "kind": "direct",
-      "ossieName": "gasp_reactivation_mrr"
+      "ossieName": "gasp_reactivation_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "reactivation_mrr:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_reactivation_mrr_by_segment"
+      "ossieName": "gasp_reactivation_mrr_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "carry_mrr": {
       "kind": "staged",
@@ -135,7 +266,12 @@
     },
     "net_new_mrr": {
       "kind": "direct",
-      "ossieName": "gasp_net_new_mrr"
+      "ossieName": "gasp_net_new_mrr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "bundle_pricing_and_mrr_allocation": {
       "kind": "notComputable",
@@ -221,19 +357,45 @@
     },
     "nps": {
       "kind": "direct",
-      "ossieName": "gasp_nps"
+      "ossieName": "gasp_nps",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "cac": {
       "kind": "direct",
-      "ossieName": "gasp_cac"
+      "ossieName": "gasp_cac",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "cac:O": {
       "kind": "direct",
-      "ossieName": "gasp_cac_o"
+      "ossieName": "gasp_cac_o",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "cac:M": {
       "kind": "direct",
-      "ossieName": "gasp_cac_m"
+      "ossieName": "gasp_cac_m",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "cac:by_cost_centre": {
       "kind": "staged",
@@ -279,27 +441,66 @@
     },
     "cac_payback": {
       "kind": "direct",
-      "ossieName": "gasp_cac_payback"
+      "ossieName": "gasp_cac_payback",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "cac_payback:O": {
       "kind": "direct",
-      "ossieName": "gasp_cac_payback_o"
+      "ossieName": "gasp_cac_payback_o",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "cac_payback:M": {
       "kind": "direct",
-      "ossieName": "gasp_cac_payback_m"
+      "ossieName": "gasp_cac_payback_m",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "gross_margin": {
       "kind": "direct",
-      "ossieName": "gasp_gross_margin"
+      "ossieName": "gasp_gross_margin",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "gross_margin:O": {
       "kind": "direct",
-      "ossieName": "gasp_gross_margin_o"
+      "ossieName": "gasp_gross_margin_o",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "gross_margin:M": {
       "kind": "direct",
-      "ossieName": "gasp_gross_margin_m"
+      "ossieName": "gasp_gross_margin_m",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "rule_of_40": {
       "kind": "staged",
@@ -309,7 +510,12 @@
     },
     "total_active_partners": {
       "kind": "direct",
-      "ossieName": "gasp_total_active_partners"
+      "ossieName": "gasp_total_active_partners",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "partner_tier_distribution": {
       "kind": "staged",
@@ -401,19 +607,40 @@
     },
     "certification_rate": {
       "kind": "direct",
-      "ossieName": "gasp_certification_rate"
+      "ossieName": "gasp_certification_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "training_completion": {
       "kind": "direct",
-      "ossieName": "gasp_training_completion"
+      "ossieName": "gasp_training_completion",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "joint_marketing_activities": {
       "kind": "direct",
-      "ossieName": "gasp_joint_marketing_activities"
+      "ossieName": "gasp_joint_marketing_activities",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "partner_nps": {
       "kind": "direct",
-      "ossieName": "gasp_partner_nps"
+      "ossieName": "gasp_partner_nps",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "partner_margin_commission": {
       "kind": "staged",
@@ -477,15 +704,29 @@
     },
     "pipeline_value": {
       "kind": "direct",
-      "ossieName": "gasp_pipeline_value"
+      "ossieName": "gasp_pipeline_value",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "pipeline_value:unweighted": {
       "kind": "direct",
-      "ossieName": "gasp_pipeline_value_unweighted"
+      "ossieName": "gasp_pipeline_value_unweighted",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "pipeline_coverage": {
       "kind": "direct",
-      "ossieName": "gasp_pipeline_coverage"
+      "ossieName": "gasp_pipeline_coverage",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "pipeline_velocity": {
       "kind": "staged",
@@ -519,7 +760,11 @@
     },
     "acv": {
       "kind": "direct",
-      "ossieName": "gasp_acv"
+      "ossieName": "gasp_acv",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "average_deal_size": {
       "kind": "staged",
@@ -541,19 +786,36 @@
     },
     "quota_attainment": {
       "kind": "direct",
-      "ossieName": "gasp_quota_attainment"
+      "ossieName": "gasp_quota_attainment",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "quota_attainment:mean_of_reps": {
       "kind": "direct",
-      "ossieName": "gasp_quota_attainment_mean_of_reps"
+      "ossieName": "gasp_quota_attainment_mean_of_reps",
+      "rung": "M2",
+      "constructs": []
     },
     "revenue_per_rep": {
       "kind": "direct",
-      "ossieName": "gasp_revenue_per_rep"
+      "ossieName": "gasp_revenue_per_rep",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "ramp_time": {
       "kind": "direct",
-      "ossieName": "gasp_ramp_time"
+      "ossieName": "gasp_ramp_time",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "activity_metrics_diagnostic": {
       "kind": "notComputable",
@@ -561,11 +823,20 @@
     },
     "services_revenue": {
       "kind": "direct",
-      "ossieName": "gasp_services_revenue"
+      "ossieName": "gasp_services_revenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "services_as_of_total_revenue": {
       "kind": "direct",
-      "ossieName": "gasp_services_as_of_total_revenue"
+      "ossieName": "gasp_services_as_of_total_revenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "services_attach_rate": {
       "kind": "staged",
@@ -575,7 +846,13 @@
     },
     "average_services_deal_size": {
       "kind": "direct",
-      "ossieName": "gasp_average_services_deal_size"
+      "ossieName": "gasp_average_services_deal_size",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "services_backlog": {
       "kind": "staged",
@@ -585,7 +862,13 @@
     },
     "services_gross_margin": {
       "kind": "direct",
-      "ossieName": "gasp_services_gross_margin"
+      "ossieName": "gasp_services_gross_margin",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "project_margin": {
       "kind": "staged",
@@ -595,31 +878,65 @@
     },
     "realization_rate": {
       "kind": "direct",
-      "ossieName": "gasp_realization_rate"
+      "ossieName": "gasp_realization_rate",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "write_off_rate": {
       "kind": "direct",
-      "ossieName": "gasp_write_off_rate"
+      "ossieName": "gasp_write_off_rate",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "billable_utilization": {
       "kind": "direct",
-      "ossieName": "gasp_billable_utilization"
+      "ossieName": "gasp_billable_utilization",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "total_utilization": {
       "kind": "direct",
-      "ossieName": "gasp_total_utilization"
+      "ossieName": "gasp_total_utilization",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "bench_rate": {
       "kind": "direct",
-      "ossieName": "gasp_bench_rate"
+      "ossieName": "gasp_bench_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "capacity": {
       "kind": "direct",
-      "ossieName": "gasp_capacity"
+      "ossieName": "gasp_capacity",
+      "rung": "M0",
+      "constructs": []
     },
     "capacity_utilization": {
       "kind": "direct",
-      "ossieName": "gasp_capacity_utilization"
+      "ossieName": "gasp_capacity_utilization",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "on_time_delivery": {
       "kind": "staged",
@@ -635,7 +952,13 @@
     },
     "scope_change_rate": {
       "kind": "direct",
-      "ossieName": "gasp_scope_change_rate"
+      "ossieName": "gasp_scope_change_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "project_duration_accuracy": {
       "kind": "staged",
@@ -645,15 +968,31 @@
     },
     "project_csat": {
       "kind": "direct",
-      "ossieName": "gasp_project_csat"
+      "ossieName": "gasp_project_csat",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "project_nps": {
       "kind": "direct",
-      "ossieName": "gasp_project_nps"
+      "ossieName": "gasp_project_nps",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "rework_rate": {
       "kind": "direct",
-      "ossieName": "gasp_rework_rate"
+      "ossieName": "gasp_rework_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "reference_ability": {
       "kind": "staged",
@@ -663,7 +1002,14 @@
     },
     "revenue_per_consultant": {
       "kind": "direct",
-      "ossieName": "gasp_revenue_per_consultant"
+      "ossieName": "gasp_revenue_per_consultant",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "projects_per_consultant": {
       "kind": "staged",
@@ -679,7 +1025,11 @@
     },
     "services_pipeline": {
       "kind": "direct",
-      "ossieName": "gasp_services_pipeline"
+      "ossieName": "gasp_services_pipeline",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "services_win_rate": {
       "kind": "staged",
@@ -695,15 +1045,30 @@
     },
     "ticket_volume": {
       "kind": "direct",
-      "ossieName": "gasp_ticket_volume"
+      "ossieName": "gasp_ticket_volume",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "ticket_volume:by_ticket_type": {
       "kind": "direct",
-      "ossieName": "gasp_ticket_volume_by_ticket_type"
+      "ossieName": "gasp_ticket_volume_by_ticket_type",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "tickets_per_customer": {
       "kind": "direct",
-      "ossieName": "gasp_tickets_per_customer"
+      "ossieName": "gasp_tickets_per_customer",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "ticket_backlog": {
       "kind": "staged",
@@ -719,55 +1084,127 @@
     },
     "frt": {
       "kind": "direct",
-      "ossieName": "gasp_frt"
+      "ossieName": "gasp_frt",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar",
+        "percentile"
+      ]
     },
     "first_response_sla_adherence": {
       "kind": "direct",
-      "ossieName": "gasp_first_response_sla_adherence"
+      "ossieName": "gasp_first_response_sla_adherence",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "resolution_time_time_to_resolution": {
       "kind": "direct",
-      "ossieName": "gasp_resolution_time_time_to_resolution"
+      "ossieName": "gasp_resolution_time_time_to_resolution",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar",
+        "percentile"
+      ]
     },
     "resolution_time_time_to_resolution:by_ticket_type": {
       "kind": "direct",
-      "ossieName": "gasp_resolution_time_time_to_resolution_by_ticket_type"
+      "ossieName": "gasp_resolution_time_time_to_resolution_by_ticket_type",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar",
+        "percentile"
+      ]
     },
     "first_contact_resolution_fcr": {
       "kind": "direct",
-      "ossieName": "gasp_first_contact_resolution_fcr"
+      "ossieName": "gasp_first_contact_resolution_fcr",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "resolution_sla_adherence": {
       "kind": "direct",
-      "ossieName": "gasp_resolution_sla_adherence"
+      "ossieName": "gasp_resolution_sla_adherence",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "reopen_rate": {
       "kind": "direct",
-      "ossieName": "gasp_reopen_rate"
+      "ossieName": "gasp_reopen_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "csat": {
       "kind": "direct",
-      "ossieName": "gasp_csat"
+      "ossieName": "gasp_csat",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "customer_effort_score_ces": {
       "kind": "direct",
-      "ossieName": "gasp_customer_effort_score_ces"
+      "ossieName": "gasp_customer_effort_score_ces",
+      "rung": "M2",
+      "constructs": []
     },
     "customer_effort_score_ces:percent": {
       "kind": "direct",
-      "ossieName": "gasp_customer_effort_score_ces_percent"
+      "ossieName": "gasp_customer_effort_score_ces_percent",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "tickets_per_agent": {
       "kind": "direct",
-      "ossieName": "gasp_tickets_per_agent"
+      "ossieName": "gasp_tickets_per_agent",
+      "rung": "M2",
+      "constructs": [
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "cost_per_ticket": {
       "kind": "direct",
-      "ossieName": "gasp_cost_per_ticket"
+      "ossieName": "gasp_cost_per_ticket",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "self_service_rate": {
       "kind": "direct",
-      "ossieName": "gasp_self_service_rate"
+      "ossieName": "gasp_self_service_rate",
+      "rung": "M2",
+      "constructs": [
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "logo_retention_rate": {
       "kind": "staged",
@@ -789,23 +1226,49 @@
     },
     "health_score": {
       "kind": "direct",
-      "ossieName": "gasp_health_score"
+      "ossieName": "gasp_health_score",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "health_score:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_health_score_by_segment"
+      "ossieName": "gasp_health_score_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "health_score_coverage": {
       "kind": "direct",
-      "ossieName": "gasp_health_score_coverage"
+      "ossieName": "gasp_health_score_coverage",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "health_score_coverage:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_health_score_coverage_by_segment"
+      "ossieName": "gasp_health_score_coverage_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "at_risk_rate": {
       "kind": "direct",
-      "ossieName": "gasp_at_risk_rate"
+      "ossieName": "gasp_at_risk_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "at_risk_rate:entered_at_risk": {
       "kind": "staged",
@@ -815,19 +1278,45 @@
     },
     "at_risk_rate:by_segment": {
       "kind": "direct",
-      "ossieName": "gasp_at_risk_rate_by_segment"
+      "ossieName": "gasp_at_risk_rate_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "qbr_completion": {
       "kind": "direct",
-      "ossieName": "gasp_qbr_completion"
+      "ossieName": "gasp_qbr_completion",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "executive_sponsor_coverage": {
       "kind": "direct",
-      "ossieName": "gasp_executive_sponsor_coverage"
+      "ossieName": "gasp_executive_sponsor_coverage",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "contact_coverage": {
       "kind": "direct",
-      "ossieName": "gasp_contact_coverage"
+      "ossieName": "gasp_contact_coverage",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "expansion_rate": {
       "kind": "staged",
@@ -843,11 +1332,21 @@
     },
     "license_utilization": {
       "kind": "direct",
-      "ossieName": "gasp_license_utilization"
+      "ossieName": "gasp_license_utilization",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "license_utilization:by_product": {
       "kind": "direct",
-      "ossieName": "gasp_license_utilization_by_product"
+      "ossieName": "gasp_license_utilization_by_product",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "upsell_rate": {
       "kind": "staged",
@@ -881,23 +1380,49 @@
     },
     "days_to_renewal": {
       "kind": "direct",
-      "ossieName": "gasp_days_to_renewal"
+      "ossieName": "gasp_days_to_renewal",
+      "rung": "M2",
+      "constructs": [
+        "date scalar"
+      ]
     },
     "accounts_per_csm": {
       "kind": "direct",
-      "ossieName": "gasp_accounts_per_csm"
+      "ossieName": "gasp_accounts_per_csm",
+      "rung": "M2",
+      "constructs": [
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "arr_per_csm": {
       "kind": "direct",
-      "ossieName": "gasp_arr_per_csm"
+      "ossieName": "gasp_arr_per_csm",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "pipeline_hygiene_score": {
       "kind": "direct",
-      "ossieName": "gasp_pipeline_hygiene_score"
+      "ossieName": "gasp_pipeline_hygiene_score",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "forecast_accuracy": {
       "kind": "direct",
-      "ossieName": "gasp_forecast_accuracy"
+      "ossieName": "gasp_forecast_accuracy",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "commit_accuracy": {
       "kind": "staged",
@@ -907,7 +1432,13 @@
     },
     "stage_conversion_rates": {
       "kind": "direct",
-      "ossieName": "gasp_stage_conversion_rates"
+      "ossieName": "gasp_stage_conversion_rates",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "quote_volume": {
       "kind": "staged",
@@ -1007,15 +1538,27 @@
     },
     "accounts_receivable_balance": {
       "kind": "direct",
-      "ossieName": "gasp_accounts_receivable_balance"
+      "ossieName": "gasp_accounts_receivable_balance",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "accounts_receivable_balance:by_payment_status": {
       "kind": "direct",
-      "ossieName": "gasp_accounts_receivable_balance_by_payment_status"
+      "ossieName": "gasp_accounts_receivable_balance_by_payment_status",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "bad_debt_rate": {
       "kind": "direct",
-      "ossieName": "gasp_bad_debt_rate"
+      "ossieName": "gasp_bad_debt_rate",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "payment_method_distribution": {
       "kind": "staged",
@@ -1025,7 +1568,11 @@
     },
     "recognized_vs_billed": {
       "kind": "direct",
-      "ossieName": "gasp_recognized_vs_billed"
+      "ossieName": "gasp_recognized_vs_billed",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "deferred_revenue_balance": {
       "kind": "staged",
@@ -1035,11 +1582,18 @@
     },
     "unbilled_revenue": {
       "kind": "direct",
-      "ossieName": "gasp_unbilled_revenue"
+      "ossieName": "gasp_unbilled_revenue",
+      "rung": "M0",
+      "constructs": []
     },
     "revenue_recognition_accuracy": {
       "kind": "direct",
-      "ossieName": "gasp_revenue_recognition_accuracy"
+      "ossieName": "gasp_revenue_recognition_accuracy",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "renewal_notification_rate": {
       "kind": "staged",
@@ -1061,11 +1615,20 @@
     },
     "system_sync_accuracy": {
       "kind": "direct",
-      "ossieName": "gasp_system_sync_accuracy"
+      "ossieName": "gasp_system_sync_accuracy",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "data_completeness": {
       "kind": "direct",
-      "ossieName": "gasp_data_completeness"
+      "ossieName": "gasp_data_completeness",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "daily_active_users_dau": {
       "kind": "staged",
@@ -1099,7 +1662,12 @@
     },
     "active_accounts": {
       "kind": "direct",
-      "ossieName": "gasp_active_accounts"
+      "ossieName": "gasp_active_accounts",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "activation_rate": {
       "kind": "staged",
@@ -1109,15 +1677,34 @@
     },
     "feature_adoption": {
       "kind": "direct",
-      "ossieName": "gasp_feature_adoption"
+      "ossieName": "gasp_feature_adoption",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "core_feature_adoption": {
       "kind": "direct",
-      "ossieName": "gasp_core_feature_adoption"
+      "ossieName": "gasp_core_feature_adoption",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "feature_depth": {
       "kind": "direct",
-      "ossieName": "gasp_feature_depth"
+      "ossieName": "gasp_feature_depth",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "time_to_feature_adoption": {
       "kind": "staged",
@@ -1133,23 +1720,47 @@
     },
     "session_frequency": {
       "kind": "direct",
-      "ossieName": "gasp_session_frequency"
+      "ossieName": "gasp_session_frequency",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "session_duration": {
       "kind": "direct",
-      "ossieName": "gasp_session_duration"
+      "ossieName": "gasp_session_duration",
+      "rung": "M2",
+      "constructs": []
     },
     "time_in_product": {
       "kind": "direct",
-      "ossieName": "gasp_time_in_product"
+      "ossieName": "gasp_time_in_product",
+      "rung": "M2",
+      "constructs": [
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "actions_per_session": {
       "kind": "direct",
-      "ossieName": "gasp_actions_per_session"
+      "ossieName": "gasp_actions_per_session",
+      "rung": "M2",
+      "constructs": [
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "pqas": {
       "kind": "direct",
-      "ossieName": "gasp_pqas"
+      "ossieName": "gasp_pqas",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "user_retention_day_n": {
       "kind": "staged",
@@ -1171,7 +1782,11 @@
     },
     "release_frequency": {
       "kind": "direct",
-      "ossieName": "gasp_release_frequency"
+      "ossieName": "gasp_release_frequency",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "feature_delivery_rate": {
       "kind": "staged",
@@ -1181,7 +1796,13 @@
     },
     "roadmap_completion": {
       "kind": "direct",
-      "ossieName": "gasp_roadmap_completion"
+      "ossieName": "gasp_roadmap_completion",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "time_to_market": {
       "kind": "staged",
@@ -1191,19 +1812,40 @@
     },
     "error_rate_user_facing": {
       "kind": "direct",
-      "ossieName": "gasp_error_rate_user_facing"
+      "ossieName": "gasp_error_rate_user_facing",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "bug_escape_rate": {
       "kind": "direct",
-      "ossieName": "gasp_bug_escape_rate"
+      "ossieName": "gasp_bug_escape_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "user_reported_issues": {
       "kind": "direct",
-      "ossieName": "gasp_user_reported_issues"
+      "ossieName": "gasp_user_reported_issues",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "feature_request_volume": {
       "kind": "direct",
-      "ossieName": "gasp_feature_request_volume"
+      "ossieName": "gasp_feature_request_volume",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "uptime": {
       "kind": "staged",
@@ -1213,87 +1855,181 @@
     },
     "sla_adherence": {
       "kind": "direct",
-      "ossieName": "gasp_sla_adherence"
+      "ossieName": "gasp_sla_adherence",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "error_rate": {
       "kind": "direct",
-      "ossieName": "gasp_error_rate"
+      "ossieName": "gasp_error_rate",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "latency_response_time": {
       "kind": "direct",
-      "ossieName": "gasp_latency_response_time"
+      "ossieName": "gasp_latency_response_time",
+      "rung": "M2",
+      "constructs": [
+        "percentile"
+      ]
     },
     "latency_response_time:p50": {
       "kind": "direct",
-      "ossieName": "gasp_latency_response_time_p50"
+      "ossieName": "gasp_latency_response_time_p50",
+      "rung": "M2",
+      "constructs": [
+        "percentile"
+      ]
     },
     "latency_response_time:p99": {
       "kind": "direct",
-      "ossieName": "gasp_latency_response_time_p99"
+      "ossieName": "gasp_latency_response_time_p99",
+      "rung": "M2",
+      "constructs": [
+        "percentile"
+      ]
     },
     "incident_count": {
       "kind": "direct",
-      "ossieName": "gasp_incident_count"
+      "ossieName": "gasp_incident_count",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "incident_count:by_severity": {
       "kind": "direct",
-      "ossieName": "gasp_incident_count_by_severity"
+      "ossieName": "gasp_incident_count_by_severity",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "incident_count:by_incident_type": {
       "kind": "direct",
-      "ossieName": "gasp_incident_count_by_incident_type"
+      "ossieName": "gasp_incident_count_by_incident_type",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "mean_time_to_detect_mttd": {
       "kind": "direct",
-      "ossieName": "gasp_mean_time_to_detect_mttd"
+      "ossieName": "gasp_mean_time_to_detect_mttd",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "mean_time_to_acknowledge_mtta": {
       "kind": "direct",
-      "ossieName": "gasp_mean_time_to_acknowledge_mtta"
+      "ossieName": "gasp_mean_time_to_acknowledge_mtta",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "mttr": {
       "kind": "direct",
-      "ossieName": "gasp_mttr"
+      "ossieName": "gasp_mttr",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "mttr:by_severity": {
       "kind": "direct",
-      "ossieName": "gasp_mttr_by_severity"
+      "ossieName": "gasp_mttr_by_severity",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "mttr:by_incident_type": {
       "kind": "direct",
-      "ossieName": "gasp_mttr_by_incident_type"
+      "ossieName": "gasp_mttr_by_incident_type",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "change_failure_rate": {
       "kind": "direct",
-      "ossieName": "gasp_change_failure_rate"
+      "ossieName": "gasp_change_failure_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "deployment_frequency": {
       "kind": "direct",
-      "ossieName": "gasp_deployment_frequency"
+      "ossieName": "gasp_deployment_frequency",
+      "rung": "M2",
+      "constructs": [
+        "count distinct"
+      ]
     },
     "lead_time_for_changes": {
       "kind": "direct",
-      "ossieName": "gasp_lead_time_for_changes"
+      "ossieName": "gasp_lead_time_for_changes",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates",
+        "date scalar",
+        "percentile"
+      ]
     },
     "mean_time_to_recovery_mttr": {
       "kind": "direct",
-      "ossieName": "gasp_mean_time_to_recovery_mttr"
+      "ossieName": "gasp_mean_time_to_recovery_mttr",
+      "rung": "M2",
+      "constructs": []
     },
     "infrastructure_utilization": {
       "kind": "direct",
-      "ossieName": "gasp_infrastructure_utilization"
+      "ossieName": "gasp_infrastructure_utilization",
+      "rung": "M2",
+      "constructs": []
     },
     "infrastructure_cost_per_customer": {
       "kind": "direct",
-      "ossieName": "gasp_infrastructure_cost_per_customer"
+      "ossieName": "gasp_infrastructure_cost_per_customer",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "headroom": {
       "kind": "direct",
-      "ossieName": "gasp_headroom"
+      "ossieName": "gasp_headroom",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "vulnerability_count": {
       "kind": "direct",
-      "ossieName": "gasp_vulnerability_count"
+      "ossieName": "gasp_vulnerability_count",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "time_to_patch": {
       "kind": "staged",
@@ -1303,27 +2039,50 @@
     },
     "security_incident_count": {
       "kind": "direct",
-      "ossieName": "gasp_security_incident_count"
+      "ossieName": "gasp_security_incident_count",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "revenue_gaap": {
       "kind": "direct",
-      "ossieName": "gasp_revenue_gaap"
+      "ossieName": "gasp_revenue_gaap",
+      "rung": "M0",
+      "constructs": []
     },
     "bookings": {
       "kind": "direct",
-      "ossieName": "gasp_bookings"
+      "ossieName": "gasp_bookings",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "bookings:new": {
       "kind": "direct",
-      "ossieName": "gasp_bookings_new"
+      "ossieName": "gasp_bookings_new",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "bookings:renewal": {
       "kind": "direct",
-      "ossieName": "gasp_bookings_renewal"
+      "ossieName": "gasp_bookings_renewal",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "bookings:expansion": {
       "kind": "direct",
-      "ossieName": "gasp_bookings_expansion"
+      "ossieName": "gasp_bookings_expansion",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "billings": {
       "kind": "staged",
@@ -1339,19 +2098,40 @@
     },
     "revenue_per_employee": {
       "kind": "direct",
-      "ossieName": "gasp_revenue_per_employee"
+      "ossieName": "gasp_revenue_per_employee",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "operating_margin": {
       "kind": "direct",
-      "ossieName": "gasp_operating_margin"
+      "ossieName": "gasp_operating_margin",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "ebitda_margin": {
       "kind": "direct",
-      "ossieName": "gasp_ebitda_margin"
+      "ossieName": "gasp_ebitda_margin",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "net_income_margin": {
       "kind": "direct",
-      "ossieName": "gasp_net_income_margin"
+      "ossieName": "gasp_net_income_margin",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "burn_rate": {
       "kind": "staged",
@@ -1367,11 +2147,19 @@
     },
     "fcf": {
       "kind": "direct",
-      "ossieName": "gasp_fcf"
+      "ossieName": "gasp_fcf",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "free_cash_flow_margin": {
       "kind": "direct",
-      "ossieName": "gasp_free_cash_flow_margin"
+      "ossieName": "gasp_free_cash_flow_margin",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "magic_number": {
       "kind": "staged",
@@ -1387,7 +2175,13 @@
     },
     "opex_ratio": {
       "kind": "direct",
-      "ossieName": "gasp_opex_ratio"
+      "ossieName": "gasp_opex_ratio",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "opex_ratio:by_cost_centre": {
       "kind": "staged",
@@ -1397,15 +2191,33 @@
     },
     "sm_as_of_revenue": {
       "kind": "direct",
-      "ossieName": "gasp_sm_as_of_revenue"
+      "ossieName": "gasp_sm_as_of_revenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "rd_as_of_revenue": {
       "kind": "direct",
-      "ossieName": "gasp_rd_as_of_revenue"
+      "ossieName": "gasp_rd_as_of_revenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "ga_as_of_revenue": {
       "kind": "direct",
-      "ossieName": "gasp_ga_as_of_revenue"
+      "ossieName": "gasp_ga_as_of_revenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "collection_rate": {
       "kind": "staged",
@@ -1415,15 +2227,33 @@
     },
     "ttfv": {
       "kind": "direct",
-      "ossieName": "gasp_ttfv"
+      "ossieName": "gasp_ttfv",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "date scalar",
+        "percentile"
+      ]
     },
     "time_to_go_live": {
       "kind": "direct",
-      "ossieName": "gasp_time_to_go_live"
+      "ossieName": "gasp_time_to_go_live",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "date scalar",
+        "percentile"
+      ]
     },
     "time_to_full_adoption": {
       "kind": "direct",
-      "ossieName": "gasp_time_to_full_adoption"
+      "ossieName": "gasp_time_to_full_adoption",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "date scalar",
+        "percentile"
+      ]
     },
     "onboarding_duration": {
       "kind": "staged",
@@ -1449,19 +2279,38 @@
     },
     "session_attendance_rate": {
       "kind": "direct",
-      "ossieName": "gasp_session_attendance_rate"
+      "ossieName": "gasp_session_attendance_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "task_completion_rate": {
       "kind": "direct",
-      "ossieName": "gasp_task_completion_rate"
+      "ossieName": "gasp_task_completion_rate",
+      "rung": "M2",
+      "constructs": [
+        "arithmetic over aggregates"
+      ]
     },
     "onboarding_csat": {
       "kind": "direct",
-      "ossieName": "gasp_onboarding_csat"
+      "ossieName": "gasp_onboarding_csat",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "onboarding_nps": {
       "kind": "direct",
-      "ossieName": "gasp_onboarding_nps"
+      "ossieName": "gasp_onboarding_nps",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "implementation_quality_score": {
       "kind": "notComputable",
@@ -1487,7 +2336,14 @@
     },
     "day_30_retention_post_onboarding": {
       "kind": "direct",
-      "ossieName": "gasp_day_30_retention_post_onboarding"
+      "ossieName": "gasp_day_30_retention_post_onboarding",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "onboarding_cohort_churn": {
       "kind": "notComputable",
@@ -1495,15 +2351,32 @@
     },
     "feature_adoption_at_go_live": {
       "kind": "direct",
-      "ossieName": "gasp_feature_adoption_at_go_live"
+      "ossieName": "gasp_feature_adoption_at_go_live",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "total_headcount": {
       "kind": "direct",
-      "ossieName": "gasp_total_headcount"
+      "ossieName": "gasp_total_headcount",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "total_headcount:by_department": {
       "kind": "direct",
-      "ossieName": "gasp_total_headcount_by_department"
+      "ossieName": "gasp_total_headcount_by_department",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "headcount_growth_rate": {
       "kind": "staged",
@@ -1549,7 +2422,13 @@
     },
     "average_tenure": {
       "kind": "direct",
-      "ossieName": "gasp_average_tenure"
+      "ossieName": "gasp_average_tenure",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "date scalar"
+      ]
     },
     "day_90_turnover": {
       "kind": "staged",
@@ -1565,19 +2444,38 @@
     },
     "enps": {
       "kind": "direct",
-      "ossieName": "gasp_enps"
+      "ossieName": "gasp_enps",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "engagement_score": {
       "kind": "direct",
-      "ossieName": "gasp_engagement_score"
+      "ossieName": "gasp_engagement_score",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "survey_participation_rate": {
       "kind": "direct",
-      "ossieName": "gasp_survey_participation_rate"
+      "ossieName": "gasp_survey_participation_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "open_positions": {
       "kind": "direct",
-      "ossieName": "gasp_open_positions"
+      "ossieName": "gasp_open_positions",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
     },
     "time_to_fill": {
       "kind": "staged",
@@ -1593,11 +2491,21 @@
     },
     "offer_acceptance_rate": {
       "kind": "direct",
-      "ossieName": "gasp_offer_acceptance_rate"
+      "ossieName": "gasp_offer_acceptance_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "quality_of_hire": {
       "kind": "direct",
-      "ossieName": "gasp_quality_of_hire"
+      "ossieName": "gasp_quality_of_hire",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "date scalar"
+      ]
     },
     "cost_per_hire": {
       "kind": "staged",
@@ -1613,19 +2521,38 @@
     },
     "compa_ratio": {
       "kind": "direct",
-      "ossieName": "gasp_compa_ratio"
+      "ossieName": "gasp_compa_ratio",
+      "rung": "M2",
+      "constructs": []
     },
     "pay_equity_ratio": {
       "kind": "direct",
-      "ossieName": "gasp_pay_equity_ratio"
+      "ossieName": "gasp_pay_equity_ratio",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "diversity_representation": {
       "kind": "direct",
-      "ossieName": "gasp_diversity_representation"
+      "ossieName": "gasp_diversity_representation",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "diversity_in_leadership": {
       "kind": "direct",
-      "ossieName": "gasp_diversity_in_leadership"
+      "ossieName": "gasp_diversity_in_leadership",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "diversity_hiring_rate": {
       "kind": "staged",
@@ -1635,7 +2562,9 @@
     },
     "visitors": {
       "kind": "direct",
-      "ossieName": "gasp_visitors"
+      "ossieName": "gasp_visitors",
+      "rung": "M0",
+      "constructs": []
     },
     "visitor_to_lead_rate": {
       "kind": "staged",
@@ -1717,7 +2646,14 @@
     },
     "marketing_cac": {
       "kind": "direct",
-      "ossieName": "gasp_marketing_cac"
+      "ossieName": "gasp_marketing_cac",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates",
+        "cross-dataset"
+      ]
     },
     "cac_by_channel": {
       "kind": "staged",
@@ -1739,7 +2675,11 @@
     },
     "marketing_sourced_pipeline": {
       "kind": "direct",
-      "ossieName": "gasp_marketing_sourced_pipeline"
+      "ossieName": "gasp_marketing_sourced_pipeline",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "marketing_sourced_revenue": {
       "kind": "staged",
@@ -1749,7 +2689,11 @@
     },
     "marketing_influenced_pipelinerevenue": {
       "kind": "direct",
-      "ossieName": "gasp_marketing_influenced_pipelinerevenue"
+      "ossieName": "gasp_marketing_influenced_pipelinerevenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "marketing_influenced_pipelinerevenue:revenue": {
       "kind": "staged",
@@ -1759,7 +2703,11 @@
     },
     "organic_traffic": {
       "kind": "direct",
-      "ossieName": "gasp_organic_traffic"
+      "ossieName": "gasp_organic_traffic",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "paid_media_efficiency_roas": {
       "kind": "staged",
@@ -1781,11 +2729,21 @@
     },
     "share_of_voice": {
       "kind": "direct",
-      "ossieName": "gasp_share_of_voice"
+      "ossieName": "gasp_share_of_voice",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "nps_marketing_context": {
       "kind": "direct",
-      "ossieName": "gasp_nps_marketing_context"
+      "ossieName": "gasp_nps_marketing_context",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "onboarding_milestone_completion_rate": {
       "kind": "staged",
@@ -1801,11 +2759,23 @@
     },
     "ticket_escalation_rate": {
       "kind": "direct",
-      "ossieName": "gasp_ticket_escalation_rate"
+      "ossieName": "gasp_ticket_escalation_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "project_escalation_rate": {
       "kind": "direct",
-      "ossieName": "gasp_project_escalation_rate"
+      "ossieName": "gasp_project_escalation_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "product_activation_rate": {
       "kind": "staged",
@@ -1815,7 +2785,13 @@
     },
     "trial_to_paid_conversion_rate": {
       "kind": "direct",
-      "ossieName": "gasp_trial_to_paid_conversion_rate"
+      "ossieName": "gasp_trial_to_paid_conversion_rate",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct",
+        "arithmetic over aggregates"
+      ]
     },
     "trial_to_paid_conversion_rate:by_start_date": {
       "kind": "staged",

@@ -157,7 +157,15 @@ export interface Movement { date: string; type: "new" | "expansion" | "contracti
  * arrive during the window. Revenue events fall on days 2 to 28 so month-end and
  * period-boundary snapshots never coincide with an event.
  */
-export const CUSTOMER_STORIES: Record<string, Movement[]> = {
+export /**
+ * ATL expansion class of an expansion event: c10 cross-sells a module, c12 recontracts, c04's second
+ * expansion is a price change and the rest grow the same product. The Operating forms of ARR and NRR
+ * exclude pricing and recontracting, so the fixture carries both.
+ */
+const expansionClass = (c: string, m: { change: number }): string =>
+  c === "c10" ? "new_module" : c === "c12" ? "recontracting" : c === "c04" && m.change === 200 ? "pricing_adjustment" : "same_product";
+
+const CUSTOMER_STORIES: Record<string, Movement[]> = {
   c01: [{ date: "2025-07-08", type: "new", change: 1000 }, { date: "2026-02-10", type: "expansion", change: 500 }],
   c02: [{ date: "2025-07-15", type: "new", change: 2000 }, { date: "2026-03-12", type: "contraction", change: -400 }],
   c03: [{ date: "2025-08-04", type: "new", change: 500 }, { date: "2026-02-20", type: "churn", change: -500 }],
@@ -371,7 +379,7 @@ export function generateFixture(): Fixture {
       t.revenue_event.push(row("revenue_event", `re${ev}`, {
         event_id: `re${pad(ev)}`, event_date: m.date, customer_id: c, subscription_id: subscriptionOf(c), event_type: m.type,
         mrr_change: m.change, prior_mrr: prior, new_mrr: prior + m.change, currency: "USD", change_nature: "permanent",
-        expansion_classification: m.type === "expansion" ? "same_product" : null, lifecycle_attribution: lifecycle[m.type],
+        expansion_classification: m.type === "expansion" ? expansionClass(c, m) : null, lifecycle_attribution: lifecycle[m.type],
       }));
       prior += m.change;
     }
@@ -776,7 +784,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
         t.amendment_event.push(row("amendment_event", `am_${c}_${m.date}`, {
           event_id: `am_${c}_${m.date}`, event_date: m.date, customer_id: c, subscription_id: subscriptionOf(c), amendment_type: amendment,
           mrr_change: m.change, change_nature: "permanent", lifecycle_attribution: m.type === "expansion" ? "expansion" : "retention",
-          expansion_classification: m.type === "expansion" ? (amendment === "cross_sell" ? "new_module" : "same_product") : null,
+          expansion_classification: m.type === "expansion" ? expansionClass(c, m) : null,
         }));
       }
     }
