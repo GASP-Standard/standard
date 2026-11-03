@@ -23,7 +23,9 @@ import {
   type TraversalCandidate,
 } from "./traversal.js";
 import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.js";
-import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, validateAdapter, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
+import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
+import { loadAdapter, validateMapping } from "./ossie/adapt.js";
+import { compileModelFromText } from "./ossie/company.js";
 import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -620,11 +622,12 @@ server.tool(
   "SQL for one GASP Standard metric against your warehouse, compiled from its canonical formula and filled from your adapter: one scalar subquery per aggregate, each reading the table mapped to its GASP dataset, with :period_start and :period_end date parameters (both inclusive). Pairs you have not mapped stay as {{field@dataset}} placeholders, where the tag names the GASP dataset the column must come from; the output lists them with any dataset that has no table and any mapping conflict, plus the URL, dialect, datasets, grain and the mapping it used. breakdown names a breakdown the metric declares (get_formula lists them, e.g. 'by_plan' on MRR) and returns one row per value. The dialect (postgres, snowflake, bigquery or databricks; postgres also covers Redshift) is the dialect argument, else the adapter's warehouse when it names one of them, else postgres. Check the adapter with validate_adapter first.",
   {
     metric: z.string().describe("Exact metric name, abbreviation, alias or formula id (e.g. 'NRR', 'CAC', 'Pipeline Value', 'ARR'), resolved as in lookup_metric"),
-    adapter: z.string().describe("Your GASP adapter as a JSON string (schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json; check it with validate_adapter)"),
+    adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
+    semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), so table names and field expressions resolve. Ignored for a GASP adapter."),
     breakdown: z.string().optional().describe("Name of a breakdown the metric declares (e.g. 'by_plan' on MRR). The query returns one row per value of the breakdown's field or bucket. An unknown name lists the declared ones."),
     dialect: z.enum(DIALECTS).optional().describe("SQL dialect: postgres (also Redshift), snowflake, bigquery or databricks. Omit to use the adapter's warehouse when it names one of them (postgresql and redshift read as postgres), else postgres."),
   },
-  async ({ metric: metricName, adapter: adapterJson, breakdown, dialect: requestedDialect }) => {
+  async ({ metric: metricName, adapter: adapterJson, semantic_model, breakdown, dialect: requestedDialect }) => {
     const resolved = resolveMetric(data, metricName);
     if (resolved.kind === "ambiguous") {
       return { content: [{ type: "text" as const, text: formatAmbiguous(data, metricName, resolved.candidates) }] };
@@ -632,11 +635,9 @@ server.tool(
     if (resolved.kind !== "metric") {
       return { content: [{ type: "text" as const, text: notAMetric(metricName, resolved) }] };
     }
-    let adapter: any;
-    try { adapter = JSON.parse(adapterJson); } catch { return { content: [{ type: "text" as const, text: "Invalid adapter JSON: pass the adapter as a JSON string." }] }; }
-    if (!Array.isArray(adapter?.mappings)) {
-      return { content: [{ type: "text" as const, text: 'Adapter must have a "mappings" array. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json' }] };
-    }
+    const loaded = loadAdapter(adapterJson, semantic_model, data);
+    if (!loaded.adapter) return { content: [{ type: "text" as const, text: loaded.error! }] };
+    const adapter = loaded.adapter;
     const id = metricFormulaId(data, resolved.metric);
     let template = data.queryTemplates?.[id];
     if (!template) {
@@ -671,20 +672,36 @@ server.tool(
   }
 );
 
-// --- Tool 8: validate_adapter ---
+// --- Tool 8: validate_mapping (validate_adapter is the same tool under its original name) ---
+const VALIDATE_DESCRIPTION =
+  "Check a warehouse mapping against the GASP Standard and score its coverage. Accepts either format: a GASP adapter (JSON; schema https://gaspwiki.com/schemas/gasp-adapter-v1.json, versions 1.0 and 1.1) or an Apache Ossie mapping document (YAML or JSON) over your semantic model, which you can pass as semantic_model. A GASP adapter is converted on load into an Ossie mapping over a model synthesised from its tables and columns. Layers, each reported in its own section: the schema (the adapter JSON Schema with each violation's JSON path, and the Ossie mapping schema for the Ossie form), GASP's cross-document checks (every concept, relationship and field reference resolves against the GASP ontology and the model), then coverage: unknown fields and datasets, fields mapped to a dataset that does not carry them, bare column names on fields that live on several datasets, datasets whose fields point at different tables, pairs mapped twice, the field and dataset pairs mapped, every metric with a formula scored against the pairs its compiled SQL reads (fully covered, partially covered with the missing pairs, not covered), enum fields mapped without a transform, covered metrics with no declared owner, owners naming unknown metrics and up to 15 unmapped pairs ranked by how many partially covered metrics need them. Run it before generate_query.";
+const VALIDATE_PARAMS = {
+  adapter: z.string().describe("The mapping as text: a GASP adapter (JSON; template: https://gaspwiki.com/downloads/gasp-adapter-template.json) or an Ossie mapping document (YAML or JSON; reference: https://gaspwiki.com/downloads/ossie/gasp.mapping.yaml)."),
+  semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), so its datasets, fields, keys and sources are checked. Without it, names are taken from the mapping's expressions."),
+};
+const validateHandler = async ({ adapter, semantic_model }: { adapter: string; semantic_model?: string }) =>
+  ({ content: [{ type: "text" as const, text: validateMapping(adapter, semantic_model, data) }] });
+server.tool("validate_mapping", VALIDATE_DESCRIPTION, VALIDATE_PARAMS, validateHandler);
+server.tool("validate_adapter", `Same as validate_mapping, under the tool's original name. ${VALIDATE_DESCRIPTION}`, VALIDATE_PARAMS, validateHandler);
+
+// --- Tool 9: compile_model ---
 server.tool(
-  "validate_adapter",
-  "Check a GASP adapter against the standard and score its coverage. It first applies the adapter JSON Schema (https://gaspwiki.com/schemas/gasp-adapter-v1.json, versions 1.0 and 1.1) and lists each violation with its JSON path: missing version or mappings, unknown version values, keys the schema does not allow and values of the wrong type. Then, whether or not the schema passed, it reports gaspField values not in the ontology, unknown datasets, fields mapped to a dataset that does not carry them, bare column names on fields that live on several datasets, datasets whose fields point at different tables and pairs mapped twice. It counts the field and dataset pairs mapped and the datasets with a table, scores every metric with a formula against the pairs its compiled SQL reads (fully covered, partially covered with the missing pairs, not covered), lists enum fields mapped without a transform, covered metrics with no declared owner and owners naming unknown metrics. It also ranks up to 15 unmapped pairs by how many partially covered metrics need them. Without a mappings array only the schema result is returned. Run it before generate_query.",
-  { adapter: z.string().describe("The adapter JSON as a string. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json") },
-  async ({ adapter: adapterJson }) => {
-    let adapter: any;
-    try { adapter = JSON.parse(adapterJson); } catch { return { content: [{ type: "text" as const, text: "Invalid JSON. The adapter must be a valid JSON object." }] }; }
-    const text = validateAdapter(adapter, data);
-    return { content: [{ type: "text" as const, text }] };
-  }
+  "compile_model",
+  "Compile the GASP Standard metrics your mapping covers into your Apache Ossie semantic model. Takes the same input as validate_mapping (a GASP adapter, or an Ossie mapping with your semantic_model) and returns your model with a gasp_ metric for every formula entry whose fields are all mapped (main formula, O and M forms, variants and named breakdowns): a direct OSSIE_SQL_2026 expression over your datasets and fields where the expression language can state it, else staged through a gasp_staged_ per-period dataset whose source is the compiled SQL over your tables in your warehouse dialect, reading a period spine table you provide (one row per reporting period; gasp.period_spine unless you pass period_spine). Entries with unmapped pairs are left out and listed with the pairs they need; recompiling replaces every gasp_ metric and staged dataset and leaves the rest of the model as it was. The compiled metrics are checked against the bundled Ossie model schema and GASP's reference checks. A GASP adapter compiles into the model synthesised from its tables and columns, which validate_mapping shows. Pass metrics or department to compile a subset, output 'report' to get the coverage without the document.",
+  {
+    adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
+    semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON). The metrics compile into it, reading its sources and field expressions. Without it, dataset names stand for tables and every field is its bare column."),
+    dialect: z.enum(DIALECTS).optional().describe("SQL dialect of the staged sources: postgres (also Redshift), snowflake, bigquery or databricks. Omit to use the adapter's warehouse when it names one of them, else postgres."),
+    metrics: z.string().optional().describe("Comma-separated metric names, abbreviations, aliases or formula ids to compile (each resolved as in lookup_metric), with their forms, variants and breakdowns. Omit for every metric."),
+    department: z.string().optional().describe("Compile every metric of one department (e.g. 'Core'); combines with metrics."),
+    period_spine: z.string().optional().describe("The table of (period_start, period_end) rows the staged sources read, as it is named in your warehouse. Default gasp.period_spine."),
+    output: z.enum(["model", "report"]).optional().describe("'model' (default) returns the coverage report with the compiled model as YAML; 'report' returns the coverage alone."),
+  },
+  async ({ adapter, semantic_model, dialect, metrics, department, period_spine, output }) =>
+    ({ content: [{ type: "text" as const, text: compileModelFromText(adapter, semantic_model, data, { dialect, metrics, department, spine: period_spine, document: output !== "report" }) }] }),
 );
 
-// --- Tool 9: infer_drivers ---
+// --- Tool 10: infer_drivers ---
 server.tool(
   "infer_drivers",
   "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
@@ -733,7 +750,7 @@ server.tool(
   }
 );
 
-// --- Tool 10: explain_path ---
+// --- Tool 11: explain_path ---
 server.tool(
   "explain_path",
   "How a movement in one graph node reaches another: up to 5 chains of edges followed forward from `from` to `to`, shortest first, then by highest score. Each step gives the edge type, its classification (metric_signal, structural, lifecycle, behavioral, assignment or generative), its attenuation and whether it inverts direction; each path gives its score and the direction the target moves when the source rises. A baseline edge (MRR into NRR) can only start a path. Names resolve as in get_relationships, so entities and concepts work too. No path means no forward chain within maxDepth: try the reverse. Use it on a candidate from infer_drivers.",
@@ -785,7 +802,7 @@ server.tool(
   }
 );
 
-// --- Tool 11: coverage_gap ---
+// --- Tool 12: coverage_gap ---
 server.tool(
   "coverage_gap",
   "Audit a set of tracked metrics against the GASP relationship graph. Returns three lists: upstream missing (metrics with a direct edge into the set that the set leaves out), downstream missing (metrics with a direct edge from the set that it leaves out) and disconnected (graph metrics with no path of any length, in either direction and through any node, to the set; the first 25 shown). Names resolve as in lookup_metric; an input that is ambiguous, outside the graph, not a metric or unknown is listed as unresolved with the reason. Use it before instrumenting a dashboard, then infer_drivers or explain_path on the candidates.",
@@ -855,7 +872,7 @@ server.tool(
 );
 
 // Start the server
-// --- Tool 12: lookup_definition ---
+// --- Tool 13: lookup_definition ---
 server.tool(
   "lookup_definition",
   "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'CEL'): the full definition and body, its section, the canonical or reference link, where it is used and the page URL. The term must match exactly, ignoring case: the term, its slug or either part of 'Term (Abbreviation)', so 'CEL' finds 'CEL (Commercial Event Ledger)'. A metric name points you to lookup_metric and a miss returns close names. Some metrics also have a short glossary entry (Logo Churn Rate, Win Rate); lookup_metric gives their formula and benchmarks.",

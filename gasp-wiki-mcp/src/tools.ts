@@ -14,6 +14,8 @@ import type { ValidateFunction, ErrorObject } from "ajv";
 
 // ajv is CommonJS; under Node16 resolution the default import is the module object
 const Ajv2020: typeof Ajv2020Module.default = (Ajv2020Module as any).default ?? Ajv2020Module;
+/** A fresh Ajv (draft 2020-12) with the options the adapter schema check uses. */
+export const newAjv = () => new Ajv2020({ allErrors: true, strict: false });
 
 // ── resolution ───────────────────────────────────────────────────────────────
 
@@ -110,7 +112,7 @@ const columnOf = (ref: string) => ref.split(".").pop() ?? ref;
  * one without applies to every dataset of the field whose table it matches,
  * or to all of them when it carries no table prefix.
  */
-interface ResolvedAdapter {
+export interface ResolvedAdapter {
   tables: Record<string, string>;
   /** dataset -> field -> mapping */
   columns: Record<string, Record<string, Mapping>>;
@@ -119,7 +121,7 @@ interface ResolvedAdapter {
   unknownDatasets: string[];
 }
 
-function resolveAdapter(adapter: Adapter, data: StandardData): ResolvedAdapter {
+export function resolveAdapter(adapter: Adapter, data: StandardData): ResolvedAdapter {
   const fields = new Map((data.ontology?.fields ?? []).map((f) => [f.id, f]));
   const datasets = data.ontology?.datasets ?? {};
   const live = (adapter.mappings ?? []).filter((m) => m?.gaspField && typeof m.warehouseRef === "string" && m.warehouseRef.trim());
@@ -279,7 +281,7 @@ export function breakdownTemplate(data: StandardData, id: string, name?: string,
 const schemaValidators = new WeakMap<object, ValidateFunction>();
 
 /** One line per error: instance path, message, and the offending key or allowed values. */
-function formatSchemaError(e: ErrorObject): string {
+export function formatSchemaError(e: ErrorObject): string {
   const path = e.instancePath || "/";
   const extra =
     e.keyword === "additionalProperties" ? `: \`${(e.params as any).additionalProperty}\`` :
@@ -397,16 +399,16 @@ export function checkAdapter(adapter: Adapter, data: StandardData): AdapterValid
  * The validate_adapter report as markdown. Pure: the MCP handler and the
  * website's adapter page both render it from checkAdapter's result.
  */
-export function formatValidationReport(result: AdapterValidation, adapter: Adapter, data: StandardData): string {
+export function formatValidationReport(result: AdapterValidation, adapter: Adapter, data: StandardData, opts: { schemaSection?: string[]; title?: string } = {}): string {
   const { schemaErrors } = result;
-  const schemaSection = schemaErrors === null
+  const schemaSection = opts.schemaSection ?? (schemaErrors === null
     ? ["## Schema", "The loaded standard data carries no adapter schema, so the schema was not applied.", ""]
     : schemaErrors.length
       ? [`## Schema (${schemaErrors.length} ${schemaErrors.length === 1 ? "error" : "errors"})`, "Against https://gaspwiki.com/schemas/gasp-adapter-v1.json:", ...schemaErrors.map((x) => `- ${x}`), ""]
-      : ["## Schema", "Valid against https://gaspwiki.com/schemas/gasp-adapter-v1.json.", ""];
+      : ["## Schema", "Valid against https://gaspwiki.com/schemas/gasp-adapter-v1.json.", ""]);
   if (!result.hasMappings) return [...schemaSection, NO_MAPPINGS].join("\n");
   const { problems, conflicts, fully, partial, none, enumNoTransform, unowned, badOwners, nextToMap } = result;
-  const p: string[] = [`# GASP Adapter Validation: ${adapter.organization || "unnamed"}`, "", ...schemaSection, `**Warehouse:** ${adapter.warehouse || "not specified"}`,
+  const p: string[] = [opts.title ?? `# GASP Adapter Validation: ${adapter.organization || "unnamed"}`, "", ...schemaSection, `**Warehouse:** ${adapter.warehouse || "not specified"}`,
     `**Mapped fields:** ${result.mappedNeededCount} / ${result.neededCount} field and dataset pairs that canonical formulas read (written field@dataset: the logical table the column comes from)`,
     `**Datasets with a table:** ${result.tableCount} / ${result.datasetCount}`,
     `**Metrics:** ${fully.length} fully covered, ${partial.length} partially covered, ${none.length} not covered (of ${result.requirementCount} with a formula)`, ""];

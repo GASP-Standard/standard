@@ -28,6 +28,34 @@ import {
 /** Grain table the adopter provides for staged metrics: one row per reporting period. */
 export const PERIOD_SPINE = "gasp.period_spine";
 
+/**
+ * Where compiled metrics land. The reference model reads `gasp.<dataset>`
+ * tables by canonical column; a company's model (company.ts) reads its own
+ * datasets, sources and field expressions, in its warehouse dialect.
+ */
+export interface ModelTarget {
+  /** A field reference in a direct expression */
+  ref: (dataset: string, field: string) => string;
+  /** The FROM text of a dataset in a staged source */
+  table: (dataset: string) => string;
+  /** The SQL text of a field in a staged source */
+  column: (dataset: string, field: string) => string;
+  /** The FROM text of the period spine */
+  spine: string;
+  /** The dialect a staged `source` is written in, and the others carried in its extension */
+  dialects: { primary: DialectName; others: DialectName[] };
+  /** The `field@dataset` pairs an entry reads that the target lacks; an entry with any is left out as unmapped */
+  missing?: (placeholders: string[]) => string[];
+}
+
+export const REFERENCE_TARGET: ModelTarget = {
+  ref: (ds, f) => `${ds}.${f}`,
+  table: physicalSource,
+  column: (_ds, f) => f,
+  spine: PERIOD_SPINE,
+  dialects: { primary: "postgres", others: ["snowflake", "bigquery", "databricks"] },
+};
+
 const sql = (expression: string): OssieExpression => ({ dialects: [{ dialect: OSSIE_DIALECT, expression }] });
 const gasp = (data: Record<string, unknown>): OssieExtension[] => [{ vendor_name: GASP_VENDOR, data: JSON.stringify(data) }];
 
@@ -102,10 +130,10 @@ export function relationshipsOf(datasets: Record<string, OntologyDataset>, field
   return out;
 }
 
-const fillReference = (s: string): string => {
+const fillReference = (s: string, t: ModelTarget): string => {
   const out = s
-    .replace(/\{\{(\w+)@\w+\}\}/g, "$1")
-    .replace(/\{\{_table:(\w+)\}\}/g, (_, ds: string) => physicalSource(ds))
+    .replace(/\{\{(\w+)@(\w+)\}\}/g, (_, f: string, ds: string) => t.column(ds, f))
+    .replace(/\{\{_table:(\w+)\}\}/g, (_, ds: string) => t.table(ds))
     .replace(/\{\{_period_start\}\}/g, "p.period_start")
     .replace(/\{\{_period_end\}\}/g, "p.period_end");
   if (out.includes("{{")) throw new Error(`Unfilled placeholder in ${out}`);
@@ -113,13 +141,13 @@ const fillReference = (s: string): string => {
 };
 
 /**
- * The compiled SQL with every placeholder filled for the reference model, per
- * reporting period. A breakdown query (compile.ts) becomes one row per period
+ * The compiled SQL with every placeholder filled for the target (the reference
+ * model unless given), per reporting period. A breakdown query (compile.ts) becomes one row per period
  * and dimension value: the spine crossed with the breakdown's domain, which
  * reads no period bound, so its correlated subqueries see both. A breakdown
  * reached through a key carries both the key and the label column.
  */
-export function stagedSource(compiledSql: string): string {
+export function stagedSource(compiledSql: string, t: ModelTarget = REFERENCE_TARGET): string {
   const b = /^SELECT ((?:_d\.\w+ AS \w+, )+)([^\n]*) AS \w+\nFROM \(([^\n]*)\) _d$/.exec(compiledSql);
   if (b) {
     const [, cols, scalar, domain] = b;
@@ -127,25 +155,29 @@ export function stagedSource(compiledSql: string): string {
     // (portable, where a correlated derived table would need LATERAL).
     const dated = /^(SELECT DISTINCT [^\n]*?) FROM (\{\{_table:\w+\}\}) WHERE (\{\{\w+@\w+\}\}) = \{\{_period_end\}\}$/.exec(domain);
     const join = dated
-      ? `JOIN (${fillReference(`${dated[1]}, ${dated[3]} AS _period FROM ${dated[2]}`)}) _d ON _d._period = p.period_end`
-      : `CROSS JOIN (${fillReference(domain)}) _d`;
-    return `SELECT p.period_start, p.period_end, ${cols}(${fillReference(scalar)}) AS value FROM ${PERIOD_SPINE} p ${join}`;
+      ? `JOIN (${fillReference(`${dated[1]}, ${dated[3]} AS _period FROM ${dated[2]}`, t)}) _d ON _d._period = p.period_end`
+      : `CROSS JOIN (${fillReference(domain, t)}) _d`;
+    return `SELECT p.period_start, p.period_end, ${cols}(${fillReference(scalar, t)}) AS value FROM ${t.spine} p ${join}`;
   }
   const m = /^SELECT ([\s\S]*) AS \w+$/.exec(compiledSql);
   if (!m) throw new Error(`Unexpected compiled SQL shape: ${compiledSql.slice(0, 80)}`);
-  return `SELECT p.period_start, p.period_end, (${fillReference(m[1])}) AS value FROM ${PERIOD_SPINE} p`;
+  return `SELECT p.period_start, p.period_end, (${fillReference(m[1], t)}) AS value FROM ${t.spine} p`;
 }
 
 const FORM_LABEL: Record<string, string> = { O: "Operating form", M: "Market form" };
 
-export function exportModel(data: StandardData): { model: OssieSemanticModel; coverage: Record<string, MetricCoverage> } {
+/**
+ * Every formula entry (main formula, forms, variants, named breakdowns) as an
+ * Ossie metric for the target: direct when metrics.ts can state it, else a
+ * staged per-period dataset built from the compiled SQL. `only` restricts the
+ * formula ids; the target's `missing` leaves out entries it cannot read.
+ */
+export function buildMetrics(data: StandardData, target: ModelTarget, only?: (formulaId: string) => boolean): { metrics: OssieMetric[]; staged: OssieDataset[]; coverage: Record<string, MetricCoverage> } {
   const ont = data.ontology;
   if (!ont?.fields || !ont.datasets || !data.formulas) throw new Error("Standard data has no fields, datasets or formulas");
   const fieldList = ont.fields;
-  const ctx: EmitContext = { fields: Object.fromEntries(fieldList.map((f) => [f.id, f])), datasets: ont.datasets, formulas: data.formulas };
-
-  const datasets = Object.entries(ont.datasets).map(([id, d]) => datasetOf(id, d, fieldList));
-  const relationships = relationshipsOf(ont.datasets, fieldList);
+  const cctx = { fields: Object.fromEntries(fieldList.map((f) => [f.id, f])), datasets: ont.datasets, formulas: data.formulas };
+  const ctx: EmitContext = { ...cctx, ref: target.ref };
 
   // Formula id → the metric record that owns it (stubs defer to another metric).
   const owner = new Map<string, Metric>();
@@ -160,6 +192,7 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
   const coverage: Record<string, MetricCoverage> = {};
 
   for (const [id, f] of Object.entries(data.formulas)) {
+    if (only && !only(id)) continue;
     const m = owner.get(id);
     const entries: Array<{ key: string; variant?: string; form?: string; named?: boolean }> = [];
     if (f.formula || f.notComputable) entries.push({ key: id });
@@ -174,12 +207,18 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
         continue;
       }
       const name = metricName(id, e.variant);
+      const compiled = compileMetric(id, { ...cctx, dialect: target.dialects.primary }, e.variant);
+      const missing = target.missing?.(compiled.placeholders) ?? [];
+      if (missing.length) {
+        coverage[e.key] = { kind: "unmapped", ossieName: name, missing };
+        continue;
+      }
       const label = m?.name ?? id;
       const qualifier = e.form ? `, ${FORM_LABEL[e.form]}` : e.named ? `, ${e.variant} breakdown` : e.variant ? `, ${e.variant} variant` : "";
       const instructions = [m ? `Canonical definition: ${metricUrl(m)}.` : ""];
       const breakdown = breakdownOf(f, e.variant);
       // A breakdown reached through a key (plan_name on plan, via plan_id): the consumer joins to that dataset.
-      const via = breakdown ? compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas }, e.variant).breakdown?.via : undefined;
+      const via = breakdown ? compiled.breakdown?.via : undefined;
       const dimension = breakdown && via ? `${via.dataset}.${breakdown}` : breakdown;
       if (breakdown) {
         instructions.push(via
@@ -195,11 +234,11 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
         }
       } else {
         const dsName = stagedDatasetName(name);
-        const compiled = compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas }, e.variant);
         const bf = breakdown ? ctx.fields[breakdown] : undefined;
+        const { primary, others } = target.dialects;
         staged.push({
           name: dsName,
-          source: stagedSource(compiled.sql),
+          source: stagedSource(compiled.sql, target),
           description: `Staged dataset for ${name}: one row per reporting period${breakdown ? ` and ${breakdown} value` : ""} holding the metric value, computed by the GASP compiled query (needs ${emission.reasons.join(", ")}).`,
           primary_key: breakdown ? ["period_start", via ? via.key : breakdown] : ["period_start"],
           fields: [
@@ -213,15 +252,13 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
           // registered dialect `source` is written in and carries the other dialects' sources (docs/ossie-spike.md).
           custom_extensions: gasp({
             staged: true, for: name, reason: emission.reason,
-            source_dialect: OSSIE_DIALECT_OF.postgres,
-            sources: Object.fromEntries((Object.keys(OSSIE_DIALECT_OF) as DialectName[]).filter((d) => d !== "postgres").map((d) => [
-              OSSIE_DIALECT_OF[d], stagedSource(compileMetric(id, { fields: ctx.fields, datasets: ctx.datasets, formulas: ctx.formulas, dialect: d }, e.variant).sql),
-            ])),
+            source_dialect: OSSIE_DIALECT_OF[primary],
+            ...(others.length ? { sources: Object.fromEntries(others.map((d) => [OSSIE_DIALECT_OF[d], stagedSource(compileMetric(id, { ...cctx, dialect: d }, e.variant).sql, target)])) } : {}),
           }),
         });
         expression = `SUM(${dsName}.value)`;
         coverage[e.key] = { kind: "staged", ossieName: name, stagedDataset: dsName, reason: emission.reason };
-        instructions.push(`Staged (${emission.reason}): ${dsName} holds one row per reporting period, so filter its period_start to one period. ${PERIOD_SPINE} is a table of (period_start, period_end) rows the adopter provides.`);
+        instructions.push(`Staged (${emission.reason}): ${dsName} holds one row per reporting period, so filter its period_start to one period. ${target.spine} is a table of (period_start, period_end) rows the adopter provides.`);
       }
       metrics.push({
         name,
@@ -242,6 +279,16 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
       });
     }
   }
+  return { metrics, staged, coverage };
+}
+
+export function exportModel(data: StandardData): { model: OssieSemanticModel; coverage: Record<string, MetricCoverage> } {
+  const ont = data.ontology;
+  if (!ont?.fields || !ont.datasets || !data.formulas) throw new Error("Standard data has no fields, datasets or formulas");
+  const fieldList = ont.fields;
+  const datasets = Object.entries(ont.datasets).map(([id, d]) => datasetOf(id, d, fieldList));
+  const relationships = relationshipsOf(ont.datasets, fieldList);
+  const { metrics, staged, coverage } = buildMetrics(data, REFERENCE_TARGET);
 
   const model: OssieSemanticModel = {
     version: OSSIE_VERSION,

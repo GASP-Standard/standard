@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadStandard } from "../src/loader.js";
 import { exportModel } from "../src/ossie/model.js";
-import { CONSTRUCTS, profileExpression, RUNGS, summarisePortability } from "../src/ossie/portability.js";
+import { aggregateSpans, CONSTRUCTS, profileExpression, RUNGS, summarisePortability } from "../src/ossie/portability.js";
 
 const data = loadStandard();
 const { model, coverage } = exportModel(data);
@@ -26,6 +26,13 @@ describe("Portability profile: the upstream fixtures", () => {
     // M3: a filtered aggregate, in the fixture's CASE form and in the FILTER form the expression language requires
     expect(profileExpression("SUM(CASE WHEN sales.status = 'completed' THEN sales.amount ELSE 0 END)")).toEqual({ rung: "M3", constructs: ["filtered aggregate"] });
     expect(profileExpression("SUM(sales.amount) FILTER (WHERE sales.status = 'completed')")).toEqual({ rung: "M3", constructs: ["filtered aggregate"] });
+  });
+
+  it("spans each aggregate call with its WITHIN GROUP and FILTER clauses", () => {
+    const span = (e: string) => aggregateSpans(e).map((s) => e.slice(s.start, s.end));
+    expect(span("(SUM(a.x) FILTER (WHERE a.y = 'z') * 12)")).toEqual(["SUM(a.x) FILTER (WHERE a.y = 'z')"]);
+    expect(span("PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY s.ms)")).toEqual(["PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY s.ms)"]);
+    expect(span("(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY t.h) FILTER (WHERE t.k = 1) / NULLIF(COUNT(t.id), 0))")).toEqual(["PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY t.h) FILTER (WHERE t.k = 1)", "COUNT(t.id)"]);
   });
 
   it("names the constructs the published rungs do not measure", () => {

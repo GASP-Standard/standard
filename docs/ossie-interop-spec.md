@@ -44,7 +44,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines five immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 306 metrics, 94 definitions, 12 MCP tools |
+| Canonical definitions agents can read | Strong | 306 metrics, 94 definitions, 14 MCP tools |
 | Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 306 metrics covered (279 formulas, 15 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Missing | The MCP has no warehouse access and returns SQL only |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Value-distribution, key and freshness checks are still to come |
@@ -125,7 +125,7 @@ One pipeline, five readiness levels. Each step writes a file the next step reads
 | L3 Clean core | Build CEL | Source templates (Stripe, Chargebee, Salesforce, HubSpot first) generate dbt models from raw tables to CEL events with ATL tags | dbt project, delivered as a pull request | `generate_cel_models` |
 | | Check | Tests compiled from GASP's own rules run against CEL | Pass/fail per check, per metric | `generate_checks` |
 | | Plan | Failing checks ranked by how many metrics each fix unlocks, Core first, weighted by effort | Ranked fix list | `plan_fixes` |
-| L4 LLM-ready | Publish | Canonical metrics compiled into the company's model; coverage, checks and drift re-run on a schedule | Published Ossie model, readiness report | `compile_metrics`, `score_drift`, `readiness_report` |
+| L4 LLM-ready | Publish | Canonical metrics compiled into the company's model; coverage, checks and drift re-run on a schedule | Published Ossie model, readiness report | `compile_model` (done 2026-11-02), `score_drift`, `readiness_report` |
 
 ### One mapping format
 
@@ -144,9 +144,11 @@ The v1 adapter and the Ossie mapping merge into one format: an Ossie mapping doc
 
 **Imports.** Because the mapping document references the GASP ontology by `name` and `iri`, a company's file no longer carries a copy of it. What remains for proposal P4 is catalog resolution by name and converter support for standalone mapping documents, which upstream says is not yet available.
 
-**Validation.** `validate_adapter` becomes `validate_mapping`: Ossie schema validity first, then GASP's own cross-reference checks (since `99c21c2` the upstream validator confirms that a mapping's concepts, relationships and field expressions resolve in the documents its `iri`s name and that a relationship's columns exist; it only warns on a metric naming an unknown dataset and passes a scalar subquery or a broken `source` query, which `gasp-wiki-mcp/src/ossie/check.ts` catches), then coverage computed from the concept mappings, then field types and recommended owners.
+**Validation** (done 2026-11-02: `validate_mapping`, with `validate_adapter` kept as the same tool; `gasp-wiki-mcp/src/ossie/adapt.ts`)**.** `validate_adapter` becomes `validate_mapping`: Ossie schema validity first, then GASP's own cross-reference checks (since `99c21c2` the upstream validator confirms that a mapping's concepts, relationships and field expressions resolve in the documents its `iri`s name and that a relationship's columns exist; it only warns on a metric naming an unknown dataset and passes a scalar subquery or a broken `source` query, which `gasp-wiki-mcp/src/ossie/check.ts` catches), then coverage computed from the concept mappings, then field types and recommended owners.
 
 ### Metric compiler
+
+Done 2026-11-02 as the `compile_model` tool (`gasp-wiki-mcp/src/ossie/company.ts`): it takes the mapping in either format, compiles into the company's own model (given, or synthesised from a v1 adapter), writes staged sources in the warehouse dialect the mapping names, declares the period spine as `gasp_period_spine`, lists the entries left out with the pairs they need and replaces its own additions on a recompile. The exporter's metric loop is shared: the reference model is one target of it.
 
 The compiler reads `standard/formulas.json` and the company's mapping and emits Ossie `metrics[]` into the company's model. It emits only metrics whose fields are all mapped; the rest go into the coverage report. Generated metrics carry a `gasp_` prefix so they never collide with the company's own. O/M forms compile to separate metrics (`gasp_nrr_o`, `gasp_nrr_m`).
 
@@ -316,7 +318,7 @@ About 16 weeks to launch from 2026-10-12, with community engagement from the int
 | --- | --- | --- | --- |
 | 0. Hygiene | 1 to 2 | Done 2026-10-13: field vocabulary reconciled, npm 1.12.0 published, site deployed, secrets audit, public mirror with governance documents | Mirror public and linked from gaspwiki.com and npm (met) |
 | 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (294 formula entries, 268 fields, 52 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
-| 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR; mapping format and `validate_mapping`; metric compiler into a company's model; reference model PR; DuckDB demo; synthetic dataset grown from the test fixture | Reference model PR open; compiled Core runs in DuckDB |
+| 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR (done 2026-11-02); mapping format and `validate_mapping` (done 2026-11-02); metric compiler into a company's model (done 2026-11-02, `compile_model`); reference model PR (branch prepared, opens after the intro thread); DuckDB demo (done 2026-11-02); synthetic dataset grown from the test fixture (the conformance and demo data) | Reference model PR open; compiled Core runs in DuckDB (met) |
 | 3. Drift and on-ramp | 10 to 16 | Drift scorer; profiler; raw-source mappings and CEL source templates (Stripe, Salesforce first); readiness checks and fix plan; P1 to P4 drafted | Drift report on a public vendor example; synthetic data reaches L4 |
 | Launch | 16+ | Ecosystem card, "GASP for Ossie" page, blog, community talk | Reference model merged |
 | Prove | after launch | Three design partners on real messy data | One partner at L3 |

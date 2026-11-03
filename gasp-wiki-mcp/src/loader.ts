@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import {
@@ -262,7 +263,21 @@ export function loadStandard(): StandardData {
   // The adapter schema travels with the data so validate_adapter can apply it offline
   const adapterSchema = JSON.parse(readFileSync(join(standardDir, "gasp-adapter-schema.json"), "utf-8")) as Record<string, unknown>;
 
-  return { metrics, definitions, nodes, edges, dataRequirements, ontology, queryTemplates, metricNodeIds, formulas, adapterSchema };
+  // The upstream Ossie schemas travel too, so validate_mapping can check an Ossie mapping offline (absent when the package dir is not beside them)
+  const ossieSchemas = loadOssieSchemas();
+
+  return { metrics, definitions, nodes, edges, dataRequirements, ontology, queryTemplates, metricNodeIds, formulas, adapterSchema, ...(ossieSchemas ? { ossieSchemas } : {}) };
+}
+
+/** The three vendored Ossie schemas (ossie-validator/), or undefined when they are not on disk. */
+function loadOssieSchemas(): StandardData["ossieSchemas"] | undefined {
+  try {
+    const dir = fileURLToPath(new URL("../ossie-validator/", import.meta.url));
+    const read = (p: string) => JSON.parse(readFileSync(join(dir, p), "utf-8")) as Record<string, unknown>;
+    return { mapping: read("ontology/mapping.json"), ontology: read("ontology/ontology.json"), model: read("core-spec/ossie-schema.json") };
+  } catch {
+    return undefined;
+  }
 }
 
 /**

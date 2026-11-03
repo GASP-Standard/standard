@@ -53,7 +53,20 @@ const CORE = new Set(["SUM", "COUNT", "AVG", "MIN", "MAX"]);
 const DATE_SCALAR = /\b(DATEDIFF|DATE_TRUNC|EXTRACT|DATE_PART)\s*\(|\bCURRENT_DATE\b|\bINTERVAL\b/;
 const CASE_FILTER = /\b(SUM|COUNT|AVG|MIN|MAX)\s*\(\s*CASE\s+WHEN\b/;
 
-/** The span of every aggregate call in an expression, its FILTER clause included: [start, end) offsets. */
+/** The end of a parenthesised clause that follows offset j when `head` matches there, else j. */
+function clauseEnd(expr: string, j: number, head: RegExp): number {
+  const h = head.exec(expr.slice(j + 1));
+  if (!h) return j;
+  let d = 0;
+  let k = j + h[0].length;
+  for (; k < expr.length; k++) {
+    if (expr[k] === "(") d++;
+    else if (expr[k] === ")" && --d === 0) break;
+  }
+  return k;
+}
+
+/** The span of every aggregate call in an expression, its WITHIN GROUP and FILTER clauses included: [start, end) offsets. */
 export function aggregateSpans(expr: string): Array<{ start: number; end: number }> {
   const re = aggregateRegex();
   const spans: Array<{ start: number; end: number }> = [];
@@ -69,17 +82,9 @@ export function aggregateSpans(expr: string): Array<{ start: number; end: number
       if (expr[j] === "(") depth++;
       else if (expr[j] === ")" && --depth === 0) break;
     }
-    // a FILTER clause belongs to the call
-    const f = /^\s*FILTER\s*\(/.exec(expr.slice(j + 1));
-    if (f) {
-      let d = 0;
-      let k = j + f[0].length;
-      for (; k < expr.length; k++) {
-        if (expr[k] === "(") d++;
-        else if (expr[k] === ")" && --d === 0) break;
-      }
-      j = k;
-    }
+    // An ordered-set aggregate's WITHIN GROUP clause and a FILTER clause belong to the call.
+    j = clauseEnd(expr, j, /^\s*WITHIN\s+GROUP\s*\(/);
+    j = clauseEnd(expr, j, /^\s*FILTER\s*\(/);
     spans.push({ start: m.index, end: j + 1 });
     i = j + 1;
   }

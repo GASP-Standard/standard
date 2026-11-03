@@ -357,4 +357,6 @@ export interface StandardData {
    * data fetched from an older site build still loads.
    */
   adapterSchema?: Record<string, unknown>;
+  /** The upstream Ossie JSON Schemas (vendored at ossie-validator/), so validate_mapping can check an Ossie mapping offline */
+  ossieSchemas?: { mapping: Record<string, unknown>; ontology: Record<string, unknown>; model: Record<string, unknown> };
 }

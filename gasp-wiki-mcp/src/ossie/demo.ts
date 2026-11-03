@@ -40,24 +40,39 @@ const dayAfter = (d: string): string => {
 };
 
 /** The query layer's period filter on one dataset's rows. */
-export function periodFilter(meta: OntologyDataset, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): string {
-  if (meta.kind === "snapshot") return `${meta.date} = DATE '${period.end}'`;
+export function periodFilter(meta: OntologyDataset, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD, column: string = meta.date): string {
+  if (meta.kind === "snapshot") return `${column} = DATE '${period.end}'`;
   // A timestamp time dimension covers the whole last day, as the compiled templates do.
-  const upper = fields[meta.date]?.type === "timestamp" ? `${meta.date} < DATE '${dayAfter(period.end)}'` : `${meta.date} <= DATE '${period.end}'`;
-  return `${meta.date} >= DATE '${period.start}' AND ${upper}`;
+  const upper = fields[meta.date]?.type === "timestamp" ? `${column} < DATE '${dayAfter(period.end)}'` : `${column} <= DATE '${period.end}'`;
+  return `${column} >= DATE '${period.start}' AND ${upper}`;
+}
+
+/** The physical side of a direct query: the reference model's `gasp.<dataset>` tables by canonical column unless given. */
+export interface Physical {
+  table: (dataset: string) => string;
+  /** The column that carries the dataset's date field */
+  date: (dataset: string) => string;
 }
 
 const DATASET_REF = /\b([a-z_][a-z0-9_]*)\.[a-z_][a-z0-9_]*\b/g;
 
-/** A direct expression as a scalar query: each aggregate call evaluated over its dataset's rows for the period. */
-export function directQuery(expression: string, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): string {
+/**
+ * A direct expression as a scalar query: each aggregate call evaluated over its
+ * dataset's rows for the period. The expression's dataset names are GASP
+ * dataset ids (the reference model, or a model synthesised from a v1 adapter);
+ * `physical` names the table and date column behind each.
+ */
+export function directQuery(expression: string, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD, physical?: Physical): string {
   let out = "";
   let at = 0;
   for (const span of aggregateSpans(expression)) {
     const call = expression.slice(span.start, span.end);
     const refs = [...new Set([...call.matchAll(DATASET_REF)].map((m) => m[1]).filter((d) => datasets[d]))];
     if (refs.length !== 1) throw new Error(`An aggregate must read one dataset, this one reads ${refs.length}: ${call}`);
-    out += `${expression.slice(at, span.start)}(SELECT ${call} FROM gasp.${refs[0]} WHERE ${periodFilter(datasets[refs[0]], fields, period)})`;
+    const ds = refs[0];
+    // The call qualifies its columns by dataset name, so a physical table is aliased to it.
+    const table = physical ? `${physical.table(ds)} AS ${ds}` : `gasp.${ds}`;
+    out += `${expression.slice(at, span.start)}(SELECT ${call} FROM ${table} WHERE ${periodFilter(datasets[ds], fields, period, physical?.date(ds))})`;
     at = span.end;
   }
   out += expression.slice(at);

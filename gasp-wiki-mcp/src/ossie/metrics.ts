@@ -38,6 +38,8 @@ export interface EmitContext {
   fields: Record<string, OntologyField>;
   datasets: Record<string, OntologyDataset>;
   formulas: Record<string, MetricFormula>;
+  /** How a field reference is written: `<dataset>.<field>` in the reference model, the company's own names when compiling into their model */
+  ref?: (dataset: string, field: string) => string;
 }
 
 /** Why a formula needs a staged dataset, highest priority first (the first that applies is reported). */
@@ -168,7 +170,7 @@ class Emitter {
       case "boolean": return n.value ? "TRUE" : "FALSE";
       case "field":
         if (!scope.dataset) throw new Error(`field.${n.id} outside an aggregate`);
-        return `${scope.dataset}.${n.id}`;
+        return this.ctx.ref ? this.ctx.ref(scope.dataset, n.id) : `${scope.dataset}.${n.id}`;
       case "period_bound":
         this.reasons.add(inWhere ? "period bound in filter" : "period bound");
         return n.point.toUpperCase();

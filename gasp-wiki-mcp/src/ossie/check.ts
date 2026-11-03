@@ -9,7 +9,9 @@
  */
 import type {
   OssieConcept,
+  OssieDataset,
   OssieLinkMapping,
+  OssieMetric,
   OssieMapping,
   OssieObjectMapping,
   OssieOntology,
@@ -135,7 +137,27 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
     checkExt(r.custom_extensions, `relationship "${r.name}"`, p);
   }
 
-  for (const m of model.metrics ?? []) {
+  for (const m of model.metrics ?? []) checkMetric(m, datasets, fieldsOf, p);
+  checkExt(model.custom_extensions, "model", p);
+}
+
+/**
+ * The metric checks alone, for metrics compiled into a company's model
+ * (company.ts): the company's own datasets and fields are theirs to shape, so
+ * only the named metrics are checked, against whatever the model declares.
+ */
+export function checkCompiledMetrics(model: OssieSemanticModel, names: Set<string>): string[] {
+  const p: string[] = [];
+  const datasets = new Map(model.datasets.map((d) => [d.name, d]));
+  const fieldsOf = (n: string) => new Set((datasets.get(n)?.fields ?? []).map((f) => f.name));
+  for (const d of dupes(model.datasets.map((d) => d.name))) p.push(`Model: dataset name "${d}" is declared more than once`);
+  for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
+  for (const m of model.metrics ?? []) if (names.has(m.name)) checkMetric(m, datasets, fieldsOf, p);
+  return p;
+}
+
+function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fieldsOf: (n: string) => Set<string>, p: string[]): void {
+  {
     const dialects = m.expression.dialects;
     if (!dialects.some((d) => d.dialect === OSSIE_DIALECT)) p.push(`Model: metric "${m.name}" has no ${OSSIE_DIALECT} expression`);
     for (const d of dialects) {
@@ -161,7 +183,6 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
     }
     checkExt(m.custom_extensions, `metric "${m.name}"`, p);
   }
-  checkExt(model.custom_extensions, "model", p);
 }
 
 function checkExt(exts: Array<{ vendor_name: string; data: string }> | undefined, who: string, p: string[]): void {
