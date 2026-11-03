@@ -21,9 +21,10 @@ import { isMetricStub, metricFormulaId } from "../loader.js";
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
 import { planOntology } from "./ontology.js";
-import type {
-  OssieConcept, OssieConceptMapping, OssieExport, OssieLinkMapping, OssieMapping, OssieObjectMapping, OssieOntology,
-  OssieReferentMapping, OssieSemanticModel,
+import {
+  portableEntries,
+  type OssieConcept, type OssieConceptMapping, type OssieExport, type OssieLinkMapping, type OssieMapping, type OssieObjectMapping, type OssieOntology,
+  type OssieReferentMapping, type OssieSemanticModel,
 } from "./types.js";
 
 export const EXAMPLE_DEPARTMENT = "Core";
@@ -69,7 +70,7 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
   const gaspDatasets = new Set(Object.keys(data.ontology!.datasets!));
   const byName = new Map(exp.model.datasets.map((d) => [d.name, d]));
   const read = new Set<string>();
-  for (const m of metrics) for (const d of m.expression.dialects) for (const ds of datasetRefs(d.expression, gaspDatasets)) read.add(ds);
+  for (const m of metrics) for (const d of portableEntries(m.expression)) for (const ds of datasetRefs(d.expression, gaspDatasets)) read.add(ds);
   for (const name of stagedNames) {
     for (const m of byName.get(name)!.source.matchAll(/\bgasp\.([a-z_][a-z0-9_]*)/g)) if (gaspDatasets.has(m[1])) read.add(m[1]);
   }

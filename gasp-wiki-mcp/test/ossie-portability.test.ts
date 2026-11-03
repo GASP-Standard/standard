@@ -12,7 +12,7 @@ import { aggregateSpans, CONSTRUCTS, profileExpression, RUNGS, summarisePortabil
 
 const data = loadStandard();
 const { model, coverage } = exportModel(data);
-const expressionOf = new Map(model.metrics!.map((m) => [m.name, (m.expression as { dialects: Array<{ expression: string }> }).dialects[0].expression]));
+const expressionOf = new Map(model.metrics!.map((m) => [m.name, m.expression.sql!]));
 
 describe("Portability profile: the upstream fixtures", () => {
   it("classifies each compliance/portability rung to itself", () => {

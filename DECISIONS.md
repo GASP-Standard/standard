@@ -5,6 +5,42 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-03] The CEL build step: GASP owns the derivation rule, vendors are examples
+**Decision:** The standard defines how to derive `Revenue_Event` rows from a subscription ledger (the GASP `subscription` dataset as snapshots or a version history), as a section of `cel.md` with reference SQL that the test suite executes. The MCP package compiles that SQL over a company's mapping in its dialect. Billing and CRM vendors appear only as fixtures and worked examples beside Acme, written from public documentation. No vendor name enters the standard or the code, and GASP does not ship a dbt project. Three choices inside the rule: `prior_mrr` and `new_mrr` are the customer's MRR, chained through the customer's steps so the row identity holds and one date's rows add up; the ledger's first snapshot date is an opening balance and produces no event; `expansion_classification` is left empty rather than defaulted to `same_product`.
+
+**Context:** The interop spec's L3 row promised "source templates (Stripe, Chargebee, Salesforce, HubSpot first) generate dbt models". The owner asked whether naming vendors made GASP too opinionated. CEL design principle 5 already says the ledger is source-system agnostic, and the ontology names vendors only in `provenance` notes. The real gap was underneath: the CEL said what a Revenue_Event is but not how to get one from the subscription records billing systems actually hold, and that rule is the same for every system. The pipeline tools shipped the same week (profile, propose, decide) already handle any schema, so a vendor template is a pre-answered mapping, not a new kind of thing.
+
+**Alternatives considered:**
+- **Vendor templates as the deliverable.** Rejected: a bottomless list carrying other people's schema churn, for one maintainer, and the wrong layer for the opinion.
+- **Subscription-level `prior_mrr` and `new_mrr`.** Rejected: the CEL examples (cross-module expansion, reactivation) carry the customer's MRR, and `churn` and `reactivation` are customer states; a second subscription is an expansion of the customer, not a `new`.
+- **Default `expansion_classification` to `same_product`.** Rejected: the Operating forms of ARR and NRR read the tag, so a default would make a derived NRR-O look complete while being a guess. Empty is honest and the ATL readiness check names it.
+- **Treat the ledger's first rows as `new` events.** Rejected: a ledger that starts mid-life would report every existing customer as acquired on day one. The opening balance seeds the running MRR and the churn of such a customer still derives correctly (c21 in the fixture).
+
+**Consequences:**
+- Cadence is grain: month-end snapshots net the movements inside a month into one event dated the month end, and a churn and reactivation inside one interval vanish. The MRR movement metrics by month are unaffected; finer-grained counts are. Stated in the standard.
+- A `renewal` is not derived from the ledger (no MRR change) and comes from `Contract_Event` or the renewal fields.
+- The derivation is a `QueryTemplate` with the compiler's placeholders, so `fillTemplate` compiles it over an adapter or Ossie mapping; the `derive_cel` tool is the wrapper, shipped the same day. The dialect table gained `toText` for the event id and the typed empty tag.
+- Invoice and usage derivations follow the same shape later. Vendor fixtures (Stripe, Salesforce) come next as worked examples.
+- Reviewed the same day: a customer with several subscriptions changing on one date is typed from the customer's MRR at the start and end of that date, with increases chained before decreases, so a plan swap onto a new subscription id is an expansion and a contraction and never a churn and a reactivation. A ledger that starts with the business has no opening balances (`first_snapshot: steps`). The ATL gained rule 8 (`contraction` and `churn` are `retention`), which the fixture and NRR already assumed.
+
+---
+
+## [2026-11-03] Expressions are written as `sql`, the portable field, and never as a one-entry `dialects` list
+**Decision:** Every field and metric expression GASP writes, in the reference export and in every tool that writes into a company's model (the adapter converter, `compile_model`, `score_drift`, `profile_schema`, `propose_mapping`, `record_decision`), is `expression: { sql: "<OSSIE_SQL_2026>" }` with no `dialects` entry. Readers accept both forms and treat `sql` as authoritative when both are present, as the upstream validator does.
+
+**Context:** The Ossie schema gained a top-level `sql` field for the portable form and declared it authoritative over an `OSSIE_SQL_2026` entry in `dialects`; on 2026-11-03 upstream rewrote its canonical examples and the spec's expression section to use it (apache/ossie#640). GASP had been writing the one-entry list because the spike predated the field. The GASP example is headed for `examples/`, where it sits beside the rewritten flights example, and a reader comparing them should see one shape.
+
+**Alternatives considered:**
+- **Write both `sql` and a matching `OSSIE_SQL_2026` dialect entry.** Rejected: the validator treats the entry as dead text and warns when it differs, and it doubles the model for no consumer.
+- **Keep `dialects` and wait for upstream to deprecate it.** Rejected: the schema already says which is authoritative, and the position taken on dev@ is that GASP emits the portable form wherever the language can state it. The vendor dialects stay where they were, in the staged sources, and a company model may still put vendor forms under `dialects` beside `sql`.
+
+**Consequences:**
+- The semantic model export is about 2,800 lines shorter with no change to any expression text, expected value or coverage count.
+- `OssieExpression` has both fields optional with at least one present; `portable()`, `expressionText()` and `portableEntries()` in `types.ts` are the only places that know the shape. The Acme company metrics fixture stays in `dialects` form so the suite proves both forms read alike.
+- The prepared `examples-gasp-saas` branch carries the regenerated example and is merged up to upstream `f505f0a`.
+
+---
+
 ## [2026-11-03] The readiness pipeline tools: what the owner decided
 **Decision:** Three tools take a company from a pasted warehouse schema to a decided GASP mapping, readiness levels 1 and 2 of `docs/ossie-interop-spec.md`. `profile_schema` infers the key, time field and kind per table with evidence and a confidence, and leaves a question wherever the names cannot settle it rather than guessing; statistics are optional and recommended. `propose_mapping` scores tables on four signals (column coverage, the profiled kind, key and time field, the name) and columns on the name, the structural role, a proposer-side synonym list, word order and near names, proposes two transforms when the name or the values show them (cents to units, an enum recode), and puts only high-confidence pairs in the mapping with medium ones as candidates. `record_decision` names each decision by content (the dataset, column, GASP id, metric or topic) rather than a generated id, applies what GASP has a slot for and records every decision in the mapping's GASP extension; the profiler and the proposer carry their full question and candidate lists in the extensions so the step reads the documents alone; level 2 is reached when no question and no candidate is open.
 

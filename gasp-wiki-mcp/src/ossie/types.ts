@@ -29,8 +29,37 @@ export function writeGaspExtension(exts: OssieExtension[] | undefined, value: un
 
 export type OssieDataType = "String" | "Integer" | "Decimal" | "Float" | "Boolean" | "Date" | "Time" | "DateTime" | "DateTimeTz" | "Opaque";
 
+/**
+ * An expression: `sql` is the portable OSSIE_SQL_2026 form and authoritative upstream;
+ * `dialects` carries vendor forms, or the portable one in documents written before
+ * `sql` existed. At least one is present. GASP writes `sql` alone (`portable`) and
+ * reads either (`expressionText`, `portableEntries`).
+ */
 export interface OssieExpression {
-  dialects: Array<{ dialect: string; expression: string }>;
+  sql?: string;
+  dialects?: Array<{ dialect: string; expression: string }>;
+}
+
+/** The expression GASP writes: the portable form alone. */
+export const portable = (sql: string): OssieExpression => ({ sql });
+
+/** The portable text of a field's or metric's expression: `sql` first, else the OSSIE_SQL_2026 dialect entry, else the first entry. */
+export function expressionText(f: { expression: OssieExpression | string }): string | undefined {
+  const e = f.expression;
+  if (typeof e === "string") return e;
+  return portableSql(e) ?? (e?.dialects?.find((d) => d.dialect === OSSIE_DIALECT) ?? e?.dialects?.[0])?.expression;
+}
+
+/** The `sql` field when it is a non-empty string; an empty or non-string value is treated as absent. */
+const portableSql = (e: OssieExpression | undefined): string | undefined => (typeof e?.sql === "string" && e.sql.trim() ? e.sql : undefined);
+
+/** Every entry of an expression as dialect and text: `sql` as OSSIE_SQL_2026 first, then the dialect entries it does not supersede. */
+export function portableEntries(e: OssieExpression | undefined): Array<{ dialect: string; expression: string }> {
+  const out: Array<{ dialect: string; expression: string }> = [];
+  const sql = portableSql(e);
+  if (sql) out.push({ dialect: OSSIE_DIALECT, expression: sql });
+  for (const d of e?.dialects ?? []) if (!(sql && d.dialect === OSSIE_DIALECT)) out.push(d);
+  return out;
 }
 
 export interface OssieAIContext {

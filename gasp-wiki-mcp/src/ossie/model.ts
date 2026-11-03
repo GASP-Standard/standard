@@ -20,8 +20,8 @@ import { breakdownOf, emitMetric, formulaSource, type EmitContext } from "./metr
 import { metricName, ossieDataType, physicalSource } from "./names.js";
 import { profileExpression } from "./portability.js";
 import {
-  GASP_VENDOR, OSSIE_DIALECT, OSSIE_VERSION,
-  type MetricCoverage, type OssieDataset, type OssieExpression, type OssieExtension, type OssieField,
+  GASP_VENDOR, OSSIE_VERSION, portable,
+  type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField,
   type OssieMetric, type OssieRelationship, type OssieSemanticModel,
 } from "./types.js";
 
@@ -56,7 +56,7 @@ export const REFERENCE_TARGET: ModelTarget = {
   dialects: { primary: "postgres", others: ["snowflake", "bigquery", "databricks"] },
 };
 
-const sql = (expression: string): OssieExpression => ({ dialects: [{ dialect: OSSIE_DIALECT, expression }] });
+const sql = portable;
 const gasp = (data: Record<string, unknown>): OssieExtension[] => [{ vendor_name: GASP_VENDOR, data: JSON.stringify(data) }];
 
 export const stagedDatasetName = (metric: string): string => `gasp_staged_${metric}`;

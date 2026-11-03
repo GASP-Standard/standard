@@ -32,7 +32,7 @@ describe("Ossie example (GASP SaaS core)", () => {
   it("every metric and staged source reads only datasets the example has", () => {
     const names = new Set(ex.model.datasets.map((d) => d.name));
     for (const m of ex.model.metrics ?? []) {
-      for (const ref of m.expression.dialects[0].expression.matchAll(/\b([a-z_][a-z0-9_]*)\.[a-z_]/g)) expect(names.has(ref[1]), `${m.name} reads ${ref[1]}`).toBe(true);
+      for (const ref of m.expression.sql!.matchAll(/\b([a-z_][a-z0-9_]*)\.[a-z_]/g)) expect(names.has(ref[1]), `${m.name} reads ${ref[1]}`).toBe(true);
     }
     for (const d of ex.model.datasets) {
       for (const ref of d.source.matchAll(/\bgasp\.([a-z_][a-z0-9_]*)/g)) if (ref[1] !== "period_spine") expect(names.has(ref[1]), `${d.name} reads ${ref[1]}`).toBe(true);

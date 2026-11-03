@@ -40,7 +40,7 @@ import { mappingOver, type MappingGap } from "./mapping.js";
 import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
 import { parseSchema, parseStatistics, profileSchema, sameWord, tableWords, type Confidence, type DatasetKind } from "./profile.js";
-import { OSSIE_DIALECT, readGaspExtension, writeGaspExtension, type OssieDataType, type OssieDataset, type OssieField, type OssieMapping, type OssieSemanticModel } from "./types.js";
+import { portable, readGaspExtension, writeGaspExtension, type OssieDataType, type OssieDataset, type OssieField, type OssieMapping, type OssieSemanticModel } from "./types.js";
 
 // ── vocabulary ───────────────────────────────────────────────────────────────
 
@@ -345,7 +345,7 @@ export interface ProposalResult {
 /** The calculated field a transform becomes: named for the GASP field (`<id>_gasp` when the dataset has a field of that name), the transform over the column. */
 export function calculatedField(existing: OssieField[], field: OntologyField, column: string, transform: string, why: string): OssieField {
   const name = existing.some((x) => x.name === field.id) ? `${field.id}_gasp` : field.id;
-  return { name, expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: transform.replace(/\{\{value\}\}/g, column) }] }, datatype: ossieDataType(field.type), description: `GASP ${field.id} from ${column}: ${why}` };
+  return { name, expression: portable(transform.replace(/\{\{value\}\}/g, column)), datatype: ossieDataType(field.type), description: `GASP ${field.id} from ${column}: ${why}` };
 }
 
 /** Propose a GASP mapping over a semantic model, profiled or a company's own. */

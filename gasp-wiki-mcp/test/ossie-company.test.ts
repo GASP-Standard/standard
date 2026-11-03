@@ -41,7 +41,7 @@ const compiled = (c: Company, opts = {}): CompiledModel => {
   return r;
 };
 const ext = (x: { custom_extensions?: Array<{ vendor_name: string; data: string }> }) => JSON.parse(x.custom_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data);
-const exprOf = (m: { expression: { dialects: Array<{ expression: string }> } }) => m.expression.dialects[0].expression;
+const exprOf = (m: { expression: { sql?: string } }) => m.expression.sql!;
 
 describe("Company compile: the fixture adapter reproduces the reference export", () => {
   const r = compiled(company(fixtureAdapter as Adapter));
@@ -174,7 +174,7 @@ describe("Company compile: the Acme adapter", () => {
     // The company's datasets keep their fields; the GASP additions follow.
     const sub = r.model.datasets.find((d) => d.name === "subscription")!;
     expect(sub.source).toBe("billing.subscriptions");
-    expect(sub.fields!.find((f) => f.name === "mrr")!.expression.dialects[0].expression).toBe("mrr_cents / 100");
+    expect(sub.fields!.find((f) => f.name === "mrr")!.expression).toEqual({ sql: "mrr_cents / 100" });
     expect(r.model.name).toBe(c.model.name);
   });
 
@@ -258,7 +258,7 @@ describe("Company compile: the Acme adapter", () => {
     }
   }, 120_000);
 
-  it("keeps every direct expression in the portable dialect", () => {
-    for (const m of r.model.metrics!) expect(m.expression.dialects[0].dialect, m.name).toBe(OSSIE_DIALECT);
+  it("writes every direct expression as the portable `sql` form alone", () => {
+    for (const m of r.model.metrics!) expect(Object.keys(m.expression), m.name).toEqual(["sql"]);
   });
 });

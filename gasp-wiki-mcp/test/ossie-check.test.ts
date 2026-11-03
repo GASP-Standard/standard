@@ -23,7 +23,7 @@ const load = (): Docs => ({
 const concept = (d: Docs, n: string) => d.ontology.ontology.find((c) => c.concept === n)!;
 const rel = (d: Docs, c: string, r: string) => concept(d, c).relationships!.find((x) => x.name === r)!;
 const metric = (d: Docs, n: string) => d.model.metrics!.find((m) => m.name === n)!;
-const expr = (m: { expression: { dialects: Array<{ expression: string }> } }) => m.expression.dialects[0];
+const expr = (m: { expression: { sql?: string } }) => m.expression as { sql: string };
 
 describe("checkExport", () => {
   it("passes the spike documents", () => {
@@ -33,16 +33,19 @@ describe("checkExport", () => {
   const cases: Array<[string, (d: Docs) => void, RegExp]> = [
     ["probe: role played by an undeclared concept", (d) => { rel(d, "Customer", "status_on").roles![1].concept = "Nope"; }, /unknown concept "Nope"/],
     ["probe: identify_by naming an unknown relationship", (d) => { concept(d, "Customer").identify_by = ["missing"]; }, /identify_by names unknown relationship "missing"/],
-    ["probe: metric referencing a dataset that does not exist", (d) => { expr(metric(d, d.model.metrics![0].name)).expression = "SUM(ghost.mrr_change)"; }, /dataset "ghost" does not exist/],
-    ["probe: metric as a scalar subquery", (d) => { expr(d.model.metrics![0]).expression = "(SELECT SUM(revenue_event.mrr_change) FROM revenue_event)"; }, /contains SELECT/],
+    ["probe: metric referencing a dataset that does not exist", (d) => { expr(metric(d, d.model.metrics![0].name)).sql = "SUM(ghost.mrr_change)"; }, /dataset "ghost" does not exist/],
+    ["probe: metric as a scalar subquery", (d) => { expr(d.model.metrics![0]).sql = "(SELECT SUM(revenue_event.mrr_change) FROM revenue_event)"; }, /contains SELECT/],
+    ["probe: metric as a scalar subquery in the older dialects form", (d) => { d.model.metrics![0].expression = { dialects: [{ dialect: "OSSIE_SQL_2026", expression: "(SELECT SUM(revenue_event.mrr_change) FROM revenue_event)" }] }; }, /contains SELECT/],
     ["probe: relationship from_columns naming a missing field", (d) => { d.model.relationships![0].from_columns = ["nope"]; }, /from_columns names "nope"/],
     ["probe: mapping concept not in the ontology", (d) => { d.mapping.concept_mappings[0].concept = "Ghost"; }, /concept "Ghost", which is not in the ontology/],
     ["probe: mapping relationship not declared on the concept", (d) => { d.mapping.concept_mappings[1].link_mappings![0].children![0].relationship = "bogus"; }, /relationship "bogus", which is not declared on concept "Subscription"/],
-    ["metric names a missing field", (d) => { expr(d.model.metrics![0]).expression = "SUM(revenue_event.nope)"; }, /dataset "revenue_event" has no field "nope"/],
-    ["metric has a FROM clause", (d) => { expr(d.model.metrics![0]).expression = "SUM(revenue_event.mrr_change) FROM revenue_event"; }, /FROM clause/],
-    ["metric has a WHERE clause", (d) => { expr(d.model.metrics![0]).expression = "SUM(revenue_event.mrr_change) WHERE 1 = 1"; }, /WHERE clause/],
-    ["metric has a placeholder", (d) => { expr(d.model.metrics![0]).expression = "SUM({{mrr}})"; }, /"\{\{" placeholder/],
-    ["metric lacks the portable dialect", (d) => { expr(d.model.metrics![0]).dialect = "SNOWFLAKE" as never; (expr(d.model.metrics![0]) as { dialect: string }).dialect = "SNOWFLAKE"; }, /has no OSSIE_SQL_2026 expression/],
+    ["metric names a missing field", (d) => { expr(d.model.metrics![0]).sql = "SUM(revenue_event.nope)"; }, /dataset "revenue_event" has no field "nope"/],
+    ["metric has a FROM clause", (d) => { expr(d.model.metrics![0]).sql = "SUM(revenue_event.mrr_change) FROM revenue_event"; }, /FROM clause/],
+    ["metric has a WHERE clause", (d) => { expr(d.model.metrics![0]).sql = "SUM(revenue_event.mrr_change) WHERE 1 = 1"; }, /WHERE clause/],
+    ["metric has a placeholder", (d) => { expr(d.model.metrics![0]).sql = "SUM({{mrr}})"; }, /"\{\{" placeholder/],
+    ["metric lacks the portable dialect", (d) => { d.model.metrics![0].expression = { dialects: [{ dialect: "SNOWFLAKE", expression: "SUM(revenue_event.mrr_change)" }] }; }, /has no OSSIE_SQL_2026 expression/],
+    ["metric has a dialect entry that differs from its sql", (d) => { d.model.metrics![0].expression = { sql: "SUM(revenue_event.mrr_change)", dialects: [{ dialect: "OSSIE_SQL_2026", expression: "SUM(revenue_event.mrr_change) * 2" }] }; }, /differs from its sql/],
+    ["field lacks the portable dialect", (d) => { d.model.datasets[0].fields![0].expression = { dialects: [{ dialect: "SNOWFLAKE", expression: "customer_id" }] }; }, /field "customer\..+" has no OSSIE_SQL_2026 expression/],
     ["duplicate dataset", (d) => { d.model.datasets.push({ ...d.model.datasets[0] }); }, /dataset name "customer" is declared more than once/],
     ["duplicate field", (d) => { d.model.datasets[0].fields!.push({ ...d.model.datasets[0].fields![0] }); }, /field "customer_id" is declared more than once in dataset "customer"/],
     ["duplicate metric", (d) => { d.model.metrics!.push({ ...d.model.metrics![0] }); }, /metric name ".+" is declared more than once/],

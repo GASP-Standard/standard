@@ -14,130 +14,94 @@ datasets:
     fields:
       - name: auto_renewed
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: auto_renewed
+          sql: auto_renewed
         description: Renewal happened without manual intervention
         datatype: Boolean
       - name: contract_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: contract_end
+          sql: contract_end
         description: Contract end date
         datatype: Date
       - name: contract_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: contract_start
+          sql: contract_start
         description: Contract start date
         datatype: Date
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: forecast_renewal_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: forecast_renewal_amount
+          sql: forecast_renewal_amount
         description: Forecast renewal value
         datatype: Decimal
       - name: plan_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: plan_id
+          sql: plan_id
         description: Pricing plan identifier; the plan a subscription is priced by
         datatype: String
       - name: mrr
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr
+          sql: mrr
         description: Monthly recurring revenue of the subscription
         datatype: Decimal
       - name: mrr_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr_end
+          sql: mrr_end
         description: MRR at period end (cohort form)
         datatype: Decimal
       - name: mrr_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr_start
+          sql: mrr_start
         description: MRR at period start (cohort form)
         datatype: Decimal
       - name: renewal_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_amount
+          sql: renewal_amount
         description: Value up for renewal
         datatype: Decimal
       - name: renewal_complete_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_complete_date
+          sql: renewal_complete_date
         description: Date renewal processing finished
         datatype: Date
       - name: renewal_notified_on_time
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_notified_on_time
+          sql: renewal_notified_on_time
         description: Renewal notice sent within the agreed window
         datatype: Boolean
       - name: renewal_trigger_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_trigger_date
+          sql: renewal_trigger_date
         description: Date renewal processing started
         datatype: Date
       - name: renewed
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewed
+          sql: renewed
         description: Renewed at the most recent term end
         datatype: Boolean
       - name: segment
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: segment
+          sql: segment
         description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
         datatype: String
       - name: snapshot_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: snapshot_date
+          sql: snapshot_date
         dimension:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
       - name: subscription_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: subscription_id
+          sql: subscription_id
         description: Subscription identifier
         datatype: String
       - name: subscription_status
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: subscription_status
+          sql: subscription_status
         description: Subscription status
         datatype: String
         ai_context:
@@ -153,25 +117,19 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: MRR Growth Rate for the period
     custom_extensions:
@@ -180,9 +138,7 @@ datasets:
 metrics:
   - name: gasp_mrr_growth_rate
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_mrr_growth_rate.value)
+      sql: SUM(gasp_staged_gasp_mrr_growth_rate.value)
     description: MRR Growth Rate. The month-over-month percentage change in MRR.
     datatype: Decimal
     ai_context:

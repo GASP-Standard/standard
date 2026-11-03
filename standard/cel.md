@@ -539,6 +539,115 @@ FROM movements;
 
 ---
 
+## Deriving Revenue Events from a Subscription Ledger
+
+Most billing systems hold subscriptions, not events: one record per subscription whose plan, quantity, MRR and status change over time, kept as periodic snapshots or as a version history. The CEL needs the movements between those states. This section defines how to derive `Revenue_Event` rows from such a ledger. The rules are the same for every source system, in keeping with design principle 5: a billing system appears only in the mapping that names its tables and columns, never in the rules.
+
+Where a billing system records amendments as events of its own, those are the better source: they carry the amendment type, the quantities and the date the change was agreed, and the [pairing rule](#pairing-rule-amendments-that-change-mrr) applies. The derivation below is for the common case where no such stream exists.
+
+### Input
+
+The GASP `subscription` dataset: `subscription_id`, `customer_id`, `snapshot_date`, `mrr`, `subscription_status` and `segment`. A snapshot table has one row per subscription per snapshot date at any cadence. A version history (one row per change, valid from a date) is the same thing with `snapshot_date` as the date each version took effect.
+
+### Rules
+
+1. **MRR on a snapshot.** A subscription's MRR on a snapshot is its `mrr`, to the cent and 0 when null, when `subscription_status` is `active`, else 0. A paused, cancelled or expired subscription contributes nothing. A customer's MRR is the sum over its subscriptions, and a total within half a cent of zero is zero.
+2. **Steps.** A step is a snapshot whose MRR differs from the same subscription's previous snapshot, in `snapshot_date` order. A subscription's first snapshot is a step from 0. The ledger holds one row per subscription per snapshot date and keeps a row for a cancelled or expired subscription: a subscription that stops appearing has no step and produces no event.
+3. **Opening balances.** Rows on the ledger's first snapshot date are opening balances. They seed each customer's MRR and produce no event, and a customer that churned before that date comes back as `new`, since the ledger cannot know otherwise. If the ledger begins after the oldest subscription, its first date is the day from which events are trusted. A ledger that begins with the business has no opening balances: say so, and every first row is a step from 0.
+4. **One event per step.** The event is dated the snapshot that first shows the change. `mrr_change` is the subscription's change. `prior_mrr` and `new_mrr` are the customer's MRR before and after the step, chained through the customer's steps in `snapshot_date` order, increases before decreases and then `subscription_id`, so `prior_mrr + mrr_change = new_mrr` holds on every row and the rows of one date add up to the customer's net movement.
+5. **Event type**, from the customer's MRR at the start and the end of the step's date. An increase on a date the customer started at 0 is `new`, or `reactivation` when the customer had MRR on an earlier date. A decrease on a date the customer ends at 0 is `churn`. Any other increase is `expansion` and any other decrease `contraction`. So a plan swap onto a new subscription id is an expansion and a contraction, and two subscriptions cancelled on one date are two churns. A `renewal` changes no MRR and is not derived from the ledger; it comes from `Contract_Event` or the subscription's renewal fields.
+6. **Tags and defaults.** `lifecycle_attribution` follows the [ATL assignment rules](atl.md#assignment-rules) for the event type: `new` is `acquisition`, `expansion` is `expansion`, `reactivation` is `reactivation`, `contraction` and `churn` are `retention`. `change_nature` is `permanent`. `segment` is the snapshot's. `currency` is the ledger's currency, supplied as a parameter because the `subscription` dataset carries none. `expansion_classification` is empty: the ledger shows that MRR moved, not whether the customer bought seats, a module or a price rise, and the Operating forms of ARR and NRR read that tag. Until the tag is filled from the amendment records, an ATL completeness check flags every derived expansion, contraction and reactivation.
+7. **Identity.** `event_id` is `<subscription_id>:<snapshot_date>`, a colon and the date in ISO 8601 form, so re-running the derivation over a longer ledger produces the same ids for the same events.
+
+### Cadence
+
+The ledger's cadence is the grain of the events. Daily snapshots show every movement on its day. Month-end snapshots net the movements inside a month into one event dated the month end, and a churn followed by a reactivation inside one interval leaves no event at all. Net New MRR and ending MRR by month are unaffected by that netting. The split into expansion, contraction, churn and reactivation moves when movements inside one interval offset each other, as do event dates and anything counted at a finer grain. Snapshot at the finest cadence the source allows.
+
+### Reference SQL
+
+The derivation over the GASP field names, as the MCP server's `derive_cel` compiles it over a mapping. `'USD'` stands for the ledger's currency. Window functions and `||` run on Postgres, Redshift, Snowflake, BigQuery and Databricks; the text casts are the one construct the dialects spell differently. The test suite runs this over the standard's synthetic dataset and checks that it reproduces every generated movement (renewals and events before the first snapshot excluded), agrees with the compiled MRR movement metrics in every month and types a plan swap, a double cancellation and a two-subscription acquisition on one date as the rules say.
+
+```sql
+WITH ledger AS (
+  SELECT subscription_id AS subscription_id,
+         customer_id AS customer_id,
+         snapshot_date AS snapshot_date,
+         segment AS segment,
+         CASE WHEN subscription_status = 'active' THEN ROUND(COALESCE(mrr, 0), 2) ELSE 0 END AS mrr
+  FROM subscription
+  WHERE snapshot_date IS NOT NULL
+),
+steps AS (
+  SELECT subscription_id, customer_id, snapshot_date, segment, mrr,
+         COALESCE(LAG(mrr) OVER (PARTITION BY subscription_id ORDER BY snapshot_date), 0) AS prior_sub_mrr,
+         CASE WHEN snapshot_date = MIN(snapshot_date) OVER () THEN 1 ELSE 0 END AS opening
+  FROM ledger
+),
+changes AS (
+  SELECT subscription_id, customer_id, snapshot_date, segment, opening,
+         mrr - prior_sub_mrr AS mrr_change
+  FROM steps
+  WHERE mrr <> prior_sub_mrr
+),
+day_changes AS (
+  SELECT customer_id, snapshot_date, SUM(mrr_change) AS day_change
+  FROM changes
+  GROUP BY customer_id, snapshot_date
+),
+days AS (
+  SELECT customer_id, snapshot_date, day_change,
+         SUM(day_change) OVER (PARTITION BY customer_id ORDER BY snapshot_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS day_end
+  FROM day_changes
+),
+day_state AS (
+  SELECT customer_id, snapshot_date, day_end - day_change AS day_start, day_end,
+         COALESCE(MAX(CASE WHEN day_end > 0.005 THEN 1 ELSE 0 END) OVER (PARTITION BY customer_id ORDER BY snapshot_date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS active_before
+  FROM days
+),
+chained AS (
+  SELECT c.subscription_id, c.customer_id, c.snapshot_date, c.segment, c.opening, c.mrr_change,
+         COALESCE(SUM(c.mrr_change) OVER (PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior_mrr,
+         SUM(c.mrr_change) OVER (PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS new_mrr,
+         s.day_start, s.day_end, s.active_before
+  FROM changes c
+  JOIN day_state s ON s.customer_id = c.customer_id AND s.snapshot_date = c.snapshot_date
+),
+typed AS (
+  SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, prior_mrr, new_mrr,
+         CASE
+           WHEN mrr_change > 0 AND ABS(day_start) < 0.005 AND active_before = 1 THEN 'reactivation'
+           WHEN mrr_change > 0 AND ABS(day_start) < 0.005 THEN 'new'
+           WHEN mrr_change < 0 AND ABS(day_end) < 0.005 THEN 'churn'
+           WHEN mrr_change > 0 THEN 'expansion'
+           ELSE 'contraction'
+         END AS event_type
+  FROM chained
+)
+SELECT CAST(subscription_id AS VARCHAR) || ':' || CAST(snapshot_date AS VARCHAR) AS event_id,
+       snapshot_date AS event_date,
+       customer_id,
+       subscription_id,
+       event_type,
+       mrr_change,
+       'USD' AS currency,
+       prior_mrr,
+       new_mrr,
+       CAST(NULL AS VARCHAR) AS expansion_classification,
+       'permanent' AS change_nature,
+       CASE event_type
+         WHEN 'new' THEN 'acquisition'
+         WHEN 'expansion' THEN 'expansion'
+         WHEN 'reactivation' THEN 'reactivation'
+         ELSE 'retention'
+       END AS lifecycle_attribution,
+       segment
+FROM typed
+WHERE opening = 0
+ORDER BY snapshot_date, customer_id, CASE WHEN mrr_change > 0 THEN 0 ELSE 1 END, subscription_id
+```
+
+---
+
 ## Relationship to Existing Data Model
 
 The GASP Standard defines a three-level entity hierarchy in [Definitions](definitions.md#foundational-entities):

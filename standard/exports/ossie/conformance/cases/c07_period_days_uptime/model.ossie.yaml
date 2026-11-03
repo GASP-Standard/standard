@@ -14,60 +14,44 @@ datasets:
     fields:
       - name: downtime_minutes
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: downtime_minutes
+          sql: downtime_minutes
         description: Minutes unavailable in the period
         datatype: Integer
       - name: error_count
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: error_count
+          sql: error_count
         description: Failed requests
         datatype: Integer
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         description: Start of the period the row describes
         datatype: Date
       - name: request_count
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: request_count
+          sql: request_count
         description: Total requests
         datatype: Integer
       - name: response_time_ms
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: response_time_ms
+          sql: response_time_ms
         description: Response time per request sample
         datatype: Integer
       - name: service_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: service_id
+          sql: service_id
         description: Service identifier
         datatype: String
       - name: sla_met
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: sla_met
+          sql: sla_met
         description: SLA met for the period row
         datatype: Boolean
       - name: utilization
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: utilization
+          sql: utilization
         description: Resource utilisation, 0 to 1
         datatype: Decimal
     custom_extensions:
@@ -81,25 +65,19 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: Uptime (Availability) for the period
     custom_extensions:
@@ -108,9 +86,7 @@ datasets:
 metrics:
   - name: gasp_uptime
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_uptime.value)
+      sql: SUM(gasp_staged_gasp_uptime.value)
     description: Uptime (Availability). The percentage of time the service is operational.
     datatype: Decimal
     ai_context:

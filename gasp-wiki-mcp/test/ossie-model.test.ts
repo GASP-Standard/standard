@@ -12,7 +12,7 @@ import type { MetricFormula } from "../src/types.js";
 import { metricName } from "../src/ossie/names.js";
 import { DIALECT, type DialectName } from "../src/dialect.js";
 import { stagedSource } from "../src/ossie/model.js";
-import { OSSIE_DIALECT, GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
+import { GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
 import { fixtureDb, addOssieViews, scalar, runTemplate } from "./fixture-db.js";
 
 // The Ossie semantic model exporter: every GASP dataset, field and formula
@@ -25,7 +25,7 @@ const ontology = data.ontology!;
 const gaspDatasets = ontology.datasets!;
 const byName = new Map(model.datasets.map((d) => [d.name, d]));
 const metricByName = new Map((model.metrics ?? []).map((m) => [m.name, m]));
-const expr = (name: string) => metricByName.get(name)?.expression.dialects[0].expression;
+const expr = (name: string) => metricByName.get(name)?.expression.sql;
 const ext = (d: { custom_extensions?: Array<{ vendor_name: string; data: string }> }) =>
   JSON.parse(d.custom_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data);
 
@@ -54,7 +54,7 @@ describe("Ossie model: datasets", () => {
       for (const ds of f.datasets ?? []) {
         const field = byName.get(ds)!.fields!.find((x) => x.name === f.id);
         expect(field, `${f.id}@${ds}`).toBeDefined();
-        expect(field!.expression.dialects).toEqual([{ dialect: OSSIE_DIALECT, expression: f.id }]);
+        expect(field!.expression).toEqual({ sql: f.id });
         expect(field!.datatype).toBeDefined();
         if (f.type === "enum" && f.values?.length) expect((field!.ai_context as any).instructions).toBe(`One of ${f.values.join(", ")}`);
       }
@@ -141,8 +141,9 @@ describe("Ossie model: metrics", () => {
 
   it("no metric expression contains SELECT, a bare WHERE or a placeholder", () => {
     for (const m of model.metrics!) {
-      const e = m.expression.dialects[0].expression;
-      expect(m.expression.dialects[0].dialect).toBe(OSSIE_DIALECT);
+      // The portable form alone, as upstream's canonical examples write it since apache/ossie#640; no dialect entries beside it.
+      expect(Object.keys(m.expression), m.name).toEqual(["sql"]);
+      const e = m.expression.sql!;
       expect(e, m.name).not.toMatch(/\bSELECT\b/i);
       // The aggregate filter clause `FILTER (WHERE ...)` is required by the expression language; a bare WHERE is a query.
       expect(e.replace(/\bFILTER \(WHERE\b/g, "FILTER ("), m.name).not.toMatch(/\bWHERE\b/i);
@@ -156,7 +157,7 @@ describe("Ossie model: metrics", () => {
   it("metrics read only datasets in the model, by fields those datasets have; direct metrics never read a staged dataset", () => {
     const kind = new Map(Object.values(coverage).flatMap((c) => (c.kind === "notComputable" ? [] : [[c.ossieName, c.kind] as const])));
     for (const m of model.metrics!) {
-      for (const [, ds, field] of m.expression.dialects[0].expression.matchAll(/\b([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)\b/g)) {
+      for (const [, ds, field] of m.expression.sql!.matchAll(/\b([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)\b/g)) {
         expect(byName.has(ds), `${m.name}: ${ds}`).toBe(true);
         expect(byName.get(ds)!.fields!.some((f) => f.name === field), `${m.name}: ${ds}.${field}`).toBe(true);
         expect(ds.startsWith("gasp_staged_"), m.name).toBe(kind.get(m.name) === "staged");
@@ -284,7 +285,7 @@ describe("Ossie model: metrics", () => {
     const direct = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id)", unit: "count", breakdown: "field.ticket_type" });
     expect(direct.coverage.ticket_volume.kind).toBe("direct");
     const m = direct.model.metrics!.find((x) => x.name === "gasp_ticket_volume")!;
-    expect(m.expression.dialects[0].expression).toBe("COUNT(DISTINCT ticket.ticket_id)");
+    expect(m.expression.sql).toBe("COUNT(DISTINCT ticket.ticket_id)");
     expect(ext(m).gasp_breakdown).toBe("ticket_type");
     expect((m.ai_context as any).instructions).toMatch(/Broken down by ticket_type/);
     // A named breakdown is its own metric, like a variant, with the variant name and gasp_breakdown.
@@ -292,7 +293,7 @@ describe("Ossie model: metrics", () => {
     expect(named.coverage.ticket_volume.kind).toBe("direct");
     expect(named.coverage["ticket_volume:by_type"].kind).toBe("direct");
     const nm = named.model.metrics!.find((x) => x.name === "gasp_ticket_volume_by_type")!;
-    expect(nm.expression.dialects[0].expression).toBe("COUNT(DISTINCT ticket.ticket_id)");
+    expect(nm.expression.sql).toBe("COUNT(DISTINCT ticket.ticket_id)");
     expect(ext(nm)).toMatchObject({ gasp_id: "ticket_volume", variant: "by_type", gasp_breakdown: "ticket_type" });
     expect(ext(named.model.metrics!.find((x) => x.name === "gasp_ticket_volume")!).gasp_breakdown).toBeUndefined();
     // A staged main formula stages the named breakdown too, one row per period and value.

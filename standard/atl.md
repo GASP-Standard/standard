@@ -44,6 +44,7 @@ Every CEL event receives exactly one lifecycle tag. This is the primary dimensio
 5. `Revenue_Event` with `event_type = reactivation` is `reactivation`.
 6. `Cost_Event` records for active customers with no change event are `servicing`.
 7. When a single action generates multiple CEL events (e.g., a renewal with expansion), each event gets its own lifecycle tag. The renewal portion is `retention`; the expansion portion is `expansion`.
+8. `Revenue_Event` with `event_type = contraction` or `event_type = churn` is `retention`: the retention lens carries what was kept and what was lost, which is what Net Revenue Retention (NRR) and Gross Revenue Retention (GRR) read.
 
 ---
 

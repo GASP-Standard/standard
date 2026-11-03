@@ -11,14 +11,14 @@ datasets:
   primary_key: [customer_id, snapshot_date]
   fields:
   - name: customer_id
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: customer_id } ] }
+    expression: { sql: customer_id }
     datatype: String
   - name: snapshot_date
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: snapshot_date } ] }
+    expression: { sql: snapshot_date }
     datatype: Date
     dimension: { is_time: true }
   - name: customer_status
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: customer_status } ] }
+    expression: { sql: customer_status }
     datatype: String
     ai_context:
       instructions: "One of trial, active, churned, dormant"
@@ -28,20 +28,20 @@ datasets:
   primary_key: [subscription_id, snapshot_date]
   fields:
   - name: subscription_id
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: subscription_id } ] }
+    expression: { sql: subscription_id }
     datatype: String
   - name: customer_id
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: customer_id } ] }
+    expression: { sql: customer_id }
     datatype: String
   - name: snapshot_date
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: snapshot_date } ] }
+    expression: { sql: snapshot_date }
     datatype: Date
     dimension: { is_time: true }
   - name: subscription_status
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: subscription_status } ] }
+    expression: { sql: subscription_status }
     datatype: String
   - name: mrr
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: mrr } ] }
+    expression: { sql: mrr }
     datatype: Decimal
 - name: revenue_event
   source: gasp.revenue_event
@@ -49,23 +49,23 @@ datasets:
   primary_key: [event_id]
   fields:
   - name: event_id
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: event_id } ] }
+    expression: { sql: event_id }
     datatype: String
   - name: customer_id
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: customer_id } ] }
+    expression: { sql: customer_id }
     datatype: String
   - name: event_date
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: event_date } ] }
+    expression: { sql: event_date }
     datatype: Date
     dimension: { is_time: true }
   - name: event_type
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: event_type } ] }
+    expression: { sql: event_type }
     datatype: String
   - name: mrr_change
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: mrr_change } ] }
+    expression: { sql: mrr_change }
     datatype: Decimal
   - name: expansion_classification
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: expansion_classification } ] }
+    expression: { sql: expansion_classification }
     datatype: String
 - name: gasp_account_cohorts
   description: >
@@ -84,20 +84,20 @@ datasets:
   primary_key: [customer_id, period_start]
   fields:
   - name: customer_id
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: customer_id } ] }
+    expression: { sql: customer_id }
     datatype: String
   - name: period_start
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: period_start } ] }
+    expression: { sql: period_start }
     datatype: Date
     dimension: { is_time: true }
   - name: period_end
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: period_end } ] }
+    expression: { sql: period_end }
     datatype: Date
   - name: mrr_start
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: mrr_start } ] }
+    expression: { sql: mrr_start }
     datatype: Decimal
   - name: mrr_end
-    expression: { dialects: [ { dialect: OSSIE_SQL_2026, expression: mrr_end } ] }
+    expression: { sql: mrr_end }
     datatype: Decimal
   custom_extensions:
   - vendor_name: GASP
@@ -123,9 +123,7 @@ metrics:
   description: Expansion MRR, GASP canonical definition
   datatype: Decimal
   expression:
-    dialects:
-    - dialect: OSSIE_SQL_2026
-      expression: SUM(CASE WHEN revenue_event.event_type = 'expansion' THEN revenue_event.mrr_change ELSE 0 END)
+    sql: SUM(CASE WHEN revenue_event.event_type = 'expansion' THEN revenue_event.mrr_change ELSE 0 END)
   ai_context:
     synonyms: ["upsell MRR"]
     instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#expansion-mrr"
@@ -136,9 +134,7 @@ metrics:
   description: Net Revenue Retention, Operating form, GASP canonical definition
   datatype: Decimal
   expression:
-    dialects:
-    - dialect: OSSIE_SQL_2026
-      expression: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
+    sql: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
   ai_context:
     synonyms: ["net dollar retention", "NDR", "NRR-O"]
     instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr. Operating form counts same_product and usage_realisation expansion only."
@@ -149,9 +145,7 @@ metrics:
   description: Net Revenue Retention, Market form, GASP canonical definition
   datatype: Decimal
   expression:
-    dialects:
-    - dialect: OSSIE_SQL_2026
-      expression: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
+    sql: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
   ai_context:
     synonyms: ["net dollar retention", "NDR", "NRR-M"]
     instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr. Market form counts every expansion classification plus reactivation of cohort customers."

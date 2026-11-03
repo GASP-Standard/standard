@@ -14,175 +14,129 @@ datasets:
     fields:
       - name: advanced_to_next_stage
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: advanced_to_next_stage
+          sql: advanced_to_next_stage
         description: Advanced one stage in the period
         datatype: Boolean
       - name: channel
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: channel
+          sql: channel
         description: "Marketing channel: the channel a campaign runs in, and the first-touch channel of an opportunity"
         datatype: String
         ai_context:
           instructions: One of paid_ads, organic_search, email, events, content, referral, marketplace, direct, other
       - name: close_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: close_date
+          sql: close_date
         description: Actual or expected close date of the opportunity; on a project or registration, the close date of the won deal
         datatype: Date
       - name: close_date_valid
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: close_date_valid
+          sql: close_date_valid
         description: Close date is in the future or matches the actual close
         datatype: Boolean
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: forecast_category
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: forecast_category
+          sql: forecast_category
         description: Forecast category
         datatype: String
         ai_context:
           instructions: One of pipeline, best_case, commit, closed
       - name: includes_services
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: includes_services
+          sql: includes_services
         description: Deal includes professional services
         datatype: Boolean
       - name: lead_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: lead_id
+          sql: lead_id
         description: Lead identifier
         datatype: String
       - name: marketing_influenced
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: marketing_influenced
+          sql: marketing_influenced
         description: A marketing touch exists on the opportunity
         datatype: Boolean
       - name: marketing_source
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: marketing_source
+          sql: marketing_source
         description: Team that sourced the opportunity
         datatype: String
         ai_context:
           instructions: One of marketing, sales, partner, other
       - name: opportunity_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: opportunity_amount
+          sql: opportunity_amount
         description: Opportunity value (recurring)
         datatype: Decimal
       - name: opportunity_created_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: opportunity_created_date
+          sql: opportunity_created_date
         description: Date the opportunity was created
         datatype: Date
       - name: opportunity_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: opportunity_id
+          sql: opportunity_id
         description: Opportunity (deal) identifier
         datatype: String
       - name: opportunity_stage
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: opportunity_stage
+          sql: opportunity_stage
         description: Sales stage of an opportunity, or of a partner's registered deal
         datatype: String
         ai_context:
           instructions: One of qualification, discovery, proposal, negotiation, closed_won, closed_lost
       - name: partner_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: partner_id
+          sql: partner_id
         description: Partner identifier
         datatype: String
       - name: partner_sourced
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: partner_sourced
+          sql: partner_sourced
         description: Sourced by a partner
         datatype: Boolean
       - name: rep_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: rep_id
+          sql: rep_id
         description: Sales rep identifier
         datatype: String
       - name: required_fields_complete
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: required_fields_complete
+          sql: required_fields_complete
         description: All required CRM fields populated
         datatype: Boolean
       - name: revenue_type
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: revenue_type
+          sql: revenue_type
         description: Revenue line type
         datatype: String
         ai_context:
           instructions: One of subscription, services, usage, other
       - name: snapshot_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: snapshot_date
+          sql: snapshot_date
         dimension:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
       - name: stage_accurate
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: stage_accurate
+          sql: stage_accurate
         description: Stage matches observed activity
         datatype: Boolean
       - name: stage_probability
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: stage_probability
+          sql: stage_probability
         description: Win probability for the stage, 0 to 1
         datatype: Decimal
       - name: updated_within_sla
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: updated_within_sla
+          sql: updated_within_sla
         description: Updated inside the hygiene SLA
         datatype: Boolean
     custom_extensions:
@@ -196,25 +150,19 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: Win Rate for the period
     custom_extensions:
@@ -223,9 +171,7 @@ datasets:
 metrics:
   - name: gasp_win_rate
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_win_rate.value)
+      sql: SUM(gasp_staged_gasp_win_rate.value)
     description: Win Rate. The percentage of qualified opportunities closed in the period that were won.
     datatype: Decimal
     ai_context:

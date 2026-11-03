@@ -13,6 +13,7 @@
  *   period length in days     (end - start + 1)                       (DATEDIFF(day, start, end) + 1)   (DATE_DIFF(end, start, DAY) + 1)          (DATEDIFF(end, start) + 1)
  *   timestamp difference (s)  EXTRACT(EPOCH FROM (a - b))             DATEDIFF(second, b, a)            TIMESTAMP_DIFF(a, b, SECOND)              TIMESTAMPDIFF(SECOND, b, a)
  *   numerator cast            CAST(x AS DOUBLE PRECISION)             CAST(x AS DOUBLE)                 CAST(x AS FLOAT64)                        CAST(x AS DOUBLE)
+ *   value as text (event ids) CAST(x AS VARCHAR)                      CAST(x AS VARCHAR)                CAST(x AS STRING)                         CAST(x AS STRING)
  *   percentile p / median     PERCENTILE_CONT(p) WITHIN GROUP         PERCENTILE_CONT(p) WITHIN GROUP   APPROX_QUANTILES(x, 1000)[OFFSET(p*1000)] PERCENTILE(x, p)
  *                             (ORDER BY x)                            (ORDER BY x)                      (approximate: BigQuery has no exact
  *                                                                                                       aggregate percentile)
@@ -52,6 +53,8 @@ export interface Dialect {
   secondsBetween(a: string, b: string): string;
   /** Cast to a double so COUNT / COUNT is not integer division */
   toDouble(x: string): string;
+  /** The value as text, for a derived event id (src/cel.ts) */
+  toText(x: string): string;
   /** Aggregate percentile p (0 < p < 1) of x; median is p = 0.5 */
   percentile(p: number, x: string): string;
   /** Postgres-only tokens that must not appear in this dialect's output (tests sweep for them) */
@@ -71,6 +74,7 @@ export const DIALECT: Record<DialectName, Dialect> = {
     periodDays: (end, start) => `(${end} - ${start} + 1)`,
     secondsBetween: (a, b) => `EXTRACT(EPOCH FROM (${a} - ${b}))`,
     toDouble: (x) => `CAST(${x} AS DOUBLE PRECISION)`,
+    toText: (x) => `CAST(${x} AS VARCHAR)`,
     percentile: (p, x) => `PERCENTILE_CONT(${p}) WITHIN GROUP (ORDER BY ${x})`,
     forbidden: [],
   },
@@ -83,6 +87,7 @@ export const DIALECT: Record<DialectName, Dialect> = {
     periodDays: (end, start) => `(DATEDIFF(day, ${start}, ${end}) + 1)`,
     secondsBetween: (a, b) => `DATEDIFF(second, ${b}, ${a})`,
     toDouble: (x) => `CAST(${x} AS DOUBLE)`,
+    toText: (x) => `CAST(${x} AS VARCHAR)`,
     percentile: (p, x) => `PERCENTILE_CONT(${p}) WITHIN GROUP (ORDER BY ${x})`,
     forbidden: PG_ONLY,
   },
@@ -95,6 +100,7 @@ export const DIALECT: Record<DialectName, Dialect> = {
     periodDays: (end, start) => `(DATE_DIFF(${end}, ${start}, DAY) + 1)`,
     secondsBetween: (a, b) => `TIMESTAMP_DIFF(${a}, ${b}, SECOND)`,
     toDouble: (x) => `CAST(${x} AS FLOAT64)`,
+    toText: (x) => `CAST(${x} AS STRING)`,
     percentile: (p, x) => `APPROX_QUANTILES(${x}, 1000)[OFFSET(${Math.round(p * 1000)})]`,
     forbidden: [...PG_ONLY, "WITHIN GROUP", "PERCENTILE_CONT"],
   },
@@ -107,6 +113,7 @@ export const DIALECT: Record<DialectName, Dialect> = {
     periodDays: (end, start) => `(DATEDIFF(${end}, ${start}) + 1)`,
     secondsBetween: (a, b) => `TIMESTAMPDIFF(SECOND, ${b}, ${a})`,
     toDouble: (x) => `CAST(${x} AS DOUBLE)`,
+    toText: (x) => `CAST(${x} AS STRING)`,
     percentile: (p, x) => `PERCENTILE(${x}, ${p})`,
     forbidden: [...PG_ONLY, "WITHIN GROUP", "PERCENTILE_CONT"],
   },

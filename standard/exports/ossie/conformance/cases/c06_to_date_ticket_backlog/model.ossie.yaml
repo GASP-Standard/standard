@@ -13,97 +13,71 @@ datasets:
     fields:
       - name: agent_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: agent_id
+          sql: agent_id
         description: Handling agent
         datatype: String
       - name: created_at
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: created_at
+          sql: created_at
         dimension:
           is_time: true
         description: Creation time
         datatype: DateTime
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: escalated
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: escalated
+          sql: escalated
         description: Escalated beyond first line
         datatype: Boolean
       - name: first_response_at
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: first_response_at
+          sql: first_response_at
         description: First agent response time
         datatype: DateTime
       - name: first_response_due_at
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: first_response_due_at
+          sql: first_response_due_at
         description: First response SLA deadline
         datatype: DateTime
       - name: reopened
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: reopened
+          sql: reopened
         description: Reopened after resolution
         datatype: Boolean
       - name: resolution_due_at
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: resolution_due_at
+          sql: resolution_due_at
         description: Resolution SLA deadline
         datatype: DateTime
       - name: resolved_at
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: resolved_at
+          sql: resolved_at
         description: Resolution time
         datatype: DateTime
       - name: resolved_first_contact
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: resolved_first_contact
+          sql: resolved_first_contact
         description: Resolved in the first interaction
         datatype: Boolean
       - name: ticket_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: ticket_id
+          sql: ticket_id
         description: Ticket identifier
         datatype: String
       - name: ticket_status
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: ticket_status
+          sql: ticket_status
         description: Ticket status
         datatype: String
         ai_context:
           instructions: One of open, pending, resolved, closed
       - name: ticket_type
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: ticket_type
+          sql: ticket_type
         description: Ticket category the agent or the help desk assigns
         datatype: String
         ai_context:
@@ -119,25 +93,19 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: Ticket Backlog for the period
     custom_extensions:
@@ -146,9 +114,7 @@ datasets:
 metrics:
   - name: gasp_ticket_backlog
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_ticket_backlog.value)
+      sql: SUM(gasp_staged_gasp_ticket_backlog.value)
     description: Ticket Backlog. Number of tickets open or pending at the end of the period.
     datatype: Integer
     ai_context:

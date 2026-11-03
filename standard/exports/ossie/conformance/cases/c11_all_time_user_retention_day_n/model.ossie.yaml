@@ -14,67 +14,49 @@ datasets:
     fields:
       - name: activation_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: activation_date
+          sql: activation_date
         description: Date the activation milestone was reached
         datatype: Date
       - name: core_features_adopted
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: core_features_adopted
+          sql: core_features_adopted
         description: User has adopted the defined core feature set
         datatype: Boolean
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: first_use_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: first_use_date
+          sql: first_use_date
         description: First use of the feature
         datatype: Date
       - name: last_active_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: last_active_date
+          sql: last_active_date
         description: Most recent qualifying activity
         datatype: Date
       - name: signup_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: signup_date
+          sql: signup_date
         description: User signup date
         datatype: Date
       - name: snapshot_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: snapshot_date
+          sql: snapshot_date
         dimension:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
       - name: user_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: user_id
+          sql: user_id
         description: Product user identifier
         datatype: String
       - name: user_status
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: user_status
+          sql: user_status
         description: User activity status
         datatype: String
         ai_context:
@@ -90,76 +72,56 @@ datasets:
     fields:
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: event_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: event_date
+          sql: event_date
         dimension:
           is_time: true
         description: Date the event occurred
         datatype: Date
       - name: event_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: event_id
+          sql: event_id
         description: Unique, immutable event identifier
         datatype: String
       - name: feature_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: feature_id
+          sql: feature_id
         description: Feature identifier
         datatype: String
       - name: product_event_type
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: product_event_type
+          sql: product_event_type
         description: Kind of product event; qualifying events define active use
         datatype: String
         ai_context:
           instructions: One of qualifying, action, error, reactivation, login
       - name: session_duration
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: session_duration
+          sql: session_duration
         description: Session length in minutes
         datatype: Integer
       - name: session_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: session_id
+          sql: session_id
         description: Session identifier
         datatype: String
       - name: signup_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: signup_date
+          sql: signup_date
         description: User signup date
         datatype: Date
       - name: usage_count
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: usage_count
+          sql: usage_count
         description: Actions in the event or session
         datatype: Integer
       - name: user_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: user_id
+          sql: user_id
         description: Product user identifier
         datatype: String
     custom_extensions:
@@ -173,25 +135,19 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: User Retention (Day N) for the period
     custom_extensions:
@@ -200,9 +156,7 @@ datasets:
 metrics:
   - name: gasp_user_retention_day_n
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_user_retention_day_n.value)
+      sql: SUM(gasp_staged_gasp_user_retention_day_n.value)
     description: User Retention (Day N). Percentage of users who return on day N after signup.
     datatype: Decimal
     ai_context:

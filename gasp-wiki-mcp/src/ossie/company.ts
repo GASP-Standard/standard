@@ -20,7 +20,7 @@ import { expressionText, ossieSchemaErrors, resolveCompany, type Company, type M
 import { checkCompiledMetrics } from "./check.js";
 import { buildMetrics, PERIOD_SPINE, type ModelTarget } from "./model.js";
 import { ossieYaml } from "./index.js";
-import { GASP_VENDOR, OSSIE_DIALECT, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel } from "./types.js";
+import { GASP_VENDOR, OSSIE_DIALECT, portable, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel } from "./types.js";
 
 /** The dataset that declares the period spine the staged sources read. */
 export const SPINE_DATASET = "gasp_period_spine";
@@ -60,9 +60,8 @@ const isGaspDataset = (d: OssieDataset): boolean => ext(d).staged === true || d.
 
 /** A model field's SQL in the compile dialect: its entry for that dialect, else the portable one, else the first. */
 function fieldSql(f: OssieField, dialect: DialectName): string {
-  const dialects = (f.expression as { dialects?: Array<{ dialect: string; expression: string }> }).dialects ?? [];
-  const pick = dialects.find((d) => d.dialect === OSSIE_DIALECT_OF[dialect]) ?? dialects.find((d) => d.dialect === OSSIE_DIALECT) ?? dialects[0];
-  return pick?.expression ?? expressionText(f) ?? f.name;
+  const vendor = f.expression?.dialects?.find((d) => d.dialect === OSSIE_DIALECT_OF[dialect]);
+  return vendor?.expression ?? expressionText(f) ?? f.name;
 }
 
 /** The target a company's model is for buildMetrics: its datasets, sources and field expressions behind the GASP names. */
@@ -101,8 +100,8 @@ const spineDataset = (spine: string): OssieDataset => ({
   description: "Reporting periods for the staged GASP metrics: one row per period, provided by the adopter. Every staged dataset reads it.",
   primary_key: ["period_start"],
   fields: [
-    { name: "period_start", expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: "period_start" }] }, dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
-    { name: "period_end", expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: "period_end" }] }, datatype: "Date", description: "Last day of the reporting period" },
+    { name: "period_start", expression: portable("period_start"), dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
+    { name: "period_end", expression: portable("period_end"), datatype: "Date", description: "Last day of the reporting period" },
   ],
   custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ period_spine: true }) }],
 });

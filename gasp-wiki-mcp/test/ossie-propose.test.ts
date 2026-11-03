@@ -119,7 +119,7 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
     expect(et.transform).toBe("CASE WHEN {{value}} = 'upgrade' THEN 'expansion' WHEN {{value}} = 'downgrade' THEN 'contraction' WHEN {{value}} = 'cancel' THEN 'churn' ELSE {{value}} END");
     expect(et.evidence).toContain("values recoded: upgrade to expansion, downgrade to contraction, cancel to churn");
     const calc = r.model.datasets.find((d) => d.name === "mrr_movements")!.fields!.find((f) => f.name === "event_type")!;
-    expect(calc.expression).toEqual({ dialects: [{ dialect: "OSSIE_SQL_2026", expression: "CASE WHEN movement_type = 'upgrade' THEN 'expansion' WHEN movement_type = 'downgrade' THEN 'contraction' WHEN movement_type = 'cancel' THEN 'churn' ELSE movement_type END" }] });
+    expect(calc.expression).toEqual({ sql: "CASE WHEN movement_type = 'upgrade' THEN 'expansion' WHEN movement_type = 'downgrade' THEN 'contraction' WHEN movement_type = 'cancel' THEN 'churn' ELSE movement_type END" });
     expect(calc.datatype).toBe("String");
   });
 

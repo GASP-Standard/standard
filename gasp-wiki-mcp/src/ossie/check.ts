@@ -19,9 +19,15 @@ import type {
   OssieReferentMapping,
   OssieSemanticModel,
 } from "./types.js";
-import { OSSIE_DIALECT } from "./types.js";
+import { OSSIE_DIALECT, portableEntries } from "./types.js";
 
 const BUILT_INS = new Set(["Any", "Boolean", "Date", "DateTime", "Decimal", "Float", "Integer", "String"]);
+
+/** True when an expression carries both `sql` and an OSSIE_SQL_2026 dialect entry with different text (the validator warns on the same). */
+function supersededDiffers(e: { sql?: string; dialects?: Array<{ dialect: string; expression: string }> } | undefined): boolean {
+  if (typeof e?.sql !== "string" || !e.sql.trim()) return false;
+  return (e.dialects ?? []).some((d) => d.dialect === OSSIE_DIALECT && d.expression !== e.sql);
+}
 
 function dupes(names: string[]): string[] {
   const seen = new Set<string>();
@@ -109,9 +115,10 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
   for (const ds of model.datasets) {
     for (const f of dupes((ds.fields ?? []).map((f) => f.name))) p.push(`Model: field "${f}" is declared more than once in dataset "${ds.name}"`);
     for (const f of ds.fields ?? []) {
-      if (!f.expression.dialects.some((d) => d.dialect === OSSIE_DIALECT)) {
+      if (!portableEntries(f.expression).some((d) => d.dialect === OSSIE_DIALECT)) {
         p.push(`Model: field "${ds.name}.${f.name}" has no ${OSSIE_DIALECT} expression`);
       }
+      if (supersededDiffers(f.expression)) p.push(`Model: field "${ds.name}.${f.name}" has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
       checkExt(f.custom_extensions, `field "${ds.name}.${f.name}"`, p);
     }
     checkExt(ds.custom_extensions, `dataset "${ds.name}"`, p);
@@ -158,8 +165,9 @@ export function checkCompiledMetrics(model: OssieSemanticModel, names: Set<strin
 
 function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fieldsOf: (n: string) => Set<string>, p: string[]): void {
   {
-    const dialects = m.expression.dialects;
+    const dialects = portableEntries(m.expression);
     if (!dialects.some((d) => d.dialect === OSSIE_DIALECT)) p.push(`Model: metric "${m.name}" has no ${OSSIE_DIALECT} expression`);
+    if (supersededDiffers(m.expression)) p.push(`Model: metric "${m.name}" has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
     for (const d of dialects) {
       if (d.expression.includes("{{")) p.push(`Model: metric "${m.name}" (${d.dialect}) contains a "{{" placeholder`);
       if (d.dialect !== OSSIE_DIALECT) continue;

@@ -25,7 +25,7 @@ import { checkExport } from "./check.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
 import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
-import { GASP_VENDOR, OSSIE_DIALECT, OSSIE_VERSION, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel } from "./types.js";
+import { GASP_VENDOR, OSSIE_VERSION, expressionText, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel } from "./types.js";
 
 export const GASP_ONTOLOGY_IRI = "https://gaspwiki.com/downloads/ossie/gasp.ontology.yaml";
 const REF = /^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/;
@@ -62,12 +62,7 @@ export interface OssieForm {
   refs: ModelRefs;
 }
 
-/** The portable text of a field's or metric's expression: `sql` first (authoritative upstream), else the OSSIE_SQL_2026 dialect, else the first dialect. */
-export const expressionText = (f: Pick<OssieField, "expression">): string | undefined => {
-  const e = f.expression as { dialects?: Array<{ dialect?: string; expression?: string }>; sql?: string } | string;
-  if (typeof e === "string") return e;
-  return e?.sql ?? (e?.dialects?.find((d) => d.dialect === OSSIE_DIALECT) ?? e?.dialects?.[0])?.expression;
-};
+export { expressionText };
 
 /** A v1 adapter as the two Ossie documents: the company's model and the GASP mapping onto it. */
 export function adapterToOssie(adapter: Adapter, data: StandardData): OssieForm {
@@ -104,7 +99,7 @@ export function adapterToOssie(adapter: Adapter, data: StandardData): OssieForm 
       const expression = m.transform ? m.transform.replace(/\{\{value\}\}/g, column) : column;
       fields.push({
         name: names[ds][f.id],
-        expression: { dialects: [{ dialect: OSSIE_DIALECT, expression }] },
+        expression: portable(expression),
         ...(f.id === meta.date ? { dimension: { is_time: true } } : {}),
         datatype: ossieDataType(f.type),
         ...(f.description ? { description: f.description } : {}),
@@ -239,7 +234,7 @@ export function impliedModel(mapping: OssieMapping): OssieSemanticModel {
     datasets: [...fields.entries()].map(([name, cols]) => ({
       name,
       source: name,
-      fields: [...cols].map((c) => ({ name: c, expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: c }] } })),
+      fields: [...cols].map((c) => ({ name: c, expression: portable(c) })),
     })),
   };
 }

@@ -14,104 +14,76 @@ datasets:
     fields:
       - name: billing_trigger_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: billing_trigger_date
+          sql: billing_trigger_date
         description: Date the billing event occurred
         datatype: Date
       - name: credit_memo_count
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: credit_memo_count
+          sql: credit_memo_count
         description: Credit memos issued against the invoice
         datatype: Integer
       - name: currency
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: currency
+          sql: currency
         description: ISO 4217 currency code
         datatype: String
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: invoice_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: invoice_amount
+          sql: invoice_amount
         description: Invoiced amount
         datatype: Decimal
       - name: invoice_corrected
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: invoice_corrected
+          sql: invoice_corrected
         description: Corrected after issue
         datatype: Boolean
       - name: invoice_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: invoice_date
+          sql: invoice_date
         description: Invoice date
         datatype: Date
       - name: invoice_disputed
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: invoice_disputed
+          sql: invoice_disputed
         description: Disputed by the customer
         datatype: Boolean
       - name: invoice_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: invoice_id
+          sql: invoice_id
         description: Invoice identifier
         datatype: String
       - name: outstanding_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: outstanding_amount
+          sql: outstanding_amount
         description: Unpaid balance as of snapshot_date
         datatype: Decimal
       - name: payment_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: payment_date
+          sql: payment_date
         description: Date paid in full; null while unpaid
         datatype: Date
       - name: payment_method
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: payment_method
+          sql: payment_method
         description: Payment method
         datatype: String
         ai_context:
           instructions: One of credit_card, ach, wire, check, other
       - name: payment_status
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: payment_status
+          sql: payment_status
         description: Payment status
         datatype: String
         ai_context:
           instructions: One of paid, unpaid, partial, written_off
       - name: snapshot_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: snapshot_date
+          sql: snapshot_date
         dimension:
           is_time: true
         description: As-of date of the snapshot row
@@ -128,32 +100,24 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: bucket
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: bucket
+          sql: bucket
         datatype: String
         description: Bucket label of Aging Buckets
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: Aging Buckets for the period and bucket
     custom_extensions:
@@ -162,9 +126,7 @@ datasets:
 metrics:
   - name: gasp_aging_buckets
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_aging_buckets.value)
+      sql: SUM(gasp_staged_gasp_aging_buckets.value)
     description: Aging Buckets. Distribution of receivables by age.
     datatype: Decimal
     ai_context:

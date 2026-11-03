@@ -58,7 +58,7 @@ describe("Mapping format: a v1 adapter converts to Ossie documents", () => {
     const col = mrr.warehouseRef.split(".").pop()!;
     const field = sub.fields!.find((f) => f.name === (mrr.transform ? "mrr" : col))!;
     expect(field).toBeDefined();
-    expect((field.expression as { dialects: Array<{ expression: string }> }).dialects[0].expression).toBe(mrr.transform ? mrr.transform.replace(/\{\{value\}\}/g, col) : col);
+    expect(field.expression.sql).toBe(mrr.transform ? mrr.transform.replace(/\{\{value\}\}/g, col) : col);
   });
 
   it("maps the GASP ontology onto it so every document checks out, with no gaps", () => {

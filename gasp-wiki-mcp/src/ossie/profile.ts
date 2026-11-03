@@ -30,7 +30,7 @@ import type { StandardData } from "../types.js";
 import { ossieSchemaErrors, parseDocument } from "./adapt.js";
 import { ossieYaml } from "./index.js";
 import { bareName } from "./names.js";
-import { OSSIE_DIALECT, OSSIE_VERSION, writeGaspExtension, type OssieDataset, type OssieDataType, type OssieField, type OssieRelationship, type OssieSemanticModel } from "./types.js";
+import { OSSIE_VERSION, portable, writeGaspExtension, type OssieDataset, type OssieDataType, type OssieField, type OssieRelationship, type OssieSemanticModel } from "./types.js";
 
 // ── input ────────────────────────────────────────────────────────────────────
 
@@ -612,7 +612,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
       else if (enumLike) enumCandidates.push(c.column);
       return {
         name: c.column,
-        expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: c.column }] },
+        expression: portable(c.column),
         ...(time?.value === c.column ? { dimension: { is_time: true } } : {}),
         datatype,
         ...(values ? { ai_context: { instructions: `One of ${values.join(", ")}` } } : {}),

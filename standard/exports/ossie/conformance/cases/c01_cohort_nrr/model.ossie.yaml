@@ -13,103 +13,77 @@ datasets:
     fields:
       - name: change_nature
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: change_nature
+          sql: change_nature
         description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
         datatype: String
         ai_context:
           instructions: One of permanent, temporary, scheduled_reversal
       - name: currency
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: currency
+          sql: currency
         description: ISO 4217 currency code
         datatype: String
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: event_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: event_date
+          sql: event_date
         dimension:
           is_time: true
         description: Date the event occurred
         datatype: Date
       - name: event_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: event_id
+          sql: event_id
         description: Unique, immutable event identifier
         datatype: String
       - name: event_type
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: event_type
+          sql: event_type
         description: Revenue movement classifier (CEL Revenue_Event.event_type)
         datatype: String
         ai_context:
           instructions: One of new, expansion, contraction, churn, reactivation, renewal
       - name: expansion_classification
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: expansion_classification
+          sql: expansion_classification
         description: ATL expansion tag; required for NRR-M and ARR-M
         datatype: String
         ai_context:
           instructions: One of same_product, new_module, new_buying_centre, pricing_adjustment, recontracting, usage_realisation
       - name: lifecycle_attribution
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: lifecycle_attribution
+          sql: lifecycle_attribution
         description: ATL lifecycle tag
         datatype: String
         ai_context:
           instructions: One of acquisition, activation, retention, expansion, reactivation, servicing
       - name: mrr_change
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr_change
+          sql: mrr_change
         description: Change in MRR; negative for contraction and churn
         datatype: Decimal
       - name: new_mrr
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: new_mrr
+          sql: new_mrr
         description: MRR after the event
         datatype: Decimal
       - name: prior_mrr
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: prior_mrr
+          sql: prior_mrr
         description: MRR before the event
         datatype: Decimal
       - name: segment
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: segment
+          sql: segment
         description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
         datatype: String
       - name: subscription_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: subscription_id
+          sql: subscription_id
         description: Subscription identifier
         datatype: String
     custom_extensions:
@@ -124,104 +98,76 @@ datasets:
     fields:
       - name: acquisition_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: acquisition_date
+          sql: acquisition_date
         description: Date the customer first became paying
         datatype: Date
       - name: activation_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: activation_date
+          sql: activation_date
         description: Date the activation milestone was reached
         datatype: Date
       - name: composite_score
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: composite_score
+          sql: composite_score
         description: Health score on a 0 to 100 scale
         datatype: Decimal
       - name: criteria_met
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: criteria_met
+          sql: criteria_met
         description: Product-qualified criteria met
         datatype: Boolean
       - name: csm_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: csm_id
+          sql: csm_id
         description: Assigned customer success manager
         datatype: String
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: customer_status
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_status
+          sql: customer_status
         description: Customer lifecycle status; active means at least one active subscription
         datatype: String
         ai_context:
           instructions: One of trial, active, churned, dormant
       - name: last_active_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: last_active_date
+          sql: last_active_date
         description: Most recent qualifying activity
         datatype: Date
       - name: onboarding_completion_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: onboarding_completion_date
+          sql: onboarding_completion_date
         description: Onboarding completion; null while open
         datatype: Date
       - name: qbr_completed
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: qbr_completed
+          sql: qbr_completed
         description: A QBR was held in the period
         datatype: Boolean
       - name: qbr_due
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: qbr_due
+          sql: qbr_due
         description: A QBR was due in the period
         datatype: Boolean
       - name: segment
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: segment
+          sql: segment
         description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
         datatype: String
       - name: snapshot_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: snapshot_date
+          sql: snapshot_date
         dimension:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
       - name: upgrade_eligible
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: upgrade_eligible
+          sql: upgrade_eligible
         description: Customer is on a plan with an upgrade path
         datatype: Boolean
     custom_extensions:
@@ -236,130 +182,94 @@ datasets:
     fields:
       - name: auto_renewed
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: auto_renewed
+          sql: auto_renewed
         description: Renewal happened without manual intervention
         datatype: Boolean
       - name: contract_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: contract_end
+          sql: contract_end
         description: Contract end date
         datatype: Date
       - name: contract_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: contract_start
+          sql: contract_start
         description: Contract start date
         datatype: Date
       - name: customer_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: customer_id
+          sql: customer_id
         description: Customer (account) identifier. Primary business noun; CEL name
         datatype: String
       - name: forecast_renewal_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: forecast_renewal_amount
+          sql: forecast_renewal_amount
         description: Forecast renewal value
         datatype: Decimal
       - name: plan_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: plan_id
+          sql: plan_id
         description: Pricing plan identifier; the plan a subscription is priced by
         datatype: String
       - name: mrr
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr
+          sql: mrr
         description: Monthly recurring revenue of the subscription
         datatype: Decimal
       - name: mrr_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr_end
+          sql: mrr_end
         description: MRR at period end (cohort form)
         datatype: Decimal
       - name: mrr_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: mrr_start
+          sql: mrr_start
         description: MRR at period start (cohort form)
         datatype: Decimal
       - name: renewal_amount
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_amount
+          sql: renewal_amount
         description: Value up for renewal
         datatype: Decimal
       - name: renewal_complete_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_complete_date
+          sql: renewal_complete_date
         description: Date renewal processing finished
         datatype: Date
       - name: renewal_notified_on_time
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_notified_on_time
+          sql: renewal_notified_on_time
         description: Renewal notice sent within the agreed window
         datatype: Boolean
       - name: renewal_trigger_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewal_trigger_date
+          sql: renewal_trigger_date
         description: Date renewal processing started
         datatype: Date
       - name: renewed
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: renewed
+          sql: renewed
         description: Renewed at the most recent term end
         datatype: Boolean
       - name: segment
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: segment
+          sql: segment
         description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
         datatype: String
       - name: snapshot_date
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: snapshot_date
+          sql: snapshot_date
         dimension:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
       - name: subscription_id
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: subscription_id
+          sql: subscription_id
         description: Subscription identifier
         datatype: String
       - name: subscription_status
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: subscription_status
+          sql: subscription_status
         description: Subscription status
         datatype: String
         ai_context:
@@ -375,25 +285,19 @@ datasets:
     fields:
       - name: period_start
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_start
+          sql: period_start
         dimension:
           is_time: true
         datatype: Date
         description: First day of the reporting period
       - name: period_end
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: period_end
+          sql: period_end
         datatype: Date
         description: Last day of the reporting period
       - name: value
         expression:
-          dialects:
-            - dialect: OSSIE_SQL_2026
-              expression: value
+          sql: value
         datatype: Decimal
         description: Net Revenue Retention (NRR) for the period
     custom_extensions:
@@ -402,9 +306,7 @@ datasets:
 metrics:
   - name: gasp_nrr
     expression:
-      dialects:
-        - dialect: OSSIE_SQL_2026
-          expression: SUM(gasp_staged_gasp_nrr.value)
+      sql: SUM(gasp_staged_gasp_nrr.value)
     description: Net Revenue Retention (NRR). The percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Also known as Net Dollar Retention (NDR).
     datatype: Decimal
     ai_context:

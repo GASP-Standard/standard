@@ -27,7 +27,7 @@ import { compileModel, isGaspMetric, type CompiledModel } from "./company.js";
 import { directQuery, stagedQuery, type Period } from "./demo.js";
 import { formulaSource } from "./metrics.js";
 import { aggregateSpans } from "./portability.js";
-import { OSSIE_DIALECT, type MetricCoverage, type OssieMetric, type OssieSemanticModel } from "./types.js";
+import { portable, type MetricCoverage, type OssieMetric, type OssieSemanticModel } from "./types.js";
 
 /** The six monthly periods of the synthetic dataset's window. */
 export const DRIFT_PERIODS: Period[] = [31, 28, 31, 30, 31, 30].map((days, i) => {
@@ -274,7 +274,7 @@ function namespace(company: Company, data: StandardData, only: Set<string>): Nam
     datasets: Object.entries(ns.datasets).map(([name, ds]) => ({
       name,
       source: name,
-      fields: Object.entries(company.refs[ds]).filter(([, r]) => r.dataset === name).map(([, r]) => ({ name: r.field, expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: r.field }] } })),
+      fields: Object.entries(company.refs[ds]).filter(([, r]) => r.dataset === name).map(([, r]) => ({ name: r.field, expression: portable(r.field) })),
     })),
     metrics: [],
   };
@@ -575,8 +575,8 @@ export function companyMetrics(text: string | undefined): { metrics?: OssieMetri
   if (!doc.doc) return { error: `Invalid semantic model. ${doc.error}` };
   const metrics = doc.doc.metrics;
   if (!Array.isArray(metrics)) return { error: "The semantic model has no metrics list." };
-  const bad = metrics.findIndex((m) => !m || typeof m !== "object" || typeof (m as OssieMetric).name !== "string" || !(m as OssieMetric).expression?.dialects?.length);
-  if (bad >= 0) return { error: `metrics[${bad}] needs a name and an expression with at least one dialect.` };
+  const bad = metrics.findIndex((m) => !m || typeof m !== "object" || typeof (m as OssieMetric).name !== "string" || !expressionText(m as OssieMetric));
+  if (bad >= 0) return { error: `metrics[${bad}] needs a name and an expression with \`sql\` or at least one dialect entry.` };
   return { metrics: metrics as OssieMetric[] };
 }
 

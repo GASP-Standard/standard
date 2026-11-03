@@ -16,7 +16,7 @@
 import type { OntologyDataset, OntologyField } from "../types.js";
 import { CONFORMANCE_PERIOD, sqlLiteral } from "./conformance.js";
 import { aggregateSpans } from "./portability.js";
-import type { OssieSemanticModel } from "./types.js";
+import { expressionText, type OssieSemanticModel } from "./types.js";
 
 export const DEMO_PERIOD = CONFORMANCE_PERIOD;
 export type Period = { start: string; end: string };
@@ -96,7 +96,7 @@ const extension = (x: { custom_extensions?: Array<{ vendor_name?: string; data?:
 export function demoMetrics(model: OssieSemanticModel, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): DemoMetric[] {
   const sources = new Map(model.datasets.map((d) => [d.name, d.source]));
   return (model.metrics ?? []).map((m) => {
-    const expression = (m.expression as { dialects: Array<{ expression: string }> }).dialects[0].expression;
+    const expression = expressionText(m) ?? "";
     const ext = extension(m as { custom_extensions?: Array<{ vendor_name?: string; data?: string }> });
     const formula = String(ext.formula ?? "");
     const staged = STAGED_READ.exec(expression);

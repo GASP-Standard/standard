@@ -97,7 +97,7 @@ describe("Decide: the Acme proposal", () => {
     expect(ext(usage).profile.evidence.key).toBe("decided by Data platform: one row per workspace per day");
     expect(r.model.datasets.find((d) => d.name === "plan_prices")!.fields!.find((f) => f.name === "price_tiers")!.datatype).toBe("String");
     const calc = r.model.datasets.find((d) => d.name === "mrr_movements")!.fields!.find((f) => f.name === "event_type")!;
-    expect(calc.expression).toEqual({ dialects: [{ dialect: "OSSIE_SQL_2026", expression: recode.replace(/\{\{value\}\}/g, "movement_type") }] });
+    expect(calc.expression).toEqual({ sql: recode.replace(/\{\{value\}\}/g, "movement_type") });
     expect(proposal.model.datasets.find((d) => d.name === "usage_daily")!.primary_key).toBeUndefined(); // the input is left alone
     // The mapping: the accepted pairs in, the rejected one out, the owners where validate_mapping reads them.
     expect(r.adapter.datasets).toMatchObject({ plan: "billing.plan_prices", revenue_event: "billing.mrr_movements" });

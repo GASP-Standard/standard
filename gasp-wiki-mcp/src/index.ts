@@ -30,6 +30,7 @@ import { scoreDriftFromText } from "./ossie/drift.js";
 import { profileSchemaFromText } from "./ossie/profile.js";
 import { proposeMappingFromText } from "./ossie/propose.js";
 import { recordDecisionFromText } from "./ossie/decide.js";
+import { deriveCelFromText } from "./cel.js";
 import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -764,7 +765,23 @@ server.tool(
     ({ content: [{ type: "text" as const, text: recordDecisionFromText(semantic_model, mapping, decisions, data, { output }) }] }),
 );
 
-// --- Tool 14: infer_drivers ---
+// --- Tool 14: derive_cel ---
+server.tool(
+  "derive_cel",
+  "SQL that derives CEL Revenue_Events from your subscription ledger, by the rules in the standard (cel.md, 'Deriving Revenue Events from a Subscription Ledger'). Most billing systems hold subscriptions, not events; this turns the subscription dataset your mapping covers (subscription_id, customer_id, snapshot_date, mrr, subscription_status, segment, as snapshots at any cadence or a version history) into one revenue_event row per movement: a step is a change in a subscription's active MRR, the ledger's first date is the opening balance, prior_mrr and new_mrr are the customer's MRR chained so prior_mrr + mrr_change = new_mrr holds on every row, and the event type (new, expansion, contraction, churn, reactivation) is read from the customer's MRR around the step, with the ATL lifecycle tag, change_nature permanent and an empty expansion_classification (the ledger cannot know it). Takes the same mapping as generate_query (a GASP adapter or an Ossie mapping with its semantic_model) and the ledger's currency; the dialect is the one asked for, else the adapter's warehouse, else postgres. Unmapped fields stay as {{field@subscription}} placeholders and are listed. Run the result to build the revenue_event table, map it, and the MRR movement metrics compile over it.",
+  {
+    adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON). It must cover the subscription dataset. Check it with validate_mapping first."),
+    currency: z.string().describe("ISO 4217 code of the ledger's currency (USD, EUR, GBP ...), written on every derived event."),
+    semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), so table names and field expressions resolve. Ignored for a GASP adapter."),
+    dialect: z.enum(DIALECTS).optional().describe("SQL dialect: postgres (also Redshift), snowflake, bigquery or databricks. Omit to use the adapter's warehouse when it names one of them, else postgres."),
+    first_snapshot: z.enum(["opening", "steps"]).optional().describe("What the rows on the ledger's first snapshot date are. 'opening' (default): opening balances that seed each customer's MRR and produce no event, for a ledger that starts after the oldest subscription. 'steps': steps from 0, for a ledger that starts with the business."),
+    output: z.enum(["report", "sql"]).optional().describe("'report' (default): the SQL with the mapping it used, the unmapped fields and what the ledger can and cannot say; 'sql': the query alone."),
+  },
+  async ({ adapter, currency, semantic_model, dialect, first_snapshot, output }) =>
+    ({ content: [{ type: "text" as const, text: deriveCelFromText(adapter, semantic_model, data, { dialect, currency, firstSnapshot: first_snapshot, output }) }] }),
+);
+
+// --- Tool 15: infer_drivers ---
 server.tool(
   "infer_drivers",
   "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
@@ -813,7 +830,7 @@ server.tool(
   }
 );
 
-// --- Tool 15: explain_path ---
+// --- Tool 16: explain_path ---
 server.tool(
   "explain_path",
   "How a movement in one graph node reaches another: up to 5 chains of edges followed forward from `from` to `to`, shortest first, then by highest score. Each step gives the edge type, its classification (metric_signal, structural, lifecycle, behavioral, assignment or generative), its attenuation and whether it inverts direction; each path gives its score and the direction the target moves when the source rises. A baseline edge (MRR into NRR) can only start a path. Names resolve as in get_relationships, so entities and concepts work too. No path means no forward chain within maxDepth: try the reverse. Use it on a candidate from infer_drivers.",
@@ -865,7 +882,7 @@ server.tool(
   }
 );
 
-// --- Tool 16: coverage_gap ---
+// --- Tool 17: coverage_gap ---
 server.tool(
   "coverage_gap",
   "Audit a set of tracked metrics against the GASP relationship graph. Returns three lists: upstream missing (metrics with a direct edge into the set that the set leaves out), downstream missing (metrics with a direct edge from the set that it leaves out) and disconnected (graph metrics with no path of any length, in either direction and through any node, to the set; the first 25 shown). Names resolve as in lookup_metric; an input that is ambiguous, outside the graph, not a metric or unknown is listed as unresolved with the reason. Use it before instrumenting a dashboard, then infer_drivers or explain_path on the candidates.",
@@ -935,7 +952,7 @@ server.tool(
 );
 
 // Start the server
-// --- Tool 17: lookup_definition ---
+// --- Tool 18: lookup_definition ---
 server.tool(
   "lookup_definition",
   "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'CEL'): the full definition and body, its section, the canonical or reference link, where it is used and the page URL. The term must match exactly, ignoring case: the term, its slug or either part of 'Term (Abbreviation)', so 'CEL' finds 'CEL (Commercial Event Ledger)'. A metric name points you to lookup_metric and a miss returns close names. Some metrics also have a short glossary entry (Logo Churn Rate, Win Rate); lookup_metric gives their formula and benchmarks.",
