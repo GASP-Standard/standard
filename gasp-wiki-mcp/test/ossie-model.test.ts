@@ -213,18 +213,18 @@ describe("Ossie model: metrics", () => {
   });
 
   it("spot checks", () => {
-    expect(expr("gasp_expansion_mrr")).toBe("SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'expansion')");
+    expect(expr("gasp_expansion_mrr")).toBe("COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'expansion'), 0)");
     for (const k of ["nrr", "nrr:O", "nrr:M"]) expect(coverage[k]).toMatchObject({ kind: "staged", reason: "cohort" });
     expect(expr("gasp_nrr_o")).toBe("SUM(gasp_staged_gasp_nrr_o.value)");
     // MRR reads the subscription snapshot; the query layer selects the period-end snapshot date.
     expect(coverage.mrr.kind).toBe("direct");
-    expect(expr("gasp_mrr")).toBe("SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active')");
+    expect(expr("gasp_mrr")).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)");
     expect((metricByName.get("gasp_mrr")!.ai_context as any).instructions).toMatch(/select one snapshot date/);
     // Win rate filters the opportunity snapshot by close_date in the period: a period bound the metric cannot see.
     expect(coverage.win_rate).toMatchObject({ kind: "staged", reason: "period bound in filter" });
     expect(coverage.cac.kind).toBe("direct");
     expect(expr("gasp_cac")).toBe(
-      "(CAST(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm') AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))",
+      "(CAST(COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))",
     );
     expect(ext(metricByName.get("gasp_nrr_m")!)).toMatchObject({ gasp_id: "nrr", form: "M", unit: "percent", staged: true });
   });
@@ -239,7 +239,7 @@ describe("Ossie model: metrics", () => {
 
     it("drops in_period on an event dataset's own date field", () => {
       expect(emit("sum(field.mrr_change where in_period(field.event_date) and field.event_type = 'expansion')")).toMatchObject({
-        kind: "direct", expression: "SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'expansion')",
+        kind: "direct", expression: "COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'expansion'), 0)",
       });
       expect(emit("count(field.event_id where in_period(field.event_date))")).toMatchObject({ kind: "direct", expression: "COUNT(revenue_event.event_id)" });
     });
@@ -265,7 +265,7 @@ describe("Ossie model: metrics", () => {
         kind: "direct", expression: "PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active')",
       });
       expect(emit("median(field.mrr)")).toMatchObject({ kind: "direct", expression: "MEDIAN(subscription.mrr)" });
-      expect(emit("max(sum(field.mrr_change), 0) / 2")).toMatchObject({ kind: "direct", expression: "(CAST(GREATEST(SUM(revenue_event.mrr_change), 0) AS DECIMAL) / 2)" });
+      expect(emit("max(sum(field.mrr_change), 0) / 2")).toMatchObject({ kind: "direct", expression: "(CAST(GREATEST(COALESCE(SUM(revenue_event.mrr_change), 0), 0) AS DECIMAL) / 2)" });
     });
 
     it("stages distinct pairs and total(); a breakdown with neither stays direct", () => {

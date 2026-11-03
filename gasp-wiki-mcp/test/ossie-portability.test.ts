@@ -18,6 +18,8 @@ describe("Portability profile: the upstream fixtures", () => {
   it("classifies each compliance/portability rung to itself", () => {
     // M0: one dataset, one field, one bare SUM
     expect(profileExpression("SUM(sales.amount)")).toEqual({ rung: "M0", constructs: [] });
+    expect(profileExpression("COALESCE(SUM(sales.amount), 0)")).toEqual({ rung: "M2", constructs: ["null guard"] }); // the form every GASP sum takes
+    expect(profileExpression("COALESCE(SUM(sales.amount) FILTER (WHERE sales.status = 'completed'), 0)")).toEqual({ rung: "M3", constructs: ["filtered aggregate", "null guard"] });
     // M2: the core aggregate set
     expect(profileExpression("COUNT(sales.id)")).toEqual({ rung: "M2", constructs: [] });
     expect(profileExpression("COUNT(DISTINCT sales.customer_id)")).toEqual({ rung: "M2", constructs: ["count distinct"] });
@@ -60,9 +62,10 @@ describe("Portability profile: the GASP export", () => {
   });
 
   it("places the known metrics where the ladder puts them", () => {
-    expect(coverage.mrr).toMatchObject({ rung: "M3", constructs: ["filtered aggregate"] }); // SUM FILTER (WHERE status = 'active')
-    expect(coverage.arr).toMatchObject({ rung: "M3", constructs: ["filtered aggregate", "arithmetic over aggregates"] }); // MRR * 12
-    expect(coverage.arpa).toMatchObject({ rung: "M3", constructs: ["filtered aggregate", "count distinct", "arithmetic over aggregates", "cross-dataset"] }); // MRR on subscription over customers on customer
+    expect(coverage.mrr).toMatchObject({ rung: "M3", constructs: ["filtered aggregate", "null guard"] }); // COALESCE(SUM FILTER (WHERE status = 'active'), 0)
+    expect(coverage.arr).toMatchObject({ rung: "M3", constructs: ["filtered aggregate", "arithmetic over aggregates", "null guard"] }); // MRR * 12
+    expect(coverage.arpa).toMatchObject({ rung: "M3", constructs: ["filtered aggregate", "count distinct", "arithmetic over aggregates", "cross-dataset", "null guard"] }); // MRR on subscription over customers on customer
+    expect(coverage.total_customers).toMatchObject({ rung: "M3", constructs: ["filtered aggregate", "count distinct"] }); // a count is never guarded
   });
 
   it("writes the summary into coverage.json", () => {
@@ -71,6 +74,7 @@ describe("Portability profile: the GASP export", () => {
     expect(file.portability).toEqual(summary);
     expect(Object.values(summary.rungs).reduce((a, b) => a + b, 0)).toBe(direct.length);
     expect(summary.rungs.M3).toBeGreaterThan(summary.rungs.M2);
-    expect(summary.rungs.M0).toBeGreaterThan(0);
+    expect(summary.rungs.M0).toBe(0); // every sum is guarded, so no entry is a bare SUM
+    expect(summary.constructs["null guard"]).toBeGreaterThan(0);
   });
 });

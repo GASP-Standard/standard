@@ -31,6 +31,9 @@
  * Semantics: ratios are unscaled (units live beside the formula, not in it).
  * Subtracting two date or timestamp fields gives elapsed days (fractional for
  * timestamps); formulas reported in hours, minutes or months convert explicitly.
+ * A `sum` over no matching rows is 0, as a `count` is (the compiler wraps it in
+ * COALESCE); `avg`, `min`, `max`, `median` and `percentile` over no rows are
+ * null, and a ratio over a zero denominator is null.
  * `period_days` is the length of the reporting period in days. `to_date` makes an
  * aggregate cumulative from the start of history to period_end (balances).
  * A bare `period_start` / `period_end` is the period boundary as a date value.

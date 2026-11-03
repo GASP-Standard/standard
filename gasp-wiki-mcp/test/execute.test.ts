@@ -254,6 +254,23 @@ describe("hand-computed metric values", () => {
 // table and snapshot_day on the subscription table; customer_id is account_ref
 // on revenue events. The cohort subquery inside NRR and GRR must read the
 // customer table's own columns.
+describe("a sum over no matching rows is 0", () => {
+  const MONTHS: Array<[string, string]> = [["2026-01-01", "2026-01-31"], ["2026-02-01", "2026-02-28"], ["2026-03-01", "2026-03-31"], ["2026-04-01", "2026-04-30"], ["2026-05-01", "2026-05-31"], ["2026-06-01", "2026-06-30"]];
+
+  it("a movement with no event in the month is 0, not NULL", async () => {
+    expect(revenueEvents("2026-01-01", "2026-01-31", "churn")).toEqual([]); // the fixture has no churn in January
+    expect(await run("churned_mrr", "2026-01-01", "2026-01-31")).toBe(0);
+    expect(await run("net_new_mrr", "2026-01-01", "2026-01-31")).toBe(sum(T.revenue_event.filter((r) => between(r.event_date, "2026-01-01", "2026-01-31")), "mrr_change"));
+  });
+
+  it("NRR and GRR have a value in every month, the hand-computed one", async () => {
+    for (const [start, end] of MONTHS) {
+      expect(await run("nrr", start, end), `nrr ${start}`).toBeCloseTo(expectedNrr(start, end), 10);
+      expect(await run("grr", start, end), `grr ${start}`).toBeCloseTo(expectedNrr(start, end, true), 10);
+    }
+  });
+});
+
 describe("per-dataset mappings (item 2)", () => {
   it.each(["nrr", "grr"])("%s fills every placeholder from its own dataset and matches the expected value", async (id) => {
     const f = fill(id);

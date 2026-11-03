@@ -280,7 +280,7 @@ describe("distinct pairs, total() and breakdowns", () => {
     expect(c.breakdown).toEqual({ field: "cost_centre", total: true });
     expect(c.sql.match(/= _d\.cost_centre/g)).toHaveLength(1);
     expect(c.sql).toBe(
-      "SELECT _d.cost_centre AS cost_centre, (CAST((SELECT SUM({{cost@cost_event}}) FROM {{_table:cost_event}} WHERE {{event_date@cost_event}} >= {{_period_start}} AND {{event_date@cost_event}} <= {{_period_end}} AND {{cost_centre@cost_event}} = _d.cost_centre) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} < ({{_period_end}} + INTERVAL '1 day')), 0)) AS spend\n" +
+      "SELECT _d.cost_centre AS cost_centre, (CAST((SELECT COALESCE(SUM({{cost@cost_event}}), 0) FROM {{_table:cost_event}} WHERE {{event_date@cost_event}} >= {{_period_start}} AND {{event_date@cost_event}} <= {{_period_end}} AND {{cost_centre@cost_event}} = _d.cost_centre) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT({{ticket_id@ticket}}) FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} < ({{_period_end}} + INTERVAL '1 day')), 0)) AS spend\n" +
       "FROM (SELECT 'marketing' AS cost_centre UNION ALL SELECT 'sales' AS cost_centre) _d",
     );
     // Without total mode the ungrouped aggregate is an error naming it.
@@ -333,7 +333,7 @@ describe("distinct pairs, total() and breakdowns", () => {
     const c = compileMetric("mrr", { fields: withPlanDate, datasets: ds, formulas }, "by_plan");
     expect(c.breakdown).toEqual({ field: "plan_name", via: { dataset: "plan", key: "plan_id" } });
     expect(c.sql).toBe(
-      "SELECT _d.plan_id AS plan_id, _d.plan_name AS plan_name, (SELECT SUM({{mrr@customer}}) FROM {{_table:customer}} WHERE {{snapshot_date@customer}} = {{_period_end}} AND {{plan_id@customer}} = _d.plan_id) AS mrr\n" +
+      "SELECT _d.plan_id AS plan_id, _d.plan_name AS plan_name, (SELECT COALESCE(SUM({{mrr@customer}}), 0) FROM {{_table:customer}} WHERE {{snapshot_date@customer}} = {{_period_end}} AND {{plan_id@customer}} = _d.plan_id) AS mrr\n" +
       "FROM (SELECT DISTINCT {{plan_id@plan}} AS plan_id, {{plan_name@plan}} AS plan_name FROM {{_table:plan}} WHERE {{snapshot_date@plan}} = {{_period_end}}) _d",
     );
     expect(c.datasets).toEqual(["customer", "plan"]);
@@ -412,6 +412,12 @@ describe("SQL dialects", () => {
       periodDays: "(DATEDIFF({{_period_end}}, {{_period_start}}) + 1)",
     },
   };
+
+  it.each(DIALECTS)("%s guards a sum with COALESCE and leaves the other aggregates bare", (dialect) => {
+    expect(compile("sum(field.minutes)", dialect)).toContain("(SELECT COALESCE(SUM({{minutes@ticket}}), 0) FROM");
+    expect(compile("avg(field.minutes)", dialect)).toContain("(SELECT AVG({{minutes@ticket}}) FROM");
+    expect(compile("count(field.ticket_id)", dialect)).toContain("(SELECT COUNT({{ticket_id@ticket}}) FROM");
+  });
 
   it.each(DIALECTS)("%s spells each warehouse-specific construct", (dialect) => {
     for (const [name, formula] of Object.entries(constructs) as Array<[keyof typeof constructs, string]>) {

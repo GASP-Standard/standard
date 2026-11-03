@@ -5,6 +5,23 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-03] A sum over no matching rows is zero
+**Decision:** `sum()` in the GASP formula grammar compiles to `COALESCE(SUM(...), 0)` in the SQL templates and to `COALESCE(SUM(x) FILTER (WHERE w), 0)` in the direct Ossie expressions. `count` and `count_distinct` were already 0 over no rows; `avg`, `min`, `max`, `median` and `percentile` stay NULL, as does a ratio over a zero denominator (`NULLIF`). The staged sources inherit it from the compiler; the `SUM(staged.value)` wrapper that reads a staged row stays bare, so a staged metric that is NULL for a period stays NULL.
+
+**Context:** The drift scorer, run on the synthetic dataset by month, found monthly NRR NULL in five of six months. A filtered sum over no matching rows is NULL in SQL, so any metric that adds movement types (Net New MRR, NRR, GRR) had no value in a period where one type had no event. The six-month period the tests, the conformance set and the demo use holds every movement, which is why it went unnoticed. A metric defined as a sum of movements means "nothing happened" as 0, not as unknown; a waterfall with a NULL step does not net.
+
+**Alternatives considered:**
+- **Leave it and document it.** Rejected: an adopter running the templates monthly would get no NRR in a quiet month, and the number a reader expects there is a defined one.
+- **COALESCE in the SQL templates only, leaving the Ossie expressions as the language writes them.** Rejected: the two would then disagree on the same data, and the drift scorer compares them.
+- **Guard every aggregate.** Rejected: an average over nothing is unknown, not 0, and a percentile has no value to give.
+
+**Consequences:**
+- Compiled SQL, the Ossie export, the conformance set and the example demo change shape; no expected value changes.
+- No GASP direct expression is a bare `SUM` any more, so the portability profile's M0 count is 0 and the wrapper is counted as the `null guard` construct (85 direct entries). A converter graded on the published rungs must carry a scalar over an aggregate to round-trip a GASP sum.
+- A company metric written as a bare sum is NULL where GASP is 0 in a quiet period; `score_drift` names that as its first cause rather than reading a formula difference into it.
+
+---
+
 ## [2026-10-17] The Ossie export emits the portable form wherever the language can state it, and vendor dialects only for staged execution SQL
 **Decision:** Every metric the Ossie export can state in one expression is emitted as `OSSIE_SQL_2026` alone, with no vendor-dialect copy beside it. Vendor dialects (Postgres, Snowflake, BigQuery, Databricks) appear in exactly one place, the compiled source of a staged dataset, because that source is a query that must run on a warehouse. This is how the exporter already behaved; it is now a stated commitment, made publicly on the Ossie dev list in reply to Chris Eubank on 2026-10-17 and restated in the PR #598 description.
 

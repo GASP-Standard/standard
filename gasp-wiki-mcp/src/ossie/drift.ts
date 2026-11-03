@@ -220,8 +220,18 @@ async function value(db: Engine, sql: string): Promise<number | null> {
 const same = (a: number | null, b: number | null): boolean =>
   a === null || b === null ? a === b : Math.abs(a - b) <= TOLERANCE * Math.max(1, Math.abs(a), Math.abs(b));
 
+/** The difference relative to the canonical value; relative to yours when canonical is 0 (so a value against 0 is 100%), infinite when a side is null. */
 const relative = (yours: number | null, canonical: number | null): number =>
-  yours === null || canonical === null ? Infinity : Math.abs(yours - canonical) / Math.max(1e-9, Math.abs(canonical));
+  yours === null || canonical === null ? Infinity : Math.abs(yours - canonical) / (Math.abs(canonical) || Math.abs(yours) || 1);
+
+/** Aggregate spans with the COALESCE(..., 0) the compiler wraps a sum in, so the call runs alone as the expression reads it. */
+function guardedSpans(expr: string): Array<{ start: number; end: number }> {
+  return aggregateSpans(expr).map((s) => {
+    const before = /COALESCE\s*\(\s*$/i.exec(expr.slice(0, s.start));
+    const after = /^\s*,\s*0\s*\)/.exec(expr.slice(s.end));
+    return before && after ? { start: s.start - before[0].length, end: s.end + after[0].length } : s;
+  });
+}
 
 /** The company's namespace on the synthetic dataset: a view per mapped dataset, named and columned as the company's model. */
 interface Namespace {
@@ -364,7 +374,7 @@ function filterCauses(yours: string, canonical: EnumFilter[], ns: Namespace, fie
 /** Each aggregate call of an expression run alone for the period, as (call, value). */
 async function aggregateValues(db: Engine, expr: string, ns: Namespace, period: Period, fields: Record<string, OntologyField>): Promise<Array<{ call: string; value: number | null }>> {
   const out: Array<{ call: string; value: number | null }> = [];
-  for (const span of aggregateSpans(expr)) {
+  for (const span of guardedSpans(expr)) {
     const call = expr.slice(span.start, span.end);
     try {
       out.push({ call, value: await value(db, `SELECT ${toPostgres(directQuery(call, ns.meta, fields, period, { table: (n) => n, date: (n) => ns.date[n] }))}`) });
@@ -451,13 +461,13 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
         // The period with the largest relative difference; one where both sides have a value comes before one where a side is null.
         const worst = differing.map((p) => ({ ...p, relative: relative(p.yours, p.canonical) })).sort((a, b) => (Number.isFinite(b.relative) ? b.relative : -1) - (Number.isFinite(a.relative) ? a.relative : -1))[0];
         score.worst = worst;
-        // Causes, most specific first. A canonical null is the compiled SQL's sum over no matching rows; say so before reading anything into it.
-        const nulls = differing.filter((p) => p.canonical === null && p.yours !== null).length;
-        if (nulls) {
-          const both = score.periods.filter((p) => p.yours !== null && p.canonical !== null);
-          const agreeWhenBoth = both.length > 0 && both.every((p) => same(p.yours, p.canonical));
-          score.causes.push(`canonical is null in ${nulls} of ${score.periods.length} periods: a sum over no matching rows is NULL in the compiled SQL, so a period with no event of a type the formula sums gives no value${both.length ? `; in the ${both.length} period${both.length === 1 ? "" : "s"} where both sides have a value they ${agreeWhenBoth ? "agree" : "differ"}` : ""}`);
-        }
+        // Causes, most specific first. A null on one side only is a semantics difference, not a formula one; say so before reading anything into it.
+        const both = score.periods.filter((p) => p.yours !== null && p.canonical !== null);
+        const whenBoth = both.length ? `; in the ${both.length} period${both.length === 1 ? "" : "s"} where both sides have a value they ${both.every((p) => same(p.yours, p.canonical)) ? "agree" : "differ"}` : "";
+        const mineNull = differing.filter((p) => p.yours === null && p.canonical !== null).length;
+        if (mineNull) score.causes.push(`yours is null in ${mineNull} of ${score.periods.length} periods where canonical has a value: a sum over no matching rows is NULL in SQL, and GASP compiles sum() as COALESCE(SUM(...), 0), so a period with no event of a type the formula sums gives 0${whenBoth}`);
+        const theirNull = differing.filter((p) => p.canonical === null && p.yours !== null).length;
+        if (theirNull) score.causes.push(`canonical is null in ${theirNull} of ${score.periods.length} periods where yours has a value: an average, extreme or percentile over no matching rows, or a ratio over a zero denominator, is NULL in the compiled SQL${whenBoth}`);
         if (cov.kind === "staged") score.causes.push(STAGED_WHY[cov.reason] ?? `canonical needs a construct the expression language cannot state (${cov.reason})`);
         const f = data.formulas?.[m.key.split(":")[0]];
         const src = f ? formulaSource(f, m.variant) : undefined;

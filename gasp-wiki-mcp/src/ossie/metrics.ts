@@ -14,9 +14,10 @@
  *   - no `over cohort` anywhere, including inside referenced metrics.
  *
  * Filters become the aggregate filter clause the expression language requires
- * (`SUM(x) FILTER (WHERE w)`, SQL:2003 T612; since apache/ossie#382), so an
- * aggregate over no matching rows is NULL as it is in the compiled SQL, where the
- * filter is the subquery's WHERE clause. Metric references are inlined, division
+ * (`SUM(x) FILTER (WHERE w)`, SQL:2003 T612; since apache/ossie#382). A sum is
+ * wrapped in COALESCE so a sum over no matching rows is 0, as it is in the
+ * compiled SQL (compile.ts); avg, min, max and percentiles over no rows stay
+ * NULL on both sides. Metric references are inlined, division
  * casts the numerator to DECIMAL and guards zero with NULLIF, and date
  * subtraction uses DATEDIFF (timestamps in seconds / 86400, so elapsed days
  * stay fractional as the grammar defines). Anything else is staged: model.ts
@@ -282,6 +283,7 @@ class Emitter {
     const filter = w ? ` FILTER (WHERE ${w})` : "";
     if (n.kind === "percentile") return `PERCENTILE_CONT(${n.p}) WITHIN GROUP (ORDER BY ${arg})${filter}`;
     if (n.fn === "count_distinct") return `COUNT(DISTINCT ${arg})${filter}`;
+    if (n.fn === "sum") return `COALESCE(SUM(${arg})${filter}, 0)`; // a sum over no matching rows is 0, as in the compiled SQL
     return `${n.fn.toUpperCase()}(${arg})${filter}`;
   }
 }

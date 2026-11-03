@@ -49,7 +49,7 @@ describe("Drift: matching", () => {
     const { matched, review, errors } = matchMetrics(acmeMetrics, data, parseMatches("acme_nrr=NRR"));
     expect(errors).toEqual([]);
     const how = Object.fromEntries(matched.map((m) => [m.metric.name, `${m.how}:${m.key}`]));
-    expect(how).toEqual({ new_mrr: "name:new_mrr", acme_mrr: "synonym:mrr", customer_count: "synonym:total_customers", lost_mrr: "synonym:churned_mrr", acme_nrr: "matches:nrr", arr_from_contracts: "synonym:arr" });
+    expect(how).toEqual({ new_mrr: "name:new_mrr", acme_mrr: "synonym:mrr", customer_count: "synonym:total_customers", lost_mrr: "synonym:churned_mrr", cancelled_mrr: "synonym:churned_mrr", acme_nrr: "matches:nrr", arr_from_contracts: "synonym:arr" });
     expect(review.map((r) => r.name)).toEqual(["logo_churn"]);
     expect(review[0].suggestions[0].name).toContain("Logo Churn Rate");
   });
@@ -64,7 +64,7 @@ describe("Drift: matching", () => {
     expect(companyMetrics(undefined).error).toContain("Pass semantic_model");
     expect(companyMetrics("version: 1\nname: x\n").error).toContain("no metrics list");
     expect(companyMetrics("metrics:\n  - name: a\n").error).toContain("metrics[0]");
-    expect(companyMetrics(acmeMetricsText).metrics!.length).toBe(7);
+    expect(companyMetrics(acmeMetricsText).metrics!.length).toBe(8);
   });
 });
 
@@ -97,7 +97,7 @@ describe("Drift: the Acme metrics", () => {
 
   it("counts the matches, the agreements, the differences, the one that cannot run and the one to review", () => {
     expect(r.engine).toBe("pglite");
-    expect(r.counts).toEqual({ metrics: 7, matched: 6, agrees: 2, differs: 3, notRunnable: 1, notCompiled: 0, review: 1 });
+    expect(r.counts).toEqual({ metrics: 8, matched: 7, agrees: 2, differs: 4, notRunnable: 1, notCompiled: 0, review: 1 });
     expect(r.problems).toEqual([]);
   });
 
@@ -116,13 +116,22 @@ describe("Drift: the Acme metrics", () => {
     expect(s.causes[0]).toBe("canonical keeps customer_status in ('active'); yours applies no filter on it");
   });
 
-  it("names a filter whose values differ, and the canonical nulls where no event of a type falls in the period", () => {
+  it("names a filter whose values differ, with the canonical 0 where no event of its type falls in the period", () => {
     const s = score("lost_mrr");
     expect(s.status).toBe("differs");
-    expect(s.worst).toMatchObject({ yours: 900, canonical: 600 });
-    expect(s.causes).toContain("canonical keeps event_type in ('churn'); yours keeps revenue_event.event_type in ('churn', 'contraction')");
-    expect(s.causes.find((c) => c.startsWith("canonical is null in"))).toContain("a sum over no matching rows is NULL in the compiled SQL");
-    expect(s.causes.find((c) => c.startsWith("canonical aggregate"))).toContain("has no equal among yours");
+    expect(s.periods.map((p) => [p.yours, p.canonical])).toEqual([[500, 0], [500, 500], [400, 0], [800, 800], [200, 0], [900, 600]]);
+    expect(s.worst).toMatchObject({ period: DRIFT_PERIODS[0], yours: 500, canonical: 0, relative: 1 }); // against a canonical 0 the difference is 100%, not infinite
+    expect(s.causes[0]).toBe("canonical keeps event_type in ('churn'); yours keeps revenue_event.event_type in ('churn', 'contraction')");
+    expect(s.causes[1]).toContain("canonical aggregate `COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'churn'), 0)` = 0 in Jan 2026 has no equal among yours");
+    expect(s.causes.some((c) => c.includes("is null in"))).toBe(false);
+  });
+
+  it("names the bare sum that is null where the canonical guarded sum is 0", () => {
+    const s = score("cancelled_mrr");
+    expect(s).toMatchObject({ status: "differs", gasp: "Churned MRR", differing: 3 });
+    expect(s.periods.map((p) => [p.yours, p.canonical])).toEqual([[null, 0], [500, 500], [null, 0], [800, 800], [null, 0], [600, 600]]);
+    expect(s.causes[0]).toBe("yours is null in 3 of 6 periods where canonical has a value: a sum over no matching rows is NULL in SQL, and GASP compiles sum() as COALESCE(SUM(...), 0), so a period with no event of a type the formula sums gives 0; in the 3 periods where both sides have a value they agree");
+    expect(formatDriftReport(r)).toContain("| Jan 2026 | null | 0 ≠ |");
   });
 
   it("names the cohort behind a staged canonical metric the company wrote as one expression", () => {
@@ -141,7 +150,7 @@ describe("Drift: the Acme metrics", () => {
 
   it("writes the report with every section", () => {
     const report = formatDriftReport(r);
-    for (const h of ["# GASP drift: Acme SaaS", "**Matched:** 6 of 7 metrics (1 by name, 4 by synonym, 1 by your matches); 1 to review.", "**Drift:** 3 differ, 2 agree, 1 could not run.", "## Differs (3)", "### customer_count → Total Customers", "| Jun 2026 | 21 | 18 ≠ |", "Canonical: staged (cohort)", "## Agrees (2)", "## Not scored (1)", "## Review (1)", "logo_churn: closest Logo Churn Rate"]) expect(report).toContain(h);
+    for (const h of ["# GASP drift: Acme SaaS", "**Matched:** 7 of 8 metrics (1 by name, 5 by synonym, 1 by your matches); 1 to review.", "**Drift:** 4 differ, 2 agree, 1 could not run.", "## Differs (4)", "### customer_count → Total Customers", "| Jun 2026 | 21 | 18 ≠ |", "Canonical: staged (cohort)", "## Agrees (2)", "## Not scored (1)", "## Review (1)", "logo_churn: closest Logo Churn Rate"]) expect(report).toContain(h);
   });
 
   it("scores a named subset, and says when none of the names is in the document", async () => {

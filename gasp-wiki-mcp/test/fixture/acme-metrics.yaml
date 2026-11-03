@@ -4,9 +4,11 @@
 # transform applies). score_drift compares them with GASP's canonical
 # definitions on the synthetic dataset. new_mrr and acme_mrr agree (by name
 # and by synonym); customer_count counts churned customers too; lost_mrr adds
-# contraction to churn; acme_nrr, matched by hand (matches: "acme_nrr=NRR"),
-# divides by ending MRR with no cohort; logo_churn has no exact GASP name and
-# goes to review; arr_from_contracts reads a field the mapping lacks.
+# contraction to churn; cancelled_mrr is the canonical filter as a bare sum, so
+# it is NULL in a month with no churn where GASP gives 0; acme_nrr, matched by
+# hand (matches: "acme_nrr=NRR"), divides by ending MRR with no cohort;
+# logo_churn has no exact GASP name and goes to review; arr_from_contracts
+# reads a field the mapping lacks.
 version: 0.2.0.dev0
 name: acme_saas_metrics
 metrics:
@@ -40,6 +42,14 @@ metrics:
       dialects:
         - dialect: OSSIE_SQL_2026
           expression: -SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type IN ('churn', 'contraction'))
+  - name: cancelled_mrr
+    description: MRR lost to cancellations in the period
+    ai_context:
+      synonyms: [Churned MRR]
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: -SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'churn')
   - name: acme_nrr
     description: Net revenue retention as one plus the period's net movement over ending MRR
     expression:

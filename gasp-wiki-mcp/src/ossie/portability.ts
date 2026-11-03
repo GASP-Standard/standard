@@ -25,6 +25,11 @@
  * apache/ossie#382, while the M3 fixture is written `SUM(CASE WHEN w THEN x
  * ELSE 0 END)`. Both count as M3 here. A converter graded M3 on the fixture may
  * still lack the FILTER clause; the profile says how much that would cost.
+ *
+ * Every GASP sum is `COALESCE(SUM(...), 0)` (a sum over no matching rows is 0,
+ * as the compiled SQL returns), a scalar over an aggregate that no published
+ * rung states; it is the `null guard` construct, and no GASP expression is a
+ * bare M0 sum.
  */
 import type { MetricCoverage } from "./types.js";
 
@@ -38,6 +43,7 @@ export const CONSTRUCTS = [
   "cross-dataset", // fields of two or more datasets in one expression (M4)
   "date scalar", // DATEDIFF, DATE_TRUNC, EXTRACT, DATE_PART (M6)
   "percentile", // MEDIAN or PERCENTILE_CONT, outside the core aggregate set
+  "null guard", // COALESCE over an aggregate: every GASP sum is COALESCE(SUM(...), 0), so a sum over no rows is 0
 ] as const;
 export type Construct = (typeof CONSTRUCTS)[number];
 
@@ -113,6 +119,7 @@ export function profileExpression(expr: string): Profile {
   if (datasets.size > 1) constructs.add("cross-dataset");
   if (DATE_SCALAR.test(expr)) constructs.add("date scalar");
   if (aggregates.some((a) => !CORE.has(a))) constructs.add("percentile");
+  if (/\bCOALESCE\s*\(/.test(outsideAggregates(expr))) constructs.add("null guard");
   const rung: Rung = constructs.has("filtered aggregate") ? "M3"
     : aggregates.length === 1 && aggregates[0] === "SUM" && constructs.size === 0 ? "M0"
     : "M2";
@@ -135,7 +142,7 @@ export function summarisePortability(coverage: Record<string, MetricCoverage>): 
     for (const k of c.constructs as Construct[]) constructs[k]++;
   }
   return {
-    description: "Direct entries by the highest rung of the upstream portability ladder (compliance/portability, M0 to M3) whose construct they use, and the constructs the published rungs do not measure yet. A filtered aggregate is written FILTER (WHERE ...) as the expression language requires; the M3 fixture uses the CASE WHEN form.",
+    description: "Direct entries by the highest rung of the upstream portability ladder (compliance/portability, M0 to M3) whose construct they use, and the constructs the published rungs do not measure yet. A filtered aggregate is written FILTER (WHERE ...) as the expression language requires; the M3 fixture uses the CASE WHEN form. Every sum is COALESCE(SUM(...), 0), the null guard construct, so no entry is a bare M0 sum.",
     rungs,
     constructs,
   };

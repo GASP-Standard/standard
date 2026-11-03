@@ -4,5 +4,5 @@
 -- compiled by GASP from the formula (Postgres dialect; the GASP extension on the dataset carries
 -- Snowflake, BigQuery and Databricks). It reads the tables in ../../data/, including gasp.period_spine.
 SELECT value
-FROM (SELECT p.period_start, p.period_end, ((CAST((((SELECT SUM(mrr) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT SUM(mrr) FROM gasp.subscription WHERE snapshot_date = (p.period_end - INTERVAL '1 month') AND subscription_status = 'active'))) AS DOUBLE PRECISION) / NULLIF(((SELECT SUM(mrr) FROM gasp.subscription WHERE snapshot_date = (p.period_end - INTERVAL '1 month') AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p) AS s
+FROM (SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = (p.period_end - INTERVAL '1 month') AND subscription_status = 'active'))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = (p.period_end - INTERVAL '1 month') AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p) AS s
 WHERE period_start = DATE '2026-01-01';

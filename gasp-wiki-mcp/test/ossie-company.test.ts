@@ -60,7 +60,7 @@ describe("Company compile: the fixture adapter reproduces the reference export",
 
   it("writes the company's own names: the fixture's columns in direct expressions, its tables in staged sources", () => {
     const mrr = r.model.metrics!.find((m) => m.name === "gasp_mrr")!;
-    expect(exprOf(mrr)).toBe("SUM(subscription.mrr) FILTER (WHERE subscription.status = 'active')");
+    expect(exprOf(mrr)).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.status = 'active'), 0)");
     const nrr = r.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!;
     expect(nrr.source).toContain("FROM gasp_subscriptions WHERE snapshot_day = p.period_start AND status = 'active'");
     expect(nrr.source).toContain("FROM gasp_customers WHERE as_of_date = p.period_start AND lifecycle_status = 'active'");
@@ -164,9 +164,9 @@ describe("Company compile: the Acme adapter", () => {
   });
 
   it("reads Acme's columns, transforms and tables", () => {
-    expect(exprOf(r.model.metrics!.find((m) => m.name === "gasp_mrr")!)).toBe("SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active')");
+    expect(exprOf(r.model.metrics!.find((m) => m.name === "gasp_mrr")!)).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)");
     const nrr = r.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!;
-    expect(nrr.source).toContain("SUM((mrr_cents / 100)) FROM billing.subscriptions WHERE snapshot_date = p.period_start");
+    expect(nrr.source).toContain("COALESCE(SUM((mrr_cents / 100)), 0) FROM billing.subscriptions WHERE snapshot_date = p.period_start");
     expect(nrr.source).toContain("FROM billing.mrr_movements WHERE event_date >= p.period_start");
     expect(nrr.source).toContain("(CASE WHEN movement_type = 'upgrade' THEN 'expansion'");
     expect(ext(nrr).source_dialect).toBe("SNOWFLAKE");
@@ -219,7 +219,7 @@ describe("Company compile: the Acme adapter", () => {
     const bare = resolveCompany(ossieYaml(form.mapping), undefined, data);
     if ("error" in bare) throw new Error(bare.error);
     const rb = compiled(bare);
-    expect(rb.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!.source).toContain("SUM(mrr) FROM subscription WHERE");
+    expect(rb.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!.source).toContain("COALESCE(SUM(mrr), 0) FROM subscription WHERE");
     expect(formatCompileReport(rb, data, { document: false })).toContain("without a semantic model");
   });
 

@@ -74,7 +74,7 @@ datasets:
       - vendor_name: GASP
         data: '{"kind":"fact"}'
   - name: gasp_staged_gasp_uptime
-    source: SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT SUM(downtime_minutes) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE PRECISION) / NULLIF(((p.period_end - p.period_start + 1) * 1440), 0)))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT COALESCE(SUM(downtime_minutes), 0) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE PRECISION) / NULLIF(((p.period_end - p.period_start + 1) * 1440), 0)))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_uptime: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period_days)."
     primary_key:
       - period_start
@@ -104,7 +104,7 @@ datasets:
         description: Uptime (Availability) for the period
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_uptime","reason":"period_days","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT SUM(downtime_minutes) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((DATEDIFF(day, p.period_start, p.period_end) + 1) * 1440), 0)))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT SUM(downtime_minutes) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS FLOAT64) / NULLIF(((DATE_DIFF(p.period_end, p.period_start, DAY) + 1) * 1440), 0)))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT SUM(downtime_minutes) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((DATEDIFF(p.period_end, p.period_start) + 1) * 1440), 0)))) AS value FROM gasp.period_spine p"}}'
+        data: '{"staged":true,"for":"gasp_uptime","reason":"period_days","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT COALESCE(SUM(downtime_minutes), 0) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((DATEDIFF(day, p.period_start, p.period_end) + 1) * 1440), 0)))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT COALESCE(SUM(downtime_minutes), 0) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS FLOAT64) / NULLIF(((DATE_DIFF(p.period_end, p.period_start, DAY) + 1) * 1440), 0)))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((1 - (CAST((SELECT COALESCE(SUM(downtime_minutes), 0) FROM gasp.service_metrics WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((DATEDIFF(p.period_end, p.period_start) + 1) * 1440), 0)))) AS value FROM gasp.period_spine p"}}'
 metrics:
   - name: gasp_uptime
     expression:

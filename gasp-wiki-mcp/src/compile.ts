@@ -19,6 +19,10 @@
  * at the period end. `all_time` drops it. `lag` shifts both bounds. `over cohort`
  * restricts every aggregate to keys present in the key's dataset at the point.
  * Intervals are emitted in units Postgres accepts (a quarter is 3 months).
+ * A sum over no matching rows is 0 (COALESCE), as a count is, so a metric that
+ * adds movements has a value in a period where one movement had no event;
+ * avg, min, max and percentiles over no rows stay NULL, as does a ratio over a
+ * zero denominator (NULLIF).
  * `ctx.dialect` picks another spelling for the warehouse-specific constructs
  * (date shifts and differences, the double cast, percentiles): src/dialect.ts.
  *
@@ -427,6 +431,7 @@ class Compiler {
       n.kind === "percentile" ? this.d.percentile(n.p, inner)
       : n.fn === "count_distinct" ? `COUNT(DISTINCT ${inner})`
       : n.fn === "median" ? this.d.percentile(0.5, inner)
+      : n.fn === "sum" ? `COALESCE(SUM(${inner}), 0)` // a sum over no matching rows is 0, as a count is
       : `${n.fn.toUpperCase()}(${inner})`;
 
     const where: string[] = [];
