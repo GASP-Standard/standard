@@ -103,8 +103,8 @@ function labelOf(data: StandardData, id: string): string {
 export interface Mapping { gaspField: string; dataset?: string; warehouseRef: string; transform?: string }
 export interface Adapter { version?: string; organization?: string; warehouse?: string; metricOwners?: Array<{ metric: string; team: string; contact?: string }>; datasets?: Record<string, string>; mappings: Mapping[] }
 
-const tableOf = (ref: string) => ref.split(".").slice(0, -1).join(".");
-const columnOf = (ref: string) => ref.split(".").pop() ?? ref;
+export const tableOf = (ref: string): string => ref.split(".").slice(0, -1).join(".");
+export const columnOf = (ref: string): string => ref.split(".").pop() ?? ref;
 
 /**
  * Resolved adapter: the table behind each dataset and the column for each

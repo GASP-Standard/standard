@@ -8,7 +8,7 @@ The standard is published at **https://gaspwiki.com**. This repository holds its
 
 | Path | What it is | Licence |
 | --- | --- | --- |
-| `standard/` | The canon. Metric definitions per department (`metrics/*.md`), the glossary (`definitions.md`), the Commercial Event Ledger (`cel.md`) and Attribution Taxonomy Layer (`atl.md`), the ontology (`ontology.json`: fields, datasets, 28 entities and 7 concepts), the formulas (`formulas.json`: 289 entries, 274 computable and 15 with the reason they are not), the signal taxonomy, the adapter schema and the relationship graph (`relationships.json`) | CC BY 4.0 (`standard/LICENSE`) |
+| `standard/` | The canon. Metric definitions per department (`metrics/*.md`), the glossary (`definitions.md`), the Commercial Event Ledger (`cel.md`) and Attribution Taxonomy Layer (`atl.md`), the ontology (`ontology.json`: fields, datasets, 28 entities and 7 concepts), the formulas (`formulas.json`: 294 entries, 279 computable and 15 with the reason they are not), the signal taxonomy, the adapter schema and the relationship graph (`relationships.json`) | CC BY 4.0 (`standard/LICENSE`) |
 | `standard/exports/` | Generated from the canon by `npm run derive`: the Neo4j Cypher export, the adapter template and the Apache Ossie ontology, reference semantic model and mapping | CC BY 4.0 |
 | `gasp-wiki-mcp/` | The MCP server, published on npm as [`gasp-standard-mcp`](https://www.npmjs.com/package/gasp-standard-mcp). The parser, formula grammar, SQL compiler, graph traversal, Ossie exporters and the test suite, which runs every compiled formula against a seeded dataset in an in-process Postgres | Apache 2.0 (`LICENSE`) |
 | `docs/` | Decision documents, the Ossie spike findings and the Ossie interop spec (`docs/ossie-interop-spec.md`) | CC BY 4.0 |
@@ -21,13 +21,13 @@ The standard is published at **https://gaspwiki.com**. This repository holds its
 
 **Read the standard** at https://gaspwiki.com/v1/overview, or in the per-department files under `standard/metrics/`.
 
-**Give it to an agent.** The MCP server has seventeen tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model and three graph traversal tools.
+**Give it to an agent.** The MCP server has eighteen tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model, a mapping proposer and a Decide step that records the answers people give, and three graph traversal tools.
 
 ```json
 { "mcpServers": { "gasp": { "command": "npx", "args": ["-y", "gasp-standard-mcp"] } } }
 ```
 
-**Map your warehouse.** `standard/gasp-adapter-schema.json` describes the adapter file and `standard/exports/gasp-adapter-template.json` lists every field to fill in. `validate_adapter` checks a mapping and `generate_query` compiles a metric against it.
+**Map your warehouse.** `standard/gasp-adapter-schema.json` describes the adapter file and `standard/exports/gasp-adapter-template.json` lists every field to fill in. `validate_mapping` (also `validate_adapter`) checks a mapping and `generate_query` compiles a metric against it.
 
 **Load it into a semantic layer.** `standard/exports/ossie/` holds the Apache Ossie ontology, semantic model and mapping. `docs/ossie-spike.md` explains what the files contain and how the formulas were compiled into them.
 

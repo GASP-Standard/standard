@@ -6,7 +6,7 @@ import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate } from 
 
 // Runs the compiled SQL. The fixture (test/fixture) is loaded into an in-process
 // Postgres, every template is filled from the fixture's per-dataset adapter and
-// must return a value for June 2026, and 21 metrics are checked against values
+// must return a value for June 2026, and selected metrics are checked against values
 // computed in plain TypeScript over the same rows. The expected values never go through the compiler or the filler.
 
 const data = loadStandard();

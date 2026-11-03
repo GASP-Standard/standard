@@ -31,6 +31,12 @@ export const valueTypeName = (field: Pick<OntologyField, "id" | "type">): string
 export const ossieDataType = (type: OntologyField["type"]): OssieDataType =>
   ({ string: "String", enum: "String", decimal: "Decimal", integer: "Integer", boolean: "Boolean", date: "Date", timestamp: "DateTime" } as Record<string, OssieDataType>)[type] ?? "String";
 
+/** A lower-case identifier from free text: "Acme SaaS" to "acme_saas". */
+export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "company";
+
+/** The table name without its schema, lower-cased: "billing.customers" to "customers". */
+export const bareName = (table: string): string => table.split(".").pop()!.toLowerCase();
+
 export const physicalSource = (datasetId: string): string => `gasp.${datasetId}`;
 
 export const metricName = (formulaId: string, suffix?: string): string => `gasp_${formulaId}${suffix ? `_${suffix.toLowerCase()}` : ""}`;

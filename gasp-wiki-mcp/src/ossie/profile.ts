@@ -25,11 +25,12 @@
  * each dataset (with the listed enum values) so nothing is lost when the
  * mapping proposer (propose.ts) reads it next.
  */
-import { parseDocument } from "./adapt.js";
-import { GASP_VENDOR, OSSIE_DIALECT, OSSIE_VERSION, type OssieDataset, type OssieDataType, type OssieField, type OssieRelationship, type OssieSemanticModel } from "./types.js";
-import { ossieYaml } from "./index.js";
+import { type DialectName } from "../dialect.js";
 import type { StandardData } from "../types.js";
-import { ossieSchemaErrors } from "./adapt.js";
+import { ossieSchemaErrors, parseDocument } from "./adapt.js";
+import { ossieYaml } from "./index.js";
+import { bareName } from "./names.js";
+import { OSSIE_DIALECT, OSSIE_VERSION, writeGaspExtension, type OssieDataset, type OssieDataType, type OssieField, type OssieRelationship, type OssieSemanticModel } from "./types.js";
 
 // ── input ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,11 @@ export interface ColumnStats {
   max?: string | number;
   values?: Array<string | number>;
 }
+
+/** A table qualified by its schema, unless the schema is the warehouse's default one. */
+const inSchema = (schema: unknown, table: string): string => (typeof schema === "string" && schema && !["public", "main", "dbo"].includes(schema.toLowerCase()) ? `${schema}.${table}` : table);
+/** A nullable flag as information_schema or a tables list states it (YES, true, 1, or the opposite); nothing when it is not stated. */
+const nullableOf = (v: unknown): { nullable?: boolean } => (v === undefined ? {} : { nullable: !(v === false || /^(no|false|n|0)$/i.test(String(v))) });
 
 const pick = (row: Record<string, unknown>, ...keys: string[]): unknown => {
   for (const k of keys) {
@@ -115,13 +121,11 @@ function columnsFromRows(rows: Record<string, unknown>[], problems: string[]): S
     const table = pick(r, ...TABLE_KEYS);
     const column = pick(r, ...COLUMN_KEYS);
     if (typeof table !== "string" || typeof column !== "string") { problems.push(`row ${i + 1} has no table and column`); return; }
-    const schema = pick(r, ...SCHEMA_KEYS);
-    const nullable = pick(r, "is_nullable", "nullable");
     out.push({
-      table: typeof schema === "string" && schema && !["public", "main", "dbo"].includes(schema.toLowerCase()) ? `${schema}.${table}` : table,
+      table: inSchema(pick(r, ...SCHEMA_KEYS), table),
       column,
       type: String(pick(r, ...TYPE_KEYS) ?? "unknown"),
-      ...(nullable !== undefined ? { nullable: !(nullable === false || /^(no|false|n|0)$/i.test(String(nullable))) } : {}),
+      ...nullableOf(pick(r, "is_nullable", "nullable")),
     });
   });
   return out;
@@ -218,15 +222,14 @@ export function parseSchema(text: string | undefined): ParsedSchema | { error: s
         const name = pick(tbl, "name", "table", "table_name");
         const schema = pick(tbl, "schema", "table_schema");
         if (typeof name !== "string") { problems.push("a table entry has no name"); continue; }
-        const table = typeof schema === "string" && schema ? `${schema}.${name}` : name;
+        const table = inSchema(schema, name);
         const cols = tbl.columns;
         if (!Array.isArray(cols)) { problems.push(`table ${table} has no columns list`); continue; }
         for (const c of cols as Array<Record<string, unknown> | string>) {
           if (typeof c === "string") { columns.push({ table, column: c, type: "unknown" }); continue; }
           const column = pick(c, ...COLUMN_KEYS);
           if (typeof column !== "string") { problems.push(`table ${table} has a column without a name`); continue; }
-          const nullable = pick(c, "nullable", "is_nullable");
-          columns.push({ table, column, type: String(pick(c, ...TYPE_KEYS) ?? "unknown"), ...(nullable !== undefined ? { nullable: !(nullable === false || /^(no|false|n|0)$/i.test(String(nullable))) } : {}) });
+          columns.push({ table, column, type: String(pick(c, ...TYPE_KEYS) ?? "unknown"), ...nullableOf(pick(c, "nullable", "is_nullable")) });
         }
       }
       if (!columns.length) return { error: "The tables list holds no columns." };
@@ -269,12 +272,13 @@ export function parseStatistics(text: string | undefined): { stats: ColumnStats[
     const nulls = asNumber(pick(r, "nulls", "null_count"));
     const rowsN = asNumber(pick(r, "rows", "row_count", "count"));
     const nullRate = asNumber(pick(r, "null_rate", "null_fraction"));
+    const distinct = asNumber(pick(r, "distinct", "distinct_count", "n_distinct", "cardinality"));
     stats.push({
-      table: typeof schema === "string" && schema && !["public", "main", "dbo"].includes(schema.toLowerCase()) ? `${schema}.${table}` : table,
+      table: inSchema(schema, table),
       column,
       ...(rowsN !== undefined ? { rows: rowsN } : {}),
       ...(nulls !== undefined ? { nulls } : nullRate !== undefined && rowsN !== undefined ? { nulls: Math.round(nullRate * rowsN) } : {}),
-      ...(asNumber(pick(r, "distinct", "distinct_count", "n_distinct", "cardinality")) !== undefined ? { distinct: asNumber(pick(r, "distinct", "distinct_count", "n_distinct", "cardinality")) } : {}),
+      ...(distinct !== undefined ? { distinct } : {}),
       ...(pick(r, "min", "min_value") !== undefined ? { min: pick(r, "min", "min_value") as string | number } : {}),
       ...(pick(r, "max", "max_value") !== undefined ? { max: pick(r, "max", "max_value") as string | number } : {}),
       ...(Array.isArray(values) ? { values: values as Array<string | number> } : {}),
@@ -283,18 +287,25 @@ export function parseStatistics(text: string | undefined): { stats: ColumnStats[
   return { stats, problems };
 }
 
-/** The query that gathers the statistics the profiler reads, one row per column, in standard SQL every warehouse runs. */
-export function statisticsSql(columns: SchemaColumn[]): string {
+/**
+ * The query that gathers the statistics the profiler reads, one row per
+ * column. Identifiers are written unquoted, as the schema named them, so a
+ * name that needs quoting in the warehouse must be quoted by hand; the string
+ * type of the min and max columns follows the dialect (STRING on BigQuery and
+ * Databricks, VARCHAR elsewhere).
+ */
+export function statisticsSql(columns: SchemaColumn[], dialect?: DialectName): string {
+  const text = dialect === "bigquery" || dialect === "databricks" ? "STRING" : "VARCHAR";
   const byTable = new Map<string, SchemaColumn[]>();
   for (const c of columns) byTable.set(c.table, [...(byTable.get(c.table) ?? []), c]);
   const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
   const selects: string[] = [];
   for (const [table, cols] of byTable) {
     for (const c of cols) {
-      const col = `"${c.column}"`;
+      const col = c.column;
       // MIN and MAX are not defined on booleans in every warehouse, and mean nothing on opaque types.
       const ordered = !["Boolean", "Opaque"].includes(ossieTypeOf(c.type));
-      const bound = (fn: string) => (ordered ? `CAST(${fn}(${col}) AS VARCHAR)` : "CAST(NULL AS VARCHAR)");
+      const bound = (fn: string) => (ordered ? `CAST(${fn}(${col}) AS ${text})` : `CAST(NULL AS ${text})`);
       selects.push(`SELECT ${q(table)} AS table_name, ${q(c.column)} AS column_name, COUNT(*) AS row_count, COUNT(*) - COUNT(${col}) AS null_count, COUNT(DISTINCT ${col}) AS distinct_count, ${bound("MIN")} AS min_value, ${bound("MAX")} AS max_value FROM ${table}`);
     }
   }
@@ -302,7 +313,7 @@ export function statisticsSql(columns: SchemaColumn[]): string {
 }
 
 /** The query that lists a low-cardinality column's values, for the `values` statistic. */
-export const valuesSql = (table: string, column: string): string => `SELECT "${column}" AS value, COUNT(*) AS row_count FROM ${table} GROUP BY "${column}" ORDER BY row_count DESC;`;
+export const valuesSql = (table: string, column: string): string => `SELECT ${column} AS value, COUNT(*) AS row_count FROM ${table} GROUP BY ${column} ORDER BY row_count DESC;`;
 
 // ── inference ────────────────────────────────────────────────────────────────
 
@@ -313,7 +324,7 @@ export interface Inference<T> { value: T; confidence: Confidence; evidence: stri
 
 export interface Question {
   dataset: string;
-  about: "key" | "time" | "kind" | "enum" | "type";
+  about: "key" | "time" | "type";
   question: string;
   options?: string[];
   why: string;
@@ -352,9 +363,9 @@ export function ossieTypeOf(type: string): OssieDataType {
   if (/^(timestamptz|timestamp_tz|timestamp_ltz|timestamp with time zone|datetimeoffset)$/.test(t) || /with time zone/.test(t)) return "DateTimeTz";
   if (/^(timestamp|timestamp_ntz|datetime|datetime2|timestamp without time zone|smalldatetime)$/.test(t)) return "DateTime";
   if (/^date$/.test(t)) return "Date";
-  if (/^time(stamp)?$/.test(t) || /^time without time zone$/.test(t)) return t === "time" ? "Time" : "DateTime";
+  if (/^time$/.test(t) || /^time without time zone$/.test(t)) return "Time";
   if (/^(bool|boolean|bit)$/.test(t)) return "Boolean";
-  if (/^(int|integer|int2|int4|int8|bigint|smallint|tinyint|int64|serial|bigserial|number\s*\(\d+,\s*0\))$/.test(t) || /^(unsigned )?(big|small|tiny)?int/.test(t)) return "Integer";
+  if (/^(int|integer|int2|int4|int8|bigint|smallint|tinyint|int64|serial|bigserial)$/.test(t) || /^(unsigned )?(big|small|tiny)?int/.test(t)) return "Integer";
   if (/^(numeric|decimal|number|money|bignumeric)$/.test(t) || /^(numeric|decimal|number)\b/.test(t)) return "Decimal";
   if (/^(float|float4|float8|double|double precision|real|float64|binary_float|binary_double)$/.test(t)) return "Float";
   if (/^(varchar|char|character|character varying|text|string|nvarchar|nchar|clob|uuid|enum|citext|bpchar|varchar2)$/.test(t) || /^(var)?char/.test(t) || /text$/.test(t)) return "String";
@@ -364,7 +375,6 @@ export function ossieTypeOf(type: string): OssieDataType {
 const isDateType = (t: OssieDataType): boolean => t === "Date" || t === "DateTime" || t === "DateTimeTz";
 const isDateName = (c: string): boolean => /(_date|_at|_on|_ts|_time|_day|^date$|^as_of|^as_at|^snapshot|^period_start$|^period_end$)$/i.test(c) || /^(as_of|as_at|asof|asat|snap)/i.test(c);
 
-const bare = (table: string): string => table.split(".").pop()!.toLowerCase();
 /** Whether two words are the same up to an English plural (customer/customers, entry/entries, status/statuses). */
 export const sameWord = (a: string, b: string): boolean => {
   if (a === b) return true;
@@ -373,7 +383,7 @@ export const sameWord = (a: string, b: string): boolean => {
 };
 /** The table's words without a schema-like prefix (gasp_, raw_, stg_, dim_, fct_). */
 export function tableWords(table: string): string[] {
-  const words = bare(table).split(/[^a-z0-9]+/).filter(Boolean);
+  const words = bareName(table).split(/[^a-z0-9]+/).filter(Boolean);
   return words.length > 1 && /^(gasp|raw|stg|src|dim|fct|fact|tbl|tb|t|v|vw)$/.test(words[0]) ? words.slice(1) : words;
 }
 /** Whether a column stem names the table: its whole name or its last word, singular or plural. */
@@ -387,7 +397,7 @@ function statFor(t: TableInfo, column: string): ColumnStats | undefined { return
 const uniqueIn = (s: ColumnStats | undefined, rows: number | undefined): boolean | undefined =>
   s?.distinct === undefined || rows === undefined ? undefined : s.distinct === rows && (s.nulls ?? 0) === 0;
 
-function inferTime(t: TableInfo, kindHint: DatasetKind | undefined): Inference<string> | { question: Question } | undefined {
+function inferTime(t: TableInfo): Inference<string> | { question: Question } | undefined {
   const words = tableWords(t.table);
   const cands = t.columns.filter((c) => isDateType(ossieTypeOf(c.type)) || ((ossieTypeOf(c.type) === "Opaque" || ossieTypeOf(c.type) === "String") && isDateName(c.column)));
   if (!cands.length) return undefined;
@@ -427,9 +437,9 @@ function inferTime(t: TableInfo, kindHint: DatasetKind | undefined): Inference<s
   if (!runnersUp.length) return { value: top.c.column, confidence: top.s[0] >= 60 ? "high" : "medium", evidence: `${top.s[1]}; ${scored.slice(1).map((x) => x.c.column).join(", ")} ${scored.length === 2 ? "is a later or secondary date" : "are later or secondary dates"}` };
   return {
     question: {
-      dataset: bare(t.table),
+      dataset: bareName(t.table),
       about: "time",
-      question: `Which column places a row of ${t.table} in time${kindHint === "snapshot" ? " (the snapshot date)" : ""}?`,
+      question: `Which column places a row of ${t.table} in time?`,
       options: [top.c.column, ...runnersUp.map((x) => x.c.column)],
       why: `${[top, ...runnersUp].map((x) => `${x.c.column} (${x.s[1]})`).join(", ")} rank alike by name; the column with no nulls and the widest range is usually it`,
     },
@@ -438,7 +448,7 @@ function inferTime(t: TableInfo, kindHint: DatasetKind | undefined): Inference<s
 
 function inferKind(t: TableInfo, time: string | undefined, key: string[] | undefined): Inference<DatasetKind> {
   const names = t.columns.map((c) => c.column.toLowerCase());
-  const b = bare(t.table);
+  const b = bareName(t.table);
   const dated = t.columns.some((c) => isDateType(ossieTypeOf(c.type)));
   if (!time && dated) {
     if (names.some((n) => SNAPSHOT_NAME.test(n))) return { value: "snapshot", confidence: "medium", evidence: "has a snapshot-named date column; which column is the time field is a question" };
@@ -513,7 +523,7 @@ function inferKey(t: TableInfo, declared: DeclaredKey | undefined, time: string 
     if (alone.length === 1) return alone[0];
     if (covering.length === 1) return covering[0];
     if (covering.length > 1) {
-      return { question: { dataset: bare(t.table), about: "key", question: `Which identifies a row of ${t.table}: ${covering.map((r) => r.value.join(", ")).join(" or ")}?`, options: covering.map((r) => r.value.join(", ")), why: `each covers the ${t.rows} rows alike (${covering.map((r) => `${r.value[0]}: ${statFor(t, r.value[0])!.distinct} distinct`).join(", ")}), so the statistics cannot tell them apart` } };
+      return { question: { dataset: bareName(t.table), about: "key", question: `Which identifies a row of ${t.table}: ${covering.map((r) => r.value.join(", ")).join(" or ")}?`, options: covering.map((r) => r.value.join(", ")), why: `each covers the ${t.rows} rows alike (${covering.map((r) => `${r.value[0]}: ${statFor(t, r.value[0])!.distinct} distinct`).join(", ")}), so the statistics cannot tell them apart` } };
     }
     const ts = time ? statFor(t, time) : undefined;
     if (time && ts?.distinct !== undefined && ts.distinct === t.rows) return { value: [time], confidence: "high", evidence: `${time} is unique: one row per period` };
@@ -530,12 +540,12 @@ function inferKey(t: TableInfo, declared: DeclaredKey | undefined, time: string 
   if (!cands.length && period && t.rows === undefined) {
     const dims = t.columns.filter((c) => ossieTypeOf(c.type) === "String" && !isDateName(c.column));
     if (!dims.length) return { value: [time!], confidence: "medium", evidence: `no id column and one row per ${time} as far as the names say` };
-    return { question: { dataset: bare(t.table), about: "key", question: `What identifies a row of ${t.table} within one ${time}: ${time} alone, or ${time} with one of ${dims.map((d) => d.column).join(", ")}?`, options: [time!, ...dims.map((d) => `${time}, ${d.column}`)], why: "no id column; the statistics (distinct counts) would settle it" } };
+    return { question: { dataset: bareName(t.table), about: "key", question: `What identifies a row of ${t.table} within one ${time}: ${time} alone, or ${time} with one of ${dims.map((d) => d.column).join(", ")}?`, options: [time!, ...dims.map((d) => `${time}, ${d.column}`)], why: "no id column; the statistics (distinct counts) would settle it" } };
   }
-  if (!cands.length) return { question: { dataset: bare(t.table), about: "key", question: `What identifies a row of ${t.table}?`, options: t.columns.map((c) => c.column), why: "no column is named like a key and no PRIMARY KEY is declared" } };
+  if (!cands.length) return { question: { dataset: bareName(t.table), about: "key", question: `What identifies a row of ${t.table}?`, options: t.columns.map((c) => c.column), why: "no column is named like a key and no PRIMARY KEY is declared" } };
   return {
     question: {
-      dataset: bare(t.table),
+      dataset: bareName(t.table),
       about: "key",
       question: `Which column identifies a row of ${t.table}?`,
       options: cands.map((c) => c.column),
@@ -557,7 +567,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
   }
   const unknownStats: string[] = [];
   for (const s of stats) {
-    const t = tables.get(s.table) ?? [...tables.values()].find((x) => bare(x.table) === bare(s.table));
+    const t = tables.get(s.table) ?? [...tables.values()].find((x) => bareName(x.table) === bareName(s.table));
     if (!t) { unknownStats.push(`${s.table}.${s.column}`); continue; }
     if (!t.columns.some((c) => c.column === s.column)) { unknownStats.push(`${s.table}.${s.column}`); continue; }
     t.stats.set(s.column, s);
@@ -567,8 +577,8 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
 
   // Dataset names: the bare table name, qualified by its schema only when two tables share one.
   const nameCount = new Map<string, number>();
-  for (const t of tables.keys()) nameCount.set(bare(t), (nameCount.get(bare(t)) ?? 0) + 1);
-  const dsName = (table: string) => ((nameCount.get(bare(table)) ?? 0) > 1 ? table.toLowerCase().replace(/[^a-z0-9]+/g, "_") : bare(table).replace(/[^a-z0-9]+/g, "_"));
+  for (const t of tables.keys()) nameCount.set(bareName(t), (nameCount.get(bareName(t)) ?? 0) + 1);
+  const dsName = (table: string) => ((nameCount.get(bareName(table)) ?? 0) > 1 ? table.toLowerCase().replace(/[^a-z0-9]+/g, "_") : bareName(table).replace(/[^a-z0-9]+/g, "_"));
 
   const datasets: DatasetProfile[] = [];
   const modelDatasets: OssieDataset[] = [];
@@ -576,7 +586,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
   for (const t of tables.values()) {
     const questions: Question[] = [];
     const declared = schema.keys.find((k) => k.table === t.table);
-    const timeR = inferTime(t, undefined);
+    const timeR = inferTime(t);
     const time = timeR && "question" in timeR ? undefined : timeR;
     if (timeR && "question" in timeR) questions.push(timeR.question);
     const keyR = inferKey(t, declared, time?.value, tables);
@@ -586,6 +596,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
       questions.push({ dataset: dsName(t.table), about: "key", question: `Is ${key.value.join(", ")} the key of ${t.table}, or is there a composite key?`, options: [key.value.join(", "), ...(time && !key.value.includes(time.value) ? [`${key.value.join(", ")}, ${time.value}`] : [])], why: key.evidence });
       key = undefined;
     }
+    for (const q of questions) q.dataset = dsName(t.table);
     const kind = inferKind(t, time?.value, key?.value);
     const enums: DatasetProfile["enums"] = [];
     const enumCandidates: string[] = [];
@@ -618,7 +629,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
       ...(key ? { primary_key: key.value } : {}),
       description: `${t.table}: ${kind.value === "reference" ? "a reference table" : `a ${kind.value} table`}${time ? ` placed in time by ${time.value}` : ""}; profiled from the schema${t.stats.size ? " and statistics" : ""}.`,
       fields,
-      custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ profile: { kind: kind.value, confidence: { kind: kind.confidence, ...(key ? { key: key.confidence } : {}), ...(time ? { time: time.confidence } : {}) }, evidence: { kind: kind.evidence, ...(key ? { key: key.evidence } : {}), ...(time ? { time: time.evidence } : {}) }, questions: questions.length, ...(enums.length ? { values: Object.fromEntries(enums.map((e) => [e.column, e.values])) } : {}) } }) }],
+      custom_extensions: writeGaspExtension(undefined, { profile: { kind: kind.value, confidence: { kind: kind.confidence, ...(key ? { key: key.confidence } : {}), ...(time ? { time: time.confidence } : {}) }, evidence: { kind: kind.evidence, ...(key ? { key: key.evidence } : {}), ...(time ? { time: time.evidence } : {}) }, questions, ...(enums.length ? { values: Object.fromEntries(enums.map((e) => [e.column, e.values])) } : {}) } }),
     });
   }
 
@@ -635,7 +646,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
       let confidence: Confidence = "medium";
       let evidence = "";
       if (c.references) {
-        target = tables.get(c.references.table) ?? [...tables.values()].find((x) => bare(x.table) === bare(c.references!.table));
+        target = tables.get(c.references.table) ?? [...tables.values()].find((x) => bareName(x.table) === bareName(c.references!.table));
         if (!target) { problems.push(`${t.table}.${c.column} references ${c.references.table}, which the schema does not hold`); continue; }
         toColumn = c.references.column ?? keyOf.get(target.table)?.[0];
         confidence = "declared";
@@ -646,7 +657,8 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
         target = targetFor(stem, t);
         if (!target) continue;
         const k = keyOf.get(target.table);
-        const tk = k?.filter((x) => !datasets.find((d) => d.source === target!.table)?.time || x !== datasets.find((d) => d.source === target!.table)!.time!.value);
+        const targetTime = datasets.find((d) => d.source === target!.table)?.time?.value;
+        const tk = k?.filter((x) => x !== targetTime);
         if (!tk || tk.length !== 1) continue;
         toColumn = tk[0];
         evidence = `${c.column} names ${target.table}, whose key is ${toColumn}`;
@@ -666,7 +678,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
     description: `${organization}'s warehouse profiled from its schema${stats.length ? " and column statistics" : ""} by the GASP profiler: ${datasets.length} datasets, ${modelRelationships.length} relationships, ${questions.length} open questions.`,
     datasets: modelDatasets,
     ...(modelRelationships.length ? { relationships: modelRelationships } : {}),
-    custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ profiled: { input: schema.format, statistics: stats.length > 0, questions: questions.length } }) }],
+    custom_extensions: writeGaspExtension(undefined, { profiled: { input: schema.format, statistics: stats.length > 0, questions: questions.length } }),
   };
   const errors = ossieSchemaErrors(model, "model", data);
   if (errors?.length) problems.push(...errors.map((e) => `model: ${e}`));
@@ -693,7 +705,7 @@ export function formatProfileReport(r: ProfileResult): string {
     lines.push(d.key ? `- key: ${d.key.value.join(", ")} (${conf(d.key.confidence)}: ${d.key.evidence})` : "- key: not set (see the questions)");
     lines.push(d.time ? `- time: ${d.time.value} (${conf(d.time.confidence)}: ${d.time.evidence})` : d.kind.value === "reference" ? "- time: none" : "- time: not set (see the questions)");
     for (const e of d.enums) lines.push(`- ${e.column}: one of ${e.values.join(", ")}`);
-    if (d.enumCandidates.length) lines.push(`- values to list (a short repeated list each; see valuesSql): ${d.enumCandidates.join(", ")}`);
+    if (d.enumCandidates.length) lines.push(`- values to list (a short repeated list each; add their values to the statistics): ${d.enumCandidates.join(", ")}`);
   }
   if (r.relationships.length) {
     lines.push("", `## Relationships (${r.relationships.length})`, "");
@@ -712,13 +724,15 @@ export function formatProfileReport(r: ProfileResult): string {
 export interface ProfileOptions {
   organization?: string;
   output?: "report" | "model" | "json" | "statistics";
+  /** The warehouse dialect the statistics query is written for */
+  dialect?: DialectName;
 }
 
 /** The tool: the schema text and optional statistics text to the report, the model, both as JSON or the statistics query. */
 export function profileSchemaFromText(schemaText: string | undefined, statisticsText: string | undefined, data: StandardData, opts: ProfileOptions = {}): string {
   const schema = parseSchema(schemaText);
   if ("error" in schema) return schema.error;
-  if (opts.output === "statistics") return `-- Run on your warehouse and pass the result rows as \`statistics\` (JSON or CSV). Then, for each text column the result shows with up to 20 distinct values, list its values:\n-- ${valuesSql("<table>", "<column>")}\n${statisticsSql(schema.columns)}`;
+  if (opts.output === "statistics") return `-- Run on your warehouse and pass the result rows as \`statistics\` (JSON or CSV). Then, for each text column the result shows with up to 20 distinct values, list its values:\n-- ${valuesSql("<table>", "<column>")}\n${statisticsSql(schema.columns, opts.dialect)}`;
   const stats = parseStatistics(statisticsText);
   if ("error" in stats) return stats.error;
   const r = profileSchema(schema, stats.stats, data, { organization: opts.organization });

@@ -19,20 +19,15 @@
  */
 import { parse as parseYaml } from "yaml";
 import type { ValidateFunction } from "ajv";
-import { checkAdapter, formatSchemaError, formatValidationReport, newAjv, resolveAdapter, type Adapter, type AdapterValidation, type Mapping } from "../tools.js";
+import { checkAdapter, columnOf, formatSchemaError, formatValidationReport, newAjv, resolveAdapter, tableOf, type Adapter, type AdapterValidation, type Mapping } from "../tools.js";
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
-import { ossieDataType } from "./names.js";
+import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
-import { OSSIE_DIALECT, OSSIE_VERSION, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel } from "./types.js";
+import { GASP_VENDOR, OSSIE_DIALECT, OSSIE_VERSION, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel } from "./types.js";
 
 export const GASP_ONTOLOGY_IRI = "https://gaspwiki.com/downloads/ossie/gasp.ontology.yaml";
-const GASP_VENDOR = "GASP";
-
-const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "company";
-const tableOf = (ref: string): string => ref.split(".").slice(0, -1).join(".");
-const columnOf = (ref: string): string => ref.split(".").pop() ?? ref;
 const REF = /^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/;
 
 export const isV1Adapter = (doc: unknown): doc is Adapter =>
@@ -67,10 +62,11 @@ export interface OssieForm {
   refs: ModelRefs;
 }
 
-export const expressionText = (f: OssieField): string | undefined => {
-  const e = f.expression as { dialects?: Array<{ expression?: string }>; sql?: string } | string;
+/** The portable text of a field's or metric's expression: `sql` first (authoritative upstream), else the OSSIE_SQL_2026 dialect, else the first dialect. */
+export const expressionText = (f: Pick<OssieField, "expression">): string | undefined => {
+  const e = f.expression as { dialects?: Array<{ dialect?: string; expression?: string }>; sql?: string } | string;
   if (typeof e === "string") return e;
-  return e?.dialects?.[0]?.expression ?? e?.sql;
+  return e?.sql ?? (e?.dialects?.find((d) => d.dialect === OSSIE_DIALECT) ?? e?.dialects?.[0])?.expression;
 };
 
 /** A v1 adapter as the two Ossie documents: the company's model and the GASP mapping onto it. */
@@ -209,9 +205,7 @@ export function resolveMapping(mapping: OssieMapping, model: OssieSemanticModel 
     (cm.link_mappings ?? []).forEach((lm, i) => walk(lm, 1, `concept "${cm.concept}" link mapping ${i + 1}`));
   }
 
-  let meta: { adapter_version?: string; organization?: string; warehouse?: string; metricOwners?: Adapter["metricOwners"] } = {};
-  const ext = mapping.custom_extensions?.find((e) => e.vendor_name === GASP_VENDOR)?.data;
-  if (typeof ext === "string") { try { meta = JSON.parse(ext); } catch { /* ignore */ } }
+  const meta = readGaspExtension<{ adapter_version?: string; organization?: string; warehouse?: string; metricOwners?: Adapter["metricOwners"] }>(mapping.custom_extensions) ?? {};
   const adapter: Adapter = {
     version: "1.1",
     organization: meta.organization ?? mapping.semantic_model_ref?.name?.replace(/ semantic model$/i, "") ?? undefined,

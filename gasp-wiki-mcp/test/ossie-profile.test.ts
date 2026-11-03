@@ -19,19 +19,16 @@ import { formatProfileReport, ossieTypeOf, parseCsv, parseSchema, parseStatistic
 import { uvAvailable, validateUpstream } from "../src/ossie/validate.js";
 import { TABLES, columnName } from "../src/synthetic.js";
 import { fixtureDb } from "./fixture-db.js";
+import { acmeDdl, informationSchema, parsedSchema } from "./ossie-helpers.js";
 
 const data = loadStandard();
-const acmeDdl = readFileSync(join(process.cwd(), "test", "fixture", "acme-schema.sql"), "utf-8");
 
 let db: PGlite;
 let schema: ParsedSchema;
 let stats: ColumnStats[];
 beforeAll(async () => {
   db = await fixtureDb();
-  const cols = await db.query<Record<string, unknown>>("SELECT table_name, column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position");
-  const parsed = parseSchema(JSON.stringify(cols.rows));
-  if ("error" in parsed) throw new Error(parsed.error);
-  schema = parsed;
+  schema = parsedSchema(await informationSchema(db));
   // The statistics as an agent would gather them: the tool's query, then the values of every short text column it names.
   const rows = (await db.query<Record<string, unknown>>(statisticsSql(schema.columns).replace(/;$/, ""))).rows;
   for (const r of rows) {
@@ -165,6 +162,12 @@ describe("Profile: the Acme DDL", () => {
   });
   const ds = (name: string) => r.datasets.find((d) => d.name === name)!;
 
+  it("names a question's dataset as the model names the table, also when two schemas share a table name", () => {
+    const r = profileSchema(parsedSchema("CREATE TABLE crm.events (account_id VARCHAR, workspace_id VARCHAR, occurred_at TIMESTAMP);\nCREATE TABLE billing.events (account_id VARCHAR, workspace_id VARCHAR, occurred_at TIMESTAMP);"), [], data);
+    expect(r.model.datasets.map((d) => d.name)).toEqual(["crm_events", "billing_events"]);
+    expect(r.questions.map((q) => q.dataset)).toEqual(["crm_events", "billing_events"]);
+  });
+
   it("reads the tables, the declared keys and the references", () => {
     expect(r.format).toBe("ddl");
     expect(r.datasets.map((d) => `${d.name}=${d.source}`)).toEqual(["subscriptions=billing.subscriptions", "mrr_movements=billing.mrr_movements", "customers=billing.customers", "invoices=billing.invoices", "plan_prices=billing.plan_prices", "usage_daily=analytics.usage_daily"]);
@@ -245,8 +248,10 @@ describe("Profile: input shapes", () => {
 
   it("writes the statistics query in standard SQL, one row per column, without MIN or MAX on booleans", () => {
     const sql = statisticsSql([{ table: "t", column: "a", type: "text" }, { table: "t", column: "ok", type: "boolean" }]);
-    expect(sql).toContain(`SELECT 't' AS table_name, 'a' AS column_name, COUNT(*) AS row_count, COUNT(*) - COUNT("a") AS null_count, COUNT(DISTINCT "a") AS distinct_count, CAST(MIN("a") AS VARCHAR) AS min_value, CAST(MAX("a") AS VARCHAR) AS max_value FROM t`);
-    expect(sql).toContain(`COUNT(DISTINCT "ok") AS distinct_count, CAST(NULL AS VARCHAR) AS min_value, CAST(NULL AS VARCHAR) AS max_value FROM t;`);
+    expect(sql).toContain(`SELECT 't' AS table_name, 'a' AS column_name, COUNT(*) AS row_count, COUNT(*) - COUNT(a) AS null_count, COUNT(DISTINCT a) AS distinct_count, CAST(MIN(a) AS VARCHAR) AS min_value, CAST(MAX(a) AS VARCHAR) AS max_value FROM t`);
+    expect(sql).toContain(`COUNT(DISTINCT ok) AS distinct_count, CAST(NULL AS VARCHAR) AS min_value, CAST(NULL AS VARCHAR) AS max_value FROM t;`);
+    expect(statisticsSql([{ table: "t", column: "a", type: "text" }], "bigquery")).toContain("CAST(MIN(a) AS STRING)"); // BigQuery and Databricks have no VARCHAR cast
+    expect(valuesSql("billing.plans", "tier")).toBe("SELECT tier AS value, COUNT(*) AS row_count FROM billing.plans GROUP BY tier ORDER BY row_count DESC;");
   });
 
   it("matches words across plurals and maps types across warehouses", () => {

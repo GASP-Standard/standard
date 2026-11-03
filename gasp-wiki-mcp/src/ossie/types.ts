@@ -10,16 +10,27 @@ export const OSSIE_VERSION = "0.2.0.dev0";
 export const OSSIE_DIALECT = "OSSIE_SQL_2026";
 export const GASP_VENDOR = "GASP";
 
+export interface OssieExtension {
+  vendor_name: string;
+  data: string;
+}
+
+/** A document's GASP extension, parsed; undefined when absent or not JSON. */
+export function readGaspExtension<T = Record<string, unknown>>(exts: OssieExtension[] | undefined): T | undefined {
+  const e = exts?.find((x) => x.vendor_name === GASP_VENDOR)?.data;
+  if (typeof e !== "string") return undefined;
+  try { return JSON.parse(e) as T; } catch { return undefined; }
+}
+
+/** The extensions with the GASP one set to `value`, first; other vendors kept. */
+export function writeGaspExtension(exts: OssieExtension[] | undefined, value: unknown): OssieExtension[] {
+  return [{ vendor_name: GASP_VENDOR, data: JSON.stringify(value) }, ...(exts ?? []).filter((x) => x.vendor_name !== GASP_VENDOR)];
+}
+
 export type OssieDataType = "String" | "Integer" | "Decimal" | "Float" | "Boolean" | "Date" | "Time" | "DateTime" | "DateTimeTz" | "Opaque";
 
 export interface OssieExpression {
   dialects: Array<{ dialect: string; expression: string }>;
-}
-
-export interface OssieExtension {
-  vendor_name: string;
-  /** JSON string */
-  data: string;
 }
 
 export interface OssieAIContext {

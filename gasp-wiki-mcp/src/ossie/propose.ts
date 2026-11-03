@@ -26,19 +26,21 @@
  * listed at all, so the agent sees the column as unmatched. The mapping comes
  * back as an Ossie mapping over the model (a transform becomes a calculated
  * field in the model, as `adapterToOssie` does), ready for `validate_mapping`,
- * and as the v1 adapter shape when asked.
+ * and as the v1 adapter shape when asked. The candidates and the unmatched
+ * tables travel in full in the mapping's GASP extension, so the Decide step
+ * (decide.ts) can list what is open from the documents alone.
  */
 import { fuzzyScore, words } from "../fuzzy.js";
 import type { OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { checkAdapter, type Adapter } from "../tools.js";
-import { GASP_ONTOLOGY_IRI, isOssieModel, ossieSchemaErrors, parseDocument, resolveMapping } from "./adapt.js";
+import { GASP_ONTOLOGY_IRI, expressionText, isOssieModel, ossieSchemaErrors, parseDocument, resolveMapping } from "./adapt.js";
 import { checkExport } from "./check.js";
 import { ossieYaml } from "./index.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
-import { ossieDataType } from "./names.js";
+import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
 import { parseSchema, parseStatistics, profileSchema, sameWord, tableWords, type Confidence, type DatasetKind } from "./profile.js";
-import { GASP_VENDOR, OSSIE_DIALECT, type OssieDataType, type OssieDataset, type OssieField, type OssieMapping, type OssieSemanticModel } from "./types.js";
+import { OSSIE_DIALECT, readGaspExtension, writeGaspExtension, type OssieDataType, type OssieDataset, type OssieField, type OssieMapping, type OssieSemanticModel } from "./types.js";
 
 // ── vocabulary ───────────────────────────────────────────────────────────────
 
@@ -131,7 +133,7 @@ function compatible(column: OssieDataType | undefined, field: string): boolean {
 
 // ── the model as the proposer reads it ───────────────────────────────────────
 
-interface Column {
+export interface Column {
   name: string;
   datatype?: OssieDataType;
   /** Listed values (from the profile, or `ai_context.instructions` "One of ...") */
@@ -140,7 +142,7 @@ interface Column {
   bare: boolean;
 }
 
-interface Table {
+export interface Table {
   name: string;
   source: string;
   columns: Column[];
@@ -150,14 +152,12 @@ interface Table {
   time?: string;
 }
 
-function readModel(model: OssieSemanticModel): Table[] {
+/** The model as the proposer and the Decide step read it: one table per dataset with the profile's kind, key, time field and listed values. */
+export function readModel(model: OssieSemanticModel): Table[] {
   return model.datasets.map((d) => {
-    let profile: { kind?: DatasetKind; confidence?: { kind?: Confidence }; values?: Record<string, string[]> } = {};
-    const ext = d.custom_extensions?.find((e) => e.vendor_name === GASP_VENDOR)?.data;
-    if (typeof ext === "string") { try { profile = (JSON.parse(ext) as { profile?: typeof profile }).profile ?? {}; } catch { /* not ours */ } }
+    const profile = readGaspExtension<{ profile?: { kind?: DatasetKind; confidence?: { kind?: Confidence }; values?: Record<string, string[]> } }>(d.custom_extensions)?.profile ?? {};
     const columns: Column[] = (d.fields ?? []).map((f) => {
-      const expr = f.expression as { dialects?: Array<{ expression?: string }> } | string | undefined;
-      const text = typeof expr === "string" ? expr : expr?.dialects?.[0]?.expression;
+      const text = expressionText(f);
       const hint = typeof f.ai_context === "object" ? f.ai_context?.instructions : undefined;
       const listed = profile.values?.[f.name] ?? (typeof hint === "string" ? hint.match(/^One of (.+)$/)?.[1]?.split(", ") : undefined);
       return { name: f.name, datatype: f.datatype, ...(listed?.length ? { values: listed.map(String) } : {}), bare: !text || text.trim() === f.name };
@@ -193,10 +193,6 @@ function nameScore(column: string, f: OntologyField): { score: number; evidence:
   if (FIELD_SYNONYMS[f.id]?.includes(col) || FIELD_SYNONYMS[f.id]?.includes(cw.join("_"))) return { score: 0.9, evidence: `a synonym of ${f.id}` };
   const fw = f.id.split("_");
   if (sameWords(cw, fw)) return { score: 0.9, evidence: "the same words in another order" };
-  // A status or type column named for the dataset's one status or type field.
-  if (/^(status|state|type|kind|stage)$/.test(cw[cw.length - 1]) && fw[fw.length - 1] === cw[cw.length - 1]) {
-    if (cw.length === 1) return { score: 0.88, evidence: `the dataset's ${cw[0]} field` };
-  }
   const dated = ["date", "timestamp"].includes(f.type);
   const strip = (ws: string[]) => (dated && ws.length > 1 ? ws.filter((w) => !DATE_WORDS.has(w)) : ws).filter((w) => w !== "id" || ws.length === 1);
   const a = strip(cw).join(" "), b = strip(fw).join(" ");
@@ -230,16 +226,28 @@ function enumFit(values: string[] | undefined, f: OntologyField): { ok: boolean;
   };
 }
 
-/** Every column of the table against every field of the GASP dataset, assigned greedily, best pair first. */
-function matchColumns(t: Table, meta: OntologyDataset, fields: OntologyField[]): FieldMatch[] {
+/**
+ * Every column of the table against every field of the GASP dataset, assigned
+ * greedily, best pair first. A column ending in status, type, kind or stage
+ * that names no field is the dataset's field of that suffix when there is one
+ * such field, or the one named for the dataset (`partner_status` on partner)
+ * when there are several.
+ */
+export function matchColumns(t: Table, ds: string, meta: OntologyDataset, fields: OntologyField[]): FieldMatch[] {
   const pairs: FieldMatch[] = [];
   const keyColumns = t.key.filter((k) => k !== t.time);
+  const suffixField = (word: string): OntologyField | undefined => {
+    const ending = fields.filter((x) => x.id.endsWith(`_${word}`));
+    return ending.length === 1 ? ending[0] : ending.find((x) => x.id === `${ds}_${word}`);
+  };
   for (const c of t.columns) {
     if (!c.bare || c.datatype === "Opaque") continue;
+    const cw = columnWords(c.name);
+    const last = cw[cw.length - 1];
+    const suffix = /^(status|type|kind|stage)$/.test(last) && !fields.some((x) => x.id === c.name.toLowerCase()) ? suffixField(last) : undefined;
     for (const f of fields) {
       let best: { score: number; evidence: string; cents?: boolean } | undefined = nameScore(c.name, f);
-      const last = columnWords(c.name).slice(-1)[0];
-      if (!best && /^(status|type|kind|stage)$/.test(last) && f.id.endsWith(`_${last}`) && fields.filter((x) => x.id.endsWith(`_${last}`)).length === 1 && !fields.some((x) => x.id === c.name.toLowerCase())) best = { score: 0.88, evidence: `the dataset's one ${last} field` };
+      if (suffix === f && (!best || best.score < 0.88)) best = { score: 0.88, evidence: `the dataset's ${cw.length === 1 && f.id === `${ds}_${last}` ? "own" : "one"} ${last} field` };
       if (c.name === t.time && f.id === meta.date) best = { score: Math.max(0.95, best?.score ?? 0), evidence: best?.score === 1 ? "same name; the table's time field" : "the table's time field is the dataset's date" };
       else if (keyColumns.length === 1 && c.name === keyColumns[0] && f.id === meta.key) best = { score: Math.max(0.95, best?.score ?? 0), evidence: best?.score === 1 ? "same name; the table's key" : "the table's key is the dataset's key" };
       if (!best) continue;
@@ -273,6 +281,8 @@ export interface DatasetMatch {
   source: string;
   dataset: string;
   score: number;
+  /** How well the table's name matches the dataset's, 0 to 1 */
+  name: number;
   confidence: Confidence;
   evidence: string;
   fields: FieldMatch[];
@@ -281,7 +291,7 @@ export interface DatasetMatch {
 }
 
 function scoreDataset(t: Table, ds: string, meta: OntologyDataset, fields: OntologyField[]): Omit<DatasetMatch, "confidence"> {
-  const matches = matchColumns(t, meta, fields);
+  const matches = matchColumns(t, ds, meta, fields);
   const usable = t.columns.filter((c) => c.bare && c.datatype !== "Opaque");
   const tableCoverage = usable.length ? matches.length / usable.length : 0;
   const datasetCoverage = fields.length ? matches.length / fields.length : 0;
@@ -299,7 +309,7 @@ function scoreDataset(t: Table, ds: string, meta: OntologyDataset, fields: Ontol
     time ? `its time field is the dataset's ${meta.date}` : "",
     name >= 0.8 ? "the name matches" : "",
   ].filter(Boolean);
-  return { table: t.name, source: t.source, dataset: ds, score, evidence: parts.join(", "), fields: matches, unmatched: usable.filter((c) => !matches.some((m) => m.column === c.name)).map((c) => c.name) };
+  return { table: t.name, source: t.source, dataset: ds, score, name, evidence: parts.join(", "), fields: matches, unmatched: usable.filter((c) => !matches.some((m) => m.column === c.name)).map((c) => c.name) };
 }
 
 // ── the proposal ─────────────────────────────────────────────────────────────
@@ -332,7 +342,11 @@ export interface ProposalResult {
   problems: string[];
 }
 
-const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "company";
+/** The calculated field a transform becomes: named for the GASP field (`<id>_gasp` when the dataset has a field of that name), the transform over the column. */
+export function calculatedField(existing: OssieField[], field: OntologyField, column: string, transform: string, why: string): OssieField {
+  const name = existing.some((x) => x.name === field.id) ? `${field.id}_gasp` : field.id;
+  return { name, expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: transform.replace(/\{\{value\}\}/g, column) }] }, datatype: ossieDataType(field.type), description: `GASP ${field.id} from ${column}: ${why}` };
+}
 
 /** Propose a GASP mapping over a semantic model, profiled or a company's own. */
 export function proposeMapping(model: OssieSemanticModel, data: StandardData, opts: { organization?: string } = {}): ProposalResult {
@@ -353,10 +367,10 @@ export function proposeMapping(model: OssieSemanticModel, data: StandardData, op
     const usable = t.columns.filter((c) => c.bare && c.datatype !== "Opaque").length;
     const high = m.fields.filter((f) => f.confidence === "high").length;
     const kindOk = !t.kind || t.kind === meta.kind || t.kindConfidence === "low";
-    const anchored = m.fields.some((f) => f.confidence === "high" && (f.field === meta.key || f.field === meta.date)) || m.evidence.includes("the name matches");
+    const anchored = m.fields.some((f) => f.confidence === "high" && (f.field === meta.key || f.field === meta.date)) || m.name >= 0.8;
     if (kindOk && usable && high / usable >= 0.5 && anchored && m.score - (runnerUp ?? 0) >= 0.1) return "high";
     // A candidate needs more than its time field and a shared key column: two further named fields, or the name.
-    if (m.score >= 0.35 && (high - (m.fields.some((f) => f.field === meta.date && f.confidence === "high") ? 1 : 0) >= 3 || m.evidence.includes("the name matches"))) return "medium";
+    if (m.score >= 0.35 && (high - (m.fields.some((f) => f.field === meta.date && f.confidence === "high") ? 1 : 0) >= 3 || m.name >= 0.8)) return "medium";
     return "low";
   };
   const proposed: DatasetMatch[] = [];
@@ -391,10 +405,9 @@ export function proposeMapping(model: OssieSemanticModel, data: StandardData, op
     const extra: OssieField[] = [];
     for (const f of p?.fields ?? []) {
       if (!f.transform) continue;
-      const field = fieldById.get(f.field)!;
-      const name = (d.fields ?? []).some((x) => x.name === f.field) ? `${f.field}_gasp` : f.field;
-      extra.push({ name, expression: { dialects: [{ dialect: OSSIE_DIALECT, expression: f.transform.replace(/\{\{value\}\}/g, f.column) }] }, datatype: ossieDataType(field.type), description: `GASP ${f.field} from ${f.column}: ${f.evidence}` });
-      f.modelField = name;
+      const calc = calculatedField([...(d.fields ?? []), ...extra], fieldById.get(f.field)!, f.column, f.transform, f.evidence);
+      extra.push(calc);
+      f.modelField = calc.name;
     }
     return extra.length ? { ...d, fields: [...(d.fields ?? []), ...extra] } : d;
   });
@@ -411,7 +424,7 @@ export function proposeMapping(model: OssieSemanticModel, data: StandardData, op
     datasets: proposed.map((p) => p.dataset),
     include: (ds, f) => Boolean(names[ds]?.[f]),
     expr: (ds, f) => `${names[ds][f].dataset}.${names[ds][f].field}`,
-    custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ organization, proposed: { datasets: proposed.length, fields: proposed.reduce((n, p) => n + p.fields.length, 0), transforms: proposed.reduce((n, p) => n + p.fields.filter((f) => f.transform).length, 0), candidates: candidates.length } }) }],
+    custom_extensions: writeGaspExtension(undefined, { organization, proposed: { datasets: proposed.length, fields: proposed.reduce((n, p) => n + p.fields.length, 0), transforms: proposed.reduce((n, p) => n + p.fields.filter((f) => f.transform).length, 0), candidates, unmatched: unmatchedTables } }),
   });
   const resolved = resolveMapping(mapping, out, data);
   problems.push(...resolved.problems);
@@ -423,7 +436,7 @@ export function proposeMapping(model: OssieSemanticModel, data: StandardData, op
   for (const p of proposed) for (const c of p.unmatched) { const f = fieldById.get(c.toLowerCase()); if (f?.datasets?.length && !f.datasets.includes(p.dataset)) elsewhere[c] = f.datasets; }
   return {
     organization, model: out, mapping, adapter: resolved.adapter, proposed, candidates, unmatchedTables, gaps, elsewhere,
-    coverage: { fully: cov?.fully.length ?? 0, partial: cov?.partial.length ?? 0, metrics: data.metrics.length },
+    coverage: { fully: cov?.fully.length ?? 0, partial: cov?.partial.length ?? 0, metrics: data.dataRequirements.length },
     problems,
   };
 }
@@ -438,7 +451,7 @@ export function formatProposalReport(r: ProposalResult): string {
   const transforms = r.proposed.reduce((n, p) => n + p.fields.filter((f) => f.transform).length, 0);
   const unmatched = r.proposed.reduce((n, p) => n + p.unmatched.length, 0);
   lines.push(`**Proposed:** ${r.proposed.length} of ${tables} tables to GASP datasets and ${fields} of ${columns} columns to GASP fields${transforms ? ` (${transforms} with a transform)` : ""}; ${r.candidates.length} candidate${r.candidates.length === 1 ? "" : "s"} to review; ${unmatched} column${unmatched === 1 ? "" : "s"} of the proposed tables unmatched.`);
-  lines.push(`**Covers:** ${r.coverage.fully} of ${r.coverage.metrics} GASP metrics fully and ${r.coverage.partial} partly with the proposed pairs alone.`);
+  lines.push(`**Covers:** ${r.coverage.fully} of ${r.coverage.metrics} GASP metrics with a formula fully and ${r.coverage.partial} partly with the proposed pairs alone.`);
   for (const g of r.gaps) lines.push(`**Gap:** dataset \`${g.dataset}\` is left out of the mapping: ${g.reason}.`);
   if (r.problems.length) lines.push("", "**Problems:**", ...r.problems.map((p) => `- ${p}`));
   lines.push("", "## Proposed");
@@ -456,7 +469,7 @@ export function formatProposalReport(r: ProposalResult): string {
     lines.push("", `## Tables without a GASP dataset (${r.unmatchedTables.length})`, "");
     for (const t of r.unmatchedTables) lines.push(`- ${t.source}${t.best ? ` (nearest: ${t.best.dataset}, too few of its columns match)` : ""}`);
   }
-  lines.push("", "## Next", "", "Pass the mapping to validate_mapping with the model as `semantic_model` (it lists the fields the metrics still need), then compile_model and score_drift.");
+  lines.push("", "## Next", "", r.candidates.length ? "Take the candidates to the people who know the data and record their answers with record_decision (the mapping and the model as given), then pass the mapping to validate_mapping with the model as `semantic_model`, compile_model and score_drift." : "Pass the mapping to validate_mapping with the model as `semantic_model` (it lists the fields the metrics still need), then compile_model and score_drift; record_decision records metric owners and judgement calls on the way.");
   return lines.join("\n");
 }
 
@@ -481,7 +494,7 @@ export function proposeMappingFromText(modelText: string | undefined, schemaText
     model = profileSchema(schema, stats.stats, data, { organization: opts.organization }).model;
   } else return "Pass semantic_model (the model profile_schema returned, or your own Ossie model) or schema (the warehouse schema, profiled on the way in).";
   const r = proposeMapping(model, data, { organization: opts.organization });
-  if (opts.output === "json") return JSON.stringify({ organization: r.organization, proposed: r.proposed, candidates: r.candidates, unmatchedTables: r.unmatchedTables, gaps: r.gaps, coverage: r.coverage, problems: r.problems, mapping: r.mapping, model: r.model, adapter: r.adapter }, null, 2);
+  if (opts.output === "json") return JSON.stringify({ organization: r.organization, proposed: r.proposed, candidates: r.candidates, unmatchedTables: r.unmatchedTables, elsewhere: r.elsewhere, gaps: r.gaps, coverage: r.coverage, problems: r.problems, mapping: r.mapping, model: r.model, adapter: r.adapter }, null, 2);
   if (opts.output === "mapping") return ossieYaml(r.mapping);
   if (opts.output === "model") return ossieYaml(r.model);
   if (opts.output === "adapter") return JSON.stringify(r.adapter, null, 2);

@@ -4,7 +4,7 @@
  * synthetic SaaS dataset (src/synthetic.ts), behind the `score_drift` tool.
  *
  * The company's metrics are matched to GASP metrics by name, by the synonyms
- * in their `ai_context`, or by explicit pairs; nothing is scored on a fuzzy
+ * in their `ai_context` or by explicit pairs; nothing is scored on a fuzzy
  * guess, those go to a review list. For each match the canonical metric is
  * compiled into the company's own dataset and field names (company.ts) and
  * both expressions run on views of the synthetic rows named as the company's
@@ -12,7 +12,7 @@
  * numbers differ, the likely cause is read from the canonical formula: a
  * construct the expression language cannot state (a cohort, an opening value,
  * a period bound to a business date), a filter one side applies and the other
- * does not, a dataset read on one side only, or an aggregate whose value has no
+ * does not, a dataset read on one side only or an aggregate whose value has no
  * equal on the other side.
  *
  * The engine is PGlite, an in-process Postgres, loaded as an optional
@@ -22,7 +22,7 @@ import { closestNames, isMetricStub, metricFormulaId, resolveMetric } from "../l
 import { enumFilters, type EnumFilter } from "../filters.js";
 import { columnName, generateFixture, loadSynthetic, TABLES, type Fixture } from "../synthetic.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
-import { parseDocument, resolveCompany, type Company } from "./adapt.js";
+import { expressionText, parseDocument, resolveCompany, type Company } from "./adapt.js";
 import { compileModel, isGaspMetric, type CompiledModel } from "./company.js";
 import { directQuery, stagedQuery, type Period } from "./demo.js";
 import { formulaSource } from "./metrics.js";
@@ -108,7 +108,7 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** Load the synthetic dataset into a fresh engine: the fixture tables and the period spine. */
-export async function loadDriftData(db: Engine, data: StandardData, fixture?: Fixture): Promise<void> {
+async function loadDriftData(db: Engine, data: StandardData, fixture?: Fixture): Promise<void> {
   await loadSynthetic(db, fixture ?? generateFixture(data.ontology!));
   await db.exec(`CREATE SCHEMA IF NOT EXISTS gasp; CREATE TABLE ${SPINE} (period_start DATE, period_end DATE)`);
   await db.exec(`INSERT INTO ${SPINE} VALUES ${DRIFT_PERIODS.map((p) => `('${p.start}', '${p.end}')`).join(", ")}`);
@@ -171,8 +171,10 @@ export function matchMetrics(metrics: OssieMetric[], data: StandardData, matches
   for (const m of metrics) {
     const explicit = matches[m.name];
     if (explicit !== undefined) {
-      const [gaspName, variant] = explicit.split(":").map((s) => s.trim());
-      const r = resolveMetric(data, gaspName);
+      const whole = resolveMetric(data, explicit);
+      const cut = explicit.lastIndexOf(":");
+      const [gaspName, variant] = whole.kind === "metric" || cut < 0 ? [explicit.trim(), undefined] : [explicit.slice(0, cut).trim(), explicit.slice(cut + 1).trim()];
+      const r = whole.kind === "metric" ? whole : resolveMetric(data, gaspName);
       if (r.kind !== "metric") { errors.push(`matches: \`${m.name}=${explicit}\`: \`${gaspName}\` is ${r.kind === "ambiguous" ? "ambiguous; prefix the department" : "not a metric name, abbreviation, alias or formula id"}.`); continue; }
       const id = metricFormulaId(data, r.metric);
       const f = data.formulas?.[id];
@@ -196,10 +198,9 @@ export function matchMetrics(metrics: OssieMetric[], data: StandardData, matches
 
 // ── running both sides ───────────────────────────────────────────────────────
 
-const exprOf = (m: { expression: { dialects: Array<{ dialect: string; expression: string }> } }): string => {
-  const d = m.expression.dialects;
-  return (d.find((x) => x.dialect === OSSIE_DIALECT) ?? d[0])?.expression ?? "";
-};
+const exprOf = (m: Pick<OssieMetric, "expression">): string => expressionText(m) ?? "";
+/** The company's physical names as the compiler wants them: the view is named as the dataset and dated by its date column. */
+const physicalOf = (ns: { date: Record<string, string> }) => ({ table: (n: string) => n, date: (n: string) => ns.date[n] });
 
 /** OSSIE_SQL_2026 to Postgres: the date functions and the median PGlite lacks. */
 export function toPostgres(sql: string): string {
@@ -377,7 +378,7 @@ async function aggregateValues(db: Engine, expr: string, ns: Namespace, period: 
   for (const span of guardedSpans(expr)) {
     const call = expr.slice(span.start, span.end);
     try {
-      out.push({ call, value: await value(db, `SELECT ${toPostgres(directQuery(call, ns.meta, fields, period, { table: (n) => n, date: (n) => ns.date[n] }))}`) });
+      out.push({ call, value: await value(db, `SELECT ${toPostgres(directQuery(call, ns.meta, fields, period, physicalOf(ns)))}`) });
     } catch { /* an aggregate that cannot run alone adds nothing */ }
   }
   return out;
@@ -441,7 +442,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
         if (cov.kind === "staged") score.stagedReason = cov.reason;
         const why = unrunnable(yours, ns);
         if (why) { score.status = "not runnable"; score.error = `yours cannot run on the synthetic dataset: ${why}`; continue; }
-        const physical = { table: (n: string) => n, date: (n: string) => ns.date[n] };
+        const physical = physicalOf(ns);
         try {
           for (const period of periods) {
             const mine = await value(engine, `SELECT ${toPostgres(directQuery(yours, ns.meta, fields, period, physical))}`);
@@ -507,7 +508,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
 // ── the report ───────────────────────────────────────────────────────────────
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-export const periodLabel = (p: Period): string => `${MONTHS[Number(p.start.slice(5, 7)) - 1]} ${p.start.slice(0, 4)}`;
+const periodLabel = (p: Period): string => `${MONTHS[Number(p.start.slice(5, 7)) - 1]} ${p.start.slice(0, 4)}`;
 
 const pct = (r: number): string => (!Number.isFinite(r) ? "one side is null" : `${(r * 100).toFixed(r < 0.1 ? 2 : 1)}%`);
 
@@ -569,7 +570,7 @@ export function formatDriftReport(r: DriftResult): string {
 
 /** The company's own metrics from a semantic model document, or any document carrying a `metrics` list. */
 export function companyMetrics(text: string | undefined): { metrics?: OssieMetric[]; error?: string } {
-  if (!text?.trim()) return { error: "Pass semantic_model: your semantic model (or any YAML or JSON document with a metrics list) holding the metrics to score." };
+  if (!text?.trim()) return { error: "Pass semantic_model: your Ossie semantic model (YAML or JSON) holding the metrics to score; with a GASP adapter as the mapping, any document with a metrics list will do." };
   const doc = parseDocument(text);
   if (!doc.doc) return { error: `Invalid semantic model. ${doc.error}` };
   const metrics = doc.doc.metrics;

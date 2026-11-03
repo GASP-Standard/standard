@@ -13,14 +13,15 @@ import { loadStandard } from "../src/loader.js";
 import type { Adapter } from "../src/tools.js";
 import { adapterToOssie, resolveCompany, type Company } from "../src/ossie/adapt.js";
 import { compileModel } from "../src/ossie/company.js";
-import { companyMetrics, DRIFT_PERIODS, formatDriftReport, matchMetrics, parseMatches, scoreDrift, scoreDriftFromText, syntheticEngine, type DriftResult, type Engine } from "../src/ossie/drift.js";
+import { companyMetrics, DRIFT_PERIODS, formatDriftReport, matchMetrics, parseMatches, scoreDrift, scoreDriftFromText, syntheticEngine, type DriftResult, type Engine, closeSyntheticEngine } from "../src/ossie/drift.js";
 import { ossieYaml } from "../src/ossie/index.js";
 import { GASP_VENDOR, type OssieMetric } from "../src/ossie/types.js";
 import { adapter as fixtureAdapter } from "./fixture-db.js";
+import { acmeAdapterText } from "./ossie-helpers.js";
 
 const data = loadStandard();
 const fixtureDir = join(process.cwd(), "test", "fixture");
-const acmeText = readFileSync(join(fixtureDir, "acme-adapter.json"), "utf-8");
+const acmeText = acmeAdapterText;
 const acme = JSON.parse(acmeText) as Adapter;
 const acmeMetricsText = readFileSync(join(fixtureDir, "acme-metrics.yaml"), "utf-8");
 const acmeMetrics = companyMetrics(acmeMetricsText).metrics!;
@@ -42,7 +43,7 @@ beforeAll(async () => {
   if (!e) throw new Error("PGlite is not installed");
   engine = e;
 }, 120_000);
-afterAll(async () => { await (engine as unknown as { close?: () => Promise<void> }).close?.(); });
+afterAll(async () => { await closeSyntheticEngine(); });
 
 describe("Drift: matching", () => {
   it("matches by exact name, by ai_context synonyms and by explicit pairs, and reviews the rest without scoring", () => {
@@ -57,6 +58,9 @@ describe("Drift: matching", () => {
   it("takes a form or variant on the GASP side of a pair, and refuses one the metric lacks", () => {
     expect(matchMetrics(acmeMetrics, data, parseMatches("acme_nrr=NRR:O")).matched.find((m) => m.metric.name === "acme_nrr")!.key).toBe("nrr:O");
     expect(matchMetrics(acmeMetrics, data, parseMatches("acme_nrr=NRR:quarterly")).errors.join("\n")).toContain("has no form or variant `quarterly`");
+    const colon = matchMetrics(acmeMetrics, data, parseMatches("acme_nrr=LTV:CAC Ratio")); // a metric name holding a colon is not a form
+    expect(colon.errors).toEqual([]);
+    expect(colon.matched.find((m) => m.metric.name === "acme_nrr")).toMatchObject({ gasp: expect.objectContaining({ name: "LTV:CAC Ratio" }), variant: undefined });
     expect(matchMetrics(acmeMetrics, data, parseMatches("acme_nrr=Nope")).errors.join("\n")).toContain("not a metric name");
   });
 

@@ -7,7 +7,7 @@
  * event recode from the listed values; the proposal validates as a mapping;
  * the tool answers in prose and in each output shape.
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
@@ -15,45 +15,23 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadStandard } from "../src/loader.js";
 import { checkMapping, ossieSchemaErrors } from "../src/ossie/adapt.js";
 import { ossieYaml } from "../src/ossie/index.js";
-import { parseSchema, parseStatistics, profileSchema, type ParsedSchema } from "../src/ossie/profile.js";
+import { parseStatistics, profileSchema } from "../src/ossie/profile.js";
 import { formatProposalReport, proposeMapping, proposeMappingFromText, type ProposalResult } from "../src/ossie/propose.js";
 import { uvAvailable, validateUpstream } from "../src/ossie/validate.js";
 import { TABLES, buildAdapter } from "../src/synthetic.js";
-import { resolveAdapter, type Adapter } from "../src/tools.js";
 import { fixtureDb } from "./fixture-db.js";
+import { acmeAdapter, acmeDdl, informationSchema, missing, pairs as pairsOf, parsedSchema as parsed } from "./ossie-helpers.js";
 
 const data = loadStandard();
-const acmeDdl = readFileSync(join(process.cwd(), "test", "fixture", "acme-schema.sql"), "utf-8");
-const acmeAdapter = JSON.parse(readFileSync(join(process.cwd(), "test", "fixture", "acme-adapter.json"), "utf-8")) as Adapter;
 const movementValues = JSON.stringify([{ table: "billing.mrr_movements", column: "movement_type", rows: 1200, nulls: 0, distinct: 5, values: ["new", "upgrade", "downgrade", "cancel", "reactivation"] }]);
 
-/** `dataset.field=column[|transform]` for every pair an adapter resolves to, the transform with the column in place of {{value}} so both forms compare alike. */
-const pairs = (adapter: Adapter): Set<string> => {
-  const r = resolveAdapter(adapter, data);
-  const out = new Set<string>();
-  for (const [ds, cols] of Object.entries(r.columns)) {
-    for (const [f, m] of Object.entries(cols)) {
-      const column = m.warehouseRef.split(".").pop()!;
-      out.add(`${ds}.${f}${m.transform ? `|${m.transform.replace(/\{\{value\}\}/g, column)}` : `=${column}`}`);
-    }
-  }
-  return out;
-};
-const missing = (want: Set<string>, got: Set<string>) => [...want].filter((x) => !got.has(x)).sort();
-
-const parsed = (text: string): ParsedSchema => {
-  const s = parseSchema(text);
-  if ("error" in s) throw new Error(s.error);
-  return s;
-};
 
 describe("Propose: the synthetic dataset's own schema", () => {
   let db: PGlite;
   let r: ProposalResult;
   beforeAll(async () => {
     db = await fixtureDb();
-    const cols = await db.query<Record<string, unknown>>("SELECT table_name, column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position");
-    const profile = profileSchema(parsed(JSON.stringify(cols.rows)), [], data, { organization: "Fixture" });
+    const profile = profileSchema(parsed(await informationSchema(db)), [], data, { organization: "Fixture" });
     r = proposeMapping(profile.model, data, { organization: "Fixture" });
   }, 300_000);
   afterAll(async () => { await db?.close(); });
@@ -67,8 +45,8 @@ describe("Propose: the synthetic dataset's own schema", () => {
   });
 
   it("proposes every field pair of the fixture adapter but the one the names only nearly say, which is a candidate", () => {
-    const want = pairs(buildAdapter());
-    const got = pairs(r.adapter);
+    const want = pairsOf(buildAdapter(), data);
+    const got = pairsOf(r.adapter, data);
     expect(missing(want, got)).toEqual(["project.close_date=deal_closed_on"]); // "deal closed on" is near "close date" and no more: medium
     expect(missing(got, want)).toEqual([]);
     expect(r.candidates).toEqual([expect.objectContaining({ source: "gasp_projects", column: "deal_closed_on", dataset: "project", field: "close_date" })]);
@@ -122,8 +100,8 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
 
   it("proposes every pair of the adapter and one more, with the cents division from the name; the recode waits for the values", () => {
     const r = propose();
-    const want = pairs(acmeAdapter);
-    const got = pairs(r.adapter);
+    const want = pairsOf(acmeAdapter(), data);
+    const got = pairsOf(r.adapter, data);
     expect(missing(want, got)).toEqual(["revenue_event.event_type|CASE WHEN movement_type = 'upgrade' THEN 'expansion' WHEN movement_type = 'downgrade' THEN 'contraction' WHEN movement_type = 'cancel' THEN 'churn' ELSE movement_type END"]);
     expect(missing(got, want)).toEqual(["revenue_event.event_type=movement_type", "subscription.plan_id=plan_code"]);
     const mrr = r.proposed.find((p) => p.dataset === "subscription")!.fields.find((f) => f.field === "mrr")!;
@@ -136,7 +114,7 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
 
   it("recodes the listed movement values into the adapter's CASE transform", () => {
     const r = propose(movementValues);
-    expect(missing(pairs(acmeAdapter), pairs(r.adapter))).toEqual([]);
+    expect(missing(pairsOf(acmeAdapter(), data), pairsOf(r.adapter, data))).toEqual([]);
     const et = r.proposed.find((p) => p.dataset === "revenue_event")!.fields.find((f) => f.field === "event_type")!;
     expect(et.transform).toBe("CASE WHEN {{value}} = 'upgrade' THEN 'expansion' WHEN {{value}} = 'downgrade' THEN 'contraction' WHEN {{value}} = 'cancel' THEN 'churn' ELSE {{value}} END");
     expect(et.evidence).toContain("values recoded: upgrade to expansion, downgrade to contraction, cancel to churn");
@@ -162,7 +140,7 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
     expect(v.ossieSchemaErrors).toEqual([]);
     expect(v.crossProblems).toEqual([]);
     expect(v.conversionProblems).toEqual([]);
-    const acme = checkMapping({ document: acmeAdapter, model: undefined }, data);
+    const acme = checkMapping({ document: acmeAdapter(), model: undefined }, data);
     if ("error" in acme) throw new Error(acme.error);
     expect(v.coverage.fully.map((m) => m.metric).sort()).toEqual(acme.coverage.fully.map((m) => m.metric).sort());
     if (!uvAvailable()) return;
@@ -194,7 +172,18 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
     expect(report).toContain("- billing.plan_prices → plan (medium confidence:");
     expect(report).toContain("## Tables without a GASP dataset (1)");
     expect(report).toContain("- analytics.usage_daily (nearest: lifecycle_event, too few of its columns match)");
-    expect(report).toContain("Pass the mapping to validate_mapping");
+    expect(report).toContain("record their answers with record_decision");
+  });
+});
+
+describe("Propose: a bare status column", () => {
+  it("maps it to the field named for the dataset when several fields end in status, and to the one such field otherwise", () => {
+    const ddl = `CREATE TABLE partners (partner_id VARCHAR, snapshot_date DATE, partner_tier VARCHAR, status VARCHAR, training_completed BOOLEAN, partner_recruited_date DATE);
+CREATE TABLE customers (customer_id VARCHAR, snapshot_date DATE, status VARCHAR, segment VARCHAR, acquisition_date DATE);`;
+    const r = proposeMapping(profileSchema(parsed(ddl), [], data).model, data);
+    const field = (table: string) => r.proposed.find((p) => p.source === table)!.fields.find((f) => f.column === "status");
+    expect(field("partners")).toMatchObject({ field: "partner_status", evidence: expect.stringContaining("the dataset's own status field") }); // certification_status comes first in the ontology
+    expect(field("customers")).toMatchObject({ field: "customer_status", evidence: expect.stringContaining("the dataset's own status field") });
   });
 });
 

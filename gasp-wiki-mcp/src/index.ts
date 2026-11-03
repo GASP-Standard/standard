@@ -29,6 +29,7 @@ import { compileModelFromText } from "./ossie/company.js";
 import { scoreDriftFromText } from "./ossie/drift.js";
 import { profileSchemaFromText } from "./ossie/profile.js";
 import { proposeMappingFromText } from "./ossie/propose.js";
+import { recordDecisionFromText } from "./ossie/decide.js";
 import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -707,10 +708,10 @@ server.tool(
 // --- Tool 10: score_drift ---
 server.tool(
   "score_drift",
-  "Score how far your own metrics drift from the GASP Standard's canonical definitions, by result. Takes your mapping (a GASP adapter or an Ossie mapping, as validate_mapping does) and your semantic_model holding your metrics. Each metric is matched to a GASP metric by exact name, by the synonyms in its ai_context, or by a pair you pass in matches; near names are listed for review and never scored on a guess. For every match the canonical metric is compiled into your dataset and field names (as compile_model does) and both run on the GASP synthetic SaaS dataset, six monthly periods, in an in-process Postgres (PGlite). Where the numbers differ the report gives both values per period, the largest difference and the likely cause read from the canonical formula: a construct one expression cannot state (a cohort, an opening value at period start, a period bound to a business date), a filter one side applies and the other does not, a dataset one side reads, or an aggregate whose value has no equal on the other side. Metrics that read fields your mapping lacks are reported as not runnable with the field named.",
+  "Score how far your own metrics drift from the GASP Standard's canonical definitions, by result. Takes your mapping (a GASP adapter or an Ossie mapping, as validate_mapping does) and your semantic_model holding your metrics. Each metric is matched to a GASP metric by exact name, by the synonyms in its ai_context or by a pair you pass in matches; near names are listed for review and never scored on a guess. For every match the canonical metric is compiled into your dataset and field names (as compile_model does) and both run on the GASP synthetic SaaS dataset, six monthly periods, in an in-process Postgres (PGlite). Where the numbers differ the report gives both values per period, the largest difference and the likely cause read from the canonical formula: a null on one side (a sum over no rows that is NULL in your SQL and 0 in GASP's, or a canonical average or ratio with nothing to read), a construct one expression cannot state (a cohort, an opening value at period start, a period bound to a business date), a filter one side applies and the other does not, a dataset one side reads or an aggregate whose value has no equal on the other side. Metrics that read fields your mapping lacks are reported as not runnable with the field named.",
   {
     adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
-    semantic_model: z.string().describe("Your metrics: an Ossie semantic model document (YAML or JSON), or any document with a metrics list, each metric with a name and an OSSIE_SQL_2026 expression over your datasets and fields. With a GASP adapter, write them over the dataset names and columns of the model validate_mapping synthesises (the GASP dataset ids and your column names)."),
+    semantic_model: z.string().describe("Your metrics: your Ossie semantic model document (YAML or JSON); with a GASP adapter as the mapping, any document with a metrics list will do. Each metric with a name and an OSSIE_SQL_2026 expression over your datasets and fields. With a GASP adapter, write them over the dataset names and columns of the model validate_mapping synthesises (the GASP dataset ids and your column names)."),
     matches: z.string().optional().describe("Explicit pairs for metrics the names do not settle, comma separated: \"acme_nrr=NRR, lost_mrr=Churned MRR\". The GASP side is a name, abbreviation, alias or formula id as lookup_metric resolves it, with an optional :O, :M or :variant."),
     metrics: z.string().optional().describe("Comma-separated names of your metrics to score. Omit for every metric in the document."),
     output: z.enum(["report", "json"]).optional().describe("'report' (default) is the markdown report; 'json' returns the matches, the per-period values and the causes as data."),
@@ -722,21 +723,22 @@ server.tool(
 // --- Tool 11: profile_schema ---
 server.tool(
   "profile_schema",
-  "Profile a warehouse schema into a minimal Apache Ossie semantic model, the first step towards a GASP mapping (readiness level 1). Pass the schema as the rows of information_schema.columns (JSON or CSV with table, column and type), an object with a tables list, or CREATE TABLE statements, read through your own warehouse MCP or from a dump. Optionally pass statistics per column (rows, nulls, distinct, min, max, values); output: statistics returns the query that gathers them. For every table the profile infers the key, the time field and the kind (snapshot, event, fact or reference), each with its evidence and confidence, plus the relationships the columns imply; a low-confidence inference is left out of the model and listed as a question for the Decide step rather than guessed. The report ends with the model as YAML, to pass to validate_mapping, compile_model and score_drift as semantic_model once a mapping names the GASP fields.",
+  "Profile a warehouse schema into a minimal Apache Ossie semantic model, the first step towards a GASP mapping (readiness level 1). Pass the schema as the rows of information_schema.columns (JSON or CSV with table, column and type), an object with a tables list, or CREATE TABLE statements, read through your own warehouse MCP or from a dump. Optionally pass statistics per column (rows, nulls, distinct, min, max, values); output: statistics returns the query that gathers them. For every table the profile infers the key, the time field and the kind (snapshot, event, fact or reference), each with its evidence and confidence, plus the relationships the columns imply; a low-confidence inference is left out of the model and listed as a question for the Decide step rather than guessed. The report ends with the model as YAML, to pass to propose_mapping as semantic_model; the questions go to record_decision.",
   {
     schema: z.string().describe("The schema: information_schema.columns rows as JSON (array of objects with table_name, column_name, data_type, optionally table_schema and is_nullable) or CSV with those headers; or { tables: [{ name, schema?, columns: [{ name, type }] }] }; or CREATE TABLE statements (PRIMARY KEY and REFERENCES clauses are read)."),
     statistics: z.string().optional().describe("Per-column statistics as JSON rows or CSV: table, column, rows (or row_count), nulls (or null_count or null_rate), distinct (or distinct_count), min, max, values (a JSON array or a | separated list for a short list of values). Optional; the profile says what they would settle."),
     organization: z.string().optional().describe("The company's name, used in the model's name."),
     output: z.enum(["report", "model", "json", "statistics"]).optional().describe("'report' (default): the profile with evidence, questions and the model as YAML; 'model': the YAML alone; 'json': the profile and the model as data; 'statistics': the SQL that gathers the statistics for this schema."),
+    dialect: z.enum(["postgres", "snowflake", "bigquery", "databricks"]).optional().describe("With output: statistics, the warehouse the query is written for (the string type of its min and max columns); postgres by default."),
   },
-  async ({ schema, statistics, organization, output }) =>
-    ({ content: [{ type: "text" as const, text: profileSchemaFromText(schema, statistics, data, { organization, output }) }] }),
+  async ({ schema, statistics, organization, output, dialect }) =>
+    ({ content: [{ type: "text" as const, text: profileSchemaFromText(schema, statistics, data, { organization, output, dialect }) }] }),
 );
 
 // --- Tool 12: propose_mapping ---
 server.tool(
   "propose_mapping",
-  "Propose a GASP mapping for a warehouse from its profiled semantic model (readiness level 2). Pass semantic_model (the model profile_schema returned, or your own Ossie model) or schema (profiled on the way in, with optional statistics). Every table is scored against every GASP dataset on its columns, its profiled kind, key and time field and its name; every column of a proposed table against the dataset's fields by name, structural role (the table's time field is the dataset's date), a short synonym list, word order and near names, each checked against the warehouse type and, for an enum field, the listed values. A column in cents gets a divide-by-100 transform and enum values the standard does not use a CASE recode when one is known. Only high-confidence pairs enter the mapping; medium ones are listed as candidates with their evidence and what would settle them; the rest are unmatched. Returns the report and the Ossie mapping over the model (a transform becomes a calculated field), to pass to validate_mapping, compile_model and score_drift; output: adapter gives the same pairs as a GASP adapter.",
+  "Propose a GASP mapping for a warehouse from its profiled semantic model (readiness level 2). Pass semantic_model (the model profile_schema returned, or your own Ossie model) or schema (profiled on the way in, with optional statistics). Every table is scored against every GASP dataset on its columns, its profiled kind, key and time field and its name; every column of a proposed table against the dataset's fields by name, structural role (the table's time field is the dataset's date), a short synonym list, word order and near names, each checked against the warehouse type and, for an enum field, the listed values. A column in cents gets a divide-by-100 transform and enum values the standard does not use a CASE recode when one is known. Only high-confidence pairs enter the mapping; medium ones are listed as candidates with their evidence and what would settle them; the rest are unmatched. Returns the report and the Ossie mapping over the model (a transform becomes a calculated field): the candidates go to record_decision with both documents, then the mapping to validate_mapping, compile_model and score_drift; output: adapter gives the same pairs as a GASP adapter.",
   {
     semantic_model: z.string().optional().describe("The Ossie semantic model to map, as YAML or JSON: the one profile_schema returned (its profile and listed values are read) or the company's own."),
     schema: z.string().optional().describe("Instead of semantic_model: the warehouse schema as profile_schema accepts it (information_schema rows, a tables list or CREATE TABLE statements), profiled on the way in."),
@@ -748,7 +750,21 @@ server.tool(
     ({ content: [{ type: "text" as const, text: proposeMappingFromText(semantic_model, schema, statistics, data, { organization, output }) }] }),
 );
 
-// --- Tool 13: infer_drivers ---
+// --- Tool 13: record_decision ---
+server.tool(
+  "record_decision",
+  "Record the decisions people make on a profiled and proposed warehouse, the Decide step of readiness level 2. Pass semantic_model and mapping (the ones propose_mapping returned) and decisions: a YAML or JSON list where each entry names what it is about, the subject by content and its owner. about: key, time, kind or type answers a profiler question and is written into the model (dataset, answer: the key columns or \"none\", the time column or \"none\", snapshot|event|fact|reference or an Ossie datatype with column); about: table accepts (or with accept: false rejects) a table as a GASP dataset (dataset, to: the GASP dataset) and maps its columns as the proposer would; about: field accepts or rejects a column as a GASP field of the dataset its table is mapped to (dataset, column, to: the GASP field, optional transform over {{value}}, which becomes a calculated field); about: owner names the team that owns a metric (metric, owner, optional contact), the slot validate_mapping reads; about: topic records a judgement call GASP cannot apply, such as which system owns customer identity, the reporting currency or what date marks churn (topic, answer). Every decision carries owner, an optional date (today when omitted) and note, and lands in the mapping's GASP extension; a later decision on the same subject replaces the earlier one. With no decisions it lists what is open: the questions no decision or model state has settled, the candidates no decision has settled and the covered metrics without an owner. Level 2 is reached when no question and no candidate is open. Returns the report with the updated mapping and, when it changed, the model, to pass on to validate_mapping, compile_model and score_drift.",
+  {
+    semantic_model: z.string().describe("The Ossie semantic model the mapping reads, as YAML or JSON: the one propose_mapping returned (its profile questions are read from the GASP extension)."),
+    mapping: z.string().describe("The Ossie mapping propose_mapping returned, as YAML or JSON; its candidates and the decisions already on file are read from the GASP extension, and the decisions are written back into it."),
+    decisions: z.string().optional().describe("The decisions as a YAML or JSON list: [{about: key, dataset: usage_daily, answer: [account_id, workspace_id, day], owner: Data platform}, {about: table, dataset: plan_prices, to: plan, accept: false, owner: Billing}, {about: field, dataset: subscriptions, column: plan_code, to: plan_id, owner: Billing}, {about: owner, metric: Net Revenue Retention, owner: Finance, contact: fp&a@example.com}, {about: topic, topic: reporting currency, answer: USD, owner: Finance, note: ...}]. Omit it to list what is open."),
+    output: z.enum(["report", "mapping", "model", "json"]).optional().describe("'report' (default): what was applied, what is open and the updated documents as YAML; 'mapping': the mapping alone; 'model': the model alone; 'json': everything as data."),
+  },
+  async ({ semantic_model, mapping, decisions, output }) =>
+    ({ content: [{ type: "text" as const, text: recordDecisionFromText(semantic_model, mapping, decisions, data, { output }) }] }),
+);
+
+// --- Tool 14: infer_drivers ---
 server.tool(
   "infer_drivers",
   "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
@@ -797,7 +813,7 @@ server.tool(
   }
 );
 
-// --- Tool 14: explain_path ---
+// --- Tool 15: explain_path ---
 server.tool(
   "explain_path",
   "How a movement in one graph node reaches another: up to 5 chains of edges followed forward from `from` to `to`, shortest first, then by highest score. Each step gives the edge type, its classification (metric_signal, structural, lifecycle, behavioral, assignment or generative), its attenuation and whether it inverts direction; each path gives its score and the direction the target moves when the source rises. A baseline edge (MRR into NRR) can only start a path. Names resolve as in get_relationships, so entities and concepts work too. No path means no forward chain within maxDepth: try the reverse. Use it on a candidate from infer_drivers.",
@@ -849,7 +865,7 @@ server.tool(
   }
 );
 
-// --- Tool 15: coverage_gap ---
+// --- Tool 16: coverage_gap ---
 server.tool(
   "coverage_gap",
   "Audit a set of tracked metrics against the GASP relationship graph. Returns three lists: upstream missing (metrics with a direct edge into the set that the set leaves out), downstream missing (metrics with a direct edge from the set that it leaves out) and disconnected (graph metrics with no path of any length, in either direction and through any node, to the set; the first 25 shown). Names resolve as in lookup_metric; an input that is ambiguous, outside the graph, not a metric or unknown is listed as unresolved with the reason. Use it before instrumenting a dashboard, then infer_drivers or explain_path on the candidates.",
@@ -919,7 +935,7 @@ server.tool(
 );
 
 // Start the server
-// --- Tool 16: lookup_definition ---
+// --- Tool 17: lookup_definition ---
 server.tool(
   "lookup_definition",
   "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'CEL'): the full definition and body, its section, the canonical or reference link, where it is used and the page URL. The term must match exactly, ignoring case: the term, its slug or either part of 'Term (Abbreviation)', so 'CEL' finds 'CEL (Commercial Event Ledger)'. A metric name points you to lookup_metric and a miss returns close names. Some metrics also have a short glossary entry (Logo Churn Rate, Win Rate); lookup_metric gives their formula and benchmarks.",
