@@ -28,7 +28,7 @@ npx tsx test/fixture/generate.ts --adapter
 
 ## Growing it
 
-The generator is `src/synthetic.ts`; `test/fixture/generate.ts` only re-exports it. `acme-metrics.yaml` holds the Acme company's own metrics for `score_drift` (see the comment in the file for what each one plants).
+The generator is `src/synthetic.ts`; `test/fixture/generate.ts` only re-exports it. `acme-metrics.yaml` holds the Acme company's own metrics for `score_drift` (see the comment in the file for what each one plants). `acme-schema.sql` is the Acme billing schema as Snowflake DDL for `profile_schema` and `propose_mapping`, the same four tables the adapter maps (each column on the table of the dataset the adapter resolves it to, so the proposal reproduces the adapter) plus two it does not, with the planted cases listed in its header.
 
 - A new ontology dataset: add it to `TABLES` (and any renamed columns to `COLUMNS`), generate its rows in `generateExtensions()` and regenerate the adapter. Templates whose datasets are all mapped run automatically.
 - New hand-checked values: put the behaviour in a story rather than the PRNG, compute the expected value in the test with plain filters over `fixture.tables` and pin a literal where the shape matters.
