@@ -54,7 +54,8 @@ const ext = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknow
   if (!e?.data) return {};
   try { return JSON.parse(e.data) as Record<string, unknown>; } catch { return {}; }
 };
-const isGaspMetric = (m: OssieMetric): boolean => ext(m).gasp_id !== undefined || m.name.startsWith("gasp_");
+/** A metric an earlier compile wrote: it carries the GASP extension or the gasp_ prefix. */
+export const isGaspMetric = (m: OssieMetric): boolean => ext(m).gasp_id !== undefined || m.name.startsWith("gasp_");
 const isGaspDataset = (d: OssieDataset): boolean => ext(d).staged === true || d.name.startsWith("gasp_staged_") || d.name === SPINE_DATASET;
 
 /** A model field's SQL in the compile dialect: its entry for that dialect, else the portable one, else the first. */

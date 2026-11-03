@@ -26,6 +26,7 @@ import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.
 import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
 import { loadAdapter, validateMapping } from "./ossie/adapt.js";
 import { compileModelFromText } from "./ossie/company.js";
+import { scoreDriftFromText } from "./ossie/drift.js";
 import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -701,7 +702,22 @@ server.tool(
     ({ content: [{ type: "text" as const, text: compileModelFromText(adapter, semantic_model, data, { dialect, metrics, department, spine: period_spine, document: output !== "report" }) }] }),
 );
 
-// --- Tool 10: infer_drivers ---
+// --- Tool 10: score_drift ---
+server.tool(
+  "score_drift",
+  "Score how far your own metrics drift from the GASP Standard's canonical definitions, by result. Takes your mapping (a GASP adapter or an Ossie mapping, as validate_mapping does) and your semantic_model holding your metrics. Each metric is matched to a GASP metric by exact name, by the synonyms in its ai_context, or by a pair you pass in matches; near names are listed for review and never scored on a guess. For every match the canonical metric is compiled into your dataset and field names (as compile_model does) and both run on the GASP synthetic SaaS dataset, six monthly periods, in an in-process Postgres (PGlite). Where the numbers differ the report gives both values per period, the largest difference and the likely cause read from the canonical formula: a construct one expression cannot state (a cohort, an opening value at period start, a period bound to a business date), a filter one side applies and the other does not, a dataset one side reads, or an aggregate whose value has no equal on the other side. Metrics that read fields your mapping lacks are reported as not runnable with the field named.",
+  {
+    adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
+    semantic_model: z.string().describe("Your metrics: an Ossie semantic model document (YAML or JSON), or any document with a metrics list, each metric with a name and an OSSIE_SQL_2026 expression over your datasets and fields. With a GASP adapter, write them over the dataset names and columns of the model validate_mapping synthesises (the GASP dataset ids and your column names)."),
+    matches: z.string().optional().describe("Explicit pairs for metrics the names do not settle, comma separated: \"acme_nrr=NRR, lost_mrr=Churned MRR\". The GASP side is a name, abbreviation, alias or formula id as lookup_metric resolves it, with an optional :O, :M or :variant."),
+    metrics: z.string().optional().describe("Comma-separated names of your metrics to score. Omit for every metric in the document."),
+    output: z.enum(["report", "json"]).optional().describe("'report' (default) is the markdown report; 'json' returns the matches, the per-period values and the causes as data."),
+  },
+  async ({ adapter, semantic_model, matches, metrics, output }) =>
+    ({ content: [{ type: "text" as const, text: await scoreDriftFromText(adapter, semantic_model, data, { matches, metrics, output }) }] }),
+);
+
+// --- Tool 11: infer_drivers ---
 server.tool(
   "infer_drivers",
   "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
@@ -750,7 +766,7 @@ server.tool(
   }
 );
 
-// --- Tool 11: explain_path ---
+// --- Tool 12: explain_path ---
 server.tool(
   "explain_path",
   "How a movement in one graph node reaches another: up to 5 chains of edges followed forward from `from` to `to`, shortest first, then by highest score. Each step gives the edge type, its classification (metric_signal, structural, lifecycle, behavioral, assignment or generative), its attenuation and whether it inverts direction; each path gives its score and the direction the target moves when the source rises. A baseline edge (MRR into NRR) can only start a path. Names resolve as in get_relationships, so entities and concepts work too. No path means no forward chain within maxDepth: try the reverse. Use it on a candidate from infer_drivers.",
@@ -802,7 +818,7 @@ server.tool(
   }
 );
 
-// --- Tool 12: coverage_gap ---
+// --- Tool 13: coverage_gap ---
 server.tool(
   "coverage_gap",
   "Audit a set of tracked metrics against the GASP relationship graph. Returns three lists: upstream missing (metrics with a direct edge into the set that the set leaves out), downstream missing (metrics with a direct edge from the set that it leaves out) and disconnected (graph metrics with no path of any length, in either direction and through any node, to the set; the first 25 shown). Names resolve as in lookup_metric; an input that is ambiguous, outside the graph, not a metric or unknown is listed as unresolved with the reason. Use it before instrumenting a dashboard, then infer_drivers or explain_path on the candidates.",
@@ -872,7 +888,7 @@ server.tool(
 );
 
 // Start the server
-// --- Tool 13: lookup_definition ---
+// --- Tool 14: lookup_definition ---
 server.tool(
   "lookup_definition",
   "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'CEL'): the full definition and body, its section, the canonical or reference link, where it is used and the page URL. The term must match exactly, ignoring case: the term, its slug or either part of 'Term (Abbreviation)', so 'CEL' finds 'CEL (Commercial Event Ledger)'. A metric name points you to lookup_metric and a miss returns close names. Some metrics also have a short glossary entry (Logo Churn Rate, Win Rate); lookup_metric gives their formula and benchmarks.",

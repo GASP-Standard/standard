@@ -9,28 +9,15 @@ import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { fillTemplate } from "../src/tools.js";
 import type { StandardData } from "../src/types.js";
-import { generateFixture, datasetFields, columnName, TABLES, type Row } from "./fixture/generate.js";
+import { generateFixture, datasetFields, columnName, loadSynthetic, TABLES } from "../src/synthetic.js";
 
 export const fixture = generateFixture();
 export const adapter = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "fixture", "adapter.json"), "utf-8"));
 
-const PG_TYPES: Record<string, string> = { date: "DATE", timestamp: "TIMESTAMP", decimal: "NUMERIC", integer: "INTEGER", boolean: "BOOLEAN" };
-const literal = (v: Row[string]) =>
-  v === null || v === undefined ? "NULL" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "''")}'`;
-
 /** A fresh PGlite holding one table per fixture dataset, under the warehouse names in TABLES and COLUMNS. */
 export async function fixtureDb(): Promise<PGlite> {
   const db = new PGlite();
-  for (const [ds, table] of Object.entries(TABLES)) {
-    const fields = datasetFields(ds);
-    const cols = fields.map((f) => columnName(ds, f.id));
-    await db.exec(`CREATE TABLE ${table} (${fields.map((f, i) => `${cols[i]} ${PG_TYPES[f.type] ?? "TEXT"}`).join(", ")})`);
-    const rows = fixture.tables[ds];
-    for (let i = 0; i < rows.length; i += 1000) {
-      const values = rows.slice(i, i + 1000).map((r) => `(${fields.map((f) => literal(r[f.id])).join(", ")})`);
-      await db.exec(`INSERT INTO ${table} (${cols.join(", ")}) VALUES ${values.join(", ")}`);
-    }
-  }
+  await loadSynthetic(db, fixture);
   return db;
 }
 

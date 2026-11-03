@@ -21,7 +21,7 @@ The standard is published at **https://gaspwiki.com**. This repository holds its
 
 **Read the standard** at https://gaspwiki.com/v1/overview, or in the per-department files under `standard/metrics/`.
 
-**Give it to an agent.** The MCP server has fourteen tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model and three graph traversal tools.
+**Give it to an agent.** The MCP server has fifteen tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset and three graph traversal tools.
 
 ```json
 { "mcpServers": { "gasp": { "command": "npx", "args": ["-y", "gasp-standard-mcp"] } } }

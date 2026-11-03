@@ -1,0 +1,62 @@
+# Acme SaaS's own metrics, written over the datasets and fields of the model
+# validate_mapping synthesises from acme-adapter.json (dataset names are the
+# GASP dataset ids, fields the column names, or the GASP field id where a
+# transform applies). score_drift compares them with GASP's canonical
+# definitions on the synthetic dataset. new_mrr and acme_mrr agree (by name
+# and by synonym); customer_count counts churned customers too; lost_mrr adds
+# contraction to churn; acme_nrr, matched by hand (matches: "acme_nrr=NRR"),
+# divides by ending MRR with no cohort; logo_churn has no exact GASP name and
+# goes to review; arr_from_contracts reads a field the mapping lacks.
+version: 0.2.0.dev0
+name: acme_saas_metrics
+metrics:
+  - name: new_mrr
+    description: MRR from customers acquired in the period
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'new')
+  - name: acme_mrr
+    description: Monthly recurring revenue across every subscription on the books
+    ai_context:
+      synonyms: [MRR]
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: SUM(subscription.mrr)
+  - name: customer_count
+    description: Customers on the books at period end
+    ai_context:
+      synonyms: [Total Customers]
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: COUNT(DISTINCT customer.customer_id)
+  - name: lost_mrr
+    description: MRR lost to cancellations and downgrades in the period
+    ai_context:
+      synonyms: [Churned MRR]
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: -SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type IN ('churn', 'contraction'))
+  - name: acme_nrr
+    description: Net revenue retention as one plus the period's net movement over ending MRR
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: 1 + (SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type IN ('expansion', 'contraction', 'churn'))) / (SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'))
+  - name: logo_churn
+    description: Customers lost in the period
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'churn')
+  - name: arr_from_contracts
+    description: Annual recurring revenue from the contracted value of active subscriptions
+    ai_context:
+      synonyms: [ARR]
+    expression:
+      dialects:
+        - dialect: OSSIE_SQL_2026
+          expression: SUM(subscription.contract_value) FILTER (WHERE subscription.subscription_status = 'active')
