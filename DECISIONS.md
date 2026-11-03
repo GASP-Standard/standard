@@ -5,6 +5,24 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-03] Readiness checks are SQL the company runs, and the fix plan ranks by metrics unlocked with effort as a tiebreak
+**Decision:** The Check step (`generate_checks`) compiles the rules the standard already states into one SQL statement over the datasets a mapping covers, one row per check with its violation count, and the company runs it and pastes the rows back for pass or fail per check and per metric. The first round holds seven kinds of check: CEL row identity, MRR continuity, unique event ids, the three ATL tags, customer identity both ways and freshness per dataset with a 2-day default window. The O/M bridges and the ontology's value-range rules are left out. The Plan step (`plan_fixes`) ranks every unmapped field and every failing check by the Core metrics it unlocks, then all metrics unlocked, then the metrics it helps; an effort class (small for a mapping, medium for a tag backfill or a pipeline fix, large for cross-system identity work) is shown and breaks ties, never multiplied into the order. A fix unlocks a metric when it is the last thing between that metric and covered-and-passing.
+
+**Context:** The interop spec's L3 rows promised tests compiled from GASP's rules with pass or fail per metric and a fix list weighted by effort. GASP has no warehouse access by design (profiling reads schemas and statistics the company gathers), so the checks have to travel as SQL and the results come back as rows, the flow `profile_schema` already uses. The first consumer is `derive_cel`: the events it writes have no expansion classification, and the ATL check has to say so.
+
+**Alternatives considered:**
+- **Bridges as checks now.** Rejected: a bridge reconciles by construction when both forms come from the GASP formulas, so it only informs when a company computes its own O and M numbers, which is where `score_drift` already compares them. Queued as a second round.
+- **Value-range rules now.** Rejected for this step: they need computed metric values per period, not rows, and belong beside the bridges.
+- **An effort-weighted score.** Rejected: a product of metrics and effort is hard to explain in a report. Showing the class and breaking ties with it keeps the order readable.
+- **Identity reconciliation across two source systems.** Rejected as a separate check: once billing and CRM are both mapped to GASP datasets, revenue events against the customer snapshot is that check.
+
+**Consequences:**
+- A check protects the metrics whose compiled formula, or O or M form, reads the field or dataset it covers, so the expansion tag protects ARR-O and NRR-O and a row-identity failure puts every revenue metric in doubt.
+- The check found the test fixture breaking ATL rule 2: contraction and reactivation revenue events and downgrade amendments carried no classification. Fixing it makes NRR-M on the fixture count the June reactivation, which its formula always intended; the conformance set and demo data moved with it.
+- `validate_adapter`'s "highest-value fields to map next" list stays but `plan_fixes` is the ranked view.
+
+---
+
 ## [2026-11-03] The CEL build step: GASP owns the derivation rule, vendors are examples
 **Decision:** The standard defines how to derive `Revenue_Event` rows from a subscription ledger (the GASP `subscription` dataset as snapshots or a version history), as a section of `cel.md` with reference SQL that the test suite executes. The MCP package compiles that SQL over a company's mapping in its dialect. Billing and CRM vendors appear only as fixtures and worked examples beside Acme, written from public documentation. No vendor name enters the standard or the code, and GASP does not ship a dbt project. Three choices inside the rule: `prior_mrr` and `new_mrr` are the customer's MRR, chained through the customer's steps so the row identity holds and one date's rows add up; the ledger's first snapshot date is an opening balance and produces no event; `expansion_classification` is left empty rather than defaulted to `same_product`.
 

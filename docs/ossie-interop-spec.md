@@ -44,7 +44,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines five immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 306 metrics, 94 definitions, 19 MCP tools |
+| Canonical definitions agents can read | Strong | 306 metrics, 94 definitions, 21 MCP tools |
 | Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 306 metrics covered (279 formulas, 15 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Partial | `profile_schema` and `propose_mapping` take a pasted schema and statistics; the server has no warehouse access. `derive_cel` compiles the standard's derivation rules (`cel.md`) over the mapping, so a subscription ledger becomes CEL revenue events |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Value-distribution, key and freshness checks are still to come |
@@ -53,7 +53,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Metrics computed from CEL | Partial | The 279 query templates are compiled from formulas and read the CEL event datasets (52 datasets, each with its CEL class) wherever the formula does. Metrics whose formulas use snapshot or fact datasets still read those tables |
 | Raw source to CEL | Partial | CEL is source-agnostic by design. The standard defines how a subscription ledger becomes Revenue_Events (`cel.md`, executed in the test suite); invoice and usage derivations and the vendor fixtures (worked examples, not standard content) are still to come |
 | Correct multi-table SQL | Strong | `generate_query` compiles one scalar subquery per aggregate, each from the table mapped to that field's dataset, in the dialect the adapter's `warehouse` names |
-| A prioritised fix plan | Partial | `validate_adapter` ranks the next fields to map by the metrics each unlocks. No effort weighting, checks or fix list for data quality yet |
+| A prioritised fix plan | Good | `plan_fixes` ranks every unmapped field and every failing readiness check by the Core metrics it unlocks, then all metrics, with an effort class shown. The O/M bridges and the value-range rules are not checks yet |
 
 **Raw material for readiness checks already exists.** CEL rows carry a built-in invariant (`prior_mrr + mrr_change = new_mrr`). ATL requires exactly one tag per dimension per event. The Core O/M bridges carry explicit reconciliation formulas, such as CAC-O = CAC-M + implementation and onboarding cost per customer. All of these compile to SQL tests.
 
@@ -123,8 +123,8 @@ One pipeline, five readiness levels. Each step writes a file the next step reads
 | L2 Mapped | Map | Columns matched to GASP fields by name, type and value patterns, each with a confidence score | Draft GASP mapping | `propose_mapping` (done 2026-11-03) |
 | | Decide | Questions an agent cannot answer go to named people: which system owns customer identity, which currency is reporting currency, what date marks churn | Decisions with owners, stored in the mapping | `record_decision` (done 2026-11-03) |
 | L3 Clean core | Build CEL | The standard's derivation rules (subscription ledger to Revenue_Events, `cel.md`; invoice and usage later) compiled over the company's mapping in its dialect. Vendors appear only as fixtures and worked examples (decided 2026-11-03, `DECISIONS.md`) | SQL for the CEL tables, for a person to review and schedule | `derive_cel` (subscription ledger to Revenue_Events, done 2026-11-03; invoice and usage derivations to come) |
-| | Check | Tests compiled from GASP's own rules run against CEL | Pass/fail per check, per metric | `generate_checks` |
-| | Plan | Failing checks ranked by how many metrics each fix unlocks, Core first, weighted by effort | Ranked fix list | `plan_fixes` |
+| | Check | Tests compiled from GASP's own rules run against CEL | Pass/fail per check, per metric | `generate_checks` (done 2026-11-03; the company runs the SQL and pastes the rows back) |
+| | Plan | Unmapped fields and failing checks ranked by how many metrics each fix unlocks, Core first, effort shown as a tiebreak | Ranked fix list | `plan_fixes` (done 2026-11-03) |
 | L4 LLM-ready | Publish | Canonical metrics compiled into the company's model; coverage, checks and drift re-run on a schedule | Published Ossie model, readiness report | `compile_model` (done 2026-11-02), `score_drift` (done 2026-11-03), `readiness_report` |
 
 ### One mapping format
@@ -331,7 +331,7 @@ About 16 weeks to launch from 2026-10-12, with community engagement from the int
 | 0. Hygiene | 1 to 2 | Done 2026-10-13: field vocabulary reconciled, npm 1.12.0 published, site deployed, secrets audit, public mirror with governance documents | Mirror public and linked from gaspwiki.com and npm (met) |
 | 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (294 formula entries, 268 fields, 52 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
 | 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR (done 2026-11-02); mapping format and `validate_mapping` (done 2026-11-02); metric compiler into a company's model (done 2026-11-02, `compile_model`); reference model PR (branch `examples-gasp-saas` prepared, not yet open); DuckDB demo (done 2026-11-02); synthetic dataset grown from the test fixture (open) | Reference model PR open (prepared); compiled Core runs in DuckDB (met) |
-| 3. Drift and on-ramp | 10 to 16 | Drift scorer (done 2026-11-03, `score_drift`); profiler, proposer and Decide step (done 2026-11-03); the CEL derivation rules and `derive_cel` (done 2026-11-03); readiness checks and fix plan; P1 to P4 drafted | Drift report on a public vendor example; synthetic data reaches L4 |
+| 3. Drift and on-ramp | 10 to 16 | Drift scorer (done 2026-11-03, `score_drift`); profiler, proposer and Decide step (done 2026-11-03); the CEL derivation rules and `derive_cel`, the readiness checks and the fix plan (all done 2026-11-03); P1 to P4 drafted | Drift report on a public vendor example; synthetic data reaches L4 |
 | Launch | 16+ | Ecosystem card, "GASP for Ossie" page, blog, community talk | Reference model merged |
 | Prove | after launch | Three design partners on real messy data | One partner at L3 |
 

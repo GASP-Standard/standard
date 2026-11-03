@@ -35,7 +35,7 @@ FROM (VALUES
   ('gasp_new_mrr', 8800),
   ('gasp_nps', -5.416666666666666E+1),
   ('gasp_nrr', 9.867549668874173E-1),
-  ('gasp_nrr_m', 9.867549668874173E-1),
+  ('gasp_nrr_m', 1.026490066225165E+0),
   ('gasp_nrr_o', 9.205298013245033E-1),
   ('gasp_reactivation_mrr', 600),
   ('gasp_revenue_churn_rate', 2.185430463576159E-1),

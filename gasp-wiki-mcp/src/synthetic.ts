@@ -398,7 +398,7 @@ export function generateFixture(ontology?: Pick<OntologyData, "fields" | "datase
       t.revenue_event.push(row("revenue_event", `re${ev}`, {
         event_id: `re${pad(ev)}`, event_date: m.date, customer_id: c, subscription_id: subscriptionOf(c), event_type: m.type,
         mrr_change: m.change, prior_mrr: prior, new_mrr: prior + m.change, currency: "USD", change_nature: "permanent",
-        expansion_classification: m.type === "expansion" ? expansionClass(c, m) : null, lifecycle_attribution: lifecycle[m.type],
+        expansion_classification: m.type === "expansion" ? expansionClass(c, m) : m.type === "contraction" || m.type === "reactivation" ? "same_product" : null, lifecycle_attribution: lifecycle[m.type],
       }));
       prior += m.change;
     }
@@ -803,7 +803,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
         t.amendment_event.push(row("amendment_event", `am_${c}_${m.date}`, {
           event_id: `am_${c}_${m.date}`, event_date: m.date, customer_id: c, subscription_id: subscriptionOf(c), amendment_type: amendment,
           mrr_change: m.change, change_nature: "permanent", lifecycle_attribution: m.type === "expansion" ? "expansion" : "retention",
-          expansion_classification: m.type === "expansion" ? expansionClass(c, m) : null,
+          expansion_classification: m.type === "expansion" ? expansionClass(c, m) : "same_product",
         }));
       }
     }
