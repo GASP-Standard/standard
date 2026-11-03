@@ -27,7 +27,7 @@ import { columnName, TABLES } from "./fixture/generate.js";
 const data = loadStandard();
 const fields = Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f]));
 const gaspDatasets = data.ontology!.datasets!;
-const acme = JSON.parse(readFileSync(join(process.cwd(), "..", "gasp-wiki-frontend", "src", "data", "examples", "acme-adapter.json"), "utf-8")) as Adapter;
+const acme = JSON.parse(readFileSync(join(process.cwd(), "test", "fixture", "acme-adapter.json"), "utf-8")) as Adapter;
 const reference = exportModel(data);
 
 const company = (a: Adapter): Company => {

@@ -1,0 +1,233 @@
+{
+  "$schema": "https://gaspwiki.com/schemas/gasp-adapter-v1.json",
+  "version": "1.1",
+  "organization": "Acme SaaS",
+  "warehouse": "snowflake",
+  "metricOwners": [
+    {
+      "metric": "MRR",
+      "team": "Finance",
+      "contact": "jane@acme.com"
+    },
+    {
+      "metric": "NRR",
+      "team": "Finance"
+    }
+  ],
+  "datasets": {
+    "subscription": "billing.subscriptions",
+    "revenue_event": "billing.mrr_movements",
+    "customer": "billing.customers",
+    "invoice": "billing.invoices"
+  },
+  "mappings": [
+    {
+      "gaspField": "acquisition_date",
+      "warehouseRef": "acquisition_date"
+    },
+    {
+      "gaspField": "auto_renewed",
+      "warehouseRef": "auto_renewed"
+    },
+    {
+      "gaspField": "billing_trigger_date",
+      "warehouseRef": "billing_trigger_date"
+    },
+    {
+      "gaspField": "change_nature",
+      "dataset": "revenue_event",
+      "warehouseRef": "change_nature"
+    },
+    {
+      "gaspField": "contract_end",
+      "dataset": "subscription",
+      "warehouseRef": "contract_end"
+    },
+    {
+      "gaspField": "contract_start",
+      "dataset": "subscription",
+      "warehouseRef": "contract_start"
+    },
+    {
+      "gaspField": "credit_memo_count",
+      "warehouseRef": "credit_memo_count"
+    },
+    {
+      "gaspField": "currency",
+      "dataset": "revenue_event",
+      "warehouseRef": "currency"
+    },
+    {
+      "gaspField": "currency",
+      "dataset": "invoice",
+      "warehouseRef": "currency"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "revenue_event",
+      "warehouseRef": "customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "customer",
+      "warehouseRef": "customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "subscription",
+      "warehouseRef": "customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "invoice",
+      "warehouseRef": "customer_id"
+    },
+    {
+      "gaspField": "customer_status",
+      "warehouseRef": "customer_status"
+    },
+    {
+      "gaspField": "event_date",
+      "dataset": "revenue_event",
+      "warehouseRef": "event_date"
+    },
+    {
+      "gaspField": "event_id",
+      "dataset": "revenue_event",
+      "warehouseRef": "event_id"
+    },
+    {
+      "gaspField": "event_type",
+      "warehouseRef": "movement_type",
+      "transform": "CASE WHEN {{value}} = 'upgrade' THEN 'expansion' WHEN {{value}} = 'downgrade' THEN 'contraction' WHEN {{value}} = 'cancel' THEN 'churn' ELSE {{value}} END"
+    },
+    {
+      "gaspField": "expansion_classification",
+      "dataset": "revenue_event",
+      "warehouseRef": "expansion_classification"
+    },
+    {
+      "gaspField": "invoice_amount",
+      "warehouseRef": "invoice_amount"
+    },
+    {
+      "gaspField": "invoice_corrected",
+      "warehouseRef": "invoice_corrected"
+    },
+    {
+      "gaspField": "invoice_date",
+      "warehouseRef": "invoice_date"
+    },
+    {
+      "gaspField": "invoice_disputed",
+      "warehouseRef": "invoice_disputed"
+    },
+    {
+      "gaspField": "invoice_id",
+      "warehouseRef": "invoice_id"
+    },
+    {
+      "gaspField": "lifecycle_attribution",
+      "dataset": "revenue_event",
+      "warehouseRef": "lifecycle_attribution"
+    },
+    {
+      "gaspField": "mrr",
+      "warehouseRef": "mrr_cents",
+      "transform": "{{value}} / 100",
+      "owner": "Data Engineering",
+      "notes": "Stored in cents in our billing system"
+    },
+    {
+      "gaspField": "mrr_change",
+      "dataset": "revenue_event",
+      "warehouseRef": "mrr_change"
+    },
+    {
+      "gaspField": "mrr_end",
+      "warehouseRef": "mrr_end"
+    },
+    {
+      "gaspField": "mrr_start",
+      "warehouseRef": "mrr_start"
+    },
+    {
+      "gaspField": "new_mrr",
+      "warehouseRef": "new_mrr"
+    },
+    {
+      "gaspField": "outstanding_amount",
+      "warehouseRef": "outstanding_amount"
+    },
+    {
+      "gaspField": "payment_date",
+      "warehouseRef": "payment_date"
+    },
+    {
+      "gaspField": "payment_method",
+      "warehouseRef": "payment_method"
+    },
+    {
+      "gaspField": "payment_status",
+      "warehouseRef": "payment_status"
+    },
+    {
+      "gaspField": "prior_mrr",
+      "warehouseRef": "prior_mrr"
+    },
+    {
+      "gaspField": "renewal_amount",
+      "warehouseRef": "renewal_amount"
+    },
+    {
+      "gaspField": "renewal_complete_date",
+      "warehouseRef": "renewal_complete_date"
+    },
+    {
+      "gaspField": "renewal_notified_on_time",
+      "warehouseRef": "renewal_notified_on_time"
+    },
+    {
+      "gaspField": "renewal_trigger_date",
+      "warehouseRef": "renewal_trigger_date"
+    },
+    {
+      "gaspField": "renewed",
+      "warehouseRef": "renewed"
+    },
+    {
+      "gaspField": "segment",
+      "dataset": "customer",
+      "warehouseRef": "segment"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "customer",
+      "warehouseRef": "snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "subscription",
+      "warehouseRef": "snapshot_date"
+    },
+    {
+      "gaspField": "snapshot_date",
+      "dataset": "invoice",
+      "warehouseRef": "snapshot_date"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "revenue_event",
+      "warehouseRef": "subscription_id"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "subscription",
+      "warehouseRef": "subscription_id"
+    },
+    {
+      "gaspField": "subscription_status",
+      "warehouseRef": "subscription_status"
+    }
+  ]
+}

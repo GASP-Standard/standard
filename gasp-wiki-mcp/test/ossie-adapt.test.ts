@@ -21,7 +21,7 @@ import { uvAvailable, validateUpstream } from "../src/ossie/validate.js";
 import type { OssieMapping, OssieSemanticModel } from "../src/ossie/types.js";
 
 const data = loadStandard();
-const acme = JSON.parse(readFileSync(join(process.cwd(), "..", "gasp-wiki-frontend", "src", "data", "examples", "acme-adapter.json"), "utf-8")) as Adapter;
+const acme = JSON.parse(readFileSync(join(process.cwd(), "test", "fixture", "acme-adapter.json"), "utf-8")) as Adapter;
 const spikeDir = join(process.cwd(), "test", "fixture", "ossie-spike");
 const spikeMapping = parseYaml(readFileSync(join(spikeDir, "gasp.mapping.yaml"), "utf-8")) as OssieMapping;
 const spikeModel = parseYaml(readFileSync(join(spikeDir, "gasp.semantic_model.yaml"), "utf-8")) as OssieSemanticModel;

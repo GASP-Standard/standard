@@ -31,3 +31,7 @@ npx tsx test/fixture/generate.ts --adapter
 - A new ontology dataset: add it to `TABLES` (and any renamed columns to `COLUMNS`), generate its rows in `generateExtensions()` and regenerate the adapter. Templates whose datasets are all mapped run automatically.
 - New hand-checked values: put the behaviour in a story rather than the PRNG, compute the expected value in the test with plain filters over `fixture.tables` and pin a literal where the shape matters.
 - Changing a story changes pinned values in "locks the fixture's shape"; update them deliberately.
+
+## The Acme example adapter
+
+`acme-adapter.json` is the fictional company's partial adapter (Snowflake, 47 fully covered metrics, a transform on `mrr_cents`). It is the one copy: `test/ossie-adapt.test.ts` and `test/ossie-company.test.ts` read it here, and the site's `src/lib/tool-examples.ts` imports it from here to render the adapter page's validation report and the compiled model excerpt. Keep it in this package so the suite passes from the public mirror, which holds only `standard/` and `gasp-wiki-mcp/`.
