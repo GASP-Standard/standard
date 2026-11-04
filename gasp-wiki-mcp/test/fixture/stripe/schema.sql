@@ -1,4 +1,4 @@
--- Stripe as it lands in Redshift through Stripe Data Pipeline, and the three
+-- Stripe as it lands in Redshift through Stripe Data Pipeline, and the four
 -- snapshot tables a company keeps on top of it. Redshift DDL, the input to
 -- profile_schema. Column names follow the Stripe API reference as Data
 -- Pipeline and Sigma flatten them: nested fields join with an underscore
@@ -12,7 +12,8 @@
 -- landed table is a ledger. The nightly job in snapshot.sql copies the joined
 -- state into stripe_snapshots.* once a day, and those tables are what the GASP
 -- mapping (adapter.json) reads. gasp.revenue_events is the table derive_cel's
--- SQL fills from the subscription item snapshots.
+-- SQL fills from the subscription item snapshots and the usage records (or,
+-- for a company that keeps no item snapshots, from the invoices).
 --
 -- Only the columns the snapshots and the mapping read are listed; the landed
 -- tables carry many more.
@@ -65,6 +66,7 @@ CREATE TABLE stripe.prices (
   type VARCHAR(16),
   recurring_interval VARCHAR(8),
   recurring_interval_count BIGINT,
+  recurring_usage_type VARCHAR(16),
   billing_scheme VARCHAR(16),
   nickname VARCHAR(255),
   livemode BOOLEAN
@@ -87,6 +89,24 @@ CREATE TABLE stripe.invoices (
   paid BOOLEAN,
   status_transitions_paid_at TIMESTAMP,
   collection_method VARCHAR(32),
+  livemode BOOLEAN
+);
+
+-- One line per charge on an invoice: a licensed price's charge for the period
+-- it pays for (billed in advance), a metered price's charge for the usage of
+-- the period just ended (billed in arrears), a proration or a one-off.
+CREATE TABLE stripe.invoice_line_items (
+  id VARCHAR(255) NOT NULL PRIMARY KEY,
+  invoice_id VARCHAR(255) NOT NULL REFERENCES stripe.invoices (id),
+  subscription_id VARCHAR(255),
+  subscription_item_id VARCHAR(255),
+  price_id VARCHAR(255) REFERENCES stripe.prices (id),
+  period_start TIMESTAMP,
+  period_end TIMESTAMP,
+  amount BIGINT,
+  quantity BIGINT,
+  currency CHAR(3),
+  proration BOOLEAN,
   livemode BOOLEAN
 );
 
@@ -127,7 +147,9 @@ CREATE TABLE stripe_snapshots.customers (
   PRIMARY KEY (snapshot_date, customer_id)
 );
 
--- One row per invoice per day, the invoice's state on the day.
+-- One row per invoice per day, the invoice's state on the day, with the
+-- service period and the amount of its licensed lines (the recurring charge
+-- the GASP invoice derivation reads; null on an invoice with no licensed line).
 CREATE TABLE stripe_snapshots.invoices (
   snapshot_date DATE NOT NULL,
   id VARCHAR(255) NOT NULL,
@@ -140,11 +162,32 @@ CREATE TABLE stripe_snapshots.invoices (
   amount_remaining BIGINT,
   currency CHAR(3),
   status_transitions_paid_at TIMESTAMP,
+  licensed_period_start DATE,
+  licensed_period_end DATE,
+  licensed_amount BIGINT,
   PRIMARY KEY (snapshot_date, id)
 );
 
+-- One row per metered subscription item per billing period, written when the
+-- period's usage is invoiced: the commitment is the MRR of the subscription's
+-- licensed items on the period's last day, and the usage is that commitment
+-- plus what the metered line billed beyond the included volume. The GASP
+-- usage_record dataset.
+CREATE TABLE stripe_snapshots.usage_records (
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  subscription_item_id VARCHAR(255) NOT NULL,
+  subscription_id VARCHAR(255) NOT NULL,
+  customer_id VARCHAR(255) NOT NULL,
+  committed_amount BIGINT NOT NULL,
+  usage_amount BIGINT NOT NULL,
+  currency CHAR(3),
+  PRIMARY KEY (period_start, subscription_item_id)
+);
+
 -- Written by the SQL derive_cel returns for adapter.json (see README.md), then
--- classify.sql fills expansion_classification from the item history.
+-- classify.sql fills expansion_classification from the item history on the
+-- events the derivation left untagged (the usage events arrive tagged).
 CREATE TABLE gasp.revenue_events (
   event_id VARCHAR(255) NOT NULL PRIMARY KEY,
   event_date DATE NOT NULL,

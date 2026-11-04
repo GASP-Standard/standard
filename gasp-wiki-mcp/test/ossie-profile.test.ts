@@ -79,10 +79,13 @@ describe("Profile: the synthetic dataset from names alone", () => {
   it("names the key of every table whose columns name it, with the date for a snapshot or per-period row, and asks about the rest", () => {
     const off = expected().filter((e) => (r.datasets.find((d) => d.source === e.table)!.key?.value.join(",") ?? "?") !== e.key.join(",")).map((e) => e.table);
     // Two foreign keys and no own id (revenue_schedule), or no id column at all on a per-period table: a question each.
-    expect(off).toEqual(["gasp_trials", "gasp_revenue_schedule", "gasp_financials", "gasp_web_traffic", "gasp_brand_mentions"]);
+    expect(off).toEqual(["gasp_trials", "gasp_revenue_schedule", "gasp_usage_records", "gasp_financials", "gasp_web_traffic", "gasp_brand_mentions"]);
     expect(r.datasets.find((d) => d.source === "gasp_trials")!.key).toMatchObject({ value: ["trial_id"], confidence: "medium" });
     for (const t of off.slice(1)) expect(r.questions.some((q) => q.dataset === t && q.about === "key"), t).toBe(true);
-    expect(r.questions.map((q) => `${q.dataset}:${q.about}`).sort()).toEqual(["gasp_brand_mentions:key", "gasp_financials:key", "gasp_revenue_schedule:key", "gasp_trials:time", "gasp_web_traffic:key"]);
+    expect(r.questions.map((q) => `${q.dataset}:${q.about}`).sort()).toEqual(["gasp_brand_mentions:key", "gasp_financials:key", "gasp_revenue_schedule:key", "gasp_trials:time", "gasp_usage_records:key", "gasp_web_traffic:key"]);
+    // period_start beside period_end bounds the period the row describes: the row is dated its start, no question asked.
+    expect(r.datasets.find((d) => d.source === "gasp_usage_records")!.time).toEqual({ value: "period_start", confidence: "high", evidence: "the period start of a per-period row; period_end is the end of the same period" });
+    expect(r.datasets.find((d) => d.source === "gasp_usage_records")!.kind).toMatchObject({ value: "fact" });
   });
 
   it("explains each inference", () => {
@@ -115,7 +118,7 @@ describe("Profile: the synthetic dataset with statistics", () => {
     const byTable = (t: string) => r.datasets.find((d) => d.source === t)!;
     for (const e of expected()) {
       const d = byTable(e.table);
-      if (["gasp_trials", "gasp_revenue_schedule", "gasp_financials", "gasp_onboarding_milestones", "gasp_onboarding_sessions"].includes(e.table)) continue;
+      if (["gasp_trials", "gasp_revenue_schedule", "gasp_usage_records", "gasp_financials", "gasp_onboarding_milestones", "gasp_onboarding_sessions"].includes(e.table)) continue;
       expect(d.key?.value, e.table).toEqual(e.key);
       expect(d.key!.confidence, e.table).toBe("high");
     }
@@ -131,7 +134,7 @@ describe("Profile: the synthetic dataset with statistics", () => {
     expect(q.about).toBe("key");
     expect(q.options).toEqual(["customer_id, period_start", "subscription_id, period_start"]);
     expect(q.why).toContain("cannot tell them apart");
-    expect(r.questions.map((x) => x.dataset).sort()).toEqual(["gasp_revenue_schedule", "gasp_trials"]);
+    expect(r.questions.map((x) => x.dataset).sort()).toEqual(["gasp_revenue_schedule", "gasp_trials", "gasp_usage_records"]); // usage records: one row per subscription per month, and one customer per subscription
   });
 
   it("lists the values of enum columns and leaves identifiers alone", () => {
@@ -148,7 +151,7 @@ describe("Profile: the synthetic dataset with statistics", () => {
     expect(report).toContain("# Schema profile: Fixture");
     expect(report).toContain(`**Input:** ${Object.keys(TABLES).length} tables, ${schema.columns.length} columns from information_schema rows (JSON); statistics for ${schema.columns.length} columns.`);
     expect(report).toContain("- key: subscription_id, snapshot_day (high confidence: named after the table (subscription_id); ");
-    expect(report).toContain("## Questions (2)");
+    expect(report).toContain("## Questions (3)");
     expect(report).not.toContain("## Statistics");
   });
 });

@@ -1628,6 +1628,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Invoice} on {Date} has {InvoiceAmount}"
+      - name: recurring_amount
+        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
+        roles:
+          - concept: Date
+          - concept: RecurringAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has {RecurringAmount}"
       - name: invoice_corrected
         description: Corrected after issue
         roles:
@@ -1660,6 +1668,24 @@ ontology:
         multiplicity: OneToOne
         verbalizes:
           - "{Invoice} is identified by {InvoiceId}"
+      - name: service_period_start
+        description: First day of the service the invoice's recurring charge pays for; null on an invoice with no recurring charge. The invoice derivation in cel.md reads it
+        roles:
+          - concept: Date
+          - concept: Date
+            name: service_period_start
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has service period start {Date:service_period_start}"
+      - name: service_period_end
+        description: Last day of the service the invoice's recurring charge pays for, inclusive
+        roles:
+          - concept: Date
+          - concept: Date
+            name: service_period_end
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} on {Date} has service period end {Date:service_period_end}"
       - name: outstanding_amount
         description: Unpaid balance as of snapshot_date
         roles:
@@ -1693,6 +1719,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Invoice} on {Date} has {PaymentStatus}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: Subscription
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Invoice} belongs to {Subscription}"
   - concept: Campaign
     type: EntityType
     description: "Campaign spend (fact dataset `campaign`). A marketing initiative with defined objectives, channels, budget and dates. Campaigns source leads and influence opportunities. Also known as: Marketing Campaign, Initiative."
@@ -2947,6 +2980,59 @@ ontology:
         multiplicity: OneToOne
         verbalizes:
           - "{RevenueSchedule} is identified by {SubscriptionId}"
+  - concept: UsageRecord
+    type: EntityType
+    description: Usage record (fact dataset `usage_record`).
+    identify_by:
+      - subscription_id
+    relationships:
+      - name: currency
+        description: ISO 4217 currency code
+        roles:
+          - concept: Date
+          - concept: Currency
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{UsageRecord} on {Date} has {Currency}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{UsageRecord} belongs to {Customer}"
+      - name: period_end
+        description: Last day of the period the row describes, inclusive
+        roles:
+          - concept: Date
+          - concept: Date
+            name: period_end
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{UsageRecord} on {Date} has period end {Date:period_end}"
+      - name: committed_amount
+        description: The recurring charge the customer committed to for the period, at the price it is billed at. Already in the subscription's MRR
+        roles:
+          - concept: Date
+          - concept: CommittedAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{UsageRecord} on {Date} has {CommittedAmount}"
+      - name: usage_amount
+        description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment
+        roles:
+          - concept: Date
+          - concept: UsageAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{UsageRecord} on {Date} has {UsageAmount}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: SubscriptionId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{UsageRecord} is identified by {SubscriptionId}"
   - concept: Financials
     type: EntityType
     description: Income statement and cash flow (fact dataset `financials`).
@@ -3700,6 +3786,11 @@ ontology:
     description: Invoiced amount
     extends:
       - Decimal
+  - concept: RecurringAmount
+    type: ValueType
+    description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
+    extends:
+      - Decimal
   - concept: InvoiceCorrected
     type: ValueType
     description: Corrected after issue
@@ -3953,6 +4044,16 @@ ontology:
   - concept: PerformanceRating
     type: ValueType
     description: Most recent performance rating
+    extends:
+      - Decimal
+  - concept: CommittedAmount
+    type: ValueType
+    description: The recurring charge the customer committed to for the period, at the price it is billed at. Already in the subscription's MRR
+    extends:
+      - Decimal
+  - concept: UsageAmount
+    type: ValueType
+    description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment
     extends:
       - Decimal
   - concept: PopulatedFieldCount

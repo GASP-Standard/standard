@@ -40,6 +40,7 @@
     "invoice": "gasp_invoices",
     "balance_sheet": "gasp_balance_sheet",
     "revenue_schedule": "gasp_revenue_schedule",
+    "usage_record": "gasp_usage_records",
     "forecast": "gasp_forecasts",
     "quote": "gasp_quotes",
     "order": "gasp_orders",
@@ -348,6 +349,11 @@
       "warehouseRef": "gasp_invoices.currency"
     },
     {
+      "gaspField": "currency",
+      "dataset": "usage_record",
+      "warehouseRef": "gasp_usage_records.currency"
+    },
+    {
       "gaspField": "customer_id",
       "dataset": "revenue_event",
       "warehouseRef": "gasp_revenue_events.account_ref"
@@ -436,6 +442,11 @@
       "gaspField": "customer_id",
       "dataset": "trial",
       "warehouseRef": "gasp_trials.account_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "usage_record",
+      "warehouseRef": "gasp_usage_records.customer_id"
     },
     {
       "gaspField": "customer_status",
@@ -771,6 +782,10 @@
       "warehouseRef": "gasp_invoices.invoice_amount"
     },
     {
+      "gaspField": "recurring_amount",
+      "warehouseRef": "gasp_invoices.recurring_amount"
+    },
+    {
       "gaspField": "invoice_corrected",
       "warehouseRef": "gasp_invoices.invoice_corrected"
     },
@@ -785,6 +800,14 @@
     {
       "gaspField": "invoice_id",
       "warehouseRef": "gasp_invoices.invoice_id"
+    },
+    {
+      "gaspField": "service_period_start",
+      "warehouseRef": "gasp_invoices.service_period_start"
+    },
+    {
+      "gaspField": "service_period_end",
+      "warehouseRef": "gasp_invoices.service_period_end"
     },
     {
       "gaspField": "is_competitor",
@@ -1152,6 +1175,23 @@
       "gaspField": "period_start",
       "dataset": "brand_mention",
       "warehouseRef": "gasp_brand_mentions.period_start"
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "usage_record",
+      "warehouseRef": "gasp_usage_records.period_start"
+    },
+    {
+      "gaspField": "period_end",
+      "warehouseRef": "gasp_usage_records.period_end"
+    },
+    {
+      "gaspField": "committed_amount",
+      "warehouseRef": "gasp_usage_records.committed_amount"
+    },
+    {
+      "gaspField": "usage_amount",
+      "warehouseRef": "gasp_usage_records.usage_amount"
     },
     {
       "gaspField": "planned_date",
@@ -1686,6 +1726,16 @@
       "gaspField": "subscription_id",
       "dataset": "license",
       "warehouseRef": "gasp_licenses.sub_ref"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "invoice",
+      "warehouseRef": "gasp_invoices.subscription_id"
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "usage_record",
+      "warehouseRef": "gasp_usage_records.subscription_id"
     },
     {
       "gaspField": "subscription_status",

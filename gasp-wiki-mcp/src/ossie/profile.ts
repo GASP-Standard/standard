@@ -429,11 +429,14 @@ function inferTime(t: TableInfo): Inference<string> | { question: Question } | u
   if (cands.length === 1) return { value: top.c.column, confidence: "high", evidence: "the only date column" };
   const runnersUp = scored.slice(1).filter((x) => x.s[0] >= top.s[0] - 5);
   // A start date beside its end date is a span: which end places the row is the business's call (a trial counts when it ends).
+  // period_start beside period_end is not: the pair bounds the period the row describes, and the row is dated its start.
   const topStem = name(top.c).replace(/_(date|at|on|ts|time|day)$/, "");
-  const endOf = /_(start|begin|from|open|opened)$/.test(topStem) || /^(start|begin)(_|$)/.test(topStem)
+  const periodPair = name(top.c) === "period_start" && cands.some((c) => name(c) === "period_end");
+  const endOf = !periodPair && (/_(start|begin|from|open|opened)$/.test(topStem) || /^(start|begin)(_|$)/.test(topStem))
     ? cands.find((c) => c !== top.c && name(c).replace(/_(date|at|on|ts|time|day)$/, "") === topStem.replace(/_(start|begin|from|open|opened)$/, "_end").replace(/^(start|begin)(_|$)/, "end$2"))
     : undefined;
   if (endOf && !runnersUp.some((x) => x.c === endOf)) runnersUp.unshift(scored.find((x) => x.c === endOf)!);
+  if (periodPair) return { value: top.c.column, confidence: "high", evidence: `${top.s[1]}; period_end is the end of the same period${scored.length > 2 ? `, ${scored.slice(1).filter((x) => name(x.c) !== "period_end").map((x) => x.c.column).join(", ")} ${scored.length === 3 ? "is a secondary date" : "are secondary dates"}` : ""}` };
   if (!runnersUp.length) return { value: top.c.column, confidence: top.s[0] >= 60 ? "high" : "medium", evidence: `${top.s[1]}; ${scored.slice(1).map((x) => x.c.column).join(", ")} ${scored.length === 2 ? "is a later or secondary date" : "are later or secondary dates"}` };
   return {
     question: {

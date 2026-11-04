@@ -3,8 +3,8 @@
 // Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive`
 // ═══════════════════════════════════════════════════════════════
 //
-// Nodes: 65 Metrics, 28 Entities, 7 Concepts, 52 Datasets, 268 Fields, 22 Source Categories
-// Edges: 91 metric relationships, 79 MEASURES, 30 entity/concept relationships, 395 BELONGS_TO, 360 SOURCED_FROM
+// Nodes: 65 Metrics, 28 Entities, 7 Concepts, 53 Datasets, 274 Fields, 22 Source Categories
+// Edges: 91 metric relationships, 79 MEASURES, 30 entity/concept relationships, 406 BELONGS_TO, 366 SOURCED_FROM
 //
 // Relationship types (metric signal): DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES
 // Relationship types (entity): OWNS, GRANTS, PARENT_OF, PRICED_BY, CONVERTS_TO, SUBMITS, ENGAGES_VIA, MANAGES, SOURCES, SERVES, REPRESENTED_BY, GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS, BELONGS_TO
@@ -146,7 +146,7 @@ CREATE (:SourceCategory {id: 'partner_management', name: 'Partner Management', d
 CREATE (:SourceCategory {id: 'lms', name: 'LMS', description: 'Learning management: training courses, certifications, completion tracking'});
 CREATE (:SourceCategory {id: 'derived', name: 'Derived', description: 'Calculated from other metrics: no direct data source required'});
 
-// ─── Dataset Nodes (52) ─────────────────────────────
+// ─── Dataset Nodes (53) ─────────────────────────────
 CREATE (:Dataset {id: 'revenue_event', name: 'Revenue event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Revenue_Event'});
 CREATE (:Dataset {id: 'cost_event', name: 'Cost event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Cost_Event'});
 CREATE (:Dataset {id: 'contract_event', name: 'Contract event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Contract_Event'});
@@ -191,6 +191,7 @@ CREATE (:Dataset {id: 'onboarding_session', name: 'Onboarding session', kind: 'e
 CREATE (:Dataset {id: 'quote', name: 'Quote', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'quote_id'});
 CREATE (:Dataset {id: 'order', name: 'Order', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'order_id'});
 CREATE (:Dataset {id: 'revenue_schedule', name: 'Revenue schedule', kind: 'fact', dateField: 'period_start', keyField: 'subscription_id'});
+CREATE (:Dataset {id: 'usage_record', name: 'Usage record', kind: 'fact', dateField: 'period_start', keyField: 'subscription_id'});
 CREATE (:Dataset {id: 'financials', name: 'Income statement and cash flow', kind: 'fact', dateField: 'period_start', keyField: 'period_start'});
 CREATE (:Dataset {id: 'balance_sheet', name: 'Balance sheet', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'snapshot_date'});
 CREATE (:Dataset {id: 'web_traffic', name: 'Web traffic', kind: 'fact', dateField: 'period_start', keyField: 'traffic_source'});
@@ -200,7 +201,7 @@ CREATE (:Dataset {id: 'partner_activity', name: 'Partner activity', kind: 'event
 CREATE (:Dataset {id: 'deal_registration', name: 'Partner deal registration', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'registration_id'});
 CREATE (:Dataset {id: 'forecast', name: 'Revenue forecast', kind: 'fact', dateField: 'period_start', keyField: 'period_start'});
 
-// ─── Field Nodes (268) ─────────────────────────────
+// ─── Field Nodes (274) ─────────────────────────────
 CREATE (:Field {id: 'accounts_receivable', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'acknowledged_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'acquisition_date', type: 'date', metricCount: 1});
@@ -304,10 +305,13 @@ CREATE (:Field {id: 'incident_id', type: 'string', metricCount: 3});
 CREATE (:Field {id: 'incident_type', type: 'enum', metricCount: 3, values: 'availability|performance|security|data'});
 CREATE (:Field {id: 'includes_services', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'invoice_amount', type: 'decimal', metricCount: 4});
+CREATE (:Field {id: 'recurring_amount', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'invoice_corrected', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'invoice_date', type: 'date', metricCount: 9});
 CREATE (:Field {id: 'invoice_disputed', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'invoice_id', type: 'string', metricCount: 3});
+CREATE (:Field {id: 'service_period_start', type: 'date', metricCount: 0});
+CREATE (:Field {id: 'service_period_end', type: 'date', metricCount: 0});
 CREATE (:Field {id: 'is_competitor', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'is_high_performer', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'issue_environment', type: 'enum', metricCount: 1, values: 'production|pre_production'});
@@ -366,6 +370,9 @@ CREATE (:Field {id: 'payment_method', type: 'enum', metricCount: 1, values: 'cre
 CREATE (:Field {id: 'payment_status', type: 'enum', metricCount: 3, values: 'paid|unpaid|partial|written_off'});
 CREATE (:Field {id: 'performance_rating', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'period_start', type: 'date', metricCount: 51});
+CREATE (:Field {id: 'period_end', type: 'date', metricCount: 0});
+CREATE (:Field {id: 'committed_amount', type: 'decimal', metricCount: 0});
+CREATE (:Field {id: 'usage_amount', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'planned_date', type: 'date', metricCount: 2});
 CREATE (:Field {id: 'populated_field_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'prior_mrr', type: 'decimal', metricCount: 0});
@@ -814,7 +821,7 @@ CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'self_service_rate'}), (e:Entity {id: 'kb_article'})
 CREATE (m)-[:MEASURES]->(e);
 
-// ─── BELONGS_TO Edges (395) ─────────────────────────────
+// ─── BELONGS_TO Edges (406) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (d:Dataset {id: 'balance_sheet'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'acknowledged_at'}), (d:Dataset {id: 'incident'})
@@ -943,6 +950,8 @@ MATCH (f:Field {id: 'currency'}), (d:Dataset {id: 'contract_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'currency'}), (d:Dataset {id: 'invoice'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'currency'}), (d:Dataset {id: 'usage_record'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'revenue_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'cost_event'})
@@ -978,6 +987,8 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'contact'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'trial'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'customer_id'}), (d:Dataset {id: 'usage_record'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'customer_status'}), (d:Dataset {id: 'customer'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1129,6 +1140,8 @@ MATCH (f:Field {id: 'includes_services'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'invoice_amount'}), (d:Dataset {id: 'invoice'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'recurring_amount'}), (d:Dataset {id: 'invoice'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'invoice_corrected'}), (d:Dataset {id: 'invoice'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'invoice_date'}), (d:Dataset {id: 'invoice'})
@@ -1136,6 +1149,10 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'invoice_disputed'}), (d:Dataset {id: 'invoice'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'invoice_id'}), (d:Dataset {id: 'invoice'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'service_period_start'}), (d:Dataset {id: 'invoice'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'service_period_end'}), (d:Dataset {id: 'invoice'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'is_competitor'}), (d:Dataset {id: 'brand_mention'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1302,6 +1319,14 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'period_start'}), (d:Dataset {id: 'web_traffic'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'period_start'}), (d:Dataset {id: 'brand_mention'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'period_start'}), (d:Dataset {id: 'usage_record'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'period_end'}), (d:Dataset {id: 'usage_record'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'committed_amount'}), (d:Dataset {id: 'usage_record'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'usage_amount'}), (d:Dataset {id: 'usage_record'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'planned_date'}), (d:Dataset {id: 'feature'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1541,6 +1566,10 @@ MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'revenue_schedule'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'license'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'invoice'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'subscription_id'}), (d:Dataset {id: 'usage_record'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'subscription_status'}), (d:Dataset {id: 'subscription'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'survey_completed'}), (d:Dataset {id: 'survey_response'})
@@ -1606,7 +1635,7 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'written_off_hours'}), (d:Dataset {id: 'time_entry'})
 CREATE (f)-[:BELONGS_TO]->(d);
 
-// ─── SOURCED_FROM Edges (360) ─────────────────────────────
+// ─── SOURCED_FROM Edges (366) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'finance'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'billing'})
@@ -1907,6 +1936,8 @@ MATCH (f:Field {id: 'includes_services'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'invoice_amount'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'recurring_amount'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'invoice_corrected'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'invoice_date'}), (s:SourceCategory {id: 'billing'})
@@ -1914,6 +1945,10 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'invoice_disputed'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'invoice_id'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'service_period_start'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'service_period_end'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'is_competitor'}), (s:SourceCategory {id: 'web_analytics'})
 CREATE (f)-[:SOURCED_FROM]->(s);
@@ -2068,6 +2103,12 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'performance_rating'}), (s:SourceCategory {id: 'hris'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'period_start'}), (s:SourceCategory {id: 'derived'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'period_end'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'committed_amount'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'usage_amount'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'planned_date'}), (s:SourceCategory {id: 'cicd'})
 CREATE (f)-[:SOURCED_FROM]->(s);

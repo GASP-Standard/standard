@@ -37,6 +37,11 @@ datasets:
           sql: invoice_amount
         description: Invoiced amount
         datatype: Decimal
+      - name: recurring_amount
+        expression:
+          sql: recurring_amount
+        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
+        datatype: Decimal
       - name: invoice_corrected
         expression:
           sql: invoice_corrected
@@ -57,6 +62,16 @@ datasets:
           sql: invoice_id
         description: Invoice identifier
         datatype: String
+      - name: service_period_start
+        expression:
+          sql: service_period_start
+        description: First day of the service the invoice's recurring charge pays for; null on an invoice with no recurring charge. The invoice derivation in cel.md reads it
+        datatype: Date
+      - name: service_period_end
+        expression:
+          sql: service_period_end
+        description: Last day of the service the invoice's recurring charge pays for, inclusive
+        datatype: Date
       - name: outstanding_amount
         expression:
           sql: outstanding_amount
@@ -88,6 +103,11 @@ datasets:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
+      - name: subscription_id
+        expression:
+          sql: subscription_id
+        description: Subscription identifier
+        datatype: String
     custom_extensions:
       - vendor_name: GASP
         data: '{"kind":"snapshot"}'

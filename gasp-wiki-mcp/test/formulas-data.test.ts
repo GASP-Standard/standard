@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import { derivationPairs } from "../src/cel.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadStandard, metricFormulaId, isMetricStub } from "../src/loader.js";
@@ -115,7 +116,7 @@ describe("formulas.json", () => {
     expect(bad.map((f) => f.id)).toEqual([]);
   });
 
-  it("references every field at least once, except keys, dates, CEL ledger fields and dimensions", () => {
+  it("references every field at least once, except keys, dates, CEL ledger and derivation fields and dimensions", () => {
     const used = new Set(entries.flatMap(([, f]) => expressions(f).flatMap(([, src]) => analyzeFormula(parseFormula(src)).fieldRefs)));
     for (const [, f] of entries) {
       for (const b of [f.breakdown, ...Object.values(f.breakdowns ?? {})]) {
@@ -125,8 +126,10 @@ describe("formulas.json", () => {
       }
     }
     const ds = data.ontology!.datasets!;
+    // The fields the CEL derivations read (src/cel.ts) exist for the derivations, not for a formula.
+    const derivation = new Set(derivationPairs({ source: "invoice", usage: true }).map(([f]) => f));
     const structural = (f: NonNullable<OntologyData["fields"]>[number]) =>
-      f.dimension || f.id === "currency" || (f.datasets ?? []).some((d) => ds[d]?.key === f.id || ds[d]?.date === f.id || !!ds[d]?.cel);
+      f.dimension || f.id === "currency" || derivation.has(f.id) || (f.datasets ?? []).some((d) => ds[d]?.key === f.id || ds[d]?.date === f.id || !!ds[d]?.cel);
     const unused = data.ontology!.fields!.filter((f) => !used.has(f.id) && !structural(f)).map((f) => f.id);
     expect(unused).toEqual([]);
   });

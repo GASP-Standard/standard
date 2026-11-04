@@ -626,6 +626,17 @@ concept_mappings:
       - object_mapping:
           referent_mappings:
             - relationship: subscription_id
+              expression: invoice.subscription_id
+        children:
+          - object_mapping:
+              concept: Invoice
+              referent_mappings:
+                - relationship: invoice_id
+                  expression: invoice.invoice_id
+            relationship: generates_invoice
+      - object_mapping:
+          referent_mappings:
+            - relationship: subscription_id
               expression: subscription.subscription_id
         children:
           - object_mapping:
@@ -1093,6 +1104,12 @@ concept_mappings:
                   expression: invoice.customer_id
             relationship: customer_id
           - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: invoice.subscription_id
+            relationship: subscription_id
+          - object_mapping:
               concept: Date
               expression: invoice.snapshot_date
             children:
@@ -1113,6 +1130,10 @@ concept_mappings:
                   expression: invoice.invoice_amount
                 relationship: invoice_amount
               - object_mapping:
+                  concept: RecurringAmount
+                  expression: invoice.recurring_amount
+                relationship: recurring_amount
+              - object_mapping:
                   concept: InvoiceCorrected
                   expression: invoice.invoice_corrected
                 relationship: invoice_corrected
@@ -1124,6 +1145,14 @@ concept_mappings:
                   concept: InvoiceDisputed
                   expression: invoice.invoice_disputed
                 relationship: invoice_disputed
+              - object_mapping:
+                  concept: Date
+                  expression: invoice.service_period_start
+                relationship: service_period_start
+              - object_mapping:
+                  concept: Date
+                  expression: invoice.service_period_end
+                relationship: service_period_end
               - object_mapping:
                   concept: OutstandingAmount
                   expression: invoice.outstanding_amount
@@ -2020,6 +2049,43 @@ concept_mappings:
                   concept: RecognizedRevenue
                   expression: revenue_schedule.recognized_revenue
                 relationship: recognized_revenue
+  - concept: UsageRecord
+    object_mappings:
+      - referent_mappings:
+          - relationship: subscription_id
+            expression: usage_record.subscription_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: subscription_id
+              expression: usage_record.subscription_id
+        children:
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: usage_record.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: usage_record.period_start
+            children:
+              - object_mapping:
+                  concept: Currency
+                  expression: usage_record.currency
+                relationship: currency
+              - object_mapping:
+                  concept: Date
+                  expression: usage_record.period_end
+                relationship: period_end
+              - object_mapping:
+                  concept: CommittedAmount
+                  expression: usage_record.committed_amount
+                relationship: committed_amount
+              - object_mapping:
+                  concept: UsageAmount
+                  expression: usage_record.usage_amount
+                relationship: usage_amount
   - concept: Financials
     object_mappings:
       - referent_mappings:

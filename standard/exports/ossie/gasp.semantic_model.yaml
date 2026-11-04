@@ -1239,6 +1239,11 @@ datasets:
           sql: invoice_amount
         description: Invoiced amount
         datatype: Decimal
+      - name: recurring_amount
+        expression:
+          sql: recurring_amount
+        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
+        datatype: Decimal
       - name: invoice_corrected
         expression:
           sql: invoice_corrected
@@ -1259,6 +1264,16 @@ datasets:
           sql: invoice_id
         description: Invoice identifier
         datatype: String
+      - name: service_period_start
+        expression:
+          sql: service_period_start
+        description: First day of the service the invoice's recurring charge pays for; null on an invoice with no recurring charge. The invoice derivation in cel.md reads it
+        datatype: Date
+      - name: service_period_end
+        expression:
+          sql: service_period_end
+        description: Last day of the service the invoice's recurring charge pays for, inclusive
+        datatype: Date
       - name: outstanding_amount
         expression:
           sql: outstanding_amount
@@ -1290,6 +1305,11 @@ datasets:
           is_time: true
         description: As-of date of the snapshot row
         datatype: Date
+      - name: subscription_id
+        expression:
+          sql: subscription_id
+        description: Subscription identifier
+        datatype: String
     custom_extensions:
       - vendor_name: GASP
         data: '{"kind":"snapshot"}'
@@ -2399,6 +2419,53 @@ datasets:
         expression:
           sql: recognized_revenue
         description: Revenue recognised for the subscription in the period
+        datatype: Decimal
+      - name: subscription_id
+        expression:
+          sql: subscription_id
+        description: Subscription identifier
+        datatype: String
+    custom_extensions:
+      - vendor_name: GASP
+        data: '{"kind":"fact"}'
+  - name: usage_record
+    source: gasp.usage_record
+    description: "Usage record. Kind: fact."
+    primary_key:
+      - subscription_id
+      - period_start
+    fields:
+      - name: currency
+        expression:
+          sql: currency
+        description: ISO 4217 currency code
+        datatype: String
+      - name: customer_id
+        expression:
+          sql: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        datatype: String
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        description: Start of the period the row describes
+        datatype: Date
+      - name: period_end
+        expression:
+          sql: period_end
+        description: Last day of the period the row describes, inclusive
+        datatype: Date
+      - name: committed_amount
+        expression:
+          sql: committed_amount
+        description: The recurring charge the customer committed to for the period, at the price it is billed at. Already in the subscription's MRR
+        datatype: Decimal
+      - name: usage_amount
+        expression:
+          sql: usage_amount
+        description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment
         datatype: Decimal
       - name: subscription_id
         expression:
@@ -7328,6 +7395,15 @@ relationships:
     to_columns:
       - customer_id
       - snapshot_date
+  - name: invoice_subscription_id
+    from: invoice
+    to: subscription
+    from_columns:
+      - subscription_id
+      - snapshot_date
+    to_columns:
+      - subscription_id
+      - snapshot_date
   - name: ticket_customer_id
     from: ticket
     to: customer
@@ -7477,6 +7553,15 @@ relationships:
       - snapshot_date
   - name: revenue_schedule_customer_id
     from: revenue_schedule
+    to: customer
+    from_columns:
+      - customer_id
+      - period_start
+    to_columns:
+      - customer_id
+      - snapshot_date
+  - name: usage_record_customer_id
+    from: usage_record
     to: customer
     from_columns:
       - customer_id

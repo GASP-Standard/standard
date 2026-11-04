@@ -1420,7 +1420,8 @@
         "revenue_event",
         "cost_event",
         "contract_event",
-        "invoice"
+        "invoice",
+        "usage_record"
       ],
       "sources": [
         "billing",
@@ -1450,7 +1451,8 @@
         "product_event",
         "revenue_schedule",
         "contact",
-        "trial"
+        "trial",
+        "usage_record"
       ],
       "sources": [
         "billing",
@@ -2226,6 +2228,18 @@
       "metricCount": 4
     },
     {
+      "id": "recurring_amount",
+      "type": "decimal",
+      "datasets": [
+        "invoice"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers",
+      "metricCount": 0
+    },
+    {
       "id": "invoice_corrected",
       "type": "boolean",
       "datasets": [
@@ -2272,6 +2286,30 @@
       ],
       "description": "Invoice identifier",
       "metricCount": 3
+    },
+    {
+      "id": "service_period_start",
+      "type": "date",
+      "datasets": [
+        "invoice"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "First day of the service the invoice's recurring charge pays for; null on an invoice with no recurring charge. The invoice derivation in cel.md reads it",
+      "metricCount": 0
+    },
+    {
+      "id": "service_period_end",
+      "type": "date",
+      "datasets": [
+        "invoice"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "Last day of the service the invoice's recurring charge pays for, inclusive",
+      "metricCount": 0
     },
     {
       "id": "is_competitor",
@@ -3101,13 +3139,50 @@
         "service_metrics",
         "revenue_schedule",
         "web_traffic",
-        "brand_mention"
+        "brand_mention",
+        "usage_record"
       ],
       "sources": [
         "derived"
       ],
       "description": "Start of the period the row describes",
       "metricCount": 51
+    },
+    {
+      "id": "period_end",
+      "type": "date",
+      "datasets": [
+        "usage_record"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "Last day of the period the row describes, inclusive",
+      "metricCount": 0
+    },
+    {
+      "id": "committed_amount",
+      "type": "decimal",
+      "datasets": [
+        "usage_record"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "The recurring charge the customer committed to for the period, at the price it is billed at. Already in the subscription's MRR",
+      "metricCount": 0
+    },
+    {
+      "id": "usage_amount",
+      "type": "decimal",
+      "datasets": [
+        "usage_record"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment",
+      "metricCount": 0
     },
     {
       "id": "planned_date",
@@ -4075,7 +4150,9 @@
         "amendment_event",
         "subscription",
         "revenue_schedule",
-        "license"
+        "license",
+        "invoice",
+        "usage_record"
       ],
       "sources": [
         "billing"
@@ -4923,6 +5000,15 @@
         "subscription"
       ],
       "label": "Revenue schedule"
+    },
+    "usage_record": {
+      "kind": "fact",
+      "date": "period_start",
+      "key": "subscription_id",
+      "entities": [
+        "subscription"
+      ],
+      "label": "Usage record"
     },
     "financials": {
       "kind": "fact",

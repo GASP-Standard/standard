@@ -77,6 +77,7 @@ export const TABLES: Record<string, string> = {
   invoice: "gasp_invoices",
   balance_sheet: "gasp_balance_sheet",
   revenue_schedule: "gasp_revenue_schedule",
+  usage_record: "gasp_usage_records",
   forecast: "gasp_forecasts",
   quote: "gasp_quotes",
   order: "gasp_orders",
@@ -243,6 +244,17 @@ export const RENEWALS: Record<string, Renewal> = {
   c12: { end: "2026-06-09", renewed: true, auto: true, notified: true, trigger: "2026-05-10", complete: "2026-06-02", forecast: 6000, amount: 6000 },
 };
 const subscriptionOf = (c: string) => "s" + c.slice(1);
+/**
+ * Usage against a commitment, by month: c02, c07 and c10 commit their MRR on the
+ * 1st and record the usage listed, at the contract's rates. Usage above the
+ * commitment is realised as a temporary expansion in the CEL (the usage
+ * derivation in cel.md); the rest of the months sit within it.
+ */
+export const USAGE: Record<string, Record<string, number>> = {
+  c02: { "2026-01": 1800, "2026-02": 2300, "2026-03": 1550, "2026-04": 1750, "2026-05": 1600, "2026-06": 1600 },
+  c07: { "2026-01": 2800, "2026-02": 3000, "2026-03": 3400, "2026-04": 2900, "2026-05": 3900, "2026-06": 4500 },
+  c10: { "2026-01": 2100, "2026-02": 2000, "2026-03": 1900, "2026-04": 2000, "2026-05": 2200, "2026-06": 2000 },
+};
 /** Customers acquired in the window spend 14 days in trial first. */
 const TRIAL_DAYS = 14;
 
@@ -336,11 +348,12 @@ export function customerStatusOn(customer: string, day: string): string | undefi
 export interface Fixture { tables: Record<string, Row[]> }
 
 /**
- * Fields added after the seeded rows were pinned. Their stories always set them,
- * and attrsFor never draws for them, so the PRNG sequence (and every pinned
- * value) is unchanged by their addition.
+ * Fields added after the seeded rows were pinned, by field id or as
+ * `dataset.field` when the field already existed on other datasets. Their
+ * stories always set them, and attrsFor never draws for them, so the PRNG
+ * sequence (and every pinned value) is unchanged by their addition.
  */
-const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date"]);
+const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date", "invoice.subscription_id", "service_period_start", "service_period_end", "recurring_amount"]);
 export const TICKET_TYPES = ["how_to", "bug", "billing", "how_to", "feature_request", "account", "how_to", "bug", "other"];
 export const HIRE_SOURCES = ["referral", "inbound", "sourced", "agency", "inbound", "internal", "campus", "referral", "other"];
 
@@ -373,7 +386,7 @@ function tools(rand: () => number, pools: Record<string, string[]> = {}) {
   /** Stable per-entity attributes, so a snapshot entity does not change randomly from day to day. */
   const attrsFor = (dataset: string, key: string): Row => {
     const a: Row = {};
-    for (const f of datasetFields(dataset)) if (!STORY_ONLY.has(f.id)) a[f.id] = filler(f, key);
+    for (const f of datasetFields(dataset)) if (!STORY_ONLY.has(f.id) && !STORY_ONLY.has(`${dataset}.${f.id}`)) a[f.id] = filler(f, key);
     return a;
   };
   return { rand, pick, int, row, attrsFor };
@@ -956,7 +969,9 @@ function generateExtensions(t: Record<string, Row[]>): void {
     }
   }
 
-  // invoice: a monthly invoice to each of the first eight customers active on the 1st, then balance_sheet.
+  // invoice: a monthly invoice to each of the first eight customers active on the 1st, for the month's
+  // service (the invoice ledger the CEL invoice derivation reads: its recurring amount is the customer's
+  // MRR on the 1st and its service period the calendar month), then balance_sheet.
   let inv = 0;
   for (const month of MONTHS) {
     for (const c of CUSTOMERS.slice(0, 8)) {
@@ -967,20 +982,23 @@ function generateExtensions(t: Record<string, Row[]>): void {
       const paid = addDays(invoiced, [12, 20, 28, 45][inv % 4]);
       const amount = mrrOn(c, `${month}-01`);
       daily("invoice", id, invoiced, {
-        invoice_id: id, customer_id: c, invoice_date: invoiced, billing_trigger_date: addDays(`${month}-01`, -(inv % 3)), invoice_amount: amount, currency: "USD",
+        invoice_id: id, customer_id: c, subscription_id: subscriptionOf(c), invoice_date: invoiced, billing_trigger_date: addDays(`${month}-01`, -(inv % 3)), invoice_amount: amount, currency: "USD",
+        service_period_start: `${month}-01`, service_period_end: monthEnd(month), recurring_amount: amount,
         payment_method: (["credit_card", "ach", "wire", "credit_card", "check"] as const)[inv % 5], invoice_corrected: inv % 6 === 2,
         invoice_disputed: inv % 9 === 4, credit_memo_count: inv % 7 === 3 ? 1 : 0,
       }, (d) => ({ payment_date: d >= paid ? paid : null, payment_status: d >= paid ? "paid" : "unpaid", outstanding_amount: d >= paid ? 0 : amount }));
     }
   }
-  // A partially paid June invoice: 1,800 of 3,000 received on 2026-06-20, 1,200 still outstanding.
+  // A partially paid June invoice for a one-off services charge (no subscription, no service period, so
+  // the invoice derivation skips it): 1,800 of 3,000 received on 2026-06-20, 1,200 still outstanding.
   // Every field comes from the story (no attrsFor), so no PRNG draw.
   const partialCustomer = CUSTOMERS.slice(0, 8).find((c) => customerStatusOn(c, "2026-06-01") === "active")!;
   for (const d of eachDay("2026-06-10", END)) {
     const part = d >= "2026-06-20";
     t.invoice.push(row("invoice", "inv_partial", {
-      invoice_id: "inv_partial", customer_id: partialCustomer, snapshot_date: d, invoice_date: "2026-06-10", billing_trigger_date: "2026-06-08",
-      invoice_amount: 3000, currency: "USD", payment_method: "ach", invoice_corrected: false, invoice_disputed: false, credit_memo_count: 0,
+      invoice_id: "inv_partial", customer_id: partialCustomer, subscription_id: null, snapshot_date: d, invoice_date: "2026-06-10", billing_trigger_date: "2026-06-08",
+      invoice_amount: 3000, currency: "USD", service_period_start: null, service_period_end: null, recurring_amount: 0,
+      payment_method: "ach", invoice_corrected: false, invoice_disputed: false, credit_memo_count: 0,
       payment_date: null, payment_status: part ? "partial" : "unpaid", outstanding_amount: part ? 1200 : 3000,
     }));
   }
@@ -1192,9 +1210,22 @@ function generateExtensions(t: Record<string, Row[]>): void {
   }
   for (const lost of LOST_TRIALS) {
     tr++;
-    t.trial.push(row("trial", `t${tr}`, {
+    t.trial.push(row("trial", `t${pad(tr)}`, {
       trial_id: `t${pad(tr)}`, customer_id: lost.customer, trial_start_date: addDays(lost.end, -TRIAL_DAYS), trial_end_date: lost.end, trial_status: lost.status,
     }));
+  }
+
+  // usage_record: one row per committed customer per month, the commitment being the MRR on the 1st.
+  // Every value comes from the story, so no PRNG draw.
+  for (const [c, byMonth] of Object.entries(USAGE)) {
+    for (const month of MONTHS) {
+      const committed = mrrOn(c, `${month}-01`);
+      if (committed <= 0 || byMonth[month] === undefined) continue;
+      t.usage_record.push(row("usage_record", `${c}_${month}`, {
+        subscription_id: subscriptionOf(c), customer_id: c, period_start: `${month}-01`, period_end: monthEnd(month),
+        committed_amount: committed, usage_amount: byMonth[month], currency: "USD",
+      }));
+    }
   }
 }
 

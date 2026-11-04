@@ -3,7 +3,7 @@
   "version": "1.1",
   "organization": "Stripe example",
   "warehouse": "redshift",
-  "_instructions": "A worked example, not a product integration: the GASP subscription, customer and invoice datasets read from the nightly snapshots a company keeps of its Stripe Data Pipeline tables (schema.sql, snapshot.sql), and the revenue_event dataset from the table derive_cel fills. See README.md.",
+  "_instructions": "A worked example, not a product integration: the GASP subscription, customer, invoice and usage_record datasets read from the nightly snapshots a company keeps of its Stripe Data Pipeline tables (schema.sql, snapshot.sql), and the revenue_event dataset from the table derive_cel fills. See README.md.",
   "metricOwners": [
     { "metric": "MRR", "team": "Finance" },
     { "metric": "NRR", "team": "Finance" },
@@ -13,6 +13,7 @@
     "subscription": "stripe_snapshots.subscription_items",
     "customer": "stripe_snapshots.customers",
     "invoice": "stripe_snapshots.invoices",
+    "usage_record": "stripe_snapshots.usage_records",
     "revenue_event": "gasp.revenue_events"
   },
   "mappings": [
@@ -29,7 +30,7 @@
       "dataset": "subscription",
       "warehouseRef": "unit_amount",
       "transform": "{{value}} * quantity / 100.0 * (CASE recurring_interval WHEN 'month' THEN 1.0 WHEN 'year' THEN 1.0 / 12 WHEN 'week' THEN 52.0 / 12 WHEN 'day' THEN 365.0 / 12 END) / recurring_interval_count",
-      "notes": "unit_amount is in the smallest currency unit (cents for USD) per interval; MRR is the amount for the item's quantity normalised to a month. Tiered and metered prices (billing_scheme tiered, recurring_usage_type metered) are not handled here; their MRR is the invoiced amount and belongs to the usage derivation."
+      "notes": "unit_amount is in the smallest currency unit (cents for USD) per interval; MRR is the amount for the item's quantity normalised to a month. A metered price (recurring_usage_type metered) has no unit_amount on the item, so a metered item contributes no MRR here; what its usage bills beyond the included volume comes through the usage_record dataset and the usage derivation."
     },
     {
       "gaspField": "subscription_status",
@@ -59,6 +60,22 @@
     },
     { "gaspField": "payment_date", "dataset": "invoice", "warehouseRef": "status_transitions_paid_at", "transform": "CAST({{value}} AS DATE)" },
     { "gaspField": "currency", "dataset": "invoice", "warehouseRef": "currency", "transform": "UPPER({{value}})" },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "invoice",
+      "warehouseRef": "subscription_id",
+      "notes": "Subscription grain: an invoice names the Stripe subscription, not its items, so the invoice derivation's events carry sub_* ids where the item ledger's carry si_*. A company deriving from invoices has no item ledger to clash with."
+    },
+    { "gaspField": "service_period_start", "dataset": "invoice", "warehouseRef": "licensed_period_start", "notes": "The period the invoice's licensed lines pay for, written by the nightly job from the line items; null on an invoice with no licensed line (a usage-only or one-off invoice), which the derivation skips." },
+    { "gaspField": "service_period_end", "dataset": "invoice", "warehouseRef": "licensed_period_end" },
+    { "gaspField": "recurring_amount", "dataset": "invoice", "warehouseRef": "licensed_amount", "transform": "{{value}} / 100.0", "notes": "The licensed lines' amount, prorations and metered lines left out, so MRR is the licensed charge over the months the period covers." },
+    { "gaspField": "subscription_id", "dataset": "usage_record", "warehouseRef": "subscription_item_id", "notes": "The metered item, so the usage events sit beside the item ledger's with the same grain." },
+    { "gaspField": "customer_id", "dataset": "usage_record", "warehouseRef": "customer_id" },
+    { "gaspField": "period_start", "dataset": "usage_record", "warehouseRef": "period_start" },
+    { "gaspField": "period_end", "dataset": "usage_record", "warehouseRef": "period_end" },
+    { "gaspField": "committed_amount", "dataset": "usage_record", "warehouseRef": "committed_amount", "transform": "{{value}} / 100.0", "notes": "The MRR of the subscription's licensed items on the period's last day, as the nightly job computes it: the commitment Stripe has no field for." },
+    { "gaspField": "usage_amount", "dataset": "usage_record", "warehouseRef": "usage_amount", "transform": "{{value}} / 100.0", "notes": "The commitment plus the metered line's charge, which Stripe bills for the calls beyond the volume the licensed price includes. A metered price with no included volume realises every call as usage; a company on such a price records its usage as the metered charge alone and its commitment as 0, outside GASP's scope." },
+    { "gaspField": "currency", "dataset": "usage_record", "warehouseRef": "currency", "transform": "UPPER({{value}})" },
     { "gaspField": "event_id", "dataset": "revenue_event", "warehouseRef": "event_id" },
     { "gaspField": "event_date", "dataset": "revenue_event", "warehouseRef": "event_date" },
     { "gaspField": "customer_id", "dataset": "revenue_event", "warehouseRef": "customer_id" },

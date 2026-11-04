@@ -55,6 +55,7 @@
     "ticket": "",
     "time_entry": "",
     "trial": "",
+    "usage_record": "",
     "user": "",
     "vulnerability": "",
     "web_traffic": ""
@@ -949,6 +950,14 @@
       "usedBy": []
     },
     {
+      "gaspField": "currency",
+      "dataset": "usage_record",
+      "type": "string",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
       "gaspField": "customer_id",
       "dataset": "revenue_event",
       "type": "string",
@@ -1597,6 +1606,44 @@
     {
       "gaspField": "customer_id",
       "dataset": "trial",
+      "type": "string",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": [
+        "30-Day Retention (Post-Onboarding)",
+        "ARPA (Average Revenue Per Account)",
+        "ARR (Annual Recurring Revenue)",
+        "Accounts per CSM",
+        "Active Accounts",
+        "At-Risk Customer Rate",
+        "Breadth of Adoption",
+        "CAC (Customer Acquisition Cost)",
+        "CAC Payback Period",
+        "Churned Customers",
+        "Contact Coverage",
+        "Cross-sell Rate",
+        "Executive Sponsor Coverage",
+        "Gross Revenue Retention (GRR)",
+        "Health Score Coverage",
+        "Infrastructure Cost per Customer",
+        "LTV (Customer Lifetime Value)",
+        "LTV:CAC Ratio",
+        "Logo Churn Rate (Customer Churn)",
+        "Logo Retention Rate",
+        "Marketing CAC",
+        "Net Revenue Retention (NRR)",
+        "New Customers",
+        "Onboarding-to-Active Rate (Activation Rate)",
+        "Product Qualified Accounts (PQAs)",
+        "Quarterly Business Review (QBR) Completion Rate",
+        "Tickets per Customer",
+        "Total Customers",
+        "Upsell Rate"
+      ]
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "usage_record",
       "type": "string",
       "warehouseRef": "",
       "source": "Billing",
@@ -2908,6 +2955,13 @@
       ]
     },
     {
+      "gaspField": "recurring_amount",
+      "type": "decimal",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
       "gaspField": "invoice_corrected",
       "type": "boolean",
       "warehouseRef": "",
@@ -2952,6 +3006,20 @@
         "Billing Disputes",
         "Credit Memo Rate"
       ]
+    },
+    {
+      "gaspField": "service_period_start",
+      "type": "date",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
+      "gaspField": "service_period_end",
+      "type": "date",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
     },
     {
       "gaspField": "is_competitor",
@@ -4662,6 +4730,87 @@
         "Visitor-to-Lead Rate",
         "Visitors"
       ]
+    },
+    {
+      "gaspField": "period_start",
+      "dataset": "usage_record",
+      "type": "date",
+      "warehouseRef": "",
+      "source": "Derived",
+      "usedBy": [
+        "Bad Debt Rate",
+        "Bench Rate",
+        "Billable Utilization",
+        "CAC Payback Period",
+        "CAC by Channel",
+        "Capacity",
+        "Capacity Utilization",
+        "Channel Revenue Percentage",
+        "Days Sales Outstanding (DSO)",
+        "Deferred Revenue Balance",
+        "EBITDA Margin",
+        "Error Rate",
+        "Forecast Accuracy",
+        "Free Cash Flow (FCF)",
+        "Free Cash Flow Margin",
+        "G&A as % of Revenue",
+        "Gross Margin",
+        "Headroom",
+        "Infrastructure Utilization",
+        "LTV (Customer Lifetime Value)",
+        "LTV:CAC Ratio",
+        "Latency (Response Time)",
+        "Marketplace as % of Revenue",
+        "Net Income Margin",
+        "Operating Margin (EBIT Margin)",
+        "Opex Ratio",
+        "Organic Traffic",
+        "Paid Media Efficiency (ROAS)",
+        "Pipeline Coverage Ratio",
+        "Quota Attainment",
+        "R&D as % of Revenue",
+        "Ramp Time",
+        "Recognized vs Billed",
+        "Revenue (GAAP)",
+        "Revenue Recognition Accuracy",
+        "Revenue per Consultant",
+        "Revenue per Rep",
+        "Rule of 40",
+        "S&M as % of Revenue",
+        "SLA Adherence",
+        "Self-Service Rate (Ticket Deflection)",
+        "Services Backlog",
+        "Services Gross Margin",
+        "Services Revenue",
+        "Services as % of Total Revenue",
+        "Share of Voice",
+        "Total Utilization",
+        "Unbilled Revenue",
+        "Uptime (Availability)",
+        "Visitor-to-Lead Rate",
+        "Visitors"
+      ]
+    },
+    {
+      "gaspField": "period_end",
+      "type": "date",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
+      "gaspField": "committed_amount",
+      "type": "decimal",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
+      "gaspField": "usage_amount",
+      "type": "decimal",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
     },
     {
       "gaspField": "planned_date",
@@ -10311,6 +10460,30 @@
     {
       "gaspField": "subscription_id",
       "dataset": "license",
+      "type": "string",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": [
+        "Auto-Renewal Rate",
+        "Renewal Notification Rate",
+        "Renewal Rate"
+      ]
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "invoice",
+      "type": "string",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": [
+        "Auto-Renewal Rate",
+        "Renewal Notification Rate",
+        "Renewal Rate"
+      ]
+    },
+    {
+      "gaspField": "subscription_id",
+      "dataset": "usage_record",
       "type": "string",
       "warehouseRef": "",
       "source": "Billing",

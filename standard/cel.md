@@ -543,7 +543,7 @@ FROM movements;
 
 Most billing systems hold subscriptions, not events: one record per subscription whose plan, quantity, MRR and status change over time, kept as periodic snapshots or as a version history. The CEL needs the movements between those states. This section defines how to derive `Revenue_Event` rows from such a ledger. The rules are the same for every source system, in keeping with design principle 5: a billing system appears only in the mapping that names its tables and columns, never in the rules.
 
-Where a billing system records amendments as events of its own, those are the better source: they carry the amendment type, the quantities and the date the change was agreed, and the [pairing rule](#pairing-rule-amendments-that-change-mrr) applies. The derivation below is for the common case where no such stream exists.
+Where a billing system records amendments as events of its own, those are the better source: they carry the amendment type, the quantities and the date the change was agreed, and the [pairing rule](#pairing-rule-amendments-that-change-mrr) applies. The derivation below is for the common case where no such stream exists. Two further sources feed the same rules: an [invoice ledger](#deriving-revenue-events-from-an-invoice-ledger), for a billing system that keeps invoices but no subscription history, and [usage records](#deriving-usage-realisation), for the usage a customer realises beyond a commitment.
 
 ### Input
 
@@ -557,7 +557,7 @@ The GASP `subscription` dataset: `subscription_id`, `customer_id`, `snapshot_dat
 4. **One event per step.** The event is dated the snapshot that first shows the change. `mrr_change` is the subscription's change. `prior_mrr` and `new_mrr` are the customer's MRR before and after the step, chained through the customer's steps in `snapshot_date` order, increases before decreases and then `subscription_id`, so `prior_mrr + mrr_change = new_mrr` holds on every row and the rows of one date add up to the customer's net movement.
 5. **Event type**, from the customer's MRR at the start and the end of the step's date. An increase on a date the customer started at 0 is `new`, or `reactivation` when the customer had MRR on an earlier date. A decrease on a date the customer ends at 0 is `churn`. Any other increase is `expansion` and any other decrease `contraction`. So a plan swap onto a new subscription id is an expansion and a contraction, and two subscriptions cancelled on one date are two churns. A `renewal` changes no MRR and is not derived from the ledger; it comes from `Contract_Event` or the subscription's renewal fields.
 6. **Tags and defaults.** `lifecycle_attribution` follows the [ATL assignment rules](atl.md#assignment-rules) for the event type: `new` is `acquisition`, `expansion` is `expansion`, `reactivation` is `reactivation`, `contraction` and `churn` are `retention`. `change_nature` is `permanent`. `segment` is the snapshot's. `currency` is the ledger's currency, supplied as a parameter because the `subscription` dataset carries none. `expansion_classification` is empty: the ledger shows that MRR moved, not whether the customer bought seats, a module or a price rise, and the Operating forms of ARR and NRR read that tag. Until the tag is filled from the amendment records, an ATL completeness check flags every derived expansion, contraction and reactivation.
-7. **Identity.** `event_id` is `<subscription_id>:<snapshot_date>`, a colon and the date in ISO 8601 form, so re-running the derivation over a longer ledger produces the same ids for the same events.
+7. **Identity.** `event_id` is `<subscription_id>:<snapshot_date>`, a colon and the date in ISO 8601 form, so re-running the derivation over a longer ledger produces the same ids for the same events. The [usage realisation](#deriving-usage-realisation) events put `usage` between the two, `<subscription_id>:usage:<date>`, so a ledger step and a usage event on one day keep distinct ids.
 
 ### Cadence
 
@@ -565,7 +565,7 @@ The ledger's cadence is the grain of the events. Daily snapshots show every move
 
 ### Reference SQL
 
-The derivation over the GASP field names, as the MCP server's `derive_cel` compiles it over a mapping. `'USD'` stands for the ledger's currency. Window functions and `||` run on Postgres, Redshift, Snowflake, BigQuery and Databricks; the text casts are the one construct the dialects spell differently. The test suite runs this over the standard's synthetic dataset and checks that it reproduces every generated movement (renewals and events before the first snapshot excluded), agrees with the compiled MRR movement metrics in every month and types a plan swap, a double cancellation and a two-subscription acquisition on one date as the rules say.
+The derivation over the GASP field names, as the MCP server's `derive_cel` compiles it over a mapping. `'USD'` stands for the ledger's currency. Window functions and `||` run on Postgres, Redshift, Snowflake, BigQuery and Databricks; the text casts and the date shift are the constructs the dialects spell differently. The `kind` column is `ledger` on every row here; the usage derivation below adds its two kinds to the same chain. The test suite runs this over the standard's synthetic dataset and checks that it reproduces every generated movement (renewals and events before the first snapshot excluded), agrees with the compiled MRR movement metrics in every month and types a plan swap, a double cancellation and a two-subscription acquisition on one date as the rules say.
 
 ```sql
 WITH ledger AS (
@@ -585,7 +585,7 @@ steps AS (
 ),
 changes AS (
   SELECT subscription_id, customer_id, snapshot_date, segment, opening,
-         mrr - prior_sub_mrr AS mrr_change
+         mrr - prior_sub_mrr AS mrr_change, 'ledger' AS kind
   FROM steps
   WHERE mrr <> prior_sub_mrr
 ),
@@ -605,16 +605,18 @@ day_state AS (
   FROM days
 ),
 chained AS (
-  SELECT c.subscription_id, c.customer_id, c.snapshot_date, c.segment, c.opening, c.mrr_change,
-         COALESCE(SUM(c.mrr_change) OVER (PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior_mrr,
-         SUM(c.mrr_change) OVER (PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS new_mrr,
+  SELECT c.subscription_id, c.customer_id, c.snapshot_date, c.segment, c.opening, c.mrr_change, c.kind,
+         COALESCE(SUM(c.mrr_change) OVER (PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id, c.kind ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior_mrr,
+         SUM(c.mrr_change) OVER (PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id, c.kind ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS new_mrr,
          s.day_start, s.day_end, s.active_before
   FROM changes c
   JOIN day_state s ON s.customer_id = c.customer_id AND s.snapshot_date = c.snapshot_date
 ),
 typed AS (
-  SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, prior_mrr, new_mrr,
+  SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, prior_mrr, new_mrr, kind,
          CASE
+           WHEN kind = 'usage' THEN 'expansion'
+           WHEN kind = 'usage_reversal' THEN 'contraction'
            WHEN mrr_change > 0 AND ABS(day_start) < 0.005 AND active_before = 1 THEN 'reactivation'
            WHEN mrr_change > 0 AND ABS(day_start) < 0.005 THEN 'new'
            WHEN mrr_change < 0 AND ABS(day_end) < 0.005 THEN 'churn'
@@ -623,7 +625,7 @@ typed AS (
          END AS event_type
   FROM chained
 )
-SELECT CAST(subscription_id AS VARCHAR) || ':' || CAST(snapshot_date AS VARCHAR) AS event_id,
+SELECT CAST(subscription_id AS VARCHAR) || CASE WHEN kind = 'ledger' THEN ':' ELSE ':usage:' END || CAST(snapshot_date AS VARCHAR) AS event_id,
        snapshot_date AS event_date,
        customer_id,
        subscription_id,
@@ -632,8 +634,8 @@ SELECT CAST(subscription_id AS VARCHAR) || ':' || CAST(snapshot_date AS VARCHAR)
        'USD' AS currency,
        prior_mrr,
        new_mrr,
-       CAST(NULL AS VARCHAR) AS expansion_classification,
-       'permanent' AS change_nature,
+       CASE WHEN kind = 'ledger' THEN CAST(NULL AS VARCHAR) ELSE 'usage_realisation' END AS expansion_classification,
+       CASE kind WHEN 'usage' THEN 'temporary' WHEN 'usage_reversal' THEN 'scheduled_reversal' ELSE 'permanent' END AS change_nature,
        CASE event_type
          WHEN 'new' THEN 'acquisition'
          WHEN 'expansion' THEN 'expansion'
@@ -643,7 +645,116 @@ SELECT CAST(subscription_id AS VARCHAR) || ':' || CAST(snapshot_date AS VARCHAR)
        segment
 FROM typed
 WHERE opening = 0
-ORDER BY snapshot_date, customer_id, CASE WHEN mrr_change > 0 THEN 0 ELSE 1 END, subscription_id
+ORDER BY snapshot_date, customer_id, CASE WHEN mrr_change > 0 THEN 0 ELSE 1 END, subscription_id, kind
+```
+
+---
+
+## Deriving Revenue Events from an Invoice Ledger
+
+Some billing systems keep no subscription history: what they keep is the invoices. An invoice ledger is a subscription ledger with one row per service period, and the [rules above](#rules) apply to it once the invoices are read that way. This section defines the reading. It is the second choice: where a subscription ledger or an amendment stream exists, use that.
+
+### Input
+
+The GASP `invoice` dataset: `invoice_id`, `subscription_id`, `customer_id`, `snapshot_date`, `service_period_start`, `service_period_end` and `recurring_amount`. `recurring_amount` is the recurring part of the invoice as billed for the service period: subscription charges only, with one-off charges, usage billed beyond a commitment, credits and tax excluded. The service period is the days the recurring charge pays for, both ends inclusive. An invoice with no subscription or no service period (a one-off charge, a usage overage billed on its own) is not recurring and produces no event.
+
+### Rules
+
+1. **One row per invoice.** An invoice is read at its latest snapshot, so a correction replaces the earlier reading rather than adding to it.
+2. **MRR of an invoice.** The recurring amount divided by the months the service period covers: the nearest whole number of months when the period is a fortnight or more (so a calendar month is one month whether it has 28 or 31 days, a quarter three and a year twelve), else the fraction of a month, with a month being 365.25 / 12 days. A prorated invoice for part of a period is approximate by this rule; where the billing system records the full-period rate beside the prorated charge, map `recurring_amount` to the rate.
+3. **The ledger.** A subscription's ledger dates are the first day of each of its service periods and the day after the last day of each, and its MRR on a date is the sum of the MRR of its invoices whose service period covers that date. So a date with no covering invoice carries 0: the subscription has lapsed. The invoice dataset carries no segment and the rows carry none.
+4. **The horizon.** The latest service period start on the ledger is the horizon, and no date after it is read. A subscription whose last invoice is still current therefore produces no churn, and a subscription whose last period ended before the horizon churns the day after it ended. The horizon moves forward with each billing run and the derivation picks the churn up then.
+5. **Then the subscription rules.** Steps, opening balances, chaining, event types, tags and identity follow [rules 2 to 7](#rules) above. Rows on the ledger's first date (the earliest service period start) are opening balances by default; say `steps` when the invoices begin with the business. Each movement is dated the service period that first bills it: a change agreed mid-period shows on the next period's start unless a prorated invoice was issued for the remainder, which shows it on that invoice's start.
+
+### Reference SQL
+
+The `ledger` common table expression of the invoice source, over the GASP field names. The rest of the query is the [subscription derivation](#reference-sql) from `steps` on, unchanged. `derive_cel` emits the whole query with `source: invoice`. The test suite runs it over the synthetic dataset's monthly invoices and checks that every change in a customer's MRR on the first of a month comes back as an event dated that day, that a lapsed subscription churns the day after its last period and that a current one does not, and that a one-off invoice adds nothing.
+
+```sql
+invoices AS (
+  SELECT invoice_id, subscription_id, customer_id, service_period_start, service_period_end, recurring_amount
+  FROM (
+    SELECT invoice_id AS invoice_id,
+           subscription_id AS subscription_id,
+           customer_id AS customer_id,
+           service_period_start AS service_period_start,
+           service_period_end AS service_period_end,
+           recurring_amount AS recurring_amount,
+           ROW_NUMBER() OVER (PARTITION BY invoice_id ORDER BY snapshot_date DESC) AS latest
+    FROM invoice
+    WHERE subscription_id IS NOT NULL AND service_period_start IS NOT NULL AND service_period_end IS NOT NULL
+  ) i
+  WHERE latest = 1
+),
+periods AS (
+  SELECT invoice_id, subscription_id, customer_id, service_period_start, service_period_end,
+         ROUND(COALESCE(recurring_amount, 0) / (CASE WHEN ROUND(months) < 1 THEN months ELSE ROUND(months) END), 2) AS mrr
+  FROM (
+    SELECT i.*, (service_period_end - service_period_start + 1) * 12.0 / 365.25 AS months FROM invoices i
+  ) m
+),
+boundaries AS (
+  SELECT subscription_id, customer_id, service_period_start AS snapshot_date FROM periods
+  UNION
+  SELECT subscription_id, customer_id, CAST((service_period_end + INTERVAL '1 day') AS DATE) FROM periods
+),
+horizon AS (
+  SELECT MAX(service_period_start) AS latest FROM periods
+),
+ledger AS (
+  SELECT b.subscription_id, b.customer_id, b.snapshot_date,
+         CAST(NULL AS VARCHAR) AS segment,
+         ROUND(COALESCE(SUM(p.mrr), 0), 2) AS mrr
+  FROM boundaries b
+  LEFT JOIN periods p ON p.subscription_id = b.subscription_id AND p.service_period_start <= b.snapshot_date AND b.snapshot_date <= p.service_period_end
+  WHERE b.snapshot_date <= (SELECT latest FROM horizon)
+  GROUP BY b.subscription_id, b.customer_id, b.snapshot_date
+)
+```
+
+---
+
+## Deriving Usage Realisation
+
+A customer on a usage commitment pays for what it committed to whether or not it uses it, and for what it uses beyond that. The commitment is in the subscription's MRR and the ledger derivations above carry it. The usage beyond it is the `usage_realisation` expansion the [ATL](atl.md#expansion-classification) names, and this section defines how it is derived. Usage that stays within the commitment is no event: the committed revenue was recognised when the commitment was made.
+
+### Input
+
+The GASP `usage_record` dataset: `subscription_id`, `customer_id`, `period_start`, `period_end`, `committed_amount` and `usage_amount`, one row per subscription per usage period. `committed_amount` is the recurring charge the customer committed to for the period, at the price it is billed at, and `usage_amount` the charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part of `usage_amount` above `committed_amount` is what the period bills as overage.
+
+### Rules
+
+1. **Overage.** A period realises usage when `usage_amount` exceeds `committed_amount`. The overage is the difference, divided by the months the period covers by the [invoice rule](#rules-1) for months, so it is stated as MRR.
+2. **A pair of events.** Each such period adds two `Revenue_Event` rows to the ledger's events. The realisation is an `expansion` dated the period's last day, when the overage is known, for the overage, tagged `expansion_classification` `usage_realisation`, `lifecycle_attribution` `expansion` and `change_nature` `temporary`: the contract bills it for that period only. Its reversal is a `contraction` dated the next day for the same amount, tagged `usage_realisation`, `retention` and `change_nature` `scheduled_reversal`, as the [change nature](#change-nature) rules pair them. Both are known on the period's last day, so the reversal exists as soon as the realisation does.
+3. **Chaining.** The pairs are steps in the customer's MRR like the ledger's own, chained with them in date order, so `prior_mrr + mrr_change = new_mrr` holds across both and the customer's MRR at a period end includes the usage realised in it. A realisation is an expansion and a reversal a contraction whatever the customer's other MRR on the day, so a reversal on the day a subscription churns is not a second churn.
+4. **What the records do not say.** Usage that repeats every period is still temporary each time: the values describe the contract, not a judgement. A commitment raised to cover the usage shows on the subscription or invoice ledger as a permanent expansion, and from then on the usage within it is no event. The usage records carry no segment. The `usage_record` dataset's currency is the ledger's. Identity is `<subscription_id>:usage:<date>`.
+
+### Reference SQL
+
+The two common table expressions the usage records add, over the GASP field names. `usage_changes` is appended to the subscription derivation's `changes` with `UNION ALL`, and its `kind` sets the event type, the tags and the identity in the final `SELECT` above. `derive_cel` emits the whole query when the mapping covers `usage_record`. The test suite runs it over the synthetic dataset's usage records and checks that every month over the commitment gives its pair, dated the month's last day and the first of the next, that the pairs chain with the ledger's steps, and that the months within the commitment give nothing.
+
+```sql
+usage_periods AS (
+  SELECT subscription_id, customer_id, period_end,
+         ROUND(overage / (CASE WHEN ROUND(months) < 1 THEN months ELSE ROUND(months) END), 2) AS overage
+  FROM (
+    SELECT subscription_id AS subscription_id,
+           customer_id AS customer_id,
+           period_end AS period_end,
+           usage_amount - committed_amount AS overage,
+           (period_end - period_start + 1) * 12.0 / 365.25 AS months
+    FROM usage_record
+    WHERE period_start IS NOT NULL AND period_end IS NOT NULL
+      AND usage_amount > committed_amount
+  ) u
+),
+usage_changes AS (
+  SELECT subscription_id, customer_id, period_end AS snapshot_date, CAST(NULL AS VARCHAR) AS segment, 0 AS opening, overage AS mrr_change, 'usage' AS kind
+  FROM usage_periods WHERE overage >= 0.01
+  UNION ALL
+  SELECT subscription_id, customer_id, CAST((period_end + INTERVAL '1 day') AS DATE), CAST(NULL AS VARCHAR), 0, -overage, 'usage_reversal'
+  FROM usage_periods WHERE overage >= 0.01
+)
 ```
 
 ---
@@ -677,7 +788,7 @@ The CEL sits beside the entity model and records *events that happen to* entitie
 - HR events (hiring, termination), unless directly costed as a `Cost_Event`
 - Infrastructure events (deployments, incidents). These belong in engineering observability
 
-The CEL is scoped to the same domain as the rest of the GASP Standard: subscription-based SaaS with recurring revenue. Pure consumption pricing with no contracted commitment, marketplace transactions and services-only revenue are out of scope. Usage that meets or exceeds a contracted commitment is a `Revenue_Event` tagged `usage_realisation`.
+The CEL is scoped to the same domain as the rest of the GASP Standard: subscription-based SaaS with recurring revenue. Pure consumption pricing with no contracted commitment, marketplace transactions and services-only revenue are out of scope. Usage that exceeds a contracted commitment is a `Revenue_Event` tagged `usage_realisation`, derived as [Deriving Usage Realisation](#deriving-usage-realisation) says.
 
 ---
 

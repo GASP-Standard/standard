@@ -11,14 +11,20 @@
 --   cus_A (smb)         si_A1 Team monthly, 5 seats at $20 (100) from 01-01; 8 seats (160) from 02-10;
 --                       moved to the 2026 Team price, $25 a seat (200), from 03-01
 --   cus_B (mid_market)  si_B1 Pro yearly, 10 seats at $480 a year (400) from 01-01;
---                       si_B2 the Analytics add-on, $100 a month, from 03-05
+--                       si_B2 the Analytics add-on, $100 a month, from 03-05;
+--                       si_B3 the metered API price (no MRR of its own): usage within the
+--                       included volume in January, $60 beyond it in February, $25 in March
 --   cus_C (smb)         si_C1 Pro monthly, 2 seats at $49 (98) from 01-15, cancelled 02-20;
 --                       back on si_C2 (a new subscription), 1 seat (49), from 03-25
 --   cus_D (enterprise)  si_D1 Pro yearly, 20 seats (800), trialing from 01-20, active from 02-03;
 --                       15 seats (600) from 03-15
 --   cus_E (smb)         si_E1 Team monthly, 3 seats (60) from 02-01; past_due from 03-01 (still active);
 --                       cancelled 03-20
--- Expected events: events.json. MRR on 2026-03-31: 1,349.
+-- The invoices carry the service period and amount of their licensed lines, so
+-- the invoice derivation runs over them too (the test states its events), and
+-- the usage records hold cus_B's three metered periods.
+-- Expected events: events.json. MRR on 2026-03-31: 1,349 from the items, plus
+-- the $25 of March usage realised on its last day and reversed on 04-01.
 
 CREATE SCHEMA IF NOT EXISTS stripe_snapshots;
 CREATE SCHEMA IF NOT EXISTS gasp;
@@ -50,6 +56,7 @@ FROM (VALUES
   ('2026-03-01', '2026-03-31', 'si_A1', 'sub_A',  'cus_A', 'smb',        'active',   'price_team_m_26', 'prod_team',  2500,  'month', 8,  '2026-01-01', NULL),
   ('2026-01-01', '2026-03-31', 'si_B1', 'sub_B',  'cus_B', 'mid_market', 'active',   'price_pro_y',     'prod_pro',   48000, 'year',  10, '2026-01-01', NULL),
   ('2026-03-05', '2026-03-31', 'si_B2', 'sub_B',  'cus_B', 'mid_market', 'active',   'price_addon_m',   'prod_addon', 10000, 'month', 1,  '2026-01-01', NULL),
+  ('2026-01-01', '2026-03-31', 'si_B3', 'sub_B',  'cus_B', 'mid_market', 'active',   'price_api_m',     'prod_pro',   NULL,  'month', NULL, '2026-01-01', NULL),
   ('2026-01-15', '2026-02-19', 'si_C1', 'sub_C',  'cus_C', 'smb',        'active',   'price_pro_m',     'prod_pro',   4900,  'month', 2,  '2026-01-15', NULL),
   ('2026-02-20', '2026-03-31', 'si_C1', 'sub_C',  'cus_C', 'smb',        'canceled', 'price_pro_m',     'prod_pro',   4900,  'month', 2,  '2026-01-15', '2026-02-20'),
   ('2026-03-25', '2026-03-31', 'si_C2', 'sub_C2', 'cus_C', 'smb',        'active',   'price_pro_m',     'prod_pro',   4900,  'month', 1,  '2026-03-25', NULL),
@@ -87,6 +94,14 @@ FROM (VALUES
 ) AS v (valid_from, valid_to, cus, status, acquired, seg),
 LATERAL generate_series(v.valid_from::date, v.valid_to::date, INTERVAL '1 day') AS d;
 
+-- Invoices at Stripe subscription grain (an invoice names the subscription,
+-- not its items), with the service period and amount of their licensed lines.
+-- Metered usage is billed in arrears on the next invoice (in_B_0301 carries
+-- February's $60, in_B_0401 would carry March's $25 and is not issued yet);
+-- in_A_0301 also carries the proration for the seats added on 02-10. The
+-- invoice derivation sees cus_A's seat add on 03-01, dates cus_C's churn the
+-- day after its last paid period and never sees cus_D's seat reduction, since
+-- an annual invoice stands until the next one (cel.md, the invoice rules).
 CREATE TABLE stripe_snapshots.invoices (
   snapshot_date DATE NOT NULL,
   id VARCHAR(255) NOT NULL,
@@ -99,25 +114,51 @@ CREATE TABLE stripe_snapshots.invoices (
   amount_remaining BIGINT,
   currency CHAR(3),
   status_transitions_paid_at TIMESTAMP,
+  licensed_period_start DATE,
+  licensed_period_end DATE,
+  licensed_amount BIGINT,
   PRIMARY KEY (snapshot_date, id)
 );
 
 INSERT INTO stripe_snapshots.invoices
-SELECT d::date, v.id, v.cus, v.sub, v.status, v.created::timestamp, v.due, v.paid, v.remaining, 'usd', v.paid_at::timestamp
+SELECT d::date, v.id, v.cus, v.sub, v.status, v.created::timestamp, v.due, v.paid, v.remaining, 'usd', v.paid_at::timestamp, v.lic_start::date, v.lic_end::date, v.lic_amount
 FROM (VALUES
-  ('2026-01-01', '2026-03-31', 'in_A_0101', 'cus_A', 'sub_A', 'paid',          '2026-01-01', 10000,  10000,  0,    '2026-01-01'),
-  ('2026-02-01', '2026-03-31', 'in_A_0201', 'cus_A', 'sub_A', 'paid',          '2026-02-01', 10000,  10000,  0,    '2026-02-01'),
-  ('2026-03-01', '2026-03-31', 'in_A_0301', 'cus_A', 'sub_A', 'paid',          '2026-03-01', 20000,  20000,  0,    '2026-03-02'),
-  ('2026-01-01', '2026-03-31', 'in_B_0101', 'cus_B', 'sub_B', 'paid',          '2026-01-01', 480000, 480000, 0,    '2026-01-04'),
-  ('2026-03-05', '2026-03-31', 'in_B_0305', 'cus_B', 'sub_B', 'paid',          '2026-03-05', 10000,  10000,  0,    '2026-03-05'),
-  ('2026-01-15', '2026-03-31', 'in_C_0115', 'cus_C', 'sub_C', 'paid',          '2026-01-15', 9800,   9800,   0,    '2026-01-15'),
-  ('2026-03-25', '2026-03-31', 'in_C_0325', 'cus_C', 'sub_C2', 'paid',         '2026-03-25', 4900,   4900,   0,    '2026-03-25'),
-  ('2026-02-03', '2026-03-31', 'in_D_0203', 'cus_D', 'sub_D', 'paid',          '2026-02-03', 960000, 960000, 0,    '2026-02-10'),
-  ('2026-02-01', '2026-03-31', 'in_E_0201', 'cus_E', 'sub_E', 'paid',          '2026-02-01', 6000,   6000,   0,    '2026-02-01'),
-  ('2026-03-01', '2026-03-19', 'in_E_0301', 'cus_E', 'sub_E', 'open',          '2026-03-01', 6000,   0,      6000, NULL),
-  ('2026-03-20', '2026-03-31', 'in_E_0301', 'cus_E', 'sub_E', 'uncollectible', '2026-03-01', 6000,   0,      6000, NULL)
-) AS v (valid_from, valid_to, id, cus, sub, status, created, due, paid, remaining, paid_at),
+  ('2026-01-01', '2026-03-31', 'in_A_0101', 'cus_A', 'sub_A', 'paid',          '2026-01-01', 10000,  10000,  0,    '2026-01-01', '2026-01-01', '2026-01-31', 10000),
+  ('2026-02-01', '2026-03-31', 'in_A_0201', 'cus_A', 'sub_A', 'paid',          '2026-02-01', 10000,  10000,  0,    '2026-02-01', '2026-02-01', '2026-02-28', 10000),
+  ('2026-03-01', '2026-03-31', 'in_A_0301', 'cus_A', 'sub_A', 'paid',          '2026-03-01', 23600,  23600,  0,    '2026-03-02', '2026-03-01', '2026-03-31', 20000),
+  ('2026-01-01', '2026-03-31', 'in_B_0101', 'cus_B', 'sub_B', 'paid',          '2026-01-01', 480000, 480000, 0,    '2026-01-04', '2026-01-01', '2026-12-31', 480000),
+  ('2026-02-01', '2026-03-31', 'in_B_0201', 'cus_B', 'sub_B', 'paid',          '2026-02-01', 0,      0,      0,    '2026-02-01', NULL,         NULL,         NULL),
+  ('2026-03-01', '2026-03-31', 'in_B_0301', 'cus_B', 'sub_B', 'paid',          '2026-03-01', 6000,   6000,   0,    '2026-03-01', NULL,         NULL,         NULL),
+  ('2026-03-05', '2026-03-31', 'in_B_0305', 'cus_B', 'sub_B', 'paid',          '2026-03-05', 10000,  10000,  0,    '2026-03-05', '2026-03-05', '2026-04-04', 10000),
+  ('2026-01-15', '2026-03-31', 'in_C_0115', 'cus_C', 'sub_C', 'paid',          '2026-01-15', 9800,   9800,   0,    '2026-01-15', '2026-01-15', '2026-02-14', 9800),
+  ('2026-02-15', '2026-03-31', 'in_C_0215', 'cus_C', 'sub_C', 'paid',          '2026-02-15', 9800,   9800,   0,    '2026-02-15', '2026-02-15', '2026-03-14', 9800),
+  ('2026-03-25', '2026-03-31', 'in_C_0325', 'cus_C', 'sub_C2', 'paid',         '2026-03-25', 4900,   4900,   0,    '2026-03-25', '2026-03-25', '2026-04-24', 4900),
+  ('2026-02-03', '2026-03-31', 'in_D_0203', 'cus_D', 'sub_D', 'paid',          '2026-02-03', 960000, 960000, 0,    '2026-02-10', '2026-02-03', '2027-02-02', 960000),
+  ('2026-02-01', '2026-03-31', 'in_E_0201', 'cus_E', 'sub_E', 'paid',          '2026-02-01', 6000,   6000,   0,    '2026-02-01', '2026-02-01', '2026-02-28', 6000),
+  ('2026-03-01', '2026-03-19', 'in_E_0301', 'cus_E', 'sub_E', 'open',          '2026-03-01', 6000,   0,      6000, NULL,         '2026-03-01', '2026-03-31', 6000),
+  ('2026-03-20', '2026-03-31', 'in_E_0301', 'cus_E', 'sub_E', 'uncollectible', '2026-03-01', 6000,   0,      6000, NULL,         '2026-03-01', '2026-03-31', 6000)
+) AS v (valid_from, valid_to, id, cus, sub, status, created, due, paid, remaining, paid_at, lic_start, lic_end, lic_amount),
 LATERAL generate_series(v.valid_from::date, v.valid_to::date, INTERVAL '1 day') AS d;
+
+-- cus_B's metered API item, one record per month: the commitment is the MRR of
+-- the licensed items on the month's last day (400; 500 once the add-on is on),
+-- the usage that plus what the metered line billed beyond the included volume.
+CREATE TABLE stripe_snapshots.usage_records (
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  subscription_item_id VARCHAR(255) NOT NULL,
+  subscription_id VARCHAR(255) NOT NULL,
+  customer_id VARCHAR(255) NOT NULL,
+  committed_amount BIGINT NOT NULL,
+  usage_amount BIGINT NOT NULL,
+  currency CHAR(3),
+  PRIMARY KEY (period_start, subscription_item_id)
+);
+
+INSERT INTO stripe_snapshots.usage_records VALUES
+  ('2026-01-01', '2026-01-31', 'si_B3', 'sub_B', 'cus_B', 40000, 40000, 'usd'),
+  ('2026-02-01', '2026-02-28', 'si_B3', 'sub_B', 'cus_B', 40000, 46000, 'usd'),
+  ('2026-03-01', '2026-03-31', 'si_B3', 'sub_B', 'cus_B', 50000, 52500, 'usd');
 
 CREATE TABLE gasp.revenue_events (
   event_id VARCHAR(255) NOT NULL PRIMARY KEY,

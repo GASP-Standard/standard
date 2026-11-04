@@ -228,9 +228,9 @@ describe("Decide: the synthetic dataset's own schema", () => {
   }, 300_000);
   afterAll(async () => { await db?.close(); });
 
-  it("reaches level 2 with every field pair of the fixture adapter once the five questions and the one candidate are decided", () => {
+  it("reaches level 2 with every field pair of the fixture adapter once the six questions and the one candidate are decided", () => {
     const open = recordDecisions(proposal.model, proposal.mapping, [], data);
-    expect(open.open.questions.map((q) => `${q.dataset}:${q.about}`)).toEqual(["gasp_brand_mentions:key", "gasp_financials:key", "gasp_revenue_schedule:key", "gasp_trials:time", "gasp_web_traffic:key"]);
+    expect(open.open.questions.map((q) => `${q.dataset}:${q.about}`)).toEqual(["gasp_brand_mentions:key", "gasp_financials:key", "gasp_revenue_schedule:key", "gasp_trials:time", "gasp_usage_records:key", "gasp_web_traffic:key"]);
     expect(open.open.candidates.map((c) => `${c.source}.${c.column} -> ${c.dataset}.${c.field}`)).toEqual(["gasp_projects.deal_closed_on -> project.close_date"]);
     const datasets = data.ontology!.datasets;
     const column = (ds: string, field: string) => COLUMNS[ds]?.[field] ?? field;
@@ -244,7 +244,7 @@ describe("Decide: the synthetic dataset's own schema", () => {
     decisions.push({ about: "field", dataset: "gasp_projects", column: "deal_closed_on", to: "close_date", owner: "Services" });
     const r = recordDecisions(proposal.model, proposal.mapping, decisions, data);
     expect(r.problems).toEqual([]);
-    expect(r.applied.length).toBe(6);
+    expect(r.applied.length).toBe(7);
     expect(r.level2).toBe(true);
     expect(r.gaps).toEqual([]);
     expect(missing(pairsOf(buildAdapter(), data), pairsOf(r.adapter, data))).toEqual([]);

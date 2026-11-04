@@ -35,6 +35,7 @@ const company = (text: string): Company => {
   return c;
 };
 const blockers = (r: ReadinessResult, level: number): string[] => r.levels.find((l) => l.level === level)!.blockers;
+const day = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v));
 const core = (names: string[]) => names.filter((m) => data.dataRequirements.find((d) => d.metric === m)?.department === "Core");
 
 describe("Stripe on Redshift: a subscription ledger to readiness level 4", () => {
@@ -58,12 +59,12 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
   }, 120_000);
   afterAll(async () => { await db?.close(); await closeSyntheticEngine(); });
 
-  it("validates as a mapping and covers the Core revenue metrics from four datasets", () => {
+  it("validates as a mapping and covers the Core revenue metrics from five datasets", () => {
     const r = checkAdapter(adapter, data);
     expect(r.schemaErrors).toEqual([]);
     expect(r.problems).toEqual([]);
     expect(r.conflicts).toEqual([]);
-    expect(r.tableCount).toBe(4);
+    expect(r.tableCount).toBe(5);
     expect(r.fully.length).toBe(24);
     const fully = r.fully.map((f) => f.metric);
     expect(core(fully).length).toBe(18);
@@ -75,26 +76,52 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
     expect(report).not.toContain("Invalid document");
   });
 
-  it("derives the revenue events stated in events.json from the item snapshots, with the ledger starting with the business", async () => {
-    const template = revenueEventDerivation({ dialect: "postgres", currency: "USD", firstSnapshot: "steps" });
+  it("derives the revenue events stated in events.json from the item snapshots and the usage records, with the ledger starting with the business", async () => {
+    const template = revenueEventDerivation({ dialect: "postgres", currency: "USD", firstSnapshot: "steps", usage: true });
     const filled = fillTemplate(template, adapter, data);
     expect(filled.missingFields).toEqual([]);
     expect(filled.missingTables).toEqual([]);
     expect(filled.sql).toContain("unit_amount * quantity / 100.0"); // the MRR transform inlined
+    expect(filled.sql).toContain("(usage_amount / 100.0) - (committed_amount / 100.0)"); // the cents transforms on the usage records
     const rows = (await db.query<Record<string, unknown>>(filled.sql)).rows;
-    const day = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v));
-    const seen = rows.map((r) => ({ event_id: r.event_id, event_date: day(r.event_date), customer_id: r.customer_id, subscription_id: r.subscription_id, event_type: r.event_type, mrr_change: Number(r.mrr_change), prior_mrr: Number(r.prior_mrr), new_mrr: Number(r.new_mrr), lifecycle_attribution: r.lifecycle_attribution, expansion_classification: r.expansion_classification, segment: r.segment }));
-    expect(seen).toEqual(expected.map((e) => ({ ...e, expansion_classification: null })));
-    expect(rows.every((r) => r.currency === "USD" && r.change_nature === "permanent")).toBe(true);
-    expect(seen.reduce((s, e) => s + e.mrr_change, 0)).toBe(1349);
+    const seen = rows.map((r) => ({ event_id: r.event_id, event_date: day(r.event_date), customer_id: r.customer_id, subscription_id: r.subscription_id, event_type: r.event_type, mrr_change: Number(r.mrr_change), prior_mrr: Number(r.prior_mrr), new_mrr: Number(r.new_mrr), lifecycle_attribution: r.lifecycle_attribution, expansion_classification: r.expansion_classification, segment: r.segment, change_nature: r.change_nature }));
+    // The ledger's events arrive untagged; the usage pairs arrive tagged usage_realisation.
+    expect(seen).toEqual(expected.map((e) => ({ ...e, expansion_classification: e.change_nature === "permanent" ? null : e.expansion_classification })));
+    expect(rows.every((r) => r.currency === "USD")).toBe(true);
+    // The metered item carries no MRR of its own (no unit_amount), so it adds no ledger step; its usage adds the four tagged events.
+    expect(seen.filter((e) => e.subscription_id === "si_B3").map((e) => e.change_nature)).toEqual(["temporary", "scheduled_reversal", "temporary", "scheduled_reversal"]);
+    expect(seen.filter((e) => e.change_nature === "permanent").reduce((s, e) => s + e.mrr_change, 0)).toBe(1349);
     await db.exec(`INSERT INTO gasp.revenue_events ${filled.sql}`);
   });
 
-  it("the derive_cel tool compiles it in the postgres dialect Redshift reads, with every field mapped", () => {
+  it("the derive_cel tool compiles it in the postgres dialect Redshift reads, with every field mapped and the usage records read unasked", () => {
     const report = deriveCelFromText(text, undefined, data, { currency: "usd", firstSnapshot: "steps" });
     expect(report).toContain("**Dialect:** postgres (from the adapter's warehouse `redshift`)");
-    expect(report).toContain("6 / 6 fields mapped");
+    expect(report).toContain("the `subscription` dataset, 6 / 6 fields mapped; the `usage_record` dataset, 6 / 6 fields mapped (read because the mapping covers it");
     expect(report).not.toContain("Unmapped fields");
+  });
+
+  it("derives from the invoices too, at subscription grain, and shows what an invoice ledger cannot say", async () => {
+    const sql = deriveCelFromText(text, undefined, data, { currency: "USD", source: "invoice", usage: false, firstSnapshot: "steps", output: "sql" });
+    expect(sql).toContain("(licensed_amount / 100.0)");
+    expect(sql).not.toContain("subscription_items");
+    const rows = (await db.query<Record<string, unknown>>(sql)).rows.map((r) => [day(r.event_date), r.subscription_id, r.event_type, Number(r.mrr_change), Number(r.new_mrr)].join(" "));
+    expect(rows).toEqual([
+      "2026-01-01 sub_A new 100 100",
+      "2026-01-01 sub_B new 400 400", // 4,800 for the year over twelve months
+      "2026-01-15 sub_C new 98 98",
+      "2026-02-01 sub_E new 60 60",
+      "2026-02-03 sub_D new 800 800",
+      "2026-03-01 sub_A expansion 100 200", // the seats added on 02-10 show on the March invoice together with the price rise
+      "2026-03-05 sub_B expansion 100 500",
+      "2026-03-15 sub_C churn -98 0", // the last paid period ends on 03-14; the item ledger churned it on 02-20
+      "2026-03-25 sub_C2 reactivation 49 49",
+    ]);
+    // Not here: cus_D's seat reduction on 03-15 (nothing is invoiced until the annual renewal) and cus_E's churn (its March invoice stands, unpaid,
+    // and the horizon is 03-25, so 04-01 is not read). The usage-only invoices of cus_B have no licensed line and add nothing.
+    const report = deriveCelFromText(text, undefined, data, { currency: "USD", source: "invoice" });
+    expect(report).toContain("the `invoice` dataset, 7 / 7 fields mapped");
+    expect(report).toContain("Where a subscription ledger exists it is the better source");
   });
 
   it("fails only the expansion tag check before classify.sql and passes every check after it", async () => {
