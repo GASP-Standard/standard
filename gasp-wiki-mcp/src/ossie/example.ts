@@ -153,7 +153,7 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
     concept_mappings: conceptMappings,
   };
 
-  const problems = checkExport({ ontology, model, mapping });
+  const problems = checkExport({ ontology, model, mapping }, { extensionSchema: data.extensionSchema });
   if (problems.length) throw new Error(`Ossie example failed GASP's cross-reference checks:\n- ${problems.join("\n- ")}`);
   return { ontology, model, mapping, entries, datasets };
 }

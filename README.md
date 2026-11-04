@@ -21,13 +21,13 @@ The standard is published at **https://gaspwiki.com**. This repository holds its
 
 **Read the standard** at https://gaspwiki.com/v1/overview, or in the per-department files under `standard/metrics/`.
 
-**Give it to an agent.** The MCP server has twenty-one tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model, a mapping proposer and a Decide step that records the answers people give, the SQL that derives CEL revenue events from your subscription ledger, the readiness checks and the ranked fix plan, and three graph traversal tools.
+**Give it to an agent.** The MCP server has twenty-two tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model, a mapping proposer and a Decide step that records the answers people give, the SQL that derives CEL revenue events from your subscription ledger, the readiness checks, the ranked fix plan and a readiness report that says which level you have reached, and three graph traversal tools.
 
 ```json
 { "mcpServers": { "gasp": { "command": "npx", "args": ["-y", "gasp-standard-mcp"] } } }
 ```
 
-**Map your warehouse.** `standard/gasp-adapter-schema.json` describes the adapter file and `standard/exports/gasp-adapter-template.json` lists every field to fill in. `validate_mapping` (also `validate_adapter`) checks a mapping and `generate_query` compiles a metric against it.
+**Map your warehouse.** `standard/gasp-adapter-schema.json` describes the adapter file, `standard/gasp-ossie-extension-v1.json` the GASP payloads in the Ossie documents GASP writes, and `standard/exports/gasp-adapter-template.json` lists every field to fill in. `validate_mapping` (also `validate_adapter`) checks a mapping and `generate_query` compiles a metric against it.
 
 **Load it into a semantic layer.** `standard/exports/ossie/` holds the Apache Ossie ontology, semantic model and mapping. `docs/ossie-spike.md` explains what the files contain and how the formulas were compiled into them.
 

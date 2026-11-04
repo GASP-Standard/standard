@@ -22,11 +22,20 @@
  *   customer_identity:events    every revenue event's customer_id is a known customer
  *   customer_identity:customers every customer active on the latest snapshot has a revenue event
  *   freshness:<dataset>         the latest date in each mapped dataset is within the sync window
+ *   range:<formulaId>           the metric's value stays inside the ontology's hard min and max
+ *                               (validationRules) in every reporting period of the period spine
  *
- * Left out on purpose: the O/M bridges (they reconcile by construction when
- * both forms come from the GASP formulas; score_drift is where a company's own
- * forms are compared) and the ontology's value-range rules (they need computed
- * metric values per period, not rows). Both are later steps.
+ * A range check evaluates the metric's compiled template once per row of the
+ * company's period spine (the table compile_model reads, gasp.period_spine by
+ * default) and counts the periods outside the bounds; a NULL value is not a
+ * violation. The bounds come from src/ranges.ts, which scales a percent rule on
+ * a percent formula by 100 (GRR at most 1) and takes any other rule as given;
+ * the drift scorer reads the same bounds. A range check is kept only when the
+ * mapping covers its metric fully.
+ *
+ * Left out on purpose: the O/M bridges. They reconcile by construction when
+ * both forms come from the GASP formulas, so they live in the drift scorer,
+ * where a company's own O and M numbers arrive.
  *
  * plan_fixes ranks every fix a mapping and a set of results call for: map an
  * unmapped field, or clear a failing check. Core metrics unlocked first, then
@@ -35,9 +44,11 @@
  */
 import { DIALECT, type DialectName } from "./dialect.js";
 import { exampleSql } from "./compile.js";
-import { checkAdapter, chooseDialect, fillTemplate, type Adapter } from "./tools.js";
+import { breakdownTemplate, checkAdapter, chooseDialect, fillTemplate, type Adapter } from "./tools.js";
 import { loadAdapter } from "./ossie/adapt.js";
-import { resolveDocLink } from "./urls.js";
+import { PERIOD_SPINE } from "./ossie/model.js";
+import { describeRange, rangeRules } from "./ranges.js";
+import { metricUrl, resolveDocLink } from "./urls.js";
 import type { DataRequirement, QueryTemplate, StandardData } from "./types.js";
 
 export type Effort = "small" | "medium" | "large";
@@ -53,8 +64,8 @@ export interface ReadinessCheck {
   datasets: string[];
   /** The field@dataset pairs the SQL reads; the mapping must cover them all. */
   placeholders: string[];
-  /** What the check protects: the metrics reading this field, or any field of this dataset. */
-  protects: { dataset: string; field?: string };
+  /** What the check protects: the metrics reading this field, or any field of this dataset, or one metric (a range check). */
+  protects: { dataset: string; field?: string } | { metric: string };
   effort: Effort;
   /** The SQL, with placeholders, returning one row: violations. */
   sql: (d: DialectName) => string;
@@ -65,8 +76,57 @@ const table = (ds: string) => `{{_table:${ds}}}`;
 const quoted = (values: string[]) => values.map((v) => `'${v}'`).join(", ");
 const count = (from: string) => `SELECT COUNT(*) AS violations FROM ${from}`;
 
-/** The checks the standard's data admits, from the ontology: event datasets carrying event_id, the tag fields and every dated dataset for freshness. */
-export function readinessChecks(data: StandardData, opts: { window?: number; asOf?: string } = {}): ReadinessCheck[] {
+/** Options every check function takes: the freshness window and date, and the company's period spine for the range checks. */
+export interface CheckOptions {
+  window?: number;
+  asOf?: string;
+  /** The period table (period_start, period_end) the range checks read; compile_model reads the same one. Default gasp.period_spine. */
+  spine?: string;
+}
+
+/** A bound as SQL and as text: no exponent, no float noise. */
+const num = (n: number) => String(Number(n.toPrecision(12)));
+
+/**
+ * The range checks: one per metric with a hard min or max in the ontology's validationRules
+ * (src/ranges.ts scales them to the formula) and a scalar compiled template. Breakdown
+ * templates are skipped.
+ */
+function rangeChecks(data: StandardData, spine: string): ReadinessCheck[] {
+  const out: ReadinessCheck[] = [];
+  const seen = new Set<string>();
+  for (const rule of rangeRules(data)) {
+    const { metric, formulaId: id, min, max } = rule;
+    const template = data.queryTemplates?.[id];
+    if (seen.has(id) || !template || template.breakdown) continue;
+    if (!/^SELECT [\s\S]* AS \w+$/.test(template.parameterizedQuery)) continue;
+    seen.add(id);
+    const unit = data.formulas?.[id]?.unit;
+    const shown = unit === "percent" ? " (an unscaled ratio)" : unit ? ` (${unit})` : "";
+    const where = [...(min !== undefined ? [`v.value < ${num(min)}`] : []), ...(max !== undefined ? [`v.value > ${num(max)}`] : [])].join(" OR ");
+    const name = metric.name;
+    out.push({
+      id: `range:${id}`,
+      name: `Range of ${name}`,
+      rule: `${name} stays ${describeRange(rule)}${shown} in every reporting period${rule.notes.length ? `; ${rule.notes.join("; ")}` : ""}`,
+      source: metricUrl(metric),
+      datasets: template.datasets,
+      placeholders: template.placeholders,
+      protects: { metric: name },
+      effort: "medium",
+      sql: (d) => {
+        const t = d === "postgres" ? template : (breakdownTemplate(data, id, undefined, d) as { template: QueryTemplate }).template;
+        const expr = /^SELECT ([\s\S]*) AS \w+$/.exec(t.parameterizedQuery)![1]
+          .split("{{_period_start}}").join("p.period_start").split("{{_period_end}}").join("p.period_end");
+        return `SELECT COUNT(*) AS violations FROM (\n  SELECT p.period_start, p.period_end, (${expr}) AS value FROM ${spine} p\n) v\nWHERE ${where}`;
+      },
+    });
+  }
+  return out;
+}
+
+/** The checks the standard's data admits, from the ontology: event datasets carrying event_id, the tag fields, every dated dataset for freshness and the hard value ranges. */
+export function readinessChecks(data: StandardData, opts: CheckOptions = {}): ReadinessCheck[] {
   const fields = new Map((data.ontology?.fields ?? []).map((f) => [f.id, f]));
   const datasets = data.ontology?.datasets ?? {};
   const on = (field: string) => fields.get(field)?.datasets ?? [];
@@ -206,11 +266,16 @@ WHERE c.${ph("snapshot_date", "customer")} = (SELECT MAX(${ph("snapshot_date", "
       sql: (d) => `SELECT CASE WHEN MAX(${ph(meta.date, ds)}) IS NULL THEN 1 ELSE GREATEST(${DIALECT[d].daysBetween(asOf, `CAST(MAX(${ph(meta.date, ds)}) AS DATE)`)} - ${window}, 0) END AS violations FROM ${table(ds)}`,
     });
   }
+  checks.push(...rangeChecks(data, opts.spine?.trim() || PERIOD_SPINE));
   return checks;
 }
 
-/** The metrics (data requirements) a check protects: those whose compiled formula, or one of its O and M forms, reads the field, or any field of the dataset. */
+/** The metrics (data requirements) a check protects: those whose compiled formula, or one of its O and M forms, reads the field, or any field of the dataset; a range check protects its own metric (its O and M forms are the same requirement). */
 export function protectedBy(check: ReadinessCheck, data: StandardData): DataRequirement[] {
+  if ("metric" in check.protects) {
+    const { metric } = check.protects;
+    return data.dataRequirements.filter((dr) => dr.metric === metric);
+  }
   const { dataset, field } = check.protects;
   return data.dataRequirements.filter((dr) =>
     dr.placeholders.some((p) => (field ? p === `${field}@${dataset}` : p.endsWith(`@${dataset}`)))
@@ -234,8 +299,9 @@ export interface CompiledCheck {
 }
 
 /** Every check compiled over a mapping: the runnable ones with their SQL, the rest with what they lack. */
-export function compileChecks(adapter: Adapter, data: StandardData, dialect: DialectName, opts: { window?: number; asOf?: string } = {}): CompiledCheck[] {
+export function compileChecks(adapter: Adapter, data: StandardData, dialect: DialectName, opts: CheckOptions = {}): CompiledCheck[] {
   const r = checkAdapter(adapter, data);
+  const fully = new Set(r.fully.map((f) => f.metric));
   const covered = new Set([...r.fully.map((f) => f.metric), ...r.partial.map((p) => p.metric)]);
   return readinessChecks(data, opts).map((check) => {
     const filled = fillTemplate(checkTemplate(check, dialect), adapter, data);
@@ -243,7 +309,10 @@ export function compileChecks(adapter: Adapter, data: StandardData, dialect: Dia
     // A check protects the metrics the mapping covers at least in part; the rest are not this company's concern yet.
     const protects = protectedBy(check, data).filter((dr) => covered.has(dr.metric));
     return { check, sql: missing.length ? undefined : filled.sql, missing, protects };
-  }).filter((c) => !c.check.id.startsWith("freshness:") || c.protects.length > 0);
+  })
+    .filter((c) => !c.check.id.startsWith("freshness:") || c.protects.length > 0)
+    // A range check over a metric the mapping does not cover fully is noise.
+    .filter((c) => !("metric" in c.check.protects) || fully.has(c.check.protects.metric));
 }
 
 /** The runnable checks as one statement: one row per check (check_id, violations). */
@@ -295,10 +364,12 @@ export interface CheckReport {
   metrics: Array<{ metric: string; department: string; status: "pass" | "fail" | "not run"; failing: string[] }>;
   sql: string;
   unknownResults: string[];
+  /** The period spine the range checks read, when any range check is in the report. */
+  spine?: string;
 }
 
 /** The checks compiled, with results applied when given. */
-export function checkReport(compiled: CompiledCheck[], dialect: string, results?: CheckResult[]): CheckReport {
+export function checkReport(compiled: CompiledCheck[], dialect: string, results?: CheckResult[], spine: string = PERIOD_SPINE): CheckReport {
   const byId = new Map((results ?? []).map((r) => [r.check_id, r.violations]));
   const checks = compiled.map((c) => {
     const v = byId.get(c.check.id);
@@ -314,7 +385,8 @@ export function checkReport(compiled: CompiledCheck[], dialect: string, results?
     return { metric, department, status, failing };
   }).sort((a, b) => (a.department === "Core" ? 0 : 1) - (b.department === "Core" ? 0 : 1) || a.metric.localeCompare(b.metric));
   const known = new Set(compiled.map((c) => c.check.id));
-  return { dialect, checks, metrics, sql: checksAsOneQuery(compiled), unknownResults: [...byId.keys()].filter((k) => !known.has(k)) };
+  const ranged = compiled.some((c) => c.sql && c.check.id.startsWith("range:"));
+  return { dialect, checks, metrics, sql: checksAsOneQuery(compiled), unknownResults: [...byId.keys()].filter((k) => !known.has(k)), ...(ranged ? { spine } : {}) };
 }
 
 export function formatCheckReport(r: CheckReport, opts: { withSql: boolean }): string {
@@ -336,7 +408,7 @@ export function formatCheckReport(r: CheckReport, opts: { withSql: boolean }): s
     }
   }
   if (opts.withSql) {
-    p.push("", "## Run this", "", "One statement, one row per check. Paste the rows back as `results` (JSON or CSV with check_id and violations) to get pass or fail per check and per metric, then plan_fixes for the ranked list.", "", "```sql\n" + r.sql + "\n```");
+    p.push("", "## Run this", "", `One statement, one row per check.${r.spine ? ` The range checks read the period spine \`${r.spine}\` (period_start, period_end, one row per reporting period), the table compile_model reads; pass \`spine\` to name another.` : ""} Paste the rows back as \`results\` (JSON or CSV with check_id and violations) to get pass or fail per check and per metric, then plan_fixes for the ranked list.`, "", "```sql\n" + r.sql + "\n```");
   }
   return p.join("\n");
 }
@@ -345,6 +417,8 @@ export interface GenerateChecksOptions {
   dialect?: string;
   window?: number;
   asOf?: string;
+  /** The period table the range checks read (default gasp.period_spine). */
+  spine?: string;
   results?: string;
   output?: "report" | "sql" | "json";
 }
@@ -364,8 +438,8 @@ export function generateChecksFromText(documentText: string | undefined, modelTe
     if (parsed.error) return parsed.error;
     results = parsed.results;
   }
-  const compiled = compileChecks(loaded.adapter, data, chosen.dialect, { window: opts.window, asOf: opts.asOf });
-  const report = checkReport(compiled, chosen.note, results);
+  const compiled = compileChecks(loaded.adapter, data, chosen.dialect, { window: opts.window, asOf: opts.asOf, spine: opts.spine });
+  const report = checkReport(compiled, chosen.note, results, opts.spine?.trim() || PERIOD_SPINE);
   if (opts.output === "sql") return report.sql;
   if (opts.output === "json") return JSON.stringify(report, null, 2);
   return formatCheckReport(report, { withSql: !results });
@@ -393,7 +467,7 @@ const EFFORT_RANK: Record<Effort, number> = { small: 0, medium: 1, large: 2 };
  * unlocked, then metrics helped, then effort (smaller first), then name. A fix unlocks a metric
  * when it is the only thing between that metric and covered-and-passing.
  */
-export function planFixes(adapter: Adapter, data: StandardData, dialect: DialectName, results: CheckResult[] | undefined, opts: { window?: number; asOf?: string } = {}): Fix[] {
+export function planFixes(adapter: Adapter, data: StandardData, dialect: DialectName, results: CheckResult[] | undefined, opts: CheckOptions = {}): Fix[] {
   const coverage = checkAdapter(adapter, data);
   const compiled = compileChecks(adapter, data, dialect, opts);
   const byId = new Map((results ?? []).map((r) => [r.check_id, r.violations]));
@@ -451,7 +525,7 @@ export function planFixesFromText(documentText: string | undefined, modelText: s
     if (parsed.error) return parsed.error;
     results = parsed.results;
   }
-  const fixes = planFixes(loaded.adapter, data, chosen.dialect, results, { window: opts.window, asOf: opts.asOf });
+  const fixes = planFixes(loaded.adapter, data, chosen.dialect, results, { window: opts.window, asOf: opts.asOf, spine: opts.spine });
   if (opts.output === "json") return JSON.stringify(fixes, null, 2);
   return formatFixPlan(fixes, results !== undefined, opts.limit ?? 25);
 }

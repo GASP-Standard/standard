@@ -19,7 +19,9 @@ import type {
   OssieReferentMapping,
   OssieSemanticModel,
 } from "./types.js";
-import { OSSIE_DIALECT, portableEntries } from "./types.js";
+import { GASP_VENDOR, OSSIE_DIALECT, portableEntries } from "./types.js";
+import type { ValidateFunction } from "ajv";
+import { formatSchemaError, newAjv } from "../tools.js";
 
 const BUILT_INS = new Set(["Any", "Boolean", "Date", "DateTime", "Decimal", "Float", "Integer", "String"]);
 
@@ -109,7 +111,37 @@ function checkOntology(ont: OssieOntology, p: string[]): void {
   }
 }
 
-function checkModel(model: OssieSemanticModel, p: string[]): void {
+/** Options for the cross-document checks. */
+export interface CheckOptions {
+  /** The GASP extension schema (standard/gasp-ossie-extension-v1.json); when given, every GASP payload is validated by placement */
+  extensionSchema?: Record<string, unknown>;
+}
+
+type Placement = "Model" | "Dataset" | "Metric" | "Mapping";
+type ExtensionValidators = Record<Placement, ValidateFunction>;
+
+const extensionCache = new WeakMap<object, ExtensionValidators>();
+
+/** The four placement validators of an extension schema, compiled once per schema object. */
+function extensionValidators(schema: Record<string, unknown> | undefined): ExtensionValidators | undefined {
+  if (!schema) return undefined;
+  let v = extensionCache.get(schema);
+  if (!v) {
+    const ajv = newAjv();
+    const id = typeof schema.$id === "string" ? schema.$id : "gasp-ossie-extension";
+    ajv.addSchema(schema, id);
+    const get = (p: Placement): ValidateFunction => {
+      const f = ajv.getSchema(`${id}#/$defs/${p}Extension`);
+      if (!f) throw new Error(`The GASP extension schema has no $defs/${p}Extension`);
+      return f;
+    };
+    v = { Model: get("Model"), Dataset: get("Dataset"), Metric: get("Metric"), Mapping: get("Mapping") };
+    extensionCache.set(schema, v);
+  }
+  return v;
+}
+
+function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidators): void {
   const datasets = new Map(model.datasets.map((d) => [d.name, d]));
   for (const d of dupes(model.datasets.map((d) => d.name))) p.push(`Model: dataset name "${d}" is declared more than once`);
   for (const ds of model.datasets) {
@@ -121,7 +153,7 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
       if (supersededDiffers(f.expression)) p.push(`Model: field "${ds.name}.${f.name}" has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
       checkExt(f.custom_extensions, `field "${ds.name}.${f.name}"`, p);
     }
-    checkExt(ds.custom_extensions, `dataset "${ds.name}"`, p);
+    checkExt(ds.custom_extensions, `dataset "${ds.name}"`, p, v && { doc: "Model", validate: v.Dataset });
   }
   const fieldsOf = (n: string) => new Set((datasets.get(n)?.fields ?? []).map((f) => f.name));
   for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
@@ -144,8 +176,8 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
     checkExt(r.custom_extensions, `relationship "${r.name}"`, p);
   }
 
-  for (const m of model.metrics ?? []) checkMetric(m, datasets, fieldsOf, p);
-  checkExt(model.custom_extensions, "model", p);
+  for (const m of model.metrics ?? []) checkMetric(m, datasets, fieldsOf, p, v);
+  checkExt(model.custom_extensions, "model", p, v && { doc: "Model", validate: v.Model });
 }
 
 /**
@@ -153,17 +185,18 @@ function checkModel(model: OssieSemanticModel, p: string[]): void {
  * (company.ts): the company's own datasets and fields are theirs to shape, so
  * only the named metrics are checked, against whatever the model declares.
  */
-export function checkCompiledMetrics(model: OssieSemanticModel, names: Set<string>): string[] {
+export function checkCompiledMetrics(model: OssieSemanticModel, names: Set<string>, opts: CheckOptions = {}): string[] {
   const p: string[] = [];
+  const v = extensionValidators(opts.extensionSchema);
   const datasets = new Map(model.datasets.map((d) => [d.name, d]));
   const fieldsOf = (n: string) => new Set((datasets.get(n)?.fields ?? []).map((f) => f.name));
   for (const d of dupes(model.datasets.map((d) => d.name))) p.push(`Model: dataset name "${d}" is declared more than once`);
   for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
-  for (const m of model.metrics ?? []) if (names.has(m.name)) checkMetric(m, datasets, fieldsOf, p);
+  for (const m of model.metrics ?? []) if (names.has(m.name)) checkMetric(m, datasets, fieldsOf, p, v);
   return p;
 }
 
-function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fieldsOf: (n: string) => Set<string>, p: string[]): void {
+function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fieldsOf: (n: string) => Set<string>, p: string[], v?: ExtensionValidators): void {
   {
     const dialects = portableEntries(m.expression);
     if (!dialects.some((d) => d.dialect === OSSIE_DIALECT)) p.push(`Model: metric "${m.name}" has no ${OSSIE_DIALECT} expression`);
@@ -189,21 +222,37 @@ function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fields
         }
       }
     }
-    checkExt(m.custom_extensions, `metric "${m.name}"`, p);
+    checkExt(m.custom_extensions, `metric "${m.name}"`, p, v && { doc: "Model", validate: v.Metric });
   }
 }
 
-function checkExt(exts: Array<{ vendor_name: string; data: string }> | undefined, who: string, p: string[]): void {
+/**
+ * Every extension's data must be JSON. A GASP payload at a placement the
+ * extension schema defines (model, dataset, metric, mapping) must also match
+ * that placement's definition; other vendors' payloads are theirs.
+ */
+function checkExt(
+  exts: Array<{ vendor_name: string; data: string }> | undefined,
+  who: string,
+  p: string[],
+  schema?: { doc: "Model" | "Mapping"; validate: ValidateFunction },
+): void {
   for (const e of exts ?? []) {
+    let data: unknown;
     try {
-      JSON.parse(e.data);
+      data = JSON.parse(e.data);
     } catch {
-      p.push(`Model: custom_extensions data of ${who} (vendor ${e.vendor_name}) is not valid JSON`);
+      p.push(`${schema?.doc ?? "Model"}: custom_extensions data of ${who} (vendor ${e.vendor_name}) is not valid JSON`);
+      continue;
+    }
+    if (!schema || e.vendor_name !== GASP_VENDOR) continue;
+    if (!schema.validate(data)) {
+      for (const err of schema.validate.errors ?? []) p.push(`${schema.doc}: custom_extensions of ${who} (${GASP_VENDOR}): ${formatSchemaError(err)}`);
     }
   }
 }
 
-function checkMapping(docs: { ontology: OssieOntology; model: OssieSemanticModel; mapping: OssieMapping }, p: string[]): void {
+function checkMapping(docs: { ontology: OssieOntology; model: OssieSemanticModel; mapping: OssieMapping }, p: string[], v?: ExtensionValidators): void {
   const { ontology, model, mapping } = docs;
   const byName = concepts(ontology);
   const datasets = new Map(model.datasets.map((d) => [d.name, new Set((d.fields ?? []).map((f) => f.name))]));
@@ -299,13 +348,14 @@ function checkMapping(docs: { ontology: OssieOntology; model: OssieSemanticModel
     (cm.object_mappings ?? []).forEach((om, i) => checkObject(om, cm.concept, `concept "${cm.concept}" object mapping ${i + 1}`));
     (cm.link_mappings ?? []).forEach((lm, i) => checkLink(lm, cm.concept, 1, `concept "${cm.concept}" link mapping ${i + 1}`));
   }
-  checkExt(mapping.custom_extensions, "mapping", p);
+  checkExt(mapping.custom_extensions, "mapping", p, v && { doc: "Mapping", validate: v.Mapping });
 }
 
-export function checkExport(docs: { ontology: OssieOntology; model: OssieSemanticModel; mapping: OssieMapping }): string[] {
+export function checkExport(docs: { ontology: OssieOntology; model: OssieSemanticModel; mapping: OssieMapping }, opts: CheckOptions = {}): string[] {
   const problems: string[] = [];
+  const v = extensionValidators(opts.extensionSchema);
   checkOntology(docs.ontology, problems);
-  checkModel(docs.model, problems);
-  checkMapping(docs, problems);
+  checkModel(docs.model, problems, v);
+  checkMapping(docs, problems, v);
   return problems;
 }

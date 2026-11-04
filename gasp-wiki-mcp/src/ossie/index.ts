@@ -16,7 +16,7 @@ export function exportOssie(data: StandardData): OssieExport {
   const ontology = exportOntology(data);
   const { model, coverage } = exportModel(data);
   const mapping = exportMapping(data);
-  const problems = checkExport({ ontology, model, mapping });
+  const problems = checkExport({ ontology, model, mapping }, { extensionSchema: data.extensionSchema });
   if (problems.length) throw new Error(`Ossie export failed GASP's cross-reference checks:\n- ${problems.join("\n- ")}`);
   return { ontology, model, mapping, coverage };
 }

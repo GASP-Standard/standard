@@ -430,7 +430,7 @@ export function proposeMapping(model: OssieSemanticModel, data: StandardData, op
   problems.push(...resolved.problems);
   const schema = ossieSchemaErrors(mapping, "mapping", data);
   if (schema?.length) problems.push(...schema.map((e) => `mapping: ${e}`));
-  problems.push(...checkExport({ ontology: exportOntology(data), model: out, mapping }));
+  problems.push(...checkExport({ ontology: exportOntology(data), model: out, mapping }, { extensionSchema: data.extensionSchema }));
   const cov = proposed.length ? checkAdapter(resolved.adapter, data) : undefined;
   const elsewhere: Record<string, string[]> = {};
   for (const p of proposed) for (const c of p.unmatched) { const f = fieldById.get(c.toLowerCase()); if (f?.datasets?.length && !f.datasets.includes(p.dataset)) elsewhere[c] = f.datasets; }

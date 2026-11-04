@@ -298,7 +298,7 @@ export function checkMapping(input: { document: unknown; model?: unknown }, data
     return {
       format: "v1", modelProvided: false,
       ossieSchemaErrors: ossieSchemaErrors(form.mapping, "mapping", data),
-      crossProblems: checkExport({ ontology, model: form.model, mapping: form.mapping }),
+      crossProblems: checkExport({ ontology, model: form.model, mapping: form.mapping }, { extensionSchema: data.extensionSchema }),
       conversionProblems: [], gaps: form.gaps, adapter, coverage, ossie: { model: form.model, mapping: form.mapping },
     };
   }
@@ -314,7 +314,7 @@ export function checkMapping(input: { document: unknown; model?: unknown }, data
     return {
       format: "ossie", modelProvided: Boolean(given),
       ossieSchemaErrors: schemaErrors === null ? null : [...schemaErrors, ...(modelErrors ?? []).map((e) => `semantic model: ${e}`)],
-      crossProblems: checkExport({ ontology, model, mapping }),
+      crossProblems: checkExport({ ontology, model, mapping }, { extensionSchema: data.extensionSchema }),
       conversionProblems: problems, gaps: [], adapter, coverage, ossie: { model, mapping },
     };
   }

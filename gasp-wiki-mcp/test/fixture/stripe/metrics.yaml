@@ -1,0 +1,29 @@
+# The Stripe example's own metrics, written over the datasets and fields of the
+# model validate_mapping synthesises from adapter.json (dataset names are the
+# GASP dataset ids, fields the snapshot column names, or the GASP field id
+# where a transform applies: mrr and subscription_status on subscription).
+# score_drift compares them with GASP's canonical definitions on the synthetic
+# dataset. mrr and churned_mrr agree (both matched by name; the COALESCE is
+# what makes a month with no churn a 0 rather than NULL); net_new_mrr adds
+# the four movements Stripe's Billing dashboard shows and leaves reactivation
+# out, so it differs from GASP's Net New MRR in a month a customer returns;
+# paying_customers has no exact GASP name and goes to review.
+version: 0.2.0.dev0
+name: stripe_example_metrics
+metrics:
+  - name: mrr
+    description: Monthly recurring revenue across active subscription items, normalised to a month
+    expression:
+      sql: SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active')
+  - name: churned_mrr
+    description: MRR lost to cancellations in the period
+    expression:
+      sql: -COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'churn'), 0)
+  - name: net_new_mrr
+    description: New plus expansion less contraction and churn, the four movements on the billing dashboard
+    expression:
+      sql: SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type IN ('new', 'expansion', 'contraction', 'churn'))
+  - name: paying_customers
+    description: Customers with at least one active subscription item
+    expression:
+      sql: COUNT(DISTINCT subscription.customer_id) FILTER (WHERE subscription.subscription_status = 'active')

@@ -2,8 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
-import { loadStandard } from "../src/loader.js";
-import { fillTemplate } from "../src/tools.js";
+import { loadStandard, metricFormulaId } from "../src/loader.js";
+import { DRIFT_PERIODS } from "../src/ossie/drift.js";
+import { checkAdapter, fillTemplate } from "../src/tools.js";
 import { DIALECT, DIALECTS } from "../src/dialect.js";
 import { checkReport, checksAsOneQuery, compileChecks, generateChecksFromText, parseResults, planFixes, planFixesFromText, readinessChecks, type CheckResult } from "../src/checks.js";
 import { DERIVED_FIELDS, revenueEventDerivation } from "../src/cel.js";
@@ -17,7 +18,15 @@ import { adapter, fixtureDb, scalar } from "./fixture-db.js";
 
 const data = loadStandard();
 let db: PGlite;
-beforeAll(async () => { db = await fixtureDb(); }, 120_000);
+beforeAll(async () => {
+  db = await fixtureDb();
+  // The period spine the range checks read, as the drift scorer creates it.
+  await db.exec(`CREATE SCHEMA IF NOT EXISTS gasp; CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE)`);
+  await db.exec(`INSERT INTO gasp.period_spine VALUES ${DRIFT_PERIODS.map((p) => `('${p.start}', '${p.end}')`).join(", ")}`);
+}, 120_000);
+
+/** The formula id of the metric on a slug, as the range check ids use it. */
+const idOf = (slug: string) => metricFormulaId(data, data.metrics.find((m) => m.slug === slug && m.department === "Core")!);
 afterAll(async () => { await db?.close(); });
 
 const FRESH = { asOf: END, window: 30 };
@@ -47,9 +56,31 @@ describe("readiness checks", () => {
     for (const c of readinessChecks(data)) expect(c.placeholders.every((p) => c.datasets.includes(p.split("@")[1])), c.id).toBe(true);
   });
 
+  it("carry a range check per ruled metric, with percent bounds unscaled", () => {
+    const checks = readinessChecks(data);
+    const ids = checks.map((c) => c.id);
+    const ruled = ["net-revenue-retention-nrr", "gross-revenue-retention-grr", "gross-margin", "arr-annual-recurring-revenue"].map((s) => `range:${idOf(s)}`);
+    expect(ids).toEqual(expect.arrayContaining(ruled));
+    expect(ids.filter((i) => i.startsWith("range:")).length).toBeGreaterThanOrEqual(8);
+    const grr = checks.find((c) => c.id === `range:${idOf("gross-revenue-retention-grr")}`)!;
+    expect(grr.name).toBe("Range of Gross Revenue Retention (GRR)");
+    expect(grr.sql("postgres")).toContain("v.value > 1");
+    expect(grr.sql("postgres")).toContain("v.value < 0");
+    expect(grr.sql("postgres")).not.toContain("> 100");
+    expect(grr.sql("postgres")).toContain("FROM gasp.period_spine p");
+    expect(grr.sql("postgres")).not.toMatch(/\{\{_period_(start|end)\}\}/);
+    expect(grr.rule).toContain("GRR cannot exceed 100%");
+    expect(grr.source).toMatch(/^https:\/\/gaspwiki\.com\/v1\/metrics\/core\//);
+    expect(grr.protects).toEqual({ metric: "Gross Revenue Retention (GRR)" });
+    // NPS is scaled by its formula and its rule has no unit: bounds as given.
+    expect(checks.find((c) => c.id === `range:${idOf("nps-net-promoter-score")}`)!.sql("postgres")).toMatch(/v\.value < -100 OR v\.value > 100/);
+    expect(readinessChecks(data, { spine: "finance.periods" }).find((c) => c.id === grr.id)!.sql("postgres")).toContain("FROM finance.periods p");
+  });
+
   it("the synthetic dataset passes every runnable check", async () => {
     const results = await run();
     expect(Object.keys(results).length).toBeGreaterThan(20);
+    expect(Object.keys(results)).toEqual(expect.arrayContaining(["nrr", "grr", "gross_margin", "arr"].map((id) => `range:${id}`)));
     const failing = Object.entries(results).filter(([, v]) => v !== 0);
     expect(failing, failing.map(([k, v]) => `${k}=${v}`).join(", ")).toEqual([]);
   });
@@ -93,6 +124,22 @@ describe("readiness checks", () => {
     expect(r["mrr_continuity"]).toBe(0);
   });
 
+  it("fails the GRR range check when a contraction turns into a gain", async () => {
+    // contraction_mrr is -sum(mrr_change) over contraction events: a large positive change makes it
+    // negative, so the retained MRR exceeds the starting MRR in that month.
+    await db.exec(`CREATE TABLE bad_contraction AS SELECT * FROM gasp_revenue_events`);
+    const target = await db.query<{ event_id: string }>(`SELECT event_id FROM bad_contraction WHERE event_type = 'contraction' ORDER BY event_id LIMIT 1`);
+    expect(target.rows.length).toBe(1);
+    await db.exec(`UPDATE bad_contraction SET mrr_change = 1000000, new_mrr = prior_mrr + 1000000 WHERE event_id = '${target.rows[0].event_id}'`);
+    const bad = adapterOver("revenue_event", "bad_contraction");
+    const r = await run(bad);
+    expect(r[`range:${idOf("gross-revenue-retention-grr")}`]).toBeGreaterThanOrEqual(1);
+    const rows = (await db.query<CheckResult>(checksAsOneQuery(compileChecks(bad, data, "postgres", FRESH)))).rows;
+    const report = checkReport(compileChecks(bad, data, "postgres", FRESH), "postgres", rows);
+    expect(report.metrics.find((m) => m.metric === "Gross Revenue Retention (GRR)")!.failing).toContain(`range:${idOf("gross-revenue-retention-grr")}`);
+    expect(generateChecksFromText(JSON.stringify(bad), undefined, data, { ...FRESH, results: JSON.stringify(rows) })).toMatch(/\| Gross Revenue Retention \(GRR\) \| Core \| [^\n]*`range:grr`/);
+  });
+
   it("the derived revenue events fail only the expansion tag the ledger cannot fill", async () => {
     const sql = fillTemplate(revenueEventDerivation({ dialect: "postgres", currency: "USD" }), adapter, data).sql;
     await db.exec(`CREATE TABLE derived_events AS ${sql}`);
@@ -133,6 +180,20 @@ describe("readiness checks", () => {
       for (const c of readinessChecks(data, FRESH)) for (const token of DIALECT[dialect].forbidden) expect(c.sql(dialect), `${dialect} ${c.id}: ${token}`).not.toContain(token);
     }
     expect(readinessChecks(data, FRESH).find((c) => c.id === "freshness:revenue_event")!.sql("bigquery")).toContain("DATE_DIFF(DATE '2026-06-30'");
+    // Range checks are kept only for the metrics the mapping covers fully, and read the spine.
+    const acmeCompiled = compileChecks(JSON.parse(acme), data, "snowflake", FRESH);
+    const fully = new Set(checkAdapter(JSON.parse(acme), data).fully.map((f) => f.metric));
+    const ranged = readinessChecks(data, FRESH).filter((c) => c.id.startsWith("range:"));
+    const uncovered = ranged.filter((c) => !fully.has((c.protects as { metric: string }).metric));
+    expect(uncovered.length).toBeGreaterThan(0);
+    for (const c of uncovered) {
+      expect(acmeCompiled.some((x) => x.check.id === c.id), c.id).toBe(false);
+      expect(report).not.toContain(`\`${c.id}\``);
+    }
+    for (const c of acmeCompiled.filter((x) => x.check.id.startsWith("range:"))) {
+      expect(fully.has((c.check.protects as { metric: string }).metric)).toBe(true);
+      if (c.sql) expect(c.sql).toContain("FROM gasp.period_spine p");
+    }
   });
 
   it("reads results as JSON objects, pairs, a keyed object or CSV, and rejects junk", () => {

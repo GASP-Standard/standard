@@ -131,7 +131,7 @@ export function compileModel(company: Company, data: StandardData, opts: Compile
     custom_extensions: [...(base.custom_extensions ?? []).filter((e) => e.vendor_name !== GASP_VENDOR), compiled],
   };
   const names = new Set([...metrics.map((m) => m.name)]);
-  const problems = [...(ossieSchemaErrors(model, "model", data) ?? []).map((e) => `Ossie schema: ${e}`), ...checkCompiledMetrics(model, names)];
+  const problems = [...(ossieSchemaErrors(model, "model", data) ?? []).map((e) => `Ossie schema: ${e}`), ...checkCompiledMetrics(model, names, { extensionSchema: data.extensionSchema })];
   return { company, model, coverage, dialect: chosen.dialect, dialectNote: chosen.note, spine, counts, problems };
 }
 

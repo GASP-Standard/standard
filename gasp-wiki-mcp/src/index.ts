@@ -32,6 +32,7 @@ import { proposeMappingFromText } from "./ossie/propose.js";
 import { recordDecisionFromText } from "./ossie/decide.js";
 import { deriveCelFromText } from "./cel.js";
 import { generateChecksFromText, planFixesFromText } from "./checks.js";
+import { readinessFromText } from "./readiness.js";
 import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -710,7 +711,7 @@ server.tool(
 // --- Tool 10: score_drift ---
 server.tool(
   "score_drift",
-  "Score how far your own metrics drift from the GASP Standard's canonical definitions, by result. Takes your mapping (a GASP adapter or an Ossie mapping, as validate_mapping does) and your semantic_model holding your metrics. Each metric is matched to a GASP metric by exact name, by the synonyms in its ai_context or by a pair you pass in matches; near names are listed for review and never scored on a guess. For every match the canonical metric is compiled into your dataset and field names (as compile_model does) and both run on the GASP synthetic SaaS dataset, six monthly periods, in an in-process Postgres (PGlite). Where the numbers differ the report gives both values per period, the largest difference and the likely cause read from the canonical formula: a null on one side (a sum over no rows that is NULL in your SQL and 0 in GASP's, or a canonical average or ratio with nothing to read), a construct one expression cannot state (a cohort, an opening value at period start, a period bound to a business date), a filter one side applies and the other does not, a dataset one side reads or an aggregate whose value has no equal on the other side. Metrics that read fields your mapping lacks are reported as not runnable with the field named.",
+  "Score how far your own metrics drift from the GASP Standard's canonical definitions, by result. Takes your mapping (a GASP adapter or an Ossie mapping, as validate_mapping does) and your semantic_model holding your metrics. Each metric is matched to a GASP metric by exact name, by the synonyms in its ai_context or by a pair you pass in matches, and a name or synonym ending in -O or -M (NRR-O, cac_m) matches that declared form; near names are listed for review and never scored on a guess. For every match the canonical metric is compiled into your dataset and field names (as compile_model does) and both run on the GASP synthetic SaaS dataset, six monthly periods, in an in-process Postgres (PGlite). Where the numbers differ the report gives both values per period, the largest difference and the likely cause read from the canonical formula: a null on one side (a sum over no rows that is NULL in your SQL and 0 in GASP's, or a canonical average or ratio with nothing to read), a construct one expression cannot state (a cohort, an opening value at period start, a period bound to a business date), a filter one side applies and the other does not, a dataset one side reads or an aggregate whose value has no equal on the other side. Metrics that read fields your mapping lacks are reported as not runnable with the field named. Your values are also checked against the standard's range for the metric (NRR at least 0, GRR at most 100%) per period, and where both the O and M forms of a dual-lens metric are matched the report scores the bridge between them (the Durability Gap for ARR, the Expansion Integrity Gap for NRR, the Activation Delta for CAC, the Contribution Leakage for LTV, the Services Drag for Gross Margin): your M minus O beside the canonical gap, per period.",
   {
     adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
     semantic_model: z.string().describe("Your metrics: your Ossie semantic model document (YAML or JSON); with a GASP adapter as the mapping, any document with a metrics list will do. Each metric with a name and an OSSIE_SQL_2026 expression over your datasets and fields. With a GASP adapter, write them over the dataset names and columns of the model validate_mapping synthesises (the GASP dataset ids and your column names)."),
@@ -785,18 +786,19 @@ server.tool(
 // --- Tool 15: generate_checks ---
 server.tool(
   "generate_checks",
-  "The readiness checks the GASP Standard states, as SQL over the datasets your mapping covers (readiness level 3, the Check step). From cel.md and atl.md: CEL row identity (prior_mrr + mrr_change = new_mrr on every revenue event), MRR continuity (a subscription's mrr_start equals its mrr on the previous snapshot), unique event_id per event dataset, the ATL tags (one lifecycle_attribution per event, an expansion_classification on every expansion, contraction and reactivation revenue event and every amendment, a cost_function on every cost event), customer identity both ways (every revenue event's customer is a known customer, every customer active on the latest snapshot has a revenue event) and freshness (the latest date per dataset within a window). One statement, one row per check with its violation count. GASP has no warehouse access: run it, then pass the rows back as results to get pass or fail per check and per metric; each check names the metrics whose formulas read what it covers. Checks whose fields the mapping lacks are listed with what they need. Takes the mapping generate_query takes; the dialect is the one asked for, else the warehouse's, else postgres. Follow with plan_fixes for the ranked list.",
+  "The readiness checks the GASP Standard states, as SQL over the datasets your mapping covers (readiness level 3, the Check step). From cel.md and atl.md: CEL row identity (prior_mrr + mrr_change = new_mrr on every revenue event), MRR continuity (a subscription's mrr_start equals its mrr on the previous snapshot), unique event_id per event dataset, the ATL tags (one lifecycle_attribution per event, an expansion_classification on every expansion, contraction and reactivation revenue event and every amendment, a cost_function on every cost event), customer identity both ways (every revenue event's customer is a known customer, every customer active on the latest snapshot has a revenue event) freshness (the latest date per dataset within a window) and, for every fully mapped metric with a hard range rule in the ontology (NRR at least 0, GRR at most 100%, Gross Margin, ARR and others), its value in every reporting period of your period spine (the table compile_model reads; period_spine names another). One statement, one row per check with its violation count. GASP has no warehouse access: run it, then pass the rows back as results to get pass or fail per check and per metric; each check names the metrics whose formulas read what it covers. Checks whose fields the mapping lacks are listed with what they need. Takes the mapping generate_query takes; the dialect is the one asked for, else the warehouse's, else postgres. Follow with plan_fixes for the ranked list.",
   {
     adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
     semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), so table names and field expressions resolve. Ignored for a GASP adapter."),
     dialect: z.enum(DIALECTS).optional().describe("SQL dialect: postgres (also Redshift), snowflake, bigquery or databricks. Omit to use the adapter's warehouse when it names one of them, else postgres."),
     window: z.number().int().min(0).optional().describe("Freshness window in days (default 2): the latest date in each dataset must be within this many days of as_of."),
     as_of: z.string().optional().describe("The date freshness is measured from, as YYYY-MM-DD. Default: the warehouse's current date."),
+    period_spine: z.string().optional().describe("The table of (period_start, period_end) rows the range checks evaluate each metric over, as it is named in your warehouse; the same table compile_model reads. Default gasp.period_spine."),
     results: z.string().optional().describe("The rows the checks statement returned, as JSON (objects with check_id and violations, [check_id, violations] pairs, or an object keyed by check id) or CSV. With results the report gives pass or fail per check and per metric."),
     output: z.enum(["report", "sql", "json"]).optional().describe("'report' (default): the checks, what each protects and the SQL to run (or, with results, pass and fail per check and per metric); 'sql': the statement alone; 'json': the report as data."),
   },
-  async ({ adapter, semantic_model, dialect, window, as_of, results, output }) =>
-    ({ content: [{ type: "text" as const, text: generateChecksFromText(adapter, semantic_model, data, { dialect, window, asOf: as_of, results, output }) }] }),
+  async ({ adapter, semantic_model, dialect, window, as_of, period_spine, results, output }) =>
+    ({ content: [{ type: "text" as const, text: generateChecksFromText(adapter, semantic_model, data, { dialect, window, asOf: as_of, spine: period_spine, results, output }) }] }),
 );
 
 // --- Tool 16: plan_fixes ---
@@ -808,14 +810,34 @@ server.tool(
     semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON). Ignored for a GASP adapter."),
     dialect: z.enum(DIALECTS).optional().describe("SQL dialect used to decide which checks are runnable; omit to use the warehouse's, else postgres."),
     results: z.string().optional().describe("The rows the generate_checks statement returned, as JSON or CSV with check_id and violations."),
+    period_spine: z.string().optional().describe("The period spine table the range checks read, as passed to generate_checks. Default gasp.period_spine."),
     limit: z.number().int().min(1).optional().describe("How many fixes to show (default 25)."),
     output: z.enum(["report", "json"]).optional().describe("'report' (default) or 'json' (every fix as data)."),
   },
-  async ({ adapter, semantic_model, dialect, results, limit, output }) =>
-    ({ content: [{ type: "text" as const, text: planFixesFromText(adapter, semantic_model, data, { dialect, results, limit, output }) }] }),
+  async ({ adapter, semantic_model, dialect, results, period_spine, limit, output }) =>
+    ({ content: [{ type: "text" as const, text: planFixesFromText(adapter, semantic_model, data, { dialect, results, spine: period_spine, limit, output }) }] }),
 );
 
-// --- Tool 17: infer_drivers ---
+// --- Tool 17: readiness_report ---
+server.tool(
+  "readiness_report",
+  "Which readiness level a company has reached on the GASP pipeline and what stands between it and the next, read from the documents the other tools produced. L1 Profiled: a semantic model exists (profiled by profile_schema, your own, or synthesised from a GASP adapter). L2 Mapped: at least one metric is fully covered and no profiler question and no proposer candidate is open (the line record_decision draws). L3 Clean core: the CEL revenue events are mapped, the checks have been run and every Core metric the mapping covers passes every check that protects it. L4 LLM-ready: the canonical metrics are compiled into the model (compile_model) and none of your own metrics differs from its canonical counterpart (score_drift, run here on the synthetic dataset when the model carries metrics of your own). Levels are cumulative. Pass the mapping (either format), the semantic_model it reads (with an adapter, the model compile_model returned, so the compiled metrics and your own are seen) and the results of the generate_checks statement; without results level 3 is blocked and the report says what to run. Each blocker names the tool that clears it; the Next line is the one action to take. Nothing runs against your warehouse.",
+  {
+    adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON), with the candidates and decisions in its GASP extension when propose_mapping and record_decision wrote them."),
+    semantic_model: z.string().optional().describe("The Ossie semantic model (YAML or JSON): with an Ossie mapping, the model it reads (its profile questions, compiled gasp_ metrics and your own metrics are read); with a GASP adapter, the model compile_model returned, if you have one."),
+    results: z.string().optional().describe("The rows the generate_checks statement returned, as JSON or CSV with check_id and violations. Without them level 3 cannot be assessed."),
+    matches: z.string().optional().describe("Explicit pairs for your own metrics the names do not settle, as score_drift takes them: \"acme_nrr=NRR, lost_mrr=Churned MRR\"."),
+    dialect: z.enum(DIALECTS).optional().describe("SQL dialect used to decide which checks are runnable; omit to use the warehouse's, else postgres."),
+    window: z.number().int().min(0).optional().describe("Freshness window in days (default 2), as passed to generate_checks."),
+    as_of: z.string().optional().describe("The date freshness was measured from, as YYYY-MM-DD, as passed to generate_checks."),
+    period_spine: z.string().optional().describe("The period spine table, as passed to generate_checks and compile_model. Default gasp.period_spine."),
+    output: z.enum(["report", "json"]).optional().describe("'report' (default): the level, a table of the four levels with their blockers, the detail per level and the next action; 'json': the same as data."),
+  },
+  async ({ adapter, semantic_model, results, matches, dialect, window, as_of, period_spine, output }) =>
+    ({ content: [{ type: "text" as const, text: await readinessFromText(adapter, semantic_model, data, { results, matches, dialect, window, asOf: as_of, spine: period_spine, output }) }] }),
+);
+
+// --- Tool 18: infer_drivers ---
 server.tool(
   "infer_drivers",
   "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
@@ -864,7 +886,7 @@ server.tool(
   }
 );
 
-// --- Tool 18: explain_path ---
+// --- Tool 19: explain_path ---
 server.tool(
   "explain_path",
   "How a movement in one graph node reaches another: up to 5 chains of edges followed forward from `from` to `to`, shortest first, then by highest score. Each step gives the edge type, its classification (metric_signal, structural, lifecycle, behavioral, assignment or generative), its attenuation and whether it inverts direction; each path gives its score and the direction the target moves when the source rises. A baseline edge (MRR into NRR) can only start a path. Names resolve as in get_relationships, so entities and concepts work too. No path means no forward chain within maxDepth: try the reverse. Use it on a candidate from infer_drivers.",
@@ -916,7 +938,7 @@ server.tool(
   }
 );
 
-// --- Tool 19: coverage_gap ---
+// --- Tool 20: coverage_gap ---
 server.tool(
   "coverage_gap",
   "Audit a set of tracked metrics against the GASP relationship graph. Returns three lists: upstream missing (metrics with a direct edge into the set that the set leaves out), downstream missing (metrics with a direct edge from the set that it leaves out) and disconnected (graph metrics with no path of any length, in either direction and through any node, to the set; the first 25 shown). Names resolve as in lookup_metric; an input that is ambiguous, outside the graph, not a metric or unknown is listed as unresolved with the reason. Use it before instrumenting a dashboard, then infer_drivers or explain_path on the candidates.",
@@ -986,7 +1008,7 @@ server.tool(
 );
 
 // Start the server
-// --- Tool 20: lookup_definition ---
+// --- Tool 21: lookup_definition ---
 server.tool(
   "lookup_definition",
   "Look up a GASP Standard glossary term (e.g. 'Signal Type', 'Sensitivity Tier', 'Access Scope', 'Metric Owner', 'CEL'): the full definition and body, its section, the canonical or reference link, where it is used and the page URL. The term must match exactly, ignoring case: the term, its slug or either part of 'Term (Abbreviation)', so 'CEL' finds 'CEL (Commercial Event Ledger)'. A metric name points you to lookup_metric and a miss returns close names. Some metrics also have a short glossary entry (Logo Churn Rate, Win Rate); lookup_metric gives their formula and benchmarks.",

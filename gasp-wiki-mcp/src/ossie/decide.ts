@@ -403,7 +403,7 @@ export function recordDecisions(model: OssieSemanticModel, mapping: OssieMapping
     const me = ossieSchemaErrors(out, "model", data);
     if (me?.length) problems.push(...me.map((e) => `model: ${e}`));
   }
-  problems.push(...checkExport({ ontology: exportOntology(data), model: out, mapping: outMapping }));
+  problems.push(...checkExport({ ontology: exportOntology(data), model: out, mapping: outMapping }, { extensionSchema: data.extensionSchema }));
   const cov = final.adapter.mappings.length ? checkAdapter(final.adapter, data) : undefined;
   const questions = openQuestions(out, all);
   return {

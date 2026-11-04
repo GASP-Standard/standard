@@ -20,6 +20,7 @@
  */
 import { closestNames, isMetricStub, metricFormulaId, resolveMetric } from "../loader.js";
 import { enumFilters, type EnumFilter } from "../filters.js";
+import { describeRange, outOfRange, rangeRule } from "../ranges.js";
 import { columnName, generateFixture, loadSynthetic, TABLES, type Fixture } from "../synthetic.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { expressionText, parseDocument, resolveCompany, type Company } from "./adapt.js";
@@ -79,8 +80,36 @@ export interface DriftScore {
   worst?: PeriodValue & { relative: number };
   differing: number;
   causes: string[];
+  /** The company's values outside the standard's range for the metric (ontology validationRules), by period */
+  outOfRange: Array<{ period: Period; value: number; bound: "min" | "max"; limit: number }>;
   /** Why it could not run or compile */
   error?: string;
+}
+
+/**
+ * An O/M bridge (metrics/core.md, the Bridge subsections): the gap between the
+ * Market and Operating forms, on the company's numbers and on the canonical
+ * ones. The forms reconcile by construction when both come from the GASP
+ * formulas, so the bridge informs where a company computes its own.
+ */
+export interface BridgeScore {
+  /** Formula id of the dual-lens metric */
+  id: string;
+  /** The GASP metric's label */
+  gasp: string;
+  /** The diagnostic the standard names for the gap, when it has one (Durability Gap, Activation Delta) */
+  diagnostic?: string;
+  /** How the gap is read, e.g. "ARR-M - ARR-O" */
+  gap: string;
+  /** The company's metric standing for each form */
+  O?: string;
+  M?: string;
+  status: "agrees" | "differs" | "not scored";
+  periods: PeriodValue[];
+  worst?: PeriodValue & { relative: number };
+  differing: number;
+  /** Why it was not scored */
+  note?: string;
 }
 
 export interface DriftResult {
@@ -89,6 +118,7 @@ export interface DriftResult {
   periods: Period[];
   matched: DriftMatch[];
   scores: DriftScore[];
+  bridges: BridgeScore[];
   review: DriftReview[];
   counts: { metrics: number; matched: number; agrees: number; differs: number; notRunnable: number; notCompiled: number; review: number };
   /** The mapping's own problems, as compile_model reports them */
@@ -153,6 +183,19 @@ const exactMetric = (data: StandardData, name: string): Metric | undefined => {
   return undefined;
 };
 
+/** A name as a metric, or as a declared O or M form of one when it ends in -O, _O, " O" or ":O" (NRR-O, cac_m, "Gross Margin M"). */
+const exactEntry = (data: StandardData, name: string): { metric: Metric; variant?: "O" | "M" } | undefined => {
+  const whole = exactMetric(data, name);
+  if (whole) return { metric: whole };
+  const f = /^(.+?)[\s_:-]+([OM])$/i.exec(name.trim());
+  if (!f) return undefined;
+  const base = exactMetric(data, f[1]);
+  if (!base) return undefined;
+  const variant = f[2].toUpperCase() as "O" | "M";
+  return data.formulas?.[metricFormulaId(data, base)]?.forms?.[variant] ? { metric: base, variant } : undefined;
+};
+const keyOf = (data: StandardData, e: { metric: Metric; variant?: string }): string => `${metricFormulaId(data, e.metric)}${e.variant ? `:${e.variant}` : ""}`;
+
 /** Explicit pairs: "company_metric=GASP name" (comma separated), with an optional ":O", ":M" or ":variant" on the GASP side. */
 export function parseMatches(text: string | undefined): Record<string, string> {
   const out: Record<string, string> = {};
@@ -182,10 +225,10 @@ export function matchMetrics(metrics: OssieMetric[], data: StandardData, matches
       matched.push({ metric: m, key: variant ? `${id}:${variant}` : id, gasp: r.metric, variant, how: "matches" });
       continue;
     }
-    const byName = exactMetric(data, m.name);
-    if (byName) { matched.push({ metric: m, key: metricFormulaId(data, byName), gasp: byName, how: "name" }); continue; }
-    const bySynonym = synonymsOf(m).map((s) => exactMetric(data, s)).find(Boolean);
-    if (bySynonym) { matched.push({ metric: m, key: metricFormulaId(data, bySynonym), gasp: bySynonym, how: "synonym" }); continue; }
+    const byName = exactEntry(data, m.name);
+    if (byName) { matched.push({ metric: m, key: keyOf(data, byName), gasp: byName.metric, variant: byName.variant, how: "name" }); continue; }
+    const bySynonym = synonymsOf(m).map((s) => exactEntry(data, s)).find(Boolean);
+    if (bySynonym) { matched.push({ metric: m, key: keyOf(data, bySynonym), gasp: bySynonym.metric, variant: bySynonym.variant, how: "synonym" }); continue; }
     const near = [m.name.replace(/_/g, " "), ...synonymsOf(m)]
       .flatMap((q) => closestNames(data, q, 3).filter((c) => c.metric).map((c) => ({ name: c.metric!.name, score: c.score })))
       .sort((a, b) => b.score - a.score)
@@ -414,7 +457,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
   const engine = opts.engine ?? (await syntheticEngine(data));
   const base = { company, periods, matched, review, problems: [...company.problems, ...ns.notes] };
   if (!engine) {
-    return { ...base, engine: "none", scores: [], counts: { metrics: own.length, matched: matched.length, agrees: 0, differs: 0, notRunnable: 0, notCompiled: 0, review: review.length } };
+    return { ...base, engine: "none", scores: [], bridges: [], counts: { metrics: own.length, matched: matched.length, agrees: 0, differs: 0, notRunnable: 0, notCompiled: 0, review: review.length } };
   }
 
   const filterCtx = { fields, formulas: data.formulas ?? {} };
@@ -426,7 +469,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
       for (const m of matched) {
         const yours = exprOf(m.metric);
         const label = `${m.gasp.name}${m.variant ? ` (${m.variant})` : ""}`;
-        const score: DriftScore = { name: m.metric.name, gasp: label, key: m.key, how: m.how, status: "agrees", yours, periods: [], differing: 0, causes: [] };
+        const score: DriftScore = { name: m.metric.name, gasp: label, key: m.key, how: m.how, status: "agrees", yours, periods: [], differing: 0, causes: [], outOfRange: [] };
         scores.push(score);
         const cov: MetricCoverage | undefined = ns.compiled.coverage[m.key];
         if (!cov || cov.kind === "unmapped" || cov.kind === "notComputable") {
@@ -455,6 +498,9 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
           score.periods = [];
           continue;
         }
+        // The company's values against the standard's range for the metric, whatever the canonical side says.
+        const range = rangeRule(data, m.gasp);
+        if (range) for (const p of score.periods) { const broken = outOfRange(p.yours, range); if (broken) score.outOfRange.push({ period: p.period, value: p.yours!, ...broken }); }
         const differing = score.periods.filter((p) => !same(p.yours, p.canonical));
         score.differing = differing.length;
         if (!differing.length) continue;
@@ -493,6 +539,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
     }
   };
   const scores = await serial(run);
+  const bridges = scoreBridges(scores, data);
   const counts = {
     metrics: own.length,
     matched: matched.length,
@@ -502,7 +549,62 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
     notCompiled: scores.filter((s) => s.status === "not compiled").length,
     review: review.length,
   };
-  return { ...base, engine: "pglite", scores, counts };
+  return { ...base, engine: "pglite", scores, bridges, counts };
+}
+
+// ── the O/M bridges ──────────────────────────────────────────────────────────
+
+/** The diagnostic each bridge in metrics/core.md names, and which form the gap subtracts from. */
+const BRIDGES: Record<string, { diagnostic?: string; minuend: "O" | "M" }> = {
+  arr: { diagnostic: "Durability Gap", minuend: "M" },
+  nrr: { diagnostic: "Expansion Integrity Gap", minuend: "M" },
+  cac: { diagnostic: "Activation Delta", minuend: "O" },
+  ltv: { diagnostic: "Contribution Leakage", minuend: "M" },
+  gross_margin: { diagnostic: "Services Drag", minuend: "M" },
+  ltv_cac_ratio: { minuend: "O" },
+  cac_payback: { minuend: "O" },
+};
+
+/** "ARR (Annual Recurring Revenue)" → "ARR", "Gross Margin" → "Gross Margin": the name as the Bridge subsections write it. */
+const short = (m: Metric): string => m.name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+/**
+ * One bridge per formula with both forms: the gap between the company's M and O
+ * numbers beside the canonical gap, per period. A form is the score whose key is
+ * the form, or the main formula's score when the canonical formula is that form
+ * (ARR's canonical is ARR-M). A bridge with a form unmatched or unscored says so.
+ */
+export function scoreBridges(scores: DriftScore[], data: StandardData): BridgeScore[] {
+  const out: BridgeScore[] = [];
+  for (const [id, f] of Object.entries(data.formulas ?? {})) {
+    if (!f.forms?.O || !f.forms?.M) continue;
+    const metric = data.metrics.find((m) => !isMetricStub(m) && metricFormulaId(data, m) === id);
+    if (!metric) continue;
+    const spec = BRIDGES[id] ?? { minuend: "M" as const };
+    const other = spec.minuend === "M" ? "O" : "M";
+    const name = short(metric);
+    const standsFor = (form: "O" | "M"): DriftScore | undefined =>
+      scores.find((s) => s.key === `${id}:${form}`) ?? (formulaSource(f, form) === f.formula ? scores.find((s) => s.key === id) : undefined);
+    const O = standsFor("O");
+    const M = standsFor("M");
+    const bridge: BridgeScore = { id, gasp: metric.name, ...(spec.diagnostic ? { diagnostic: spec.diagnostic } : {}), gap: `${name}-${spec.minuend} - ${name}-${other}`, ...(O ? { O: O.name } : {}), ...(M ? { M: M.name } : {}), status: "not scored", periods: [], differing: 0 };
+    out.push(bridge);
+    const missing = (["O", "M"] as const).filter((form) => !standsFor(form));
+    if (missing.length) {
+      bridge.note = `${missing.map((form) => `${name}-${form}`).join(" and ")} not matched: name a metric ${missing.map((form) => `${name}-${form}`).join(" or ")}, or pass matches: your_metric=${name}:${missing[0]}`;
+      continue;
+    }
+    const unscored = [O!, M!].find((s) => s.status !== "agrees" && s.status !== "differs");
+    if (unscored) { bridge.note = `${unscored.name} was not scored: ${unscored.error}`; continue; }
+    const [a, b] = spec.minuend === "M" ? [M!, O!] : [O!, M!];
+    const diff = (x: number | null, y: number | null): number | null => (x === null || y === null ? null : x - y);
+    bridge.periods = a.periods.map((p, i) => ({ period: p.period, yours: diff(p.yours, b.periods[i]?.yours ?? null), canonical: diff(p.canonical, b.periods[i]?.canonical ?? null) }));
+    const differing = bridge.periods.filter((p) => !same(p.yours, p.canonical));
+    bridge.differing = differing.length;
+    bridge.status = differing.length ? "differs" : "agrees";
+    if (differing.length) bridge.worst = differing.map((p) => ({ ...p, relative: relative(p.yours, p.canonical) })).sort((x, y) => (Number.isFinite(y.relative) ? y.relative : -1) - (Number.isFinite(x.relative) ? x.relative : -1))[0];
+  }
+  return out;
 }
 
 // ── the report ───────────────────────────────────────────────────────────────
@@ -526,8 +628,14 @@ export function formatDriftReport(r: DriftResult): string {
     return p.join("\n");
   }
   p.push(`**Drift:** ${c.differs} differ${c.differs === 1 ? "s" : ""}, ${c.agrees} agree${c.agrees === 1 ? "s" : ""}${c.notRunnable ? `, ${c.notRunnable} could not run` : ""}${c.notCompiled ? `, ${c.notCompiled} not compiled` : ""}.`);
+  const outside = r.scores.filter((s) => s.outOfRange.length);
+  if (outside.length) p.push(`**Range:** ${outside.length} of your metric${outside.length === 1 ? " is" : "s are"} outside the standard's range in some period: ${outside.map((s) => s.name).join(", ")}.`);
+  const scoredBridges = r.bridges.filter((b) => b.status !== "not scored");
+  const partBridges = r.bridges.filter((b) => b.status === "not scored" && (b.O || b.M));
+  if (scoredBridges.length || partBridges.length) p.push(`**Bridges:** ${scoredBridges.length} scored (${scoredBridges.filter((b) => b.status === "differs").length} differ${scoredBridges.filter((b) => b.status === "differs").length === 1 ? "s" : ""})${partBridges.length ? `, ${partBridges.length} with one form matched` : ""}.`);
   for (const x of r.problems) p.push(`- Mapping: ${x}`);
   p.push("");
+  const rangeLines = (s: DriftScore): string[] => s.outOfRange.map((o) => `Outside the standard's range in ${periodLabel(o.period)}: ${fmt(o.value)} is ${o.bound === "min" ? "below the minimum" : "above the maximum"} ${o.limit}.`);
 
   const by = (s: DriftScore["status"]) => r.scores.filter((x) => x.status === s);
   const differs = by("differs");
@@ -537,6 +645,7 @@ export function formatDriftReport(r: DriftResult): string {
       const w = s.worst!;
       p.push(`### ${s.name} → ${s.gasp}`);
       p.push(`Largest difference in ${periodLabel(w.period)}: yours ${fmt(w.yours)}, canonical ${fmt(w.canonical)} (${pct(w.relative)}). Differs in ${s.differing} of ${s.periods.length} periods.`);
+      p.push(...rangeLines(s));
       p.push(`Likely cause${s.causes.length === 1 ? "" : "s"}:`);
       for (const cause of s.causes) p.push(`- ${cause}`);
       p.push(`Yours: \`${s.yours}\``);
@@ -549,7 +658,20 @@ export function formatDriftReport(r: DriftResult): string {
   const agrees = by("agrees");
   if (agrees.length) {
     p.push(`## Agrees (${agrees.length})`);
-    for (const s of agrees) p.push(`- ${s.name} → ${s.gasp}: equal in all ${s.periods.length} periods`);
+    for (const s of agrees) p.push(`- ${s.name} → ${s.gasp}: equal in all ${s.periods.length} periods${s.outOfRange.length ? `; ${rangeLines(s).join(" ")}` : ""}`);
+    p.push("");
+  }
+  if (scoredBridges.length || partBridges.length) {
+    p.push(`## Bridges (${scoredBridges.length})`, "The gap between a metric's Market and Operating forms, on your numbers and on the canonical ones (the Bridge subsections of the Core metrics). The forms reconcile through the ATL tags by construction when both come from the GASP formulas; a gap that differs means your two forms do not.");
+    for (const b of r.bridges) {
+      if (b.status === "not scored" && !b.O && !b.M) continue;
+      const title = `${b.diagnostic ? `${b.diagnostic}: ` : ""}${b.gap}`;
+      if (b.status === "not scored") { p.push(`- ${title}: not scored (${b.note})`); continue; }
+      if (b.status === "agrees") { p.push(`- ${title}: agrees in all ${b.periods.length} periods (${b.M} and ${b.O})`); continue; }
+      const w = b.worst!;
+      p.push("", `### ${title}`, `Yours (${b.M} and ${b.O}) ${fmt(w.yours)}, canonical ${fmt(w.canonical)} in ${periodLabel(w.period)} (${pct(w.relative)}). Differs in ${b.differing} of ${b.periods.length} periods.`, "", "| Period | Yours | Canonical |", "|---|---|---|");
+      for (const pv of b.periods) p.push(`| ${periodLabel(pv.period)} | ${fmt(pv.yours)} | ${fmt(pv.canonical)}${same(pv.yours, pv.canonical) ? "" : " ≠"} |`);
+    }
     p.push("");
   }
   const notRun = [...by("not runnable"), ...by("not compiled")];

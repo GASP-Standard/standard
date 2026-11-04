@@ -5,6 +5,50 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-04] Vendor worked examples: a billing system reaches level 4, a CRM stops at level 2, and each sits on a different warehouse
+**Decision:** Two worked examples live beside Acme in `gasp-wiki-mcp/test/fixture/`, written from public API documentation: Stripe landed in Redshift and Salesforce landed in BigQuery. Each is a DDL, a GASP adapter and a README that names its source documentation and every choice the mapping makes; neither name enters `standard/` or `src/`. The Stripe example carries a sample ledger and the expected revenue events and is taken to readiness level 4 in the test suite; the Salesforce example is compiled, not run, and stops at level 2.
+
+**Context:** The 2026-11-03 decision made vendors examples rather than standard content and left the examples to write. The interop spec's phase 3 exit criterion is a drift report on a public vendor example, and its risk table says to exercise the derivation rules on vendor data before design partners do. Acme and the synthetic dataset both sit on Snowflake or Postgres, so Redshift and BigQuery were rows in the dialect table no fixture compiled end to end.
+
+**Choices inside the examples:**
+- **Item grain for Stripe.** A Stripe subscription holds one item per price with its own quantity, so the item is the GASP subscription; MRR is `unit_amount * quantity / 100` normalised from the price's interval. `trialing` and `incomplete` map to no GASP status and contribute no MRR, so a converting trial is a `new` event on the day it becomes active. `past_due` and `unpaid` stay active.
+- **The snapshot is the company's.** Stripe holds current state, so the nightly job that gives it a history (`snapshot.sql`) is the company's code and carries its choices (the segment from customer metadata, the customer status from the subscriptions); the mapping reads the snapshot. The ledger starts with the business, so `derive_cel` runs with `first_snapshot: steps`.
+- **The ATL tag is filled from the item history.** `classify.sql` reads the item on the event's day and the day before: a quantity change is `same_product`, a new price in the same product `pricing_adjustment`, a new product `new_module`. One reading of the ATL table, stated as such.
+- **Salesforce stops at level 2 on purpose.** A CRM maps no revenue event, so the honest example ends where the billing system has to join it; the readiness report names that. Contract is in the DDL and not in the mapping because the GASP contract event needs ACV and TCV, which Salesforce's Contract lacks.
+- **Redshift and BigQuery.** Redshift reads as the postgres dialect, so PGlite runs the Stripe SQL and the example can be executed; BigQuery cannot run on the suite's engine, so the Salesforce example is asserted by compilation, which is all a level 2 example needs.
+
+**Alternatives considered:**
+- **Ossie documents instead of a v1 adapter.** Rejected for the fixtures: the adapter is converted on load and the tests exercise the same path, and the adapter's `notes` per mapping are where the choices are explained.
+- **Both examples on Snowflake, like Acme.** Rejected: the dialect coverage is the point of a second and third example, and nothing in the examples depends on the warehouse beyond the dialect.
+- **Stripe's `subscription_item_change_events` table as the ledger.** Not used: its columns are documented less fully than the core objects, and a snapshot of the core objects is the shape every pipeline can build.
+
+**Consequences:**
+- Tiered and metered Stripe prices are out of scope until the usage derivation exists; the README says so.
+- The Stripe example's five customers do not move every day, so the test widens the revenue event freshness window to a week.
+- `test/vendor-fixtures.test.ts` holds 11 tests; the suite has 581.
+
+---
+
+## [2026-11-03] The readiness levels are read from the documents, the bridges are scored in the drift report and the value ranges are checks per period
+**Decision:** `readiness_report` operationalises the interop plan's levels from the documents the pipeline already writes, with nothing run against a warehouse. L1 Profiled is a semantic model with datasets (profiled, the company's own, or synthesised from an adapter). L2 Mapped is at least one metric fully covered with no profiler question and no proposer candidate open, the line `record_decision` already draws. L3 Clean core is the CEL revenue events mapped, the check rows pasted back and every Core metric the mapping covers passing every check that protects it; a covered Core metric no runnable check protects is clean once results exist. L4 LLM-ready is the compiled `gasp_` metrics present in the model the company passes and none of its own metrics differing from its canonical counterpart on the synthetic dataset. Levels are cumulative, every blocker names the tool that clears it and the Next line is the first blocker of the lowest blocked level. The second round of checks lands in two places: the ontology's hard `min` and `max` rules become `range:<formulaId>` checks in `generate_checks`, the compiled template evaluated once per row of the period spine and the periods out of range counted, kept only for fully covered metrics; the O/M bridges are scored in `score_drift`, where a company's own O and M numbers arrive, as the gap between the two forms on the company's numbers beside the canonical gap, named by the diagnostic the Core metrics give it. A metric name or synonym ending in -O or -M matches that declared form. The GASP extension schema is published at `standard/gasp-ossie-extension-v1.json`, strict, and `checkExport` validates every GASP payload against it.
+
+**Context:** The spec's L4 row listed `readiness_report` as the one tool still missing and phase 3's exit criterion was "synthetic data reaches L4", which nothing could say. The bridges and the value ranges were left out of the first round of checks on 2026-11-03 because a bridge reconciles by construction when both forms come from the GASP formulas and a range needs computed values per period, not rows. The extension schema had been "planned, not yet published" since October while five tools wrote into the extension.
+
+**Alternatives considered:**
+- **Grading L3 on every Core metric being covered.** Rejected: a company that covers twelve Core metrics cleanly is at a clean core for those twelve; coverage gaps are reported, not held against the level. Full Core coverage is what `plan_fixes` works towards.
+- **Letting a differing company metric pass L4.** Rejected: an agent reading the published model would find two numbers for one name, which is the drift the standard exists to remove; the company renames, passes `matches` or records the difference as a decision.
+- **Range checks on a calendar derived from the data.** Rejected: date truncation differs per dialect and the company already provides a period spine for `compile_model`; the checks read the same table.
+- **Bridges as warehouse SQL in `generate_checks`.** Rejected: computed from the GASP formulas on both sides, the bridge holds by construction and the check would never fail; on the company's own numbers it belongs beside the per-form drift scores.
+- **A permissive extension schema.** Rejected: the spec's success metric counts extension keys retired by upstream merges, which only a strict schema can show.
+
+**Consequences:**
+- The MCP server has 22 tools. `generate_checks` and `plan_fixes` take `period_spine`; `readiness_report` takes the options of both plus `matches`.
+- Gross Margin's `min 0` rule carries a note that a negative margin is possible; the check follows the rule as the ontology states it. Reconsider the rule if a company's margin is legitimately negative.
+- A junk key in a decision passed to `record_decision` is stored in the record and now reported by `checkExport` as a problem.
+- Phase 3 is closed on the repo side; what remains is upstream (the examples PR, the 0.3.0 re-pin) and the vendor fixtures.
+
+---
+
 ## [2026-11-03] Readiness checks are SQL the company runs, and the fix plan ranks by metrics unlocked with effort as a tiebreak
 **Decision:** The Check step (`generate_checks`) compiles the rules the standard already states into one SQL statement over the datasets a mapping covers, one row per check with its violation count, and the company runs it and pastes the rows back for pass or fail per check and per metric. The first round holds seven kinds of check: CEL row identity, MRR continuity, unique event ids, the three ATL tags, customer identity both ways and freshness per dataset with a 2-day default window. The O/M bridges and the ontology's value-range rules are left out. The Plan step (`plan_fixes`) ranks every unmapped field and every failing check by the Core metrics it unlocks, then all metrics unlocked, then the metrics it helps; an effort class (small for a mapping, medium for a tag backfill or a pipeline fix, large for cross-system identity work) is shown and breaks ties, never multiplied into the order. A fix unlocks a metric when it is the last thing between that metric and covered-and-passing.
 

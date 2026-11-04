@@ -15,7 +15,8 @@ import { adapterToOssie, resolveCompany, type Company } from "../src/ossie/adapt
 import { compileModel } from "../src/ossie/company.js";
 import { companyMetrics, DRIFT_PERIODS, formatDriftReport, matchMetrics, parseMatches, scoreDrift, scoreDriftFromText, syntheticEngine, type DriftResult, type Engine, closeSyntheticEngine } from "../src/ossie/drift.js";
 import { ossieYaml } from "../src/ossie/index.js";
-import { GASP_VENDOR, type OssieMetric } from "../src/ossie/types.js";
+import { GASP_VENDOR, portable, type OssieMetric } from "../src/ossie/types.js";
+import { columnName } from "../src/synthetic.js";
 import { adapter as fixtureAdapter } from "./fixture-db.js";
 import { acmeAdapterText } from "./ossie-helpers.js";
 
@@ -193,4 +194,69 @@ describe("Drift: the Acme metrics", () => {
     expect(report).toContain("PGlite is not installed");
     expect(report).not.toContain("## Differs");
   });
+});
+
+describe("Drift: the O/M bridges and the standard's ranges", () => {
+  const c = company(fixtureAdapter as Adapter);
+  const compiled = compileModel(c, data);
+  if ("error" in compiled) throw new Error(compiled.error);
+  const exprFor = (key: string): string => {
+    const cov = compiled.coverage[key];
+    if (cov.kind !== "direct") throw new Error(`${key} is ${cov.kind}`);
+    return compiled.model.metrics!.find((m) => m.name === cov.ossieName)!.expression.sql!;
+  };
+
+  it("scores a bridge from the two forms, matched by a form suffix or an explicit pair, and names a planted Durability Gap", async () => {
+    const mine: OssieMetric[] = [
+      { name: "gross_margin_o", expression: portable(exprFor("gross_margin:O")) },
+      { name: "Gross Margin M", expression: portable(exprFor("gross_margin:M")) },
+      { name: "arr_reported", ai_context: { synonyms: ["ARR-M"] }, expression: portable(exprFor("arr:M")) },
+      // The company's operating ARR is its reported ARR: nothing stripped for pricing or recontracting.
+      { name: "arr_internal", expression: portable(exprFor("arr:M")) },
+    ];
+    const r = await scored(c, mine, { engine, matches: parseMatches("arr_internal=ARR:O") });
+    expect(r.matched.map((m) => `${m.metric.name}=${m.key}:${m.how}`)).toEqual(["gross_margin_o=gross_margin:O:name", "Gross Margin M=gross_margin:M:name", "arr_reported=arr:M:synonym", "arr_internal=arr:O:matches"]);
+    expect(r.review).toEqual([]);
+    expect(r.bridges.map((b) => b.id)).toEqual(["arr", "nrr", "cac", "ltv", "ltv_cac_ratio", "cac_payback", "gross_margin"]);
+    const gm = r.bridges.find((b) => b.id === "gross_margin")!;
+    expect(gm).toMatchObject({ status: "agrees", diagnostic: "Services Drag", gap: "Gross Margin-M - Gross Margin-O", O: "gross_margin_o", M: "Gross Margin M", differing: 0 });
+    expect(gm.periods.length).toBe(DRIFT_PERIODS.length);
+    const arr = r.bridges.find((b) => b.id === "arr")!;
+    expect(arr).toMatchObject({ status: "differs", diagnostic: "Durability Gap", gap: "ARR-M - ARR-O", O: "arr_internal", M: "arr_reported" });
+    expect(arr.periods.every((p) => p.yours === 0)).toBe(true);
+    expect(arr.periods.some((p) => (p.canonical ?? 0) > 0)).toBe(true);
+    expect(arr.worst!.canonical).toBeGreaterThan(0);
+    const cac = r.bridges.find((b) => b.id === "cac")!;
+    expect(cac.status).toBe("not scored");
+    expect(cac.note).toContain("CAC-O and CAC-M not matched");
+    expect(r.scores.find((s) => s.name === "arr_internal")).toMatchObject({ status: "differs", canonicalKind: "staged" });
+    const report = formatDriftReport(r);
+    for (const h of ["**Bridges:** 2 scored (1 differs).", "## Bridges (2)", "### Durability Gap: ARR-M - ARR-O", "Yours (arr_reported and arr_internal) 0, canonical", "- Services Drag: Gross Margin-M - Gross Margin-O: agrees in all 6 periods"]) expect(report).toContain(h);
+    expect(report).not.toContain("Activation Delta");
+    const json = JSON.parse(await scoreDriftFromText(JSON.stringify(fixtureAdapter), ossieYaml({ ...compiled.model, metrics: mine }), data, { matches: "arr_internal=ARR:O", output: "json", engine })) as { bridges: Array<{ id: string; status: string }> };
+    expect(json.bridges.find((b) => b.id === "arr")!.status).toBe("differs");
+  }, 120_000);
+
+  it("says which form is missing when only one is matched", async () => {
+    const r = await scored(c, [{ name: "arr_reported", ai_context: { synonyms: ["ARR-M"] }, expression: portable(exprFor("arr:M")) }], { engine });
+    const arr = r.bridges.find((b) => b.id === "arr")!;
+    expect(arr).toMatchObject({ status: "not scored", M: "arr_reported" });
+    expect(arr.note).toBe("ARR-O not matched: name a metric ARR-O, or pass matches: your_metric=ARR:O");
+    expect(formatDriftReport(r)).toContain("**Bridges:** 0 scored (0 differ), 1 with one form matched.");
+  }, 120_000);
+
+  it("flags a company value outside the standard's range, with the period and the bound", async () => {
+    const change = columnName("revenue_event", "mrr_change");
+    const type = columnName("revenue_event", "event_type");
+    const mine: OssieMetric[] = [{ name: "net_retention", ai_context: { synonyms: ["NRR"] }, expression: portable(`0 - COALESCE(SUM(revenue_event.${change}) FILTER (WHERE revenue_event.${type} = 'new'), 0)`) }];
+    const r = await scored(c, mine, { engine });
+    const s = r.scores[0];
+    expect(s.status).toBe("differs");
+    expect(s.outOfRange.length).toBeGreaterThan(0);
+    expect(s.outOfRange[0]).toMatchObject({ bound: "min", limit: 0 });
+    expect(s.outOfRange[0].value).toBeLessThan(0);
+    const report = formatDriftReport(r);
+    expect(report).toContain("**Range:** 1 of your metric is outside the standard's range in some period: net_retention.");
+    expect(report).toMatch(/Outside the standard's range in \w+ 2026: -\d+ is below the minimum 0\./);
+  }, 120_000);
 });

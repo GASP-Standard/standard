@@ -1,0 +1,76 @@
+{
+  "$schema": "https://gaspwiki.com/schemas/gasp-adapter-v1.json",
+  "version": "1.1",
+  "organization": "Stripe example",
+  "warehouse": "redshift",
+  "_instructions": "A worked example, not a product integration: the GASP subscription, customer and invoice datasets read from the nightly snapshots a company keeps of its Stripe Data Pipeline tables (schema.sql, snapshot.sql), and the revenue_event dataset from the table derive_cel fills. See README.md.",
+  "metricOwners": [
+    { "metric": "MRR", "team": "Finance" },
+    { "metric": "NRR", "team": "Finance" },
+    { "metric": "Churned MRR", "team": "Finance" }
+  ],
+  "datasets": {
+    "subscription": "stripe_snapshots.subscription_items",
+    "customer": "stripe_snapshots.customers",
+    "invoice": "stripe_snapshots.invoices",
+    "revenue_event": "gasp.revenue_events"
+  },
+  "mappings": [
+    {
+      "gaspField": "subscription_id",
+      "dataset": "subscription",
+      "warehouseRef": "subscription_item_id",
+      "notes": "Item grain: a Stripe subscription holds one item per price, each with its own quantity, so the item is the subscription GASP sees. A plan swap on one item is an expansion or a contraction of that item; an item added to a subscription is a new subscription with the same customer."
+    },
+    { "gaspField": "customer_id", "dataset": "subscription", "warehouseRef": "customer_id" },
+    { "gaspField": "snapshot_date", "dataset": "subscription", "warehouseRef": "snapshot_date" },
+    {
+      "gaspField": "mrr",
+      "dataset": "subscription",
+      "warehouseRef": "unit_amount",
+      "transform": "{{value}} * quantity / 100.0 * (CASE recurring_interval WHEN 'month' THEN 1.0 WHEN 'year' THEN 1.0 / 12 WHEN 'week' THEN 52.0 / 12 WHEN 'day' THEN 365.0 / 12 END) / recurring_interval_count",
+      "notes": "unit_amount is in the smallest currency unit (cents for USD) per interval; MRR is the amount for the item's quantity normalised to a month. Tiered and metered prices (billing_scheme tiered, recurring_usage_type metered) are not handled here; their MRR is the invoiced amount and belongs to the usage derivation."
+    },
+    {
+      "gaspField": "subscription_status",
+      "dataset": "subscription",
+      "warehouseRef": "status",
+      "transform": "CASE {{value}} WHEN 'active' THEN 'active' WHEN 'past_due' THEN 'active' WHEN 'unpaid' THEN 'active' WHEN 'paused' THEN 'paused' WHEN 'canceled' THEN 'cancelled' WHEN 'incomplete_expired' THEN 'expired' ELSE NULL END",
+      "notes": "past_due and unpaid stay active: Stripe keeps billing and the revenue at risk shows on the invoices. trialing and incomplete have no GASP subscription status (the subscription is not yet billing), so they contribute no MRR; a trial converts into a `new` event on the day it becomes active."
+    },
+    { "gaspField": "segment", "dataset": "subscription", "warehouseRef": "customer_segment" },
+    { "gaspField": "customer_id", "dataset": "customer", "warehouseRef": "customer_id" },
+    { "gaspField": "snapshot_date", "dataset": "customer", "warehouseRef": "snapshot_date" },
+    { "gaspField": "customer_status", "dataset": "customer", "warehouseRef": "customer_status", "notes": "Derived by the nightly job from the customer's subscriptions; Stripe has no customer status." },
+    { "gaspField": "acquisition_date", "dataset": "customer", "warehouseRef": "acquisition_date" },
+    { "gaspField": "segment", "dataset": "customer", "warehouseRef": "customer_segment" },
+    { "gaspField": "invoice_id", "dataset": "invoice", "warehouseRef": "id" },
+    { "gaspField": "customer_id", "dataset": "invoice", "warehouseRef": "customer_id" },
+    { "gaspField": "snapshot_date", "dataset": "invoice", "warehouseRef": "snapshot_date" },
+    { "gaspField": "invoice_date", "dataset": "invoice", "warehouseRef": "created", "transform": "CAST({{value}} AS DATE)" },
+    { "gaspField": "invoice_amount", "dataset": "invoice", "warehouseRef": "amount_due", "transform": "{{value}} / 100.0" },
+    { "gaspField": "outstanding_amount", "dataset": "invoice", "warehouseRef": "amount_remaining", "transform": "{{value}} / 100.0" },
+    {
+      "gaspField": "payment_status",
+      "dataset": "invoice",
+      "warehouseRef": "status",
+      "transform": "CASE {{value}} WHEN 'paid' THEN 'paid' WHEN 'open' THEN 'unpaid' WHEN 'uncollectible' THEN 'written_off' ELSE NULL END",
+      "notes": "A paid invoice with amount_remaining > 0 is partial in GASP terms; Stripe reports it as paid once amount_paid covers amount_due, so partial does not occur. void invoices have no GASP status."
+    },
+    { "gaspField": "payment_date", "dataset": "invoice", "warehouseRef": "status_transitions_paid_at", "transform": "CAST({{value}} AS DATE)" },
+    { "gaspField": "currency", "dataset": "invoice", "warehouseRef": "currency", "transform": "UPPER({{value}})" },
+    { "gaspField": "event_id", "dataset": "revenue_event", "warehouseRef": "event_id" },
+    { "gaspField": "event_date", "dataset": "revenue_event", "warehouseRef": "event_date" },
+    { "gaspField": "customer_id", "dataset": "revenue_event", "warehouseRef": "customer_id" },
+    { "gaspField": "subscription_id", "dataset": "revenue_event", "warehouseRef": "subscription_id" },
+    { "gaspField": "event_type", "dataset": "revenue_event", "warehouseRef": "event_type" },
+    { "gaspField": "mrr_change", "dataset": "revenue_event", "warehouseRef": "mrr_change" },
+    { "gaspField": "currency", "dataset": "revenue_event", "warehouseRef": "currency" },
+    { "gaspField": "prior_mrr", "dataset": "revenue_event", "warehouseRef": "prior_mrr" },
+    { "gaspField": "new_mrr", "dataset": "revenue_event", "warehouseRef": "new_mrr" },
+    { "gaspField": "expansion_classification", "dataset": "revenue_event", "warehouseRef": "expansion_classification", "notes": "NULL as derived; classify.sql fills it from the item history." },
+    { "gaspField": "change_nature", "dataset": "revenue_event", "warehouseRef": "change_nature" },
+    { "gaspField": "lifecycle_attribution", "dataset": "revenue_event", "warehouseRef": "lifecycle_attribution" },
+    { "gaspField": "segment", "dataset": "revenue_event", "warehouseRef": "segment" }
+  ]
+}

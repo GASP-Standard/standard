@@ -1,0 +1,87 @@
+{
+  "$schema": "https://gaspwiki.com/schemas/gasp-adapter-v1.json",
+  "version": "1.1",
+  "organization": "Salesforce example",
+  "warehouse": "bigquery",
+  "_instructions": "A worked example, not a product integration: the GASP opportunity, lead, customer and campaign datasets read from the nightly snapshots a company keeps of its Salesforce tables in BigQuery (schema.sql). A CRM alone maps no revenue event, so the readiness report stops at level 2 until the billing system joins it. See README.md.",
+  "metricOwners": [
+    { "metric": "Win Rate", "team": "RevOps" },
+    { "metric": "Pipeline Value", "team": "RevOps" },
+    { "metric": "Average Deal Size", "team": "RevOps" }
+  ],
+  "datasets": {
+    "opportunity": "salesforce_snapshots.opportunity",
+    "lead": "salesforce_snapshots.lead",
+    "customer": "salesforce_snapshots.account",
+    "campaign": "salesforce.campaign"
+  },
+  "mappings": [
+    { "gaspField": "opportunity_id", "dataset": "opportunity", "warehouseRef": "id" },
+    { "gaspField": "snapshot_date", "dataset": "opportunity", "warehouseRef": "snapshot_date" },
+    { "gaspField": "customer_id", "dataset": "opportunity", "warehouseRef": "account_id", "notes": "The Account is the customer; the billing system's customer id must be written on the Account (a custom field) for the two to join." },
+    { "gaspField": "opportunity_amount", "dataset": "opportunity", "warehouseRef": "amount" },
+    { "gaspField": "close_date", "dataset": "opportunity", "warehouseRef": "close_date", "notes": "Salesforce's CloseDate is the expected close while open and the actual close once closed, which is what the formulas assume." },
+    { "gaspField": "opportunity_created_date", "dataset": "opportunity", "warehouseRef": "created_date", "transform": "CAST({{value}} AS DATE)" },
+    {
+      "gaspField": "opportunity_stage",
+      "dataset": "opportunity",
+      "warehouseRef": "stage_name",
+      "transform": "CASE {{value}} WHEN 'Prospecting' THEN 'qualification' WHEN 'Qualification' THEN 'qualification' WHEN 'Needs Analysis' THEN 'discovery' WHEN 'Value Proposition' THEN 'discovery' WHEN 'Id. Decision Makers' THEN 'discovery' WHEN 'Perception Analysis' THEN 'discovery' WHEN 'Proposal/Price Quote' THEN 'proposal' WHEN 'Negotiation/Review' THEN 'negotiation' WHEN 'Closed Won' THEN 'closed_won' WHEN 'Closed Lost' THEN 'closed_lost' ELSE NULL END",
+      "notes": "Salesforce's default sales process. An org with its own stages replaces this CASE; the test is that every stage lands on one GASP value and nothing lands on NULL."
+    },
+    {
+      "gaspField": "forecast_category",
+      "dataset": "opportunity",
+      "warehouseRef": "forecast_category",
+      "transform": "CASE {{value}} WHEN 'Pipeline' THEN 'pipeline' WHEN 'BestCase' THEN 'best_case' WHEN 'Commit' THEN 'commit' WHEN 'Closed' THEN 'closed' ELSE NULL END",
+      "notes": "Omitted has no GASP value: an omitted opportunity is out of the forecast."
+    },
+    { "gaspField": "stage_probability", "dataset": "opportunity", "warehouseRef": "probability", "transform": "{{value}} / 100.0", "notes": "Salesforce stores the probability as a percentage." },
+    { "gaspField": "rep_id", "dataset": "opportunity", "warehouseRef": "owner_id" },
+    {
+      "gaspField": "channel",
+      "dataset": "opportunity",
+      "warehouseRef": "lead_source",
+      "transform": "CASE {{value}} WHEN 'Web' THEN 'organic_search' WHEN 'Advertisement' THEN 'paid_ads' WHEN 'Trade Show' THEN 'events' WHEN 'Partner Referral' THEN 'referral' WHEN 'Employee Referral' THEN 'referral' WHEN 'External Referral' THEN 'referral' WHEN 'Phone Inquiry' THEN 'direct' WHEN 'Word of mouth' THEN 'referral' WHEN 'Public Relations' THEN 'content' ELSE 'other' END"
+    },
+    {
+      "gaspField": "marketing_source",
+      "dataset": "opportunity",
+      "warehouseRef": "lead_source",
+      "transform": "CASE {{value}} WHEN 'Web' THEN 'marketing' WHEN 'Advertisement' THEN 'marketing' WHEN 'Trade Show' THEN 'marketing' WHEN 'Purchased List' THEN 'marketing' WHEN 'Public Relations' THEN 'marketing' WHEN 'Partner Referral' THEN 'partner' WHEN 'Phone Inquiry' THEN 'sales' WHEN 'Employee Referral' THEN 'sales' ELSE 'other' END"
+    },
+    { "gaspField": "partner_sourced", "dataset": "opportunity", "warehouseRef": "lead_source", "transform": "{{value}} = 'Partner Referral'" },
+    { "gaspField": "marketing_influenced", "dataset": "opportunity", "warehouseRef": "campaign_id", "transform": "{{value}} IS NOT NULL", "notes": "The primary campaign source; CampaignInfluence would give every touch." },
+    { "gaspField": "lead_id", "dataset": "lead", "warehouseRef": "id" },
+    { "gaspField": "snapshot_date", "dataset": "lead", "warehouseRef": "snapshot_date" },
+    { "gaspField": "lead_created_date", "dataset": "lead", "warehouseRef": "created_date", "transform": "CAST({{value}} AS DATE)" },
+    { "gaspField": "lead_source", "dataset": "lead", "warehouseRef": "lead_source" },
+    {
+      "gaspField": "lead_stage",
+      "dataset": "lead",
+      "warehouseRef": "status",
+      "transform": "CASE {{value}} WHEN 'Open - Not Contacted' THEN 'lead' WHEN 'Working - Contacted' THEN 'mql' WHEN 'Closed - Converted' THEN 'opportunity' WHEN 'Closed - Not Converted' THEN 'disqualified' ELSE NULL END",
+      "notes": "Salesforce's default lead statuses have no SQL step; an org that qualifies leads in two stages adds its own status and maps it to sql. mql_date and sql_date are custom fields in every org and are left unmapped here."
+    },
+    { "gaspField": "customer_id", "dataset": "customer", "warehouseRef": "id" },
+    { "gaspField": "snapshot_date", "dataset": "customer", "warehouseRef": "snapshot_date" },
+    {
+      "gaspField": "customer_status",
+      "dataset": "customer",
+      "warehouseRef": "type",
+      "transform": "CASE WHEN {{value}} IN ('Customer - Direct', 'Customer - Channel') THEN 'active' WHEN {{value}} = 'Prospect' THEN 'trial' ELSE NULL END",
+      "notes": "A CRM knows who is a customer, not who has churned; churn comes from the billing system's customer snapshot, which replaces this mapping once it is joined."
+    },
+    { "gaspField": "acquisition_date", "dataset": "customer", "warehouseRef": "created_date", "transform": "CAST({{value}} AS DATE)", "notes": "The Account's creation date stands in until the billing system gives the first paid date." },
+    { "gaspField": "segment", "dataset": "customer", "warehouseRef": "number_of_employees", "transform": "CASE WHEN {{value}} < 100 THEN 'smb' WHEN {{value}} < 1000 THEN 'mid_market' WHEN {{value}} >= 1000 THEN 'enterprise' ELSE NULL END" },
+    { "gaspField": "campaign_id", "dataset": "campaign", "warehouseRef": "id" },
+    { "gaspField": "period_start", "dataset": "campaign", "warehouseRef": "start_date", "notes": "The campaign's cost is booked to the period it starts in; a campaign that runs across periods needs its cost split by the company." },
+    { "gaspField": "ad_spend", "dataset": "campaign", "warehouseRef": "actual_cost" },
+    {
+      "gaspField": "channel",
+      "dataset": "campaign",
+      "warehouseRef": "type",
+      "transform": "CASE {{value}} WHEN 'Advertisement' THEN 'paid_ads' WHEN 'Banner Ads' THEN 'paid_ads' WHEN 'Email' THEN 'email' WHEN 'Webinar' THEN 'events' WHEN 'Conference' THEN 'events' WHEN 'Seminar / Conference' THEN 'events' WHEN 'Trade Show' THEN 'events' WHEN 'Public Relations' THEN 'content' WHEN 'Partners' THEN 'referral' WHEN 'Referral Program' THEN 'referral' WHEN 'Direct Mail' THEN 'direct' WHEN 'Telemarketing' THEN 'direct' ELSE 'other' END"
+    }
+  ]
+}
