@@ -20,7 +20,7 @@ import { expressionText, ossieSchemaErrors, resolveCompany, type Company, type M
 import { checkCompiledMetrics } from "./check.js";
 import { buildMetrics, PERIOD_SPINE, type ModelTarget } from "./model.js";
 import { ossieYaml } from "./index.js";
-import { GASP_VENDOR, OSSIE_DIALECT, portable, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel } from "./types.js";
+import { GASP_VENDOR, OSSIE_DIALECT, portable, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel, readGaspExtension } from "./types.js";
 
 /** The dataset that declares the period spine the staged sources read. */
 export const SPINE_DATASET = "gasp_period_spine";
@@ -49,11 +49,7 @@ export interface CompiledModel {
 }
 
 const IDENTIFIER = /^[A-Za-z_][\w$]*(\.[A-Za-z_][\w$]*)*$/;
-const ext = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknown> => {
-  const e = x.custom_extensions?.find((c) => c.vendor_name === GASP_VENDOR);
-  if (!e?.data) return {};
-  try { return JSON.parse(e.data) as Record<string, unknown>; } catch { return {}; }
-};
+const ext = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.custom_extensions) ?? {};
 /** A metric an earlier compile wrote: it carries the GASP extension or the gasp_ prefix. */
 export const isGaspMetric = (m: OssieMetric): boolean => ext(m).gasp_id !== undefined || m.name.startsWith("gasp_");
 const isGaspDataset = (d: OssieDataset): boolean => ext(d).staged === true || d.name.startsWith("gasp_staged_") || d.name === SPINE_DATASET;

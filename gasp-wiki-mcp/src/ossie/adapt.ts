@@ -25,7 +25,7 @@ import { checkExport } from "./check.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
 import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
-import { GASP_VENDOR, OSSIE_VERSION, expressionText, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel } from "./types.js";
+import { GASP_VENDOR, OSSIE_VERSION, expressionText, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, normaliseExtensions } from "./types.js";
 
 export const GASP_ONTOLOGY_IRI = "https://gaspwiki.com/downloads/ossie/gasp.ontology.yaml";
 const REF = /^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/;
@@ -37,15 +37,21 @@ export const isOssieMapping = (doc: unknown): doc is OssieMapping =>
 export const isOssieModel = (doc: unknown): doc is OssieSemanticModel =>
   typeof doc === "object" && doc !== null && Array.isArray((doc as { datasets?: unknown }).datasets);
 
-/** JSON first, then YAML (a YAML document is what the Ossie files are). */
+/**
+ * JSON first, then YAML (a YAML document is what the Ossie files are). Any
+ * `custom_extensions[].data` given as an object (the apache/ossie #522 form)
+ * is rewritten to the JSON string the pinned schema defines, so the schema
+ * layer and every reader see one shape.
+ */
 export function parseDocument(text: string): { doc?: Record<string, unknown>; error?: string } {
   const object = (v: unknown) => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
+  const parsed = (v: unknown) => { const doc = object(v); if (doc) normaliseExtensions(doc); return doc; };
   try {
-    const doc = object(JSON.parse(text));
+    const doc = parsed(JSON.parse(text));
     return doc ? { doc } : { error: "The document is not an object." };
   } catch { /* not JSON */ }
   try {
-    const doc = object(parseYaml(text));
+    const doc = parsed(parseYaml(text));
     return doc ? { doc } : { error: "The document is not a YAML or JSON object." };
   } catch (e) {
     return { error: `The document is neither JSON nor YAML: ${(e as Error).message.split("\n")[0]}` };

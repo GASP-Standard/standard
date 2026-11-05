@@ -5,7 +5,9 @@
  * definition: the reference export, the Acme adapter converted, the fixture
  * and Acme adapters compiled, the Acme DDL profiled, proposed and decided,
  * and that decided pair compiled. checkExport names the placement and the key
- * of a planted bad payload and leaves other vendors' payloads alone.
+ * of a planted bad payload and leaves other vendors' payloads alone. A document
+ * carrying every payload as an object (apache/ossie #522) reads the same as the
+ * string form through validate_mapping, compile_model and the checks.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +22,10 @@ import { exportOssie, ossieYaml } from "../src/ossie/index.js";
 import { exportOntology } from "../src/ossie/ontology.js";
 import { parseStatistics, profileSchema } from "../src/ossie/profile.js";
 import { proposeMapping } from "../src/ossie/propose.js";
-import { GASP_VENDOR, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
+import { GASP_VENDOR, extensionData, normaliseExtensions, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
+import { compileModelFromText } from "../src/ossie/company.js";
+import { validateMapping } from "../src/ossie/adapt.js";
+import { parse as parseYaml } from "yaml";
 import type { Adapter } from "../src/tools.js";
 import { acmeAdapterText, acmeDdl, parsedSchema } from "./ossie-helpers.js";
 
@@ -173,5 +178,83 @@ describe("GASP Ossie extension schema", () => {
     // without the schema only the JSON check runs
     expect(checkExport({ ontology: exp.ontology, model, mapping })).toEqual([]);
     expect(checkCompiledMetrics(model, new Set([m.name]), opts)).toEqual([expect.stringContaining(`metric "${m.name}" (GASP): \`/gasp_version\``)]);
+  });
+});
+
+describe("custom_extensions data in the object form (apache/ossie #522)", () => {
+  /** The document with every extension payload as an object instead of the pinned JSON string. */
+  const objectForm = <T>(doc: T): T => {
+    const copy = structuredClone(doc);
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) { v.forEach(walk); return; }
+      if (typeof v !== "object" || v === null) return;
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+        if (k === "custom_extensions" && Array.isArray(x)) {
+          for (const e of x as Array<{ data: unknown }>) if (typeof e.data === "string") e.data = JSON.parse(e.data);
+        } else walk(x);
+      }
+    };
+    walk(copy);
+    return copy;
+  };
+  const countObjects = (doc: unknown): number => normaliseExtensions(structuredClone(doc));
+
+  const form = adapterToOssie(JSON.parse(acmeAdapterText) as Adapter, data);
+  const text = { mapping: ossieYaml(form.mapping), model: ossieYaml(form.model) };
+  const objectText = { mapping: ossieYaml(objectForm(form.mapping)), model: ossieYaml(objectForm(form.model)) };
+
+  it("the object form is a different document with the payloads as YAML maps", () => {
+    expect(objectText.mapping).not.toEqual(text.mapping);
+    expect(countObjects(parseYaml(text.mapping))).toBe(0);
+    expect(countObjects(parseYaml(objectText.mapping))).toBeGreaterThan(0);
+    expect(countObjects(parseYaml(objectText.model)) + countObjects(parseYaml(objectText.mapping))).toBe(countObjects(objectForm(form.model)) + countObjects(objectForm(form.mapping)));
+  });
+
+  it("extensionData reads a JSON string or an object and nothing else", () => {
+    expect(extensionData({ data: '{"a": 1}' })).toEqual({ a: 1 });
+    expect(extensionData({ data: { a: 1 } })).toEqual({ a: 1 });
+    expect(extensionData({ data: "{not json" })).toBeUndefined();
+    expect(extensionData({ data: [1] })).toBeUndefined();
+    expect(extensionData({ data: 7 })).toBeUndefined();
+    expect(extensionData(undefined)).toBeUndefined();
+  });
+
+  it("normaliseExtensions rewrites the objects to the pinned string form in place and counts them", () => {
+    const doc = objectForm(form.mapping);
+    const before = JSON.stringify(doc);
+    const n = normaliseExtensions(doc);
+    expect(n).toBeGreaterThan(0);
+    expect(JSON.stringify(doc)).not.toEqual(before);
+    expect(doc).toEqual(form.mapping);
+    expect(normaliseExtensions(doc)).toBe(0);
+  });
+
+  it("validate_mapping gives the same report for both forms", () => {
+    const a = validateMapping(text.mapping, text.model, data);
+    const b = validateMapping(objectText.mapping, objectText.model, data);
+    expect(a).toContain("Valid against apache/ossie ontology/mapping.json.");
+    expect(b).toEqual(a);
+  });
+
+  it("compile_model gives the same model for both forms", () => {
+    const a = compileModelFromText(text.mapping, text.model, data, { document: true });
+    const b = compileModelFromText(objectText.mapping, objectText.model, data, { document: true });
+    expect(a).toContain("gasp_");
+    expect(b).toEqual(a);
+    const c = company(objectText.mapping, objectText.model);
+    expect(countObjects(c.model)).toBe(0); // the parsed document carries the pinned form
+    expect(compiled(c).model).toEqual(compiled(company(text.mapping, text.model)).model);
+  });
+
+  it("the checks read both forms in memory and name a bad object payload by placement", () => {
+    const exp = exportOssie(data);
+    const docs = { ontology: exp.ontology, model: objectForm(exp.model), mapping: objectForm(exp.mapping) };
+    expect(countObjects(docs.model)).toBeGreaterThan(exp.model.datasets.length);
+    expect(checkExport(docs, opts)).toEqual([]);
+    const ds = docs.model.datasets[0];
+    (ds.custom_extensions![0] as { data: unknown }).data = { ...(extensionData(ds.custom_extensions![0]) as Record<string, unknown>), colour: "blue" };
+    expect(checkExport(docs, opts)).toEqual([`Model: custom_extensions of dataset "${ds.name}" (GASP): \`/\` must NOT have additional properties: \`colour\``]);
+    (ds.custom_extensions![0] as { data: unknown }).data = 7;
+    expect(checkExport(docs, opts)).toEqual([`Model: custom_extensions data of dataset "${ds.name}" (vendor GASP) is not valid JSON`]);
   });
 });

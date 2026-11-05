@@ -16,7 +16,7 @@
 import type { OntologyDataset, OntologyField } from "../types.js";
 import { CONFORMANCE_PERIOD, sqlLiteral } from "./conformance.js";
 import { aggregateSpans } from "./portability.js";
-import { expressionText, type OssieSemanticModel } from "./types.js";
+import { expressionText, readGaspExtension, type OssieExtension, type OssieSemanticModel } from "./types.js";
 
 export const DEMO_PERIOD = CONFORMANCE_PERIOD;
 export type Period = { start: string; end: string };
@@ -86,18 +86,14 @@ export function stagedQuery(source: string, period: Period = DEMO_PERIOD): strin
 
 const STAGED_READ = /^SUM\((gasp_staged_[a-z0-9_]+)\.value\)$/;
 
-const extension = (x: { custom_extensions?: Array<{ vendor_name?: string; data?: string }> }): Record<string, unknown> => {
-  const e = x.custom_extensions?.find((c) => c.vendor_name === "GASP");
-  if (!e?.data) return {};
-  try { return JSON.parse(e.data) as Record<string, unknown>; } catch { return {}; }
-};
+const extension = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.custom_extensions) ?? {};
 
 /** One demo query per metric of the model, in model order. */
 export function demoMetrics(model: OssieSemanticModel, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): DemoMetric[] {
   const sources = new Map(model.datasets.map((d) => [d.name, d.source]));
   return (model.metrics ?? []).map((m) => {
     const expression = expressionText(m) ?? "";
-    const ext = extension(m as { custom_extensions?: Array<{ vendor_name?: string; data?: string }> });
+    const ext = extension(m);
     const formula = String(ext.formula ?? "");
     const staged = STAGED_READ.exec(expression);
     if (staged) {

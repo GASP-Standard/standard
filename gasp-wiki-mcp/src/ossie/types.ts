@@ -10,16 +10,54 @@ export const OSSIE_VERSION = "0.2.0.dev0";
 export const OSSIE_DIALECT = "OSSIE_SQL_2026";
 export const GASP_VENDOR = "GASP";
 
+/**
+ * A custom extension entry. `data` is the form the `OSSIE_VERSION` pin defines
+ * (a JSON string); apache/ossie #522 proposes an object. GASP writes the pinned
+ * form and reads either (`extensionData`); `normaliseExtensions` rewrites a
+ * parsed document into the pinned form so every check downstream sees one shape.
+ */
 export interface OssieExtension {
   vendor_name: string;
   data: string;
 }
 
-/** A document's GASP extension, parsed; undefined when absent or not JSON. */
+/** The payload of an extension entry in either form: a JSON string decoded, an object as is; undefined when neither. */
+export function extensionData(e: { data?: unknown } | undefined): unknown {
+  const d = e?.data;
+  if (typeof d === "string") {
+    try { return JSON.parse(d) as unknown; } catch { return undefined; }
+  }
+  return typeof d === "object" && d !== null && !Array.isArray(d) ? d : undefined;
+}
+
+/** A document's GASP extension, parsed; undefined when absent or unreadable. */
 export function readGaspExtension<T = Record<string, unknown>>(exts: OssieExtension[] | undefined): T | undefined {
-  const e = exts?.find((x) => x.vendor_name === GASP_VENDOR)?.data;
-  if (typeof e !== "string") return undefined;
-  try { return JSON.parse(e) as T; } catch { return undefined; }
+  return extensionData(exts?.find((x) => x.vendor_name === GASP_VENDOR)) as T | undefined;
+}
+
+/**
+ * Every `custom_extensions[].data` given as an object rewritten as the JSON
+ * string the pin defines, in place, anywhere in the document; returns the
+ * number rewritten. A string `data` is left as it is, valid JSON or not.
+ */
+export function normaliseExtensions(doc: unknown): number {
+  let n = 0;
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) { for (const x of v) walk(x); return; }
+    if (typeof v !== "object" || v === null) return;
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (k === "custom_extensions" && Array.isArray(x)) {
+        for (const e of x) {
+          if (typeof e === "object" && e !== null && typeof (e as { data?: unknown }).data === "object" && (e as { data?: unknown }).data !== null) {
+            (e as { data: unknown }).data = JSON.stringify((e as { data: unknown }).data);
+            n++;
+          }
+        }
+      } else walk(x);
+    }
+  };
+  walk(doc);
+  return n;
 }
 
 /** The extensions with the GASP one set to `value`, first; other vendors kept. */

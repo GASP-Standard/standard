@@ -19,7 +19,7 @@ import type {
   OssieReferentMapping,
   OssieSemanticModel,
 } from "./types.js";
-import { GASP_VENDOR, OSSIE_DIALECT, portableEntries } from "./types.js";
+import { extensionData, GASP_VENDOR, OSSIE_DIALECT, portableEntries } from "./types.js";
 import type { ValidateFunction } from "ajv";
 import { formatSchemaError, newAjv } from "../tools.js";
 
@@ -227,21 +227,20 @@ function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fields
 }
 
 /**
- * Every extension's data must be JSON. A GASP payload at a placement the
- * extension schema defines (model, dataset, metric, mapping) must also match
- * that placement's definition; other vendors' payloads are theirs.
+ * Every extension's data must be JSON: a JSON string (the pinned form) or an
+ * object (apache/ossie #522). A GASP payload at a placement the extension
+ * schema defines (model, dataset, metric, mapping) must also match that
+ * placement's definition; other vendors' payloads are theirs.
  */
 function checkExt(
-  exts: Array<{ vendor_name: string; data: string }> | undefined,
+  exts: Array<{ vendor_name: string; data: unknown }> | undefined,
   who: string,
   p: string[],
   schema?: { doc: "Model" | "Mapping"; validate: ValidateFunction },
 ): void {
   for (const e of exts ?? []) {
-    let data: unknown;
-    try {
-      data = JSON.parse(e.data);
-    } catch {
+    const data = extensionData(e);
+    if (data === undefined) {
       p.push(`${schema?.doc ?? "Model"}: custom_extensions data of ${who} (vendor ${e.vendor_name}) is not valid JSON`);
       continue;
     }
