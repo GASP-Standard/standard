@@ -29,6 +29,16 @@ Add to your project `.mcp.json` or `~/.claude/settings.json`:
 
 Restart your MCP client after adding the config.
 
+### Hosted endpoint
+
+The same server runs over Streamable HTTP for clients that connect to a remote server, such as the Claude connectors directory. Every tool is read-only and the standard is public, so the endpoint takes no authentication.
+
+```bash
+npx gasp-standard-mcp-http          # PORT=3000, endpoint /mcp, /health for the version and tool count
+```
+
+`PORT`, `HOST` and `MCP_PATH` set where it listens. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` (comma-separated) refuse requests whose Host or Origin header is not listed, the DNS-rebinding guard for a server reachable from a browser; set `MCP_ALLOWED_HOSTS` to the public hostname in production. The `Dockerfile` in this directory serves the published package the same way. Every tool carries a `title` and `readOnlyHint: true`, so a client can run them without a per-call prompt. The HTTP server writes one JSON line to stderr per tool call (the tool, the duration, success or error and the client's name and version; never the arguments or the result), so the host's logs count calls per tool.
+
 ## Tools
 
 | Tool | Description |
@@ -59,7 +69,7 @@ The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return pat
 
 ## Data
 
-Version 1.18.0.
+Version 1.19.0.
 
 - 306 metrics across 13 departments
 - 94 glossary definitions (81 SaaS domain + 13 GASP framework)
