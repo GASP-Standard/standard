@@ -48,6 +48,10 @@ The intended handover artefacts are this repository and the `gasp-standard-mcp` 
 
 If the maintainer stops responding for six months, contributors are encouraged to fork this repository and continue under a new name or under GASP with attribution. The maintainer will add a pointer to an active fork in this file if he is able to.
 
+## What is free and what is paid
+
+The standard, its exports and the relationship graph are free under CC BY 4.0 and the `gasp-standard-mcp` package with all of its tools under Apache 2.0, and they will stay so; anyone may run the whole pipeline locally. The maintainer also sells two things built on top: GASP Workspace, a hosted per-company store of a company's mapping, decisions, check results and readiness history, used through the hosted MCP endpoint, where the tools that read the standard are free and the tools that implement it for a company need a signed-in Workspace; and GASP certification, a reviewed and dated readiness report. Neither changes a definition, a formula or a file in this repository, and no paid customer gets a say in the standard that a contributor does not.
+
 ## Relationship to Apache Ossie
 
 GASP publishes its ontology, reference semantic model and mapping as Apache Ossie (incubating) files, generated into `standard/exports/ossie/` and checked against the upstream validator, which is vendored in `gasp-wiki-mcp/ossie-validator/` at a pinned commit. Proposals GASP would like to make upstream are written up in `docs/ossie-interop-spec.md`. Any that are made go through the Ossie project's own process.
