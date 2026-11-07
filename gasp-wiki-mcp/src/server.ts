@@ -2,9 +2,12 @@
  * The GASP Standard MCP server: the data load, the 23 tools and their
  * annotations. `createServer()` builds a fresh McpServer over the data loaded
  * once at import; `index.ts` serves it over stdio and `http.ts` over Streamable
- * HTTP, one server per request. Every tool is read-only, so each carries
- * `readOnlyHint: true` beside its title, the two annotations the Claude
- * connectors directory requires.
+ * HTTP, one server per request. Every standard tool is read-only, so each
+ * carries `readOnlyHint: true` beside its title, the two annotations the Claude
+ * connectors directory requires. With `workspace` set (the hosted server with
+ * GASP Workspace configured) two more tools are registered, `save_workspace`
+ * and `load_workspace`, which read the signed-in company from the call's
+ * `authInfo`; `save_workspace` writes, so it is not marked read-only.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -32,7 +35,7 @@ import {
 } from "./traversal.js";
 import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.js";
 import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
-import { loadAdapter, validateMapping } from "./ossie/adapt.js";
+import { loadAdapter, validateMapping, parseDocument } from "./ossie/adapt.js";
 import { compileModelFromText } from "./ossie/company.js";
 import { compileTargetFromText, TARGETS } from "./targets/index.js";
 import { scoreDriftFromText } from "./ossie/drift.js";
@@ -46,6 +49,11 @@ import { DIALECTS } from "./dialect.js";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import type { StandardData, RelationshipNode, Definition, Metric } from "./types.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { parseDecisions } from "./ossie/decide.js";
+import { parseResults } from "./checks.js";
+import { callerOf, storeFor, DOCUMENT_KINDS, type DocumentKind, type WorkspaceOptions } from "./workspace/index.js";
 
 // Load data: local repo files → bundled JSON → remote fetch from gaspwiki.com
 let data: StandardData;
@@ -117,8 +125,18 @@ export const TOOL_TITLES = {
   explain_path: "Explain the path between two metrics",
   coverage_gap: "Find the coverage gap for a metric",
 } as const;
-export type ToolName = keyof typeof TOOL_TITLES;
+/** The GASP Workspace tools, registered only when the server is built with `workspace`. */
+export const WORKSPACE_TOOL_TITLES = {
+  save_workspace: "Save documents to your GASP Workspace",
+  load_workspace: "Load documents from your GASP Workspace",
+} as const;
+export type ToolName = keyof typeof TOOL_TITLES | keyof typeof WORKSPACE_TOOL_TITLES;
+/** The standard tools, served by every server. */
 export const TOOL_COUNT = Object.keys(TOOL_TITLES).length;
+export const WORKSPACE_TOOL_COUNT = Object.keys(WORKSPACE_TOOL_TITLES).length;
+/** How many tools a server built with or without the Workspace serves. */
+export const toolCount = (workspace: boolean): number => TOOL_COUNT + (workspace ? WORKSPACE_TOOL_COUNT : 0);
+const ALL_TITLES: Record<ToolName, string> = { ...TOOL_TITLES, ...WORKSPACE_TOOL_TITLES };
 
 /** One tool call, as the hosted server logs it: the tool, how long it took, whether it succeeded and which client asked. Never the arguments or the result. */
 export interface ToolCallRecord {
@@ -128,6 +146,8 @@ export interface ToolCallRecord {
   ok: boolean;
   /** `name/version` from the client's initialize handshake, when known. */
   client?: string;
+  /** The WorkOS organisation id when the call carried a valid token; never the user or the email. */
+  company?: string;
 }
 
 /** The tools that load PGlite, an in-process Postgres, and run queries for a few seconds: the ones a shared host caps. */
@@ -144,6 +164,8 @@ export interface ServerOptions {
   onToolCall?: (record: ToolCallRecord) => void;
   /** When set, a heavy tool call beyond `limit` returns a busy error instead of running. Unset for stdio, where one user owns the process. */
   heavy?: HeavyLimit;
+  /** GASP Workspace: when set, the workspace tools are registered over its store. Unset for stdio and for a hosted server without the Workspace. */
+  workspace?: WorkspaceOptions;
 }
 
 /** The result a heavy tool returns when the host is at its cap: an error the client can retry, never an exception. */
@@ -156,8 +178,8 @@ const server = new McpServer({
   version: PKG_VERSION,
 });
 
-/** Registers a tool with its title and the read-only annotations every GASP tool carries, timed and recorded when `onToolCall` is set. */
-function tool<Args extends ZodRawShapeCompat>(name: ToolName, description: string, params: Args, cb: ToolCallback<Args>): void {
+/** Registers a tool with its title and the read-only annotations every GASP tool carries (a workspace tool overrides them), timed and recorded when `onToolCall` is set. */
+function tool<Args extends ZodRawShapeCompat>(name: ToolName, description: string, params: Args, cb: ToolCallback<Args>, annotations: Partial<ToolAnnotations> = {}): void {
   const record = options.onToolCall;
   const heavy = options.heavy && HEAVY_TOOLS.has(name) ? options.heavy : undefined;
   const run = cb as unknown as (a: unknown, e: unknown) => CallToolResult | Promise<CallToolResult>;
@@ -171,7 +193,8 @@ function tool<Args extends ZodRawShapeCompat>(name: ToolName, description: strin
     ? (async (args: Parameters<ToolCallback<Args>>[0], extra: Parameters<ToolCallback<Args>>[1]) => {
         const started = performance.now();
         const client = server.server.getClientVersion();
-        const done = (ok: boolean) => record({ event: "tool", tool: name, ms: Math.round(performance.now() - started), ok, ...(client ? { client: `${client.name}/${client.version}` } : {}) });
+        const company = callerOf((extra as { authInfo?: AuthInfo }).authInfo)?.orgId;
+        const done = (ok: boolean) => record({ event: "tool", tool: name, ms: Math.round(performance.now() - started), ok, ...(client ? { client: `${client.name}/${client.version}` } : {}), ...(company ? { company } : {}) });
         try {
           const result = await guarded(args, extra);
           done(!result.isError);
@@ -184,10 +207,10 @@ function tool<Args extends ZodRawShapeCompat>(name: ToolName, description: strin
     : heavy ? (guarded as unknown as ToolCallback<Args>) : cb;
   // registerTool sets the top-level `title` the directory portal reads; the same title goes in the annotations for clients that read only those.
   server.registerTool(name, {
-    title: TOOL_TITLES[name],
+    title: ALL_TITLES[name],
     description,
     inputSchema: params,
-    annotations: { title: TOOL_TITLES[name], readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    annotations: { title: ALL_TITLES[name], readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, ...annotations },
   }, handler);
 }
 
@@ -1155,5 +1178,91 @@ tool(
   }
 );
 
+if (options.workspace) registerWorkspaceTools(options.workspace, tool);
+
   return server;
+}
+
+type Register = <Args extends ZodRawShapeCompat>(name: ToolName, description: string, params: Args, cb: ToolCallback<Args>, annotations?: Partial<ToolAnnotations>) => void;
+
+const textResult = (text: string, isError = false): CallToolResult => ({ content: [{ type: "text", text }], ...(isError ? { isError: true } : {}) });
+
+const SIGN_IN_TEXT = "This tool needs a signed-in GASP Workspace company, and this call carried no token. Connect the GASP Standard server in Claude and sign in when it asks; see https://gaspwiki.com/workspace.";
+
+const KIND_LABEL: Record<DocumentKind, string> = { mapping: "Mapping", model: "Semantic model", decisions: "Decisions", results: "Check results" };
+
+/** save_workspace and load_workspace, over the store for the signed-in caller's company. */
+function registerWorkspaceTools(ws: WorkspaceOptions, tool: Register): void {
+  const companyFor = async (extra: unknown) => {
+    const auth = (extra as { authInfo?: AuthInfo }).authInfo;
+    const caller = callerOf(auth);
+    if (!auth || !caller) return undefined;
+    const store = await storeFor(ws);
+    const { company } = await store.ensureCompany(auth);
+    return { store, company, caller };
+  };
+
+  tool(
+    "save_workspace",
+    "Save the current documents to your company's GASP Workspace, each as a new version beside the earlier ones: the mapping (a GASP adapter or an Ossie mapping), the semantic model, the decisions recorded with record_decision and the rows the generate_checks statement returned. Pass at least one. Each is checked the way the pipeline tools read it before anything is written, so a document they could not read is refused and nothing is saved. Needs a signed-in company (sign-in through GASP Workspace when the server asks); the history is kept, so saving never overwrites.",
+    {
+      mapping: z.string().optional().describe("The mapping: a GASP adapter (JSON) or an Ossie mapping (YAML or JSON)."),
+      semantic_model: z.string().optional().describe("The Ossie semantic model the mapping reads (YAML or JSON)."),
+      decisions: z.string().optional().describe("The decisions as a YAML or JSON list, in the form record_decision takes."),
+      results: z.string().optional().describe("The rows the generate_checks statement returned, as JSON or CSV with check_id and violations."),
+    },
+    async ({ mapping, semantic_model, decisions, results }, extra) => {
+      const parsed: Array<[DocumentKind, unknown]> = [];
+      const problems: string[] = [];
+      for (const [kind, text] of [["mapping", mapping], ["model", semantic_model]] as const) {
+        if (!text?.trim()) continue;
+        const p = parseDocument(text);
+        if (p.error || !p.doc) problems.push(`${KIND_LABEL[kind]}: ${p.error}`); else parsed.push([kind, p.doc]);
+      }
+      if (decisions?.trim()) {
+        const d = parseDecisions(decisions);
+        if ("error" in d) problems.push(`Decisions: ${d.error}`); else parsed.push(["decisions", d.decisions]);
+      }
+      if (results?.trim()) {
+        const r = parseResults(results);
+        if (r.error || !r.results) problems.push(`Check results: ${r.error}`); else parsed.push(["results", r.results]);
+      }
+      if (problems.length) return textResult(`Nothing was saved.\n\n${problems.map((p) => `- ${p}`).join("\n")}`, true);
+      if (!parsed.length) return textResult("Pass at least one of mapping, semantic_model, decisions or results.", true);
+      const ctx = await companyFor(extra);
+      if (!ctx) return textResult(SIGN_IN_TEXT, true);
+      const written: string[] = [];
+      for (const [kind, body] of parsed) {
+        const version = await ctx.store.saveDocument(ctx.company.id, kind, body, ctx.caller.userId);
+        written.push(`- ${KIND_LABEL[kind]}: version ${version}`);
+      }
+      return textResult(`# Saved to the workspace of ${ctx.company.name ?? ctx.company.workos_org_id}\n\n${written.join("\n")}\n\nload_workspace reads the latest of each back; load_workspace with versions: true lists the history.`);
+    },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  );
+
+  tool(
+    "load_workspace",
+    "Load your company's saved documents from GASP Workspace: the latest version of the mapping, the semantic model, the decisions and the check results, each under its heading with its version, author and date, ready to pass to the pipeline tools. `kind` narrows it to one document; `versions: true` lists every saved version instead of the contents. Needs a signed-in company; a company only ever sees its own documents.",
+    {
+      kind: z.enum(DOCUMENT_KINDS).optional().describe("One kind of document: mapping, model, decisions or results. Omit it for all four."),
+      versions: z.boolean().optional().describe("List the saved versions (kind, version, author, date) instead of the latest contents."),
+    },
+    async ({ kind, versions }, extra) => {
+      const ctx = await companyFor(extra);
+      if (!ctx) return textResult(SIGN_IN_TEXT, true);
+      const who = ctx.company.name ?? ctx.company.workos_org_id;
+      if (versions) {
+        const list = await ctx.store.listVersions(ctx.company.id, kind);
+        if (!list.length) return textResult(`The workspace of ${who} has no saved ${kind ? KIND_LABEL[kind].toLowerCase() : "documents"} yet. save_workspace writes them.`);
+        return textResult(`# Saved versions: ${who}\n\n| Document | Version | Author | Saved |\n|---|---|---|---|\n${list.map((v) => `| ${KIND_LABEL[v.kind]} | ${v.version} | ${v.author_user_id ?? ""} | ${v.created_at} |`).join("\n")}`);
+      }
+      const docs = (await ctx.store.latestDocuments(ctx.company.id)).filter((d) => !kind || d.kind === kind);
+      if (!docs.length) return textResult(`The workspace of ${who} has no saved ${kind ? KIND_LABEL[kind].toLowerCase() : "documents"} yet. save_workspace writes them.`);
+      const order = (k: DocumentKind) => DOCUMENT_KINDS.indexOf(k);
+      const parts = docs.sort((a, b) => order(a.kind) - order(b.kind)).map((d) =>
+        `## ${KIND_LABEL[d.kind]}\n\nVersion ${d.version}, saved ${d.created_at}${d.author_user_id ? ` by ${d.author_user_id}` : ""}.\n\n\`\`\`json\n${JSON.stringify(d.body, null, 2)}\n\`\`\``);
+      return textResult(`# Workspace: ${who}\n\n${parts.join("\n\n")}`);
+    },
+  );
 }

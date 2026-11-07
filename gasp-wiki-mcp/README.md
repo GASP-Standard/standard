@@ -43,6 +43,16 @@ npx gasp-standard-mcp-http          # PORT=3000, endpoint /mcp, /health for the 
 
 `PORT`, `HOST` and `MCP_PATH` set where it listens. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` (comma-separated) refuse requests whose Host or Origin header is not listed, the DNS-rebinding guard for a server reachable from a browser; set `MCP_ALLOWED_HOSTS` to the public hostname in production. `MCP_RATE_LIMIT` (requests a minute per client address, default 60), `MCP_MAX_BODY_BYTES` (default 1 MB) and `MCP_HEAVY_CONCURRENCY` (how many `score_drift` and `readiness_report` calls run at once, default 2) guard a public endpoint; 0 turns one off. The `Dockerfile` in this directory serves the published package the same way. Every tool carries a `title` and `readOnlyHint: true`, so a client can run them without a per-call prompt. The HTTP server writes one JSON line to stderr per tool call (the tool, the duration, success or error and the client's name and version; never the arguments or the result), so the host's logs count calls per tool.
 
+### Workspace
+
+GASP Workspace keeps a company's mapping, semantic model, decisions and check results on the hosted server, versioned, and is used through this same server. It is off unless both `WORKSPACE_DATABASE_URL` (Postgres) and `WORKSPACE_ISSUER` (the WorkOS AuthKit domain, such as `https://<tenant>.authkit.app`, the OAuth 2.1 authorization server the MCP client signs in through) are set on `gasp-standard-mcp-http`. With it on:
+
+- `save_workspace` and `load_workspace` are served, and need a signed-in company. The company is the WorkOS organisation in the access token; its first member becomes the admin and a new company starts on a thirty-day trial.
+- A call to a protected tool without a valid bearer token gets a 401 with `WWW-Authenticate: Bearer resource_metadata="<resource origin>/.well-known/oauth-protected-resource"`, which sends the client through sign-in. The protected tools are `profile_schema`, `propose_mapping`, `record_decision`, `compile_model`, `compile_target`, `score_drift`, `derive_cel`, `generate_checks`, `plan_fixes`, `readiness_report` and the two workspace tools; the twelve tools that read the standard stay anonymous.
+- The protected-resource metadata is served at `/.well-known/oauth-protected-resource` and at the same path with the MCP path appended, and each tool call record gains `company`, the organisation id (never the user or the email).
+
+The other variables: `WORKSPACE_JWKS_URL` (default `<issuer>/oauth2/jwks`), `WORKSPACE_AUDIENCE` (the `aud` a token must carry; unchecked when unset), `WORKSPACE_RESOURCE` (this server's canonical URL, default `https://mcp.gaspwiki.com/mcp`), `WORKSPACE_TOOLS` (comma-separated tool names that need a signed-in company, replacing the list above; the two workspace tools are always included) and `WORKSPACE_DATABASE_CA` (the database's CA certificate in PEM, for a managed Postgres that signs with its own). The stdio package (`gasp-standard-mcp`) never asks for sign-in and serves every standard tool free.
+
 ## Tools
 
 | Tool | Description |
