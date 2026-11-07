@@ -37,7 +37,7 @@ The same server runs over Streamable HTTP for clients that connect to a remote s
 npx gasp-standard-mcp-http          # PORT=3000, endpoint /mcp, /health for the version and tool count
 ```
 
-`PORT`, `HOST` and `MCP_PATH` set where it listens. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` (comma-separated) refuse requests whose Host or Origin header is not listed, the DNS-rebinding guard for a server reachable from a browser; set `MCP_ALLOWED_HOSTS` to the public hostname in production. The `Dockerfile` in this directory serves the published package the same way. Every tool carries a `title` and `readOnlyHint: true`, so a client can run them without a per-call prompt. The HTTP server writes one JSON line to stderr per tool call (the tool, the duration, success or error and the client's name and version; never the arguments or the result), so the host's logs count calls per tool.
+`PORT`, `HOST` and `MCP_PATH` set where it listens. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` (comma-separated) refuse requests whose Host or Origin header is not listed, the DNS-rebinding guard for a server reachable from a browser; set `MCP_ALLOWED_HOSTS` to the public hostname in production. `MCP_RATE_LIMIT` (requests a minute per client address, default 60), `MCP_MAX_BODY_BYTES` (default 1 MB) and `MCP_HEAVY_CONCURRENCY` (how many `score_drift` and `readiness_report` calls run at once, default 2) guard a public endpoint; 0 turns one off. The `Dockerfile` in this directory serves the published package the same way. Every tool carries a `title` and `readOnlyHint: true`, so a client can run them without a per-call prompt. The HTTP server writes one JSON line to stderr per tool call (the tool, the duration, success or error and the client's name and version; never the arguments or the result), so the host's logs count calls per tool.
 
 ## Tools
 
@@ -69,7 +69,7 @@ The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return pat
 
 ## Data
 
-Version 1.19.0.
+Version 1.19.1.
 
 - 306 metrics across 13 departments
 - 94 glossary definitions (81 SaaS domain + 13 GASP framework)

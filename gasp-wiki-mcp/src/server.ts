@@ -128,10 +128,24 @@ export interface ToolCallRecord {
   client?: string;
 }
 
+/** The tools that load PGlite, an in-process Postgres, and run queries for a few seconds: the ones a shared host caps. */
+export const HEAVY_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(["score_drift", "readiness_report"]);
+
+/** A cap on how many heavy tool calls run at once, shared by every server the HTTP entry point builds. `running` is the live count. */
+export interface HeavyLimit {
+  limit: number;
+  running: number;
+}
+
 export interface ServerOptions {
   /** Called after every tool call with its record; the HTTP server writes it to stderr as one JSON line. Unset for stdio. */
   onToolCall?: (record: ToolCallRecord) => void;
+  /** When set, a heavy tool call beyond `limit` returns a busy error instead of running. Unset for stdio, where one user owns the process. */
+  heavy?: HeavyLimit;
 }
+
+/** The result a heavy tool returns when the host is at its cap: an error the client can retry, never an exception. */
+export const BUSY_TEXT = "The server is running its maximum number of drift and readiness computations at once. Retry in a few seconds.";
 
 /** A new server over the loaded data with every tool registered. Cheap enough to build per request. */
 export function createServer(options: ServerOptions = {}): McpServer {
@@ -143,13 +157,21 @@ const server = new McpServer({
 /** Registers a tool with its title and the read-only annotations every GASP tool carries, timed and recorded when `onToolCall` is set. */
 function tool<Args extends ZodRawShapeCompat>(name: ToolName, description: string, params: Args, cb: ToolCallback<Args>): void {
   const record = options.onToolCall;
+  const heavy = options.heavy && HEAVY_TOOLS.has(name) ? options.heavy : undefined;
+  const run = cb as unknown as (a: unknown, e: unknown) => CallToolResult | Promise<CallToolResult>;
+  const guarded = async (args: unknown, extra: unknown): Promise<CallToolResult> => {
+    if (!heavy) return run(args, extra);
+    if (heavy.running >= heavy.limit) return { content: [{ type: "text", text: BUSY_TEXT }], isError: true };
+    heavy.running++;
+    try { return await run(args, extra); } finally { heavy.running--; }
+  };
   const handler: ToolCallback<Args> = record
     ? (async (args: Parameters<ToolCallback<Args>>[0], extra: Parameters<ToolCallback<Args>>[1]) => {
         const started = performance.now();
         const client = server.server.getClientVersion();
         const done = (ok: boolean) => record({ event: "tool", tool: name, ms: Math.round(performance.now() - started), ok, ...(client ? { client: `${client.name}/${client.version}` } : {}) });
         try {
-          const result = await (cb as unknown as (a: unknown, e: unknown) => CallToolResult | Promise<CallToolResult>)(args, extra);
+          const result = await guarded(args, extra);
           done(!result.isError);
           return result;
         } catch (err) {
@@ -157,8 +179,14 @@ function tool<Args extends ZodRawShapeCompat>(name: ToolName, description: strin
           throw err;
         }
       }) as ToolCallback<Args>
-    : cb;
-  server.tool(name, description, params, { title: TOOL_TITLES[name], readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, handler);
+    : heavy ? (guarded as unknown as ToolCallback<Args>) : cb;
+  // registerTool sets the top-level `title` the directory portal reads; the same title goes in the annotations for clients that read only those.
+  server.registerTool(name, {
+    title: TOOL_TITLES[name],
+    description,
+    inputSchema: params,
+    annotations: { title: TOOL_TITLES[name], readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, handler);
 }
 
 // Build traversal context once at startup. Used by infer_drivers, explain_path,

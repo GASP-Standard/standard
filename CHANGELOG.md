@@ -4,6 +4,14 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-11-07
+
+### Added
+- Three guards on the HTTP entry point for a public endpoint, each configurable and off at 0: a per-client rate limit on the MCP path (`MCP_RATE_LIMIT`, default 60 requests a minute; the client is the first `X-Forwarded-For` entry behind a proxy, else the socket; beyond it a 429 with `Retry-After`), a request body cap (`MCP_MAX_BODY_BYTES`, default 1 MB; over it a 413, a body without `Content-Length` a 411) and a cap on how many `score_drift` and `readiness_report` calls, the two that load PGlite, run at once across the process (`MCP_HEAVY_CONCURRENCY`, default 2; beyond it the tool returns a busy error the client can retry, `HEAVY_TOOLS` and `BUSY_TEXT` in `server.ts`). The stdio binary has none of them. Four tests in `test/server.test.ts`.
+
+### Fixed
+- Every tool's `title` is now the top-level field of the tool as well as `annotations.title`: the tools are registered through `registerTool`, so a client that reads only the top-level title, such as the Claude connectors directory portal, sees it. `test/server.test.ts` checks both.
+
 ## [1.19.0] - 2026-11-07
 
 ### Added
