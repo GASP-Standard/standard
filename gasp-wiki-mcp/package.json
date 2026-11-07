@@ -63,6 +63,7 @@
     "@electric-sql/pglite": "^0.5.9"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@types/node": "^22.15.2",
     "tsx": "^4.23.15",
     "typescript": "^5.8.3",

@@ -5,6 +5,24 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-07] GASP Workspace and certification: the commercial model on top of the open standard
+**Decision:** The standard, its exports and the 22 MCP tools stay free, open and unauthenticated, including the hosted endpoint listed in the Claude connectors directory. Revenue comes from two things built on top: **GASP Workspace**, a hosted per-company store of the mapping, the model, the decisions, the check results and the readiness snapshots over time, used through the same MCP server (the existing tools gain a `workspace` argument, a few authenticated tools save, load and compare) with one shareable read-only readiness report page; and **GASP certification**, an annual reviewed and dated readiness report at level 3 or 4 with a badge and a public register entry, generated from the workspace and signed by the maintainer. Sold per company on annual and multi-year terms, not per seat and not monthly. Sign-in through WorkOS AuthKit in the directory's "required when the server asks" mode, so the anonymous tools stay anonymous. Workspace data may feed anonymised cross-company benchmarks, stated in the terms from the first customer.
+
+**Context:** The hosted server went live on 2026-11-07 (`mcp.gaspwiki.com`, DigitalOcean App Platform) and the directory listing the same day. The owner asked whether to charge for hosting and how to see who uses it. Hosting the read tools costs almost nothing, auth stops no flood and would have forced OAuth before listing, and the only identity worth having arrives when a user has a reason to sign in. The backlog already held "design partners after launch".
+
+**Alternatives considered:**
+- Charging for the hosted endpoint: gates discovery, which is the asset; anyone can run the same server free from npm.
+- Implementation engagements as the business: fastest cash, least scalable, consumes the solo maintainer's hours; kept as an option that feeds workspace customers, not the model.
+- Vendor conformance program and benchmarks first: both need customers or data that only exist after the workspace; sequenced after it.
+- Per-seat or monthly pricing: the buyer is a finance or data team at a company that wants one procurement a year or less; per-company annual and multi-year terms match that and the certification's yearly cadence.
+- Auth0 or a self-built OAuth server: Auth0 works; WorkOS documents the MCP flow directly and its free tier covers the first year; a self-built authorization server is weeks of security-sensitive work with no product value.
+
+**Rationale:** The workspace is the least ongoing effort to scale, since Claude is the interface and the tools already do the computing; the certificate is its natural companion, sold on the data the workspace already holds, with the maintainer's effort per certificate a review rather than an audit. Annual and multi-year terms suit enterprise procurement and the certification's renewal.
+
+**Consequences:** Build order in `docs/workspace-plan.md`: identity and Postgres with the optional-auth flow in the directory, save and load and the `workspace` argument, readiness history and the shareable page, Stripe, then the certification report and register. The governance doc states the split plainly: canon and tools open under Apache 2.0, hosted state and certification paid. Pricing follows the 2026-11-07 homework (`docs/workspace-pricing.md`). The directory listing's authentication setting changes from "none" to "required when the server asks" when the first authenticated tool ships, a listing edit that goes through review. Benchmarks consent is a clause in the terms before the first paying customer, not an afterthought.
+
+---
+
 ## [2026-11-04] Ossie `custom_extensions.data`: read both forms, write the form the targeted version defines, and back the object form upstream
 **Decision:** GASP's Ossie readers (`parseJson` in `ossie/types.ts`, `check.ts`, `company.ts`, `demo.ts`) accept `custom_extensions[].data` as a JSON string or as an object; the writers emit the form the `OSSIE_VERSION` pin defines (a string today). On dev@ GASP gave a producer's +1 (non-binding) to apache/ossie #522, which makes `data` an object, and took up Christian Eubank's documentation split (fictional vendors in the core spec, real vendors registering their extension in a vendors/ folder), where GASP would register `standard/gasp-ossie-extension-v1.json`.
 
