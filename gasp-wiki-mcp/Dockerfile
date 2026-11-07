@@ -1,6 +1,9 @@
 # The GASP Standard MCP server as a hosted Streamable HTTP endpoint.
 # Installs the published npm package, so the image tracks releases rather than
 # this tree; build from the tree instead with `npm run build && npm run serve`.
+# Pin the version with the build argument GASP_MCP_VERSION (App Platform passes a
+# build-time environment variable of that name); `latest` races a publish that
+# is still propagating.
 #
 #   docker build -t gasp-standard-mcp .
 #   docker run -p 3000:3000 -e MCP_ALLOWED_HOSTS=mcp.gaspwiki.com gasp-standard-mcp

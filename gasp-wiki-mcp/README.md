@@ -6,6 +6,10 @@ Works with Claude Code, Claude Desktop or any [MCP](https://modelcontextprotocol
 
 ## Install
 
+### Claude (web, desktop, mobile)
+
+GASP Standard is listed in the [Claude connectors directory](https://claude.ai/directory/gasp-standard): open it and click Connect. No sign-in. Any other client that takes a remote MCP server uses the hosted endpoint `https://mcp.gaspwiki.com/mcp` (Streamable HTTP, no authentication; `/health` reports the version).
+
 ### Claude Code (one command)
 
 ```bash
