@@ -12,9 +12,12 @@ export const GASP_VENDOR = "GASP";
 
 /**
  * A custom extension entry. `data` is the form the `OSSIE_VERSION` pin defines
- * (a JSON string); apache/ossie #522 proposes an object. GASP writes the pinned
- * form and reads either (`extensionData`); `normaliseExtensions` rewrites a
- * parsed document into the pinned form so every check downstream sees one shape.
+ * (a JSON string); apache/ossie #522 proposes an object and, with the guardrails
+ * agreed on dev@ on 2026-11-05, renames the key `custom_extensions` to
+ * `nonportable_extensions` in the same migration. GASP writes the pinned form
+ * under the pinned key and reads either form (`extensionData`) under either key;
+ * `normaliseExtensions` rewrites a parsed document into the pinned shape so every
+ * check downstream sees one key and one form.
  */
 export interface OssieExtension {
   vendor_name: string;
@@ -35,17 +38,30 @@ export function readGaspExtension<T = Record<string, unknown>>(exts: OssieExtens
   return extensionData(exts?.find((x) => x.vendor_name === GASP_VENDOR)) as T | undefined;
 }
 
+/** The key apache/ossie #522 renames `custom_extensions` to; `normaliseExtensions` folds it back to the pinned key. */
+export const RENAMED_EXTENSIONS_KEY = "nonportable_extensions";
+
 /**
- * Every `custom_extensions[].data` given as an object rewritten as the JSON
- * string the pin defines, in place, anywhere in the document; returns the
- * number rewritten. A string `data` is left as it is, valid JSON or not.
+ * A parsed document rewritten to the pinned shape in place, anywhere in the
+ * document: every `nonportable_extensions` array becomes `custom_extensions`
+ * (appended after any entries already under the pinned key) and every
+ * extension `data` given as an object becomes the JSON string the pin
+ * defines. Returns the number of rewrites (keys folded plus payloads
+ * stringified). A string `data` is left as it is, valid JSON or not.
  */
 export function normaliseExtensions(doc: unknown): number {
   let n = 0;
   const walk = (v: unknown): void => {
     if (Array.isArray(v)) { for (const x of v) walk(x); return; }
     if (typeof v !== "object" || v === null) return;
-    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    const o = v as Record<string, unknown>;
+    if (Array.isArray(o[RENAMED_EXTENSIONS_KEY])) {
+      const renamed = o[RENAMED_EXTENSIONS_KEY] as unknown[];
+      o.custom_extensions = Array.isArray(o.custom_extensions) ? [...(o.custom_extensions as unknown[]), ...renamed] : renamed;
+      delete o[RENAMED_EXTENSIONS_KEY];
+      n++;
+    }
+    for (const [k, x] of Object.entries(o)) {
       if (k === "custom_extensions" && Array.isArray(x)) {
         for (const e of x) {
           if (typeof e === "object" && e !== null && typeof (e as { data?: unknown }).data === "object" && (e as { data?: unknown }).data !== null) {

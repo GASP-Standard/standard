@@ -6,8 +6,9 @@
  * and Acme adapters compiled, the Acme DDL profiled, proposed and decided,
  * and that decided pair compiled. checkExport names the placement and the key
  * of a planted bad payload and leaves other vendors' payloads alone. A document
- * carrying every payload as an object (apache/ossie #522) reads the same as the
- * string form through validate_mapping, compile_model and the checks.
+ * carrying every payload as an object (apache/ossie #522), under the key
+ * `nonportable_extensions` the same proposal renames to, or both, reads the
+ * same as the pinned form through validate_mapping, compile_model and the checks.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,7 +23,7 @@ import { exportOssie, ossieYaml } from "../src/ossie/index.js";
 import { exportOntology } from "../src/ossie/ontology.js";
 import { parseStatistics, profileSchema } from "../src/ossie/profile.js";
 import { proposeMapping } from "../src/ossie/propose.js";
-import { GASP_VENDOR, extensionData, normaliseExtensions, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
+import { GASP_VENDOR, RENAMED_EXTENSIONS_KEY, extensionData, normaliseExtensions, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
 import { compileModelFromText } from "../src/ossie/company.js";
 import { validateMapping } from "../src/ossie/adapt.js";
 import { parse as parseYaml } from "yaml";
@@ -198,10 +199,25 @@ describe("custom_extensions data in the object form (apache/ossie #522)", () => 
     return copy;
   };
   const countObjects = (doc: unknown): number => normaliseExtensions(structuredClone(doc));
+  /** The document with every `custom_extensions` key renamed to `nonportable_extensions`, the other half of the #522 migration. */
+  const renamedForm = <T>(doc: T): T => {
+    const copy = structuredClone(doc);
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) { v.forEach(walk); return; }
+      if (typeof v !== "object" || v === null) return;
+      const o = v as Record<string, unknown>;
+      if (Array.isArray(o.custom_extensions)) { o[RENAMED_EXTENSIONS_KEY] = o.custom_extensions; delete o.custom_extensions; }
+      Object.values(o).forEach(walk);
+    };
+    walk(copy);
+    return copy;
+  };
+  const countKeys = (doc: unknown): number => JSON.stringify(doc).split(`"${RENAMED_EXTENSIONS_KEY}"`).length - 1;
 
   const form = adapterToOssie(JSON.parse(acmeAdapterText) as Adapter, data);
   const text = { mapping: ossieYaml(form.mapping), model: ossieYaml(form.model) };
   const objectText = { mapping: ossieYaml(objectForm(form.mapping)), model: ossieYaml(objectForm(form.model)) };
+  const renamedText = { mapping: ossieYaml(renamedForm(objectForm(form.mapping))), model: ossieYaml(renamedForm(objectForm(form.model))) };
 
   it("the object form is a different document with the payloads as YAML maps", () => {
     expect(objectText.mapping).not.toEqual(text.mapping);
@@ -227,6 +243,30 @@ describe("custom_extensions data in the object form (apache/ossie #522)", () => 
     expect(JSON.stringify(doc)).not.toEqual(before);
     expect(doc).toEqual(form.mapping);
     expect(normaliseExtensions(doc)).toBe(0);
+  });
+
+  it("normaliseExtensions folds nonportable_extensions back to the pinned key, after any pinned entries", () => {
+    const doc = renamedForm(objectForm(form.mapping));
+    const keys = countKeys(doc);
+    expect(keys).toBeGreaterThan(0);
+    expect(countKeys(form.mapping)).toBe(0);
+    expect(normaliseExtensions(doc)).toBe(keys + countObjects(objectForm(form.mapping)));
+    expect(countKeys(doc)).toBe(0);
+    expect(doc).toEqual(form.mapping);
+    expect(normaliseExtensions(doc)).toBe(0);
+    const both = { custom_extensions: [{ vendor_name: "ACME", data: "{}" }], [RENAMED_EXTENSIONS_KEY]: [{ vendor_name: GASP_VENDOR, data: { a: 1 } }] } as Record<string, unknown>;
+    expect(normaliseExtensions(both)).toBe(2);
+    expect(both).toEqual({ custom_extensions: [{ vendor_name: "ACME", data: "{}" }, { vendor_name: GASP_VENDOR, data: '{"a":1}' }] });
+  });
+
+  it("validate_mapping and compile_model read the renamed key with object payloads as the pinned form", () => {
+    expect(renamedText.mapping).toContain(`${RENAMED_EXTENSIONS_KEY}:`);
+    expect(renamedText.mapping).not.toContain("custom_extensions:");
+    expect(validateMapping(renamedText.mapping, renamedText.model, data)).toEqual(validateMapping(text.mapping, text.model, data));
+    expect(compileModelFromText(renamedText.mapping, renamedText.model, data, { document: true })).toEqual(compileModelFromText(text.mapping, text.model, data, { document: true }));
+    const c = company(renamedText.mapping, renamedText.model);
+    expect(countKeys(c.model)).toBe(0);
+    expect(countObjects(c.model)).toBe(0);
   });
 
   it("validate_mapping gives the same report for both forms", () => {
