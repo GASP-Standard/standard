@@ -1,5 +1,5 @@
 /**
- * The server entry points: createServer registers the 22 tools, each with a
+ * The server entry points: createServer registers the 23 tools, each with a
  * title and the read-only annotations the Claude connectors directory
  * requires, and answers over an in-memory transport; the Streamable HTTP
  * server answers the same tools over HTTP, serves a health page, and refuses a

@@ -1,5 +1,5 @@
 /**
- * The GASP Standard MCP server: the data load, the 22 tools and their
+ * The GASP Standard MCP server: the data load, the 23 tools and their
  * annotations. `createServer()` builds a fresh McpServer over the data loaded
  * once at import; `index.ts` serves it over stdio and `http.ts` over Streamable
  * HTTP, one server per request. Every tool is read-only, so each carries
@@ -34,6 +34,7 @@ import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.
 import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
 import { loadAdapter, validateMapping } from "./ossie/adapt.js";
 import { compileModelFromText } from "./ossie/company.js";
+import { compileTargetFromText, TARGETS } from "./targets/index.js";
 import { scoreDriftFromText } from "./ossie/drift.js";
 import { profileSchemaFromText } from "./ossie/profile.js";
 import { proposeMappingFromText } from "./ossie/propose.js";
@@ -103,6 +104,7 @@ export const TOOL_TITLES = {
   validate_mapping: "Validate a mapping",
   validate_adapter: "Validate an adapter",
   compile_model: "Compile GASP metrics into an Ossie model",
+  compile_target: "Compile GASP metrics into your engine's own format",
   score_drift: "Score drift from the canonical metrics",
   profile_schema: "Profile a warehouse schema",
   propose_mapping: "Propose a GASP mapping",
@@ -809,6 +811,26 @@ tool(
   },
   async ({ adapter, semantic_model, dialect, metrics, department, period_spine, output }) =>
     ({ content: [{ type: "text" as const, text: compileModelFromText(adapter, semantic_model, data, { dialect, metrics, department, spine: period_spine, document: output !== "report" }) }] }),
+);
+
+// --- Tool 9b: compile_target ---
+tool(
+  "compile_target",
+  "Compile the GASP Standard metrics your mapping covers into the files of your semantic-layer engine. Takes the same input as compile_model (a GASP adapter, or an Ossie mapping with your semantic_model), compiles the metrics the same way and writes them in the engine's own format and your warehouse's SQL: target 'snowflake' gives a Cortex Analyst semantic model YAML (tables with database.schema.table base tables, time dimensions, dimensions, facts, relationships and the gasp_ metrics; loadable as a semantic view) plus staged_views.sql, the views the staged metrics read and the period spine table, to run first; target 'cube' gives a Cube data model, one cube per table with its joins, a dimension per field and the metrics as measures, and one view joining the cubes from revenue_event. A filtered aggregate is written as a CASE inside the aggregate, which every warehouse runs, and each staged table's query is the compiled source in the target dialect. Entries with unmapped pairs or no computable formula are listed and left out. Pass metrics or department for a subset.",
+  {
+    adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
+    semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), whose sources and field expressions the files read."),
+    target: z.enum(TARGETS).describe("The engine: 'snowflake' (Cortex Analyst semantic model YAML plus staged views SQL) or 'cube' (Cube data-model directory)."),
+    dialect: z.enum(DIALECTS).optional().describe("Cube only: the SQL dialect of the measures and staged cubes (postgres, snowflake, bigquery or databricks). Omit to use the adapter's warehouse, else postgres. The snowflake target always writes Snowflake SQL."),
+    database: z.string().optional().describe("Snowflake: the database prepended to schema.table sources, since a Cortex Analyst base table is database.schema.table. Cube does not need it."),
+    staged_schema: z.string().optional().describe("Snowflake: the schema the staged views are created in. Default: the schema of the first mapped table."),
+    metrics: z.string().optional().describe("Comma-separated metric names, abbreviations, aliases or formula ids to write (each resolved as in lookup_metric). Omit for every metric."),
+    department: z.string().optional().describe("Write every metric of one department (e.g. 'Core'); combines with metrics."),
+    period_spine: z.string().optional().describe("The table of (period_start, period_end) rows the staged queries read, as named in your warehouse. Default gasp.period_spine."),
+    output: z.enum(["full", "files", "report"]).optional().describe("'full' (default): the report followed by every file in a fenced block; 'files': the files alone, each under a ### <path> heading; 'report': the coverage and notes alone."),
+  },
+  async ({ adapter, semantic_model, target, dialect, database, staged_schema, metrics, department, period_spine, output }) =>
+    ({ content: [{ type: "text" as const, text: compileTargetFromText(adapter, semantic_model, data, { target, dialect, database, staged_schema, metrics, department, spine: period_spine, output }) }] }),
 );
 
 // --- Tool 10: score_drift ---

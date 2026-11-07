@@ -31,7 +31,14 @@
  * The dataset an aggregate reads is chosen exactly as compile.ts chooses it:
  * the datasets every field in the aggregate shares, preferring one keyed by
  * one of those fields, else the first declared.
+ *
+ * With `dialect` set the same expression is written in a warehouse dialect
+ * instead (the compile targets, src/targets/, ask for this; the Ossie model never
+ * does): a filtered aggregate puts the filter inside it as `CASE WHEN w THEN x
+ * END`, since only Postgres has the FILTER clause, and the date differences,
+ * the numerator cast and percentiles come from the dialect table (dialect.ts).
  */
+import { DIALECT, type DialectName } from "../dialect.js";
 import { parseFormula, type Form, type Formula, type Node, type Point } from "../formula.js";
 import type { MetricFormula, OntologyDataset, OntologyField } from "../types.js";
 
@@ -41,6 +48,8 @@ export interface EmitContext {
   formulas: Record<string, MetricFormula>;
   /** How a field reference is written: `<dataset>.<field>` in the reference model, the company's own names when compiling into their model */
   ref?: (dataset: string, field: string) => string;
+  /** Write the expression in this warehouse dialect instead of OSSIE_SQL_2026 (compile targets only) */
+  dialect?: DialectName;
 }
 
 /** Why a formula needs a staged dataset, highest priority first (the first that applies is reported). */
@@ -145,6 +154,12 @@ export function emitMetric(id: string, ctx: EmitContext, variant?: string): Emis
   return { kind: "direct", expression, datasets: [...e.datasets].sort(), snapshots: [...e.snapshots].sort() };
 }
 
+/** A direct entry's expression in a warehouse dialect, or undefined when the entry is staged or not computable. */
+export function directExpressionFor(id: string, ctx: EmitContext, dialect: DialectName, variant?: string): string | undefined {
+  const e = emitMetric(id, { ...ctx, dialect }, variant);
+  return e.kind === "direct" ? e.expression : undefined;
+}
+
 class Emitter {
   reasons = new Set<StagedReason>();
   datasets = new Set<string>();
@@ -186,10 +201,15 @@ class Emitter {
         if (n.op === "-" && this.isTemporal(n.left) && this.isTemporal(n.right)) {
           // DATEDIFF(part, start, end) is end - start. Elapsed days, fractional for timestamps.
           const ts = [n.left, n.right].some((x) => x.kind === "field" && this.type(x.id) === "timestamp");
+          const d = this.ctx.dialect ? DIALECT[this.ctx.dialect] : undefined;
+          if (d) return ts ? `(${d.secondsBetween(l, r)} / 86400.0)` : d.daysBetween(l, r);
           return ts ? `(DATEDIFF(second, ${r}, ${l}) / 86400.0)` : `DATEDIFF(day, ${r}, ${l})`;
         }
         // Cast the numerator so COUNT / COUNT is not integer division; guard a zero denominator.
-        if (n.op === "/") return n.right.kind === "number" ? `(CAST(${l} AS DECIMAL) / ${r})` : `(CAST(${l} AS DECIMAL) / NULLIF(${r}, 0))`;
+        if (n.op === "/") {
+          const num = this.ctx.dialect ? DIALECT[this.ctx.dialect].toDouble(l) : `CAST(${l} AS DECIMAL)`;
+          return n.right.kind === "number" ? `(${num} / ${r})` : `(${num} / NULLIF(${r}, 0))`;
+        }
         return `(${l} ${n.op} ${r})`;
       }
       case "scalar": {
@@ -280,6 +300,16 @@ class Emitter {
     }
     const arg = this.expr(n.arg, s);
     const w = where ? this.expr(where, s, true) : undefined;
+    if (this.ctx.dialect) {
+      // The filter moves inside the aggregate: a row that fails it contributes NULL, which every aggregate skips.
+      const d = DIALECT[this.ctx.dialect];
+      const x = w ? `CASE WHEN ${w} THEN ${arg} END` : arg;
+      if (n.kind === "percentile") return d.percentile(n.p, x);
+      if (n.fn === "median") return d.percentile(0.5, x);
+      if (n.fn === "count_distinct") return `COUNT(DISTINCT ${x})`;
+      if (n.fn === "sum") return `COALESCE(SUM(${x}), 0)`;
+      return `${n.fn.toUpperCase()}(${x})`;
+    }
     const filter = w ? ` FILTER (WHERE ${w})` : "";
     if (n.kind === "percentile") return `PERCENTILE_CONT(${n.p}) WITHIN GROUP (ORDER BY ${arg})${filter}`;
     if (n.fn === "count_distinct") return `COUNT(DISTINCT ${arg})${filter}`;

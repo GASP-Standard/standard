@@ -55,7 +55,7 @@ export const isGaspMetric = (m: OssieMetric): boolean => ext(m).gasp_id !== unde
 const isGaspDataset = (d: OssieDataset): boolean => ext(d).staged === true || d.name.startsWith("gasp_staged_") || d.name === SPINE_DATASET;
 
 /** A model field's SQL in the compile dialect: its entry for that dialect, else the portable one, else the first. */
-function fieldSql(f: OssieField, dialect: DialectName): string {
+export function fieldSql(f: OssieField, dialect: DialectName): string {
   const vendor = f.expression?.dialects?.find((d) => d.dialect === OSSIE_DIALECT_OF[dialect]);
   return vendor?.expression ?? expressionText(f) ?? f.name;
 }
