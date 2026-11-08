@@ -13,6 +13,9 @@
  *
  * The checks (decided 2026-11-03, DECISIONS.md):
  *   revenue_event_identity      prior_mrr + mrr_change = new_mrr on every revenue event (cel.md)
+ *   credit_balance_identity     credit_balance_before + credit_amount = credit_balance_after on every
+ *                               purchase, expiry, adjustment and committed consumption, and equal
+ *                               balances on overage and on-demand consumption (cel.md)
  *   mrr_continuity              a subscription's mrr_start equals its mrr on the previous snapshot
  *   unique_event_id:<dataset>   event_id unique within each event dataset that carries one
  *   lifecycle_tag:<dataset>     one lifecycle_attribution, from the ATL enum, on every event (ATL rule 1)
@@ -143,6 +146,23 @@ export function readinessChecks(data: StandardData, opts: CheckOptions = {}): Re
     protects: { dataset: "revenue_event" },
     effort: "medium",
     sql: () => count(`${table("revenue_event")}\nWHERE ABS(COALESCE(${ph("prior_mrr", "revenue_event")}, 0) + COALESCE(${ph("mrr_change", "revenue_event")}, 0) - COALESCE(${ph("new_mrr", "revenue_event")}, 0)) >= 0.005`),
+  });
+
+  checks.push({
+    id: "credit_balance_identity",
+    name: "Credit ledger balance identity",
+    rule: "where both balances are present, credit_balance_before + credit_amount = credit_balance_after on every purchase, expiry, adjustment and committed consumption, to the cent; an overage or on-demand consumption draws no balance, so its two balances are equal; rows with either balance null are skipped",
+    source: "cel.md#credit_event",
+    datasets: ["credit_event"],
+    placeholders: ["credit_event_type@credit_event", "consumption_basis@credit_event", "credit_amount@credit_event", "credit_balance_before@credit_event", "credit_balance_after@credit_event"],
+    protects: { dataset: "credit_event" },
+    effort: "medium",
+    sql: () => {
+      const before = ph("credit_balance_before", "credit_event");
+      const after = ph("credit_balance_after", "credit_event");
+      const draws = `${ph("credit_event_type", "credit_event")} = 'consumption' AND ${ph("consumption_basis", "credit_event")} IN ('overage', 'on_demand')`;
+      return count(`${table("credit_event")}\nWHERE ${before} IS NOT NULL AND ${after} IS NOT NULL\n  AND ABS(${before} + CASE WHEN ${draws} THEN 0 ELSE COALESCE(${ph("credit_amount", "credit_event")}, 0) END - ${after}) >= 0.005`);
+    },
   });
 
   checks.push({

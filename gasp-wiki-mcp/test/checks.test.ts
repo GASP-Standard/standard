@@ -50,7 +50,10 @@ describe("readiness checks", () => {
     const ids = readinessChecks(data).map((c) => c.id);
     expect(ids).toContain("revenue_event_identity");
     expect(ids).toContain("mrr_continuity");
-    expect(ids.filter((i) => i.startsWith("unique_event_id:"))).toHaveLength(6);
+    expect(ids).toContain("credit_balance_identity");
+    expect(ids.filter((i) => i.startsWith("unique_event_id:"))).toHaveLength(7);
+    // The credit ledger picks up the generic checks from the ontology alone.
+    expect(ids).toEqual(expect.arrayContaining(["unique_event_id:credit_event", "freshness:credit_event"]));
     expect(ids).toEqual(expect.arrayContaining(["lifecycle_tag:revenue_event", "lifecycle_tag:cost_event", "lifecycle_tag:amendment_event", "expansion_tag:revenue_event", "expansion_tag:amendment_event", "cost_function_tag", "customer_identity:events", "customer_identity:customers"]));
     expect(ids.filter((i) => i.startsWith("freshness:")).length).toBe(Object.values(data.ontology!.datasets!).filter((d) => d.date).length);
     for (const c of readinessChecks(data)) expect(c.placeholders.every((p) => c.datasets.includes(p.split("@")[1])), c.id).toBe(true);
@@ -122,6 +125,26 @@ describe("readiness checks", () => {
     expect(r["customer_identity:events"]).toBe(1);
     expect(r["customer_identity:customers"]).toBe(0);
     expect(r["mrr_continuity"]).toBe(0);
+  });
+
+  it("checks the credit ledger: the synthetic rows pass, a wrong after-balance fails once", async () => {
+    const clean = await run();
+    // freshness:credit_event runs once a metric reading the ledger is covered (compileChecks drops a freshness check that protects nothing).
+    for (const id of ["credit_balance_identity", "unique_event_id:credit_event"]) expect(clean[id], id).toBe(0);
+    if ("freshness:credit_event" in clean) expect(clean["freshness:credit_event"]).toBe(0);
+    const check = readinessChecks(data).find((c) => c.id === "credit_balance_identity")!;
+    expect(check).toMatchObject({ source: "cel.md#credit_event", datasets: ["credit_event"], protects: { dataset: "credit_event" }, effort: "medium" });
+    await db.exec(`CREATE TABLE bad_credits AS SELECT * FROM gasp_credit_events`);
+    // One committed drawdown with a wrong after-balance, plus rows the check must not count:
+    // an on-demand row with equal balances and a row with a null balance.
+    await db.exec(`UPDATE bad_credits SET credit_balance_after = credit_balance_after + 50 WHERE event_id = 's09:credit:3'`);
+    await db.exec(`UPDATE bad_credits SET credit_balance_before = NULL WHERE event_id = 's11:credit:2'`);
+    const r = await run(adapterOver("credit_event", "bad_credits"));
+    expect(r["credit_balance_identity"]).toBe(1);
+    expect(r["unique_event_id:credit_event"]).toBe(0);
+    // An overage row whose balances differ breaks the rule too: it draws no balance.
+    await db.exec(`UPDATE bad_credits SET credit_balance_after = 10 WHERE event_id = 's11:credit:5'`);
+    expect((await run(adapterOver("credit_event", "bad_credits")))["credit_balance_identity"]).toBe(2);
   });
 
   it("fails the GRR range check when a contraction turns into a gain", async () => {

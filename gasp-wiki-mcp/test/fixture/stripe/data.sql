@@ -23,6 +23,10 @@
 -- The invoices carry the service period and amount of their licensed lines, so
 -- the invoice derivation runs over them too (the test states its events), and
 -- the usage records hold cus_B's three metered periods.
+-- The credit ledger: cus_B buys $100 of paid credits on 02-01, expiring
+-- 03-31; the invoice for February's metered usage, finalised on 03-01, applies
+-- $60 of them and the other $40 expire on 03-31. cus_A was given a $20
+-- promotional grant on 01-10, voided unused on 02-15.
 -- Expected events: events.json. MRR on 2026-03-31: 1,349 from the items, plus
 -- the $25 of March usage realised on its last day and reversed on 04-01.
 
@@ -177,4 +181,24 @@ CREATE TABLE gasp.revenue_events (
 );
 
 CREATE TABLE gasp.period_spine (period_start DATE NOT NULL, period_end DATE NOT NULL);
+CREATE TABLE stripe_snapshots.credit_balance_transactions (
+  id VARCHAR(255) NOT NULL PRIMARY KEY,
+  customer_id VARCHAR(255) NOT NULL,
+  credit_grant_id VARCHAR(255) NOT NULL,
+  effective_at TIMESTAMP NOT NULL,
+  type VARCHAR(8) NOT NULL,
+  credit_type VARCHAR(48),
+  debit_type VARCHAR(48),
+  amount BIGINT NOT NULL,
+  currency CHAR(3) NOT NULL,
+  grant_category VARCHAR(16) NOT NULL,
+  grant_expires_at TIMESTAMP
+);
+INSERT INTO stripe_snapshots.credit_balance_transactions VALUES
+  ('cbtxn_A1', 'cus_A', 'credgr_A1', '2026-01-10 09:00:00', 'credit', 'credits_granted', NULL, 2000, 'usd', 'promotional', NULL),
+  ('cbtxn_B1', 'cus_B', 'credgr_B1', '2026-02-01 00:00:00', 'credit', 'credits_granted', NULL, 10000, 'usd', 'paid', '2026-03-31 23:59:59'),
+  ('cbtxn_A2', 'cus_A', 'credgr_A1', '2026-02-15 14:30:00', 'debit', NULL, 'credits_voided', 2000, 'usd', 'promotional', NULL),
+  ('cbtxn_B2', 'cus_B', 'credgr_B1', '2026-03-01 06:00:00', 'debit', NULL, 'credits_applied', 6000, 'usd', 'paid', '2026-03-31 23:59:59'),
+  ('cbtxn_B3', 'cus_B', 'credgr_B1', '2026-03-31 23:59:59', 'debit', NULL, 'credits_expired', 4000, 'usd', 'paid', '2026-03-31 23:59:59');
+
 INSERT INTO gasp.period_spine VALUES ('2026-01-01', '2026-01-31'), ('2026-02-01', '2026-02-28'), ('2026-03-01', '2026-03-31');

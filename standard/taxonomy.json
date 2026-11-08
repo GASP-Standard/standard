@@ -945,6 +945,27 @@
     },
     "support::self-service-rate-ticket-deflection": {
       "primary": "efficiency"
+    },
+    "finance::consumption-revenue": {
+      "primary": "outcome"
+    },
+    "finance::usage-run-rate": {
+      "primary": "outcome"
+    },
+    "finance::prepaid-credit-balance": {
+      "primary": "operational"
+    },
+    "finance::arr-including-usage-run-rate": {
+      "primary": "outcome"
+    },
+    "finance::credit-breakage": {
+      "primary": "outcome"
+    },
+    "finance::consumption-revenue-growth-rate": {
+      "primary": "outcome"
+    },
+    "finance::consumption-net-revenue-retention": {
+      "primary": "outcome"
     }
   }
 }

@@ -157,9 +157,13 @@ describe("compiled SQL runs on Postgres", () => {
 
   // An empty table or a filter that matches nothing reads as NULL, so this holds
   // the fixture to having rows for every metric, not just valid SQL.
+  // The one exception reads twelve months back: the credit ledger starts in 2026 and the customers
+  // in the June 2026 cohort have no June 2025 consumption, so the lagged denominator is 0 and the ratio NULL.
+  const NULL_BY_DESIGN = new Set(["consumption_net_revenue_retention"]);
   it("every fully mapped template returns a value, June", async () => {
     const nulls: string[] = [];
     for (const f of runnable) {
+      if (NULL_BY_DESIGN.has(f.id)) continue;
       const res = await db.query<Record<string, unknown>>(bind(f.sql, ...JUNE));
       // A breakdown returns one row per value; at least one must carry a value.
       const values = data.queryTemplates[f.id].breakdown ? res.rows.map((r) => r[f.id]) : [Object.values(res.rows[0])[0]];
@@ -241,8 +245,8 @@ describe("hand-computed metric values", () => {
   });
 
   // Item 3: quarter-over-quarter ARR change over one quarter of GTM spend in the prior quarter.
-  it("Magic Number, June (ARR change since 2026-03-30 over GTM spend January to March)", async () => {
-    const priorEnd = "2026-03-30"; // 2026-06-30 minus 3 months in Postgres
+  it("Magic Number, June (ARR change since 2026-03-31 over GTM spend January to March)", async () => {
+    const priorEnd = "2026-03-31"; // the quarter before the one ending 2026-06-30 ends on a month end (the shift steps from the day after the end)
     const arrChange = (mrrOn(END) - mrrOn(priorEnd)) * 12;
     const spend = gtmCost(addDays(priorEnd, -89), priorEnd);
     expect(spend).toBe(3000 + 2000 + 3100 + 2100 + 3600 + 2400);
@@ -580,5 +584,94 @@ describe("named breakdowns", () => {
     expect(rows.marketing).toBeCloseTo(3800 / 2, 6);
     expect(rows.sales).toBeCloseTo(2600 / 2, 6);
     expect((rows.marketing ?? 0) + (rows.sales ?? 0)).toBeCloseTo((await run("cac", ...JUNE))!, 6);
+  });
+});
+
+// The credit ledger (Credit_Event): the CREDITS stories in src/synthetic.ts plus one
+// overage row per USAGE customer and month above the commitment. Every expected value
+// is worked by hand from the stories; the filters over the rows restate it.
+describe("hand-computed metric values, credit ledger", () => {
+  /** A formula compiled straight from formulas.json (a named breakdown when `name` is given) and run over the fixture. */
+  async function runFormula(id: string, start: string, end: string, name?: string): Promise<number | null | Record<string, number | null>> {
+    const { compileMetric } = await import("../src/compile.js");
+    const { fillTemplate } = await import("../src/tools.js");
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
+    const c = compileMetric(id, ctx, name);
+    const template = {
+      metric: id, fields: c.fields, datasets: c.datasets, sourceTable: c.datasets.length === 1 ? c.datasets[0] : null, grain: "", frequency: "", source: "",
+      parameterizedQuery: c.sql, staged: c.staged, placeholders: c.placeholders, breakdown: c.breakdown,
+    };
+    const filled = fillTemplate(template, adapter, data);
+    expect([...filled.missingFields, ...filled.missingTables], id).toEqual([]);
+    const res = await db.query<Record<string, unknown>>(bind(filled.sql, start, end));
+    const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+    if (!c.breakdown) return num(res.rows[0] ? Object.values(res.rows[0])[0] : null);
+    return Object.fromEntries(res.rows.map((r) => [String(r[c.breakdown!.field]), num(r[id])]));
+  }
+
+  const MONTH_ENDS: Array<[string, string]> = [["2026-01-01", "2026-01-31"], ["2026-02-01", "2026-02-28"], ["2026-03-01", "2026-03-31"], ["2026-04-01", "2026-04-30"], ["2026-05-01", "2026-05-31"], ["2026-06-01", "2026-06-30"]];
+  const credits = (start: string, end: string, keep: (r: Row) => boolean) => T.credit_event.filter((r) => between(r.event_date, start, end) && keep(r));
+  const consumed = (start: string, end: string, basis?: string) =>
+    -sum(credits(start, end, (r) => r.credit_event_type === "consumption" && (!basis || r.consumption_basis === basis)), "credit_amount");
+  // Per month: c09 committed + c11 committed (+ its March overage) + c01 and c06 on demand + the USAGE overages
+  // (c02 Feb 300 and Apr 150; c07 Mar 400, May 900, Jun 500; c10 May 200).
+  const CONSUMPTION = [
+    1200 + 1800 + 400 + 300,
+    1500 + 2100 + 450 + 300 + 300,
+    1400 + 2100 + 300 + 500 + 350 + 400,
+    1700 + 1900 + 520 + 300 + 150,
+    1600 + 2000 + 610 + 400 + 900 + 200,
+    1300 + 2000 + 700 + 380 + 500,
+  ];
+
+  it("the ledger holds the stories: 35 rows, each balance chained", () => {
+    expect(T.credit_event.length).toBe(35);
+    expect(CONSUMPTION).toEqual([3700, 4650, 5050, 4570, 5710, 4880]);
+    MONTH_ENDS.forEach((m, i) => expect(consumed(...m), m[1]).toBe(CONSUMPTION[i]));
+  });
+
+  it("Consumption Revenue per month, and by basis in March", async () => {
+    for (const [i, m] of MONTH_ENDS.entries()) expect(await runFormula("consumption_revenue", ...m), m[1]).toBe(CONSUMPTION[i]);
+    expect(await runFormula("consumption_revenue", ...H1)).toBe(CONSUMPTION.reduce((a, b) => a + b, 0));
+    // March: committed c09 1,400 + c11 2,100; overage c11 300 + c07 400; on demand c01 500 + c06 350.
+    const march = await runFormula("consumption_revenue", "2026-03-01", "2026-03-31", "by_basis") as Record<string, number | null>;
+    expect(march).toEqual({ committed: 3500, overage: 700, on_demand: 850 });
+    for (const basis of ["committed", "overage", "on_demand"]) expect(march[basis], basis).toBe(consumed("2026-03-01", "2026-03-31", basis));
+  });
+
+  it("Usage Run-Rate at 2026-06: on-demand consumption April to June, times four", async () => {
+    // c01 520 + 610 + 700, c06 300 + 400 + 380.
+    const expected = (520 + 610 + 700 + 300 + 400 + 380) * 4;
+    expect(expected).toBe(11640);
+    expect(consumed(...Q2, "on_demand") * 4).toBe(expected);
+    expect(await runFormula("usage_run_rate", ...JUNE)).toBe(expected);
+  });
+
+  it("Prepaid Credit Balance at the end of March and June", async () => {
+    // March: c09 9,000 - 1,200 - 1,500 - 1,400 = 4,900; c11 6,000 - 1,800 - 2,100 - 2,100 = 0 (the overage draws nothing).
+    expect(await runFormula("prepaid_credit_balance", "2026-03-01", "2026-03-31")).toBe(4900);
+    // June: c09 drawn to 300 and forfeited; c11's second 6,000 less 1,900, 2,000 and 2,000 leaves 100.
+    expect(await runFormula("prepaid_credit_balance", ...JUNE)).toBe(100);
+    const lastAfter = (c: string, day: string) => T.credit_event.filter((r) => r.customer_id === c && String(r.event_date) <= day && r.consumption_basis !== "overage").at(-1)!.credit_balance_after;
+    expect(Number(lastAfter("c09", "2026-03-31")) + Number(lastAfter("c11", "2026-03-31"))).toBe(4900);
+    expect(Number(lastAfter("c09", END)) + Number(lastAfter("c11", END))).toBe(100);
+  });
+
+  it("Credit Breakage: c09's 300 forfeited in June, nothing before", async () => {
+    expect(await runFormula("credit_breakage", ...JUNE)).toBe(300);
+    expect(await runFormula("credit_breakage", "2026-03-01", "2026-03-31")).toBe(0);
+  });
+
+  it("ARR including Usage Run-Rate at 2026-06: the pinned ARR plus the run-rate", async () => {
+    expect(await runFormula("arr_including_usage_run_rate", ...JUNE)).toBe(290400 + 11640);
+  });
+
+  it("Consumption Revenue Growth Rate, March over February and February over January", async () => {
+    expect(await runFormula("consumption_revenue_growth_rate", "2026-03-01", "2026-03-31")).toBeCloseTo((5050 - 4650) / 4650, 10);
+    expect(await runFormula("consumption_revenue_growth_rate", "2026-02-01", "2026-02-28")).toBeCloseTo((4650 - 3700) / 3700, 10);
+  });
+
+  it("Consumption NRR has no value: the ledger holds no consumption twelve months before June 2026", async () => {
+    expect(await runFormula("consumption_net_revenue_retention", "2025-07-01", END)).toBeNull();
   });
 });

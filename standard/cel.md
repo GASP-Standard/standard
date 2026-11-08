@@ -30,7 +30,7 @@ The CEL is a conceptual standard for how commercial events are captured, stored 
 
 ## Event Classes
 
-The CEL defines five event classes. Every commercial event in a subscription SaaS business falls into one of these.
+The CEL defines six event classes. Every commercial event in a SaaS business sold by subscription, by consumption or by both falls into one of these.
 
 ### Revenue_Event
 
@@ -129,13 +129,40 @@ A change in customer lifecycle status. Primary input for health scores, onboardi
 | `state_category` | `enum` | `activation`, `onboarding_complete`, `healthy`, `at_risk`, `churned`, `reactivated` |
 | `trigger` | `string` | What caused the state change (e.g., "health score drop below 40", "90-day inactivity") |
 
+---
+
+### Credit_Event
+
+A movement on a prepaid credit balance, or consumption billed with no balance behind it. Primary input for Consumption Revenue, Usage Run-Rate, Prepaid Credit Balance and Credit Breakage.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event_id` | `string` | Unique identifier |
+| `event_date` | `date` | Date the event occurred: the day or the billing period end the source records, never a single product usage event |
+| `customer_id` | `string` | [Customer](definitions.md#customer-account-organization) identifier |
+| `subscription_id` | `string` | [Subscription](definitions.md#subscription-contract-agreement) or commitment the balance belongs to |
+| `credit_event_type` | `enum` | `purchase` (a prepaid commitment or block of credits paid for, a rollover grant included), `consumption` (usage drawn down or billed), `expiry` (unused balance forfeited at its expiry date), `adjustment` (promotional grants, refunds, reversals, corrections) |
+| `credit_amount` | `decimal` | Signed amount in currency at the contract's rates: positive for `purchase` and a granting `adjustment`, negative for `consumption`, `expiry` and a reducing `adjustment`. The sign convention mirrors `mrr_change` |
+| `consumption_basis` | `enum` (consumption only) | `committed` (drawn from a prepaid balance), `overage` (above an exhausted or per-period commitment), `on_demand` (no commitment) |
+| `credit_balance_before` | `decimal` (optional) | The customer's prepaid balance before the event; equal to `credit_balance_after` on `overage` and `on_demand` consumption, which draw no balance |
+| `credit_balance_after` | `decimal` (optional) | The customer's prepaid balance after the event. Where both balances are mapped, `credit_balance_before + credit_amount = credit_balance_after` on every row that moves the balance |
+| `expires_on` | `date` (purchase only) | When the granted balance expires; empty when it does not |
+| `currency` | `string` | ISO 4217 currency code |
+| `segment` | `string` | Segment the customer was in when the event occurred. See [Segment on events](#segment-on-events). |
+
+The balances are optional because several billing systems carry the signed amount alone and leave the balance to a sum; the metrics read `credit_amount` either way. The ledger is kept at customer and subscription level, so the source system decides which grant a consumption draws first.
+
+**Rollover.** A balance that rolls over into a new term has no `expiry` event. The new term's grant is a `purchase` carrying the new `expires_on`, and the rolled-over amount is carried by that grant rather than bought again.
+
+**What stays out.** Usage quantities in product units (the CEL carries currency), rated usage lines (the billing system keeps those) and GAAP journal entries. A `Credit_Event` is the commercial fact that a balance was bought, consumed or forfeited; the entry that recognises it as revenue stays in the accounting ledger.
+
 ### Pairing rule: amendments that change MRR
 
 Any `Amendment_Event` that changes MRR also writes a `Revenue_Event` carrying the `mrr_change`, the `event_type` (`expansion` or `contraction`) and the `expansion_classification`. The amendment row keeps the contract detail (plan, quantity, amendment type). The two are distinct facts about one commercial action, so NRR, ARR and the other revenue metrics read `Revenue_Event` and still see mid-term expansion such as seat adds and `new_module` upsells.
 
 ### Segment on events
 
-`segment` is a dimension for slicing metrics, not an ATL tag: it says which kind of customer an event belongs to, not what the event means. It is denormalised onto `Revenue_Event`, `Contract_Event` and `Amendment_Event` on purpose, as of the event date, so NRR, churn and the MRR movements group by segment without a join and a customer that moves from SMB to Mid-Market keeps its earlier events in SMB. The customer and subscription snapshots carry the current value on each snapshot date. Pricing tier is the plan (`plan_id`), not the segment.
+`segment` is a dimension for slicing metrics, not an ATL tag: it says which kind of customer an event belongs to, not what the event means. It is denormalised onto `Revenue_Event`, `Contract_Event`, `Amendment_Event` and `Credit_Event` on purpose, as of the event date, so NRR, churn and the MRR movements group by segment without a join and a customer that moves from SMB to Mid-Market keeps its earlier events in SMB. The customer and subscription snapshots carry the current value on each snapshot date. Pricing tier is the plan (`plan_id`), not the segment.
 
 ---
 
@@ -367,6 +394,27 @@ Customer's health score deteriorates, triggering an at-risk state.
   "new_state": "at_risk",
   "state_category": "at_risk",
   "trigger": "Health score dropped from 72 to 35"
+}
+```
+
+### 11. Prepaid Credit Drawdown
+
+A customer on a $120,000 annual prepaid commitment consumes $9,400 of it in March. The purchase was recorded as its own `Credit_Event` when the commitment was paid for.
+
+```json
+{
+  "event_class": "Credit_Event",
+  "event_id": "cre-001",
+  "event_date": "2026-03-31",
+  "customer_id": "cust-0921",
+  "subscription_id": "sub-1730",
+  "credit_event_type": "consumption",
+  "credit_amount": -9400.00,
+  "consumption_basis": "committed",
+  "credit_balance_before": 101200.00,
+  "credit_balance_after": 91800.00,
+  "currency": "USD",
+  "segment": "Enterprise"
 }
 ```
 
@@ -759,6 +807,96 @@ usage_changes AS (
 
 ---
 
+## Deriving Credit Events
+
+The [Credit_Event](#credit_event) ledger and the usage records describe the same overage from two sides. A billing system that keeps a credit ledger records the usage billed beyond a commitment as `consumption` with basis `overage`; a billing system that keeps usage records states the commitment and the usage beside it. This section defines how each gives what the other would: the usage realisation pair from the credit ledger, and the consumption events from the usage records. One of the two is read, so the overage is never counted twice.
+
+### Realisation from the Credit Ledger
+
+#### Input
+
+The GASP `credit_event` dataset: `subscription_id`, `customer_id`, `event_date`, `credit_event_type`, `consumption_basis` and `credit_amount`. Only `consumption` rows with basis `overage` are read. Consumption drawn from a prepaid balance (basis `committed`) is already in the subscription's MRR through the commitment, and pay-as-you-go consumption (basis `on_demand`) has no commitment to exceed, so neither realises usage.
+
+#### Rules
+
+1. **Overage per month.** A subscription's `consumption` events with basis `overage` in a calendar month sum to that month's realised usage: the sum of their `credit_amount`, negated, since consumption is negative.
+2. **The pair.** Each month with an overage of a cent or more adds the pair the [usage realisation rules](#deriving-usage-realisation) define: an `expansion` dated the month's last day and its `scheduled_reversal` dated the next day, tagged `usage_realisation`, chained with the ledger's steps, identity `<subscription_id>:usage:<date>`. The pair is the same whichever way the commitment was billed: realised usage above a commitment is expansion, ratable or drawn down.
+3. **One source.** Where the usage records are mapped they are the source, and the credit ledger's overage is not derived again: `derive_cel` reads the `usage_record` dataset when the mapping covers it and the `credit_event` dataset otherwise.
+
+#### Reference SQL
+
+The two common table expressions the credit ledger adds in place of the usage records', over the GASP field names. They end in the same `usage_changes`, so the final `SELECT` of the [subscription derivation](#reference-sql) types, tags and identifies the pairs exactly as it does the usage records'. The test suite runs it over the synthetic dataset's credit events and checks that it gives the pairs the usage records give for the same customers, row for row, and nothing for drawdown and pay-as-you-go consumption.
+
+```sql
+usage_periods AS (
+  SELECT subscription_id, customer_id, period_end,
+         ROUND(SUM(overage), 2) AS overage
+  FROM (
+    SELECT subscription_id AS subscription_id,
+           customer_id AS customer_id,
+           CAST(DATE_TRUNC('month', event_date) + INTERVAL '1 month' - INTERVAL '1 day' AS DATE) AS period_end,
+           -(credit_amount) AS overage
+    FROM credit_event
+    WHERE subscription_id IS NOT NULL AND event_date IS NOT NULL
+      AND credit_event_type = 'consumption' AND consumption_basis = 'overage'
+  ) c
+  GROUP BY subscription_id, customer_id, period_end
+),
+usage_changes AS (
+  SELECT subscription_id, customer_id, period_end AS snapshot_date, CAST(NULL AS VARCHAR) AS segment, 0 AS opening, overage AS mrr_change, 'usage' AS kind
+  FROM usage_periods WHERE overage >= 0.01
+  UNION ALL
+  SELECT subscription_id, customer_id, CAST((period_end + INTERVAL '1 day') AS DATE), CAST(NULL AS VARCHAR), 0, -overage, 'usage_reversal'
+  FROM usage_periods WHERE overage >= 0.01
+)
+```
+
+### Consumption Events from Usage Records
+
+#### Input
+
+The GASP `usage_record` dataset, as [above](#deriving-usage-realisation): `subscription_id`, `customer_id`, `period_end`, `committed_amount` and `usage_amount`. This is for a company with usage records and no credit ledger, so that Consumption Revenue and Usage Run-Rate exist for its ratable customers.
+
+#### Rules
+
+1. **One event per period over the commitment.** Each period whose `usage_amount` exceeds its `committed_amount` by a cent or more gives one `Credit_Event`: `credit_event_type` `consumption`, `consumption_basis` `overage`, dated the period's last day, identity `<subscription_id>:overage:<period_end>`.
+2. **The amount as billed.** `credit_amount` is the overage the period bills, negated: `-(usage_amount - committed_amount)`. It is the whole period's charge, not stated as MRR; the realisation pair states it as MRR.
+3. **What the records do not say.** Usage within a ratable commitment is no event: the commitment is in the subscription's MRR. The records hold no prepaid balance, so `credit_balance_before`, `credit_balance_after` and `expires_on` are empty, and they carry no segment. A prepaid balance, its purchases, its committed drawdowns and its expiries come from the billing system's credit ledger.
+4. **No second realisation.** The usage records stay the source of the realisation pair, so the events written here are not read back by the rules above.
+
+#### Reference SQL
+
+The whole query, over the GASP field names. `derive_cel` emits it with `target: credit_event`. The test suite runs it over the synthetic dataset's usage records and checks that every month over the commitment gives one event for its overage, with the balances empty, and that the months within the commitment give nothing.
+
+```sql
+WITH overage_periods AS (
+  SELECT subscription_id AS subscription_id,
+         customer_id AS customer_id,
+         period_end AS period_end,
+         ROUND(usage_amount - committed_amount, 2) AS overage
+  FROM usage_record
+  WHERE period_end IS NOT NULL
+    AND usage_amount > committed_amount
+)
+SELECT CAST(subscription_id AS VARCHAR) || ':overage:' || CAST(period_end AS VARCHAR) AS event_id,
+       period_end AS event_date,
+       customer_id,
+       subscription_id,
+       'consumption' AS credit_event_type,
+       -overage AS credit_amount,
+       'overage' AS consumption_basis,
+       CAST(NULL AS DECIMAL(18, 2)) AS credit_balance_before,
+       CAST(NULL AS DECIMAL(18, 2)) AS credit_balance_after,
+       CAST(NULL AS DATE) AS expires_on,
+       'USD' AS currency,
+       CAST(NULL AS VARCHAR) AS segment
+FROM overage_periods
+WHERE overage >= 0.01
+ORDER BY period_end, customer_id, subscription_id
+```
+
+---
+
 ## Relationship to Existing Data Model
 
 The GASP Standard defines a three-level entity hierarchy in [Definitions](definitions.md#foundational-entities):
@@ -766,7 +904,7 @@ The GASP Standard defines a three-level entity hierarchy in [Definitions](defini
 | Entity | CEL Relationship |
 |--------|-----------------|
 | **Customer** | `customer_id` on all event classes. A customer churns when their last active subscription generates a churn `Revenue_Event`. |
-| **Subscription** | `subscription_id` on `Revenue_Event`, `Contract_Event` and `Amendment_Event`. MRR lives here. |
+| **Subscription** | `subscription_id` on `Revenue_Event`, `Contract_Event`, `Amendment_Event` and `Credit_Event`. MRR lives here, and so does a prepaid credit balance: a `Credit_Event` names the subscription or commitment its balance belongs to. |
 | **License** | Not directly in the CEL. Licenses are derived from subscriptions. Seat counts appear on `Amendment_Event` as `prior_quantity` / `new_quantity`. |
 
 The CEL sits beside the entity model and records *events that happen to* entities. The entity model defines the nouns; the CEL defines the verbs.
@@ -781,14 +919,16 @@ The CEL sits beside the entity model and records *events that happen to* entitie
 - Contractual milestones (new, renewal, amendment, cancellation)
 - Mid-term subscription changes
 - Customer lifecycle state transitions
+- Prepaid commitments and credit blocks, their consumption and their expiry
+- Consumption billed on demand, with no commitment behind it
 
 **The CEL does not cover:**
 - Product usage events (page views, feature clicks, API calls). These belong in a product analytics layer
-- GAAP revenue recognition events. These belong in the accounting ledger
+- GAAP revenue recognition events. The credit ledger records the commercial fact; the journal entry that recognises it stays in the accounting ledger
 - HR events (hiring, termination), unless directly costed as a `Cost_Event`
 - Infrastructure events (deployments, incidents). These belong in engineering observability
 
-The CEL is scoped to the same domain as the rest of the GASP Standard: subscription-based SaaS with recurring revenue. Pure consumption pricing with no contracted commitment, marketplace transactions and services-only revenue are out of scope. Usage that exceeds a contracted commitment is a `Revenue_Event` tagged `usage_realisation`, derived as [Deriving Usage Realisation](#deriving-usage-realisation) says.
+The CEL is scoped to the same domain as the rest of the GASP Standard: SaaS sold by subscription, by consumption or by both. Consumption with or without a contracted commitment is covered through `Credit_Event`. MRR and ARR still exclude uncommitted usage, which [Consumption Revenue](metrics/finance.md#consumption-revenue) and [Usage Run-Rate](metrics/finance.md#usage-run-rate) report. Usage that exceeds a contracted commitment is also a `Revenue_Event` tagged `usage_realisation`, derived as [Deriving Usage Realisation](#deriving-usage-realisation) says. Marketplace transactions and services-only revenue are out of scope.
 
 ---
 

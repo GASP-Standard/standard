@@ -6,10 +6,10 @@ A company that bills on Stripe, lands the Stripe tables in Redshift through Stri
 
 | File | What it is |
 |---|---|
-| `schema.sql` | Redshift DDL: the Stripe tables as Data Pipeline lands them (`stripe.*`, the columns used, invoice line items included), the four nightly snapshot tables the company keeps (`stripe_snapshots.*`), the table `derive_cel`'s SQL fills (`gasp.revenue_events`) and the period spine. The input to `profile_schema`. |
+| `schema.sql` | Redshift DDL: the Stripe tables as Data Pipeline lands them (`stripe.*`, the columns used, invoice line items included), the four nightly snapshot tables and the billing credits ledger the company keeps (`stripe_snapshots.*`), the table `derive_cel`'s SQL fills (`gasp.revenue_events`) and the period spine. The input to `profile_schema`. |
 | `snapshot.sql` | The nightly job: the joined state of every subscription item, customer and invoice appended with the day's date, the invoice carrying the service period and amount of its licensed lines, and a usage record for every metered line invoiced on the day. The company's choices live here: the customer segment read from a `segment` key in customer metadata, the customer status read from the subscriptions, the commitment behind a metered item read from the licensed items. |
-| `adapter.json` | The GASP mapping (adapter v1.1, warehouse `redshift`): the `subscription`, `customer`, `invoice` and `usage_record` datasets over the snapshots and `revenue_event` over the derived table. Every Stripe-shaped value is turned into a GASP one by a transform, listed below. |
-| `data.sql` | Three months of nightly snapshots for five customers, stated as the versions the job would have seen and expanded to one row per day, with the invoices at subscription grain and three usage records. Postgres, for the test; the tables are the Redshift ones. |
+| `adapter.json` | The GASP mapping (adapter v1.1, warehouse `redshift`): the `subscription`, `customer`, `invoice` and `usage_record` datasets over the snapshots, `credit_event` over the credits ledger and `revenue_event` over the derived table. Every Stripe-shaped value is turned into a GASP one by a transform, listed below. |
+| `data.sql` | Three months of nightly snapshots for five customers, stated as the versions the job would have seen and expanded to one row per day, with the invoices at subscription grain, three usage records and five billing credit transactions. Postgres, for the test; the tables are the Redshift ones. |
 | `events.json` | The sixteen `Revenue_Event` rows `derive_cel` gives over `data.sql` from the item snapshots and the usage records, with the classification `classify.sql` adds to the twelve ledger events (the four usage events arrive tagged). |
 | `classify.sql` | Fills `expansion_classification` from the item history on the events the derivation left untagged, the step `cel.md` rule 6 leaves to the amendment records. |
 | `metrics.yaml` | The company's own metrics for `score_drift`: two that agree with GASP, one that leaves reactivation out of Net New MRR and one that goes to review. |
@@ -28,6 +28,19 @@ The mapping's transforms, each a choice a reader may make differently:
 - **Customer status** is not a Stripe field. The nightly job derives it from the customer's subscriptions, and the mapping reads the derived column, because the customer identity checks compare it inside a correlated subquery where a transform cannot stand.
 - **Invoices.** `amount_due` and `amount_remaining` divided by 100, `status` recoded (`open` is `unpaid`, `uncollectible` is `written_off`, `void` has no GASP status), `status_transitions_paid_at` as the payment date, the currency upper-cased.
 
+## Billing credits
+
+Stripe keeps prepaid credits as two Billing API objects: a credit grant (the lot: an amount, a `category` of `paid` or `promotional`, `effective_at` and `expires_at`) and a credit balance transaction (one movement: a `credit` of type `credits_granted` or `credits_application_invoice_voided`, or a `debit` of type `credits_applied`, `credits_expired` or `credits_voided`). Stripe calls the ledger immutable and append-only, which is the CEL's `Credit_Event`. This example does not assume Data Pipeline lands these objects: the nightly job copies each new transaction from the API (List credit balance transactions) into `stripe_snapshots.credit_balance_transactions` with its grant's category and expiry. Credits apply to metered prices only, so the prepaid customer is cus_B.
+
+The mapping's choices:
+
+- **Type.** A paid grant is a `purchase`, an application `consumption`, an expiry `expiry`; a promotional grant, a credit back from a voided invoice and a voided grant are `adjustment` rows, positive or negative by their direction.
+- **Amount.** `amount` is in cents and unsigned, with the direction in `type`; the mapping divides by 100 and signs a debit negative, as `mrr_change` is signed.
+- **Basis.** Every application draws a prepaid balance, so it is `committed`. Metered usage beyond the credits is billed on the invoice; `derive_cel` with `target: credit_event` over the usage records writes it into the ledger as `overage` consumption.
+- **No subscription, no balance.** A grant belongs to a customer, so `subscription_id` stays unmapped, and Stripe's billing credits carry no running balance (the balance is a summary endpoint), so `credit_balance_before` and `credit_balance_after` stay unmapped. The balance metric sums the amounts and needs neither; the balance identity check says which two fields it lacks instead of passing on nothing.
+
+Over the sample: cus_B buys $100 on 02-01 expiring 03-31, the February usage invoice applies $60 on 03-01 and $40 expire on 03-31; cus_A's $20 promotional grant of 01-10 is voided unused on 02-15. Consumption Revenue is $60 in March, the Prepaid Credit Balance is $20, $100 and $0 at the three month ends, and Credit Breakage is $40 in March.
+
 ## The sample and its events
 
 `data.sql` states each item's versions; the stories are in its header. `derive_cel` over it gives the sixteen events in `events.json`, in the derivation's order: five `new` (two on the first day, one a converted trial), three expansions (seats added, a price rise on an immutable Stripe price, an add-on), one contraction, two churns, one reactivation on a new subscription id, and cus_B's two usage pairs (the $60 of February realised on 02-28 and reversed on 03-01, the $25 of March realised on 03-31 and reversed on 04-01). The customer's MRR chains through all of them, so `prior_mrr + mrr_change = new_mrr` holds on every row. MRR from the items on 2026-03-31 is 1,349, plus the $25 of March usage until it reverses.
@@ -36,9 +49,9 @@ The derivation leaves `expansion_classification` empty on the ledger events (the
 
 ## What the test shows
 
-1. `validate_mapping`: the adapter passes the schema and covers 24 metrics fully, 18 of them Core, from five datasets.
+1. `validate_mapping`: the adapter passes the schema and covers 31 metrics fully, 18 of them Core, from six datasets; the seven beyond the revenue metrics read the credits ledger, and the test computes three of them over the sample.
 2. `derive_cel`: the SQL compiles with every field mapped, the usage records read because the mapping covers them, and, run on the sample, gives the sixteen events in `events.json`; with `source: invoice` it reads the invoices alone and gives the nine events the invoice rule can see.
-3. `generate_checks`: 15 of the 32 checks run over this mapping (the rest need the cost, contract and amendment datasets, or `mrr_start`); before `classify.sql` the expansion tag check fails on the five tagged events, after it every check passes (the revenue event freshness window is a week, since five customers do not move every day).
+3. `generate_checks`: 18 of the 36 checks run over this mapping (the rest need the cost, contract and amendment datasets, `mrr_start` or the credit balances Stripe does not carry); before `classify.sql` the expansion tag check fails on the five tagged events, after it every check passes (the revenue event freshness window is a week, since five customers do not move every day).
 4. `readiness_report`: level 2 from the adapter alone, level 2 with the check rows before classification (the failing check names the Core metrics it protects), level 3 after it, level 4 with the model `compile_model` returns.
 5. `score_drift` on `metrics.yaml`: `mrr` and `churned_mrr` agree with the canonical definitions (the `COALESCE` on `churned_mrr` is what makes a month with no churn a 0 rather than a NULL, the difference Acme's `cancelled_mrr` plants); `net_new_mrr`, the four movements a billing dashboard shows, differs in the month a customer returns because GASP's Net New MRR counts reactivation; `paying_customers` has no GASP name and goes to review.
 

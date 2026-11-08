@@ -5,10 +5,10 @@ import type { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
 import { fillTemplate } from "../src/tools.js";
 import { DIALECT, DIALECTS } from "../src/dialect.js";
-import { DERIVED_FIELDS, deriveCelFromText, invoiceLedgerSql, referenceDerivationSql, referenceInvoiceLedgerSql, referenceUsageSql, revenueEventDerivation, revenueEventDerivationSql, usageChangesSql, type DerivationOptions } from "../src/cel.js";
+import { CREDIT_DERIVED_FIELDS, DERIVED_FIELDS, creditEventDerivation, creditEventDerivationSql, creditUsageChangesSql, deriveCelFromText, invoiceLedgerSql, referenceCreditEventSql, referenceCreditUsageSql, referenceDerivationSql, referenceInvoiceLedgerSql, referenceUsageSql, revenueEventDerivation, revenueEventDerivationSql, usageChangesSql, type DerivationOptions } from "../src/cel.js";
 import { adapterToOssie } from "../src/ossie/adapt.js";
 import { ossieYaml } from "../src/ossie/index.js";
-import { HISTORY_START, USAGE, addDays, customerStatusOn, mrrOn, type Row } from "../src/synthetic.js";
+import { CREDITS, HISTORY_START, USAGE, addDays, customerStatusOn, mrrOn, type Row } from "../src/synthetic.js";
 import { fixture, adapter, fixtureDb, runTemplate } from "./fixture-db.js";
 
 // The CEL derivation rules (standard/cel.md, "Deriving Revenue Events from a
@@ -173,11 +173,19 @@ describe("revenue event derivation", () => {
     expect(revenueEventDerivationSql({ dialect: "bigquery", currency: "EUR" })).toContain("CAST(snapshot_date AS STRING)");
     expect(revenueEventDerivationSql({ dialect: "bigquery", currency: "EUR" })).toContain("CAST(NULL AS STRING) ELSE 'usage_realisation' END AS expansion_classification");
     for (const dialect of DIALECTS) {
-      for (const opts of [{ source: "invoice" as const }, { usage: true }, { source: "invoice" as const, usage: true }]) {
+      for (const opts of [{ source: "invoice" as const }, { usage: true }, { source: "invoice" as const, usage: true }, { usage: true, usageSource: "credit_event" as const }, { source: "invoice" as const, usage: true, usageSource: "credit_event" as const }]) {
         const sql = revenueEventDerivationSql({ dialect, currency: "EUR", ...opts });
         for (const token of DIALECT[dialect].forbidden) expect(sql, `${dialect} ${JSON.stringify(opts)}: ${token}`).not.toContain(token);
       }
+      const credit = creditEventDerivationSql({ dialect, currency: "EUR" });
+      for (const token of DIALECT[dialect].forbidden) expect(credit, `${dialect} credit events: ${token}`).not.toContain(token);
+      expect(credit).toContain("'EUR' AS currency");
     }
+    expect(revenueEventDerivationSql({ dialect: "snowflake", currency: "EUR", usage: true, usageSource: "credit_event" })).toContain("LAST_DAY(CAST({{event_date@credit_event}} AS DATE)) AS period_end");
+    expect(revenueEventDerivationSql({ dialect: "bigquery", currency: "EUR", usage: true, usageSource: "credit_event" })).toContain("CAST(DATE_ADD(period_end, INTERVAL 1 DAY) AS DATE)");
+    expect(creditEventDerivationSql({ dialect: "bigquery", currency: "EUR" })).toContain("CAST(subscription_id AS STRING) || ':overage:' || CAST(period_end AS STRING) AS event_id");
+    expect(() => revenueEventDerivationSql({ currency: "EUR", usage: true, usageSource: "ledger" as never })).toThrow(/usageSource must be/);
+    expect(() => creditEventDerivationSql({ currency: "euros" })).toThrow(/ISO 4217/);
     expect(revenueEventDerivationSql({ dialect: "bigquery", currency: "EUR", source: "invoice" })).toContain("CAST(DATE_ADD(service_period_end, INTERVAL 1 DAY) AS DATE)");
     expect(revenueEventDerivationSql({ dialect: "snowflake", currency: "EUR", usage: true })).toContain("(DATEDIFF(day, {{period_start@usage_record}}, {{period_end@usage_record}}) + 1) * 12.0 / 365.25");
     // Redshift's CONCAT takes two arguments, so the id is built with ||.
@@ -358,6 +366,140 @@ describe("usage realisation", () => {
   });
 });
 
+describe("usage realisation from the credit ledger", () => {
+  const ukey = (r: Derived) => [r.customer_id, r.subscription_id, day(r.event_date), r.event_type, Number(r.mrr_change), Number(r.prior_mrr), Number(r.new_mrr), r.change_nature, r.expansion_classification, r.lifecycle_attribution, r.event_id, r.segment].join("|");
+  const realised = (rows: Derived[]) => rows.filter((r) => r.expansion_classification === "usage_realisation");
+
+  it("reads the credit_event dataset in place of usage_record, and gives the usage records' pairs for the same customers, row for row", async () => {
+    const t = revenueEventDerivation({ currency: "USD", usage: true, usageSource: "credit_event" });
+    expect(t.datasets).toEqual(["subscription", "credit_event"]);
+    expect(t.placeholders.filter((p) => !p.endsWith("@subscription")).sort()).toEqual(["consumption_basis@credit_event", "credit_amount@credit_event", "credit_event_type@credit_event", "customer_id@credit_event", "event_date@credit_event", "subscription_id@credit_event"]);
+    expect(t.parameterizedQuery).not.toContain("usage_record");
+    const fromCredit = realised(await derive(undefined, { usage: true, usageSource: "credit_event" }));
+    const fromUsage = realised(await derive(undefined, { usage: true }));
+    expect(fromUsage.length).toBe(12);
+    const usageCustomers = new Set(Object.keys(USAGE));
+    expect(fromCredit.filter((r) => usageCustomers.has(String(r.customer_id))).map(ukey).sort()).toEqual(fromUsage.map(ukey).sort());
+  });
+
+  it("realises an exhausted drawdown's overage and nothing from committed drawdowns, expiries or pay-as-you-go", async () => {
+    const got = await derive(undefined, { usage: true, usageSource: "credit_event" });
+    const others = realised(got).filter((r) => !(String(r.customer_id) in USAGE));
+    // The stories' overage outside the usage customers: c11 ran out of its first prepaid balance in March.
+    const overage = Object.entries(CREDITS).flatMap(([c, rows]) => rows.filter((r) => r.basis === "overage").map((r) => [c, r.date, -r.amount] as const));
+    expect(overage).toEqual([["c11", "2026-03-31", 300]]);
+    expect(others.map((r) => [r.customer_id, day(r.event_date), r.event_type, Number(r.mrr_change), r.change_nature])).toEqual([
+      ["c11", "2026-03-31", "expansion", 300, "temporary"],
+      ["c11", "2026-04-01", "contraction", -300, "scheduled_reversal"],
+    ]);
+    for (const c of ["c09", "c01", "c06"]) expect(realised(got).filter((r) => r.customer_id === c)).toEqual([]);
+    for (const r of got) expect(Number(r.prior_mrr) + Number(r.mrr_change)).toBe(Number(r.new_mrr));
+    expect(new Set(got.filter((r) => r.change_nature === "permanent").map(key))).toEqual(new Set((await derive()).map(key)));
+  });
+
+  it("sums a month's overage consumption into one pair dated the month's last day and ignores the other rows", async () => {
+    await db.exec("CREATE TABLE credit_ledger AS SELECT * FROM gasp_credit_events WHERE false");
+    const rows: Array<[id: string, customer: string, sub: string | null, date: string | null, type: string, amount: number, basis: string | null]> = [
+      ["k1", "c01", "s01", "2026-02-03", "consumption", -100, "overage"], // two overage rows in February: 150.5
+      ["k2", "c01", "s01", "2026-02-20", "consumption", -50.5, "overage"],
+      ["k3", "c01", "s01", "2026-02-10", "consumption", -999, "committed"], // drawn from a balance: nothing
+      ["k4", "c01", "s01", "2026-02-12", "consumption", -999, "on_demand"], // no commitment: nothing
+      ["k5", "c01", "s01", "2026-02-01", "purchase", 5000, null], // a purchase: nothing
+      ["k6", "c01", "s01", "2026-02-28", "expiry", -200, null], // an expiry: nothing
+      ["k7", "c01", "s01", "2026-04-15", "consumption", -0.004, "overage"], // under a cent: nothing
+      ["k8", "c01", null, "2026-05-15", "consumption", -80, "overage"], // no subscription: nothing
+      ["k9", "c02", "s02", "2026-12-31", "consumption", -40, "overage"], // the year's last day reverses on the next year's first
+    ];
+    const lit = (v: string | number | null) => (v === null ? "NULL" : typeof v === "number" ? String(v) : `'${v}'`);
+    for (const [id, c, sub, date, type, amount, basis] of rows) {
+      await db.exec(`INSERT INTO credit_ledger (event_id, customer_id, sub_ref, event_date, credit_event_type, credit_amount, consumption_basis, currency)
+        VALUES ('${id}', '${c}', ${lit(sub)}, ${date ? `DATE '${date}'` : "NULL"}, '${type}', ${amount}, ${lit(basis)}, 'USD')`);
+    }
+    const got = (await derive("credit_ledger", { usage: true, usageSource: "credit_event" }, "credit_event")).filter((r) => r.change_nature !== "permanent").map((r) => [r.customer_id, r.subscription_id, day(r.event_date), r.event_type, Number(r.mrr_change), r.change_nature, r.event_id]);
+    expect(got).toEqual([
+      ["c01", "s01", "2026-02-28", "expansion", 150.5, "temporary", "s01:usage:2026-02-28"],
+      ["c01", "s01", "2026-03-01", "contraction", -150.5, "scheduled_reversal", "s01:usage:2026-03-01"],
+      ["c02", "s02", "2026-12-31", "expansion", 40, "temporary", "s02:usage:2026-12-31"],
+      ["c02", "s02", "2027-01-01", "contraction", -40, "scheduled_reversal", "s02:usage:2027-01-01"],
+    ]);
+  });
+
+  it("is appended to the subscription derivation's changes like the usage records, and cel.md prints its CTEs", () => {
+    const sql = revenueEventDerivationSql({ currency: "USD", usage: true, usageSource: "credit_event" });
+    expect(sql).toContain(`),\n${creditUsageChangesSql("postgres")},\nchanges AS (`);
+    expect(sql).toContain("SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, kind FROM usage_changes\n)");
+    // The two sources end in the same usage_changes CTE.
+    const tail = (x: string) => x.slice(x.indexOf("usage_changes AS ("));
+    expect(tail(creditUsageChangesSql("postgres"))).toBe(tail(usageChangesSql("postgres")));
+    expect(celBlock("### Realisation from the Credit Ledger")).toBe(referenceCreditUsageSql().trim());
+  });
+});
+
+describe("credit event derivation", () => {
+  type CreditRow = Record<(typeof CREDIT_DERIVED_FIELDS)[number], unknown>;
+  /** The overage the synthetic usage records call for: each month whose usage exceeds the commitment, for the whole overage. */
+  function expectedOverage() {
+    const rows: string[] = [];
+    for (const [c, byMonth] of Object.entries(USAGE)) {
+      for (const [month, used] of Object.entries(byMonth)) {
+        const committed = mrrOn(c, `${month}-01`);
+        if (committed <= 0 || used <= committed) continue;
+        rows.push([c, subOf(c), monthEnd(`${month}-01`), committed - used].join("|"));
+      }
+    }
+    return rows;
+  }
+  const ckey = (r: CreditRow) => [r.customer_id, r.subscription_id, day(r.event_date), Number(r.credit_amount)].join("|");
+
+  it("writes one overage consumption per usage period over its commitment, with the balances empty", async () => {
+    const t = creditEventDerivation({ currency: "USD" });
+    expect(t.metric).toBe("cel_credit_events");
+    expect(t.datasets).toEqual(["usage_record"]);
+    expect(t.placeholders.every((p) => p.endsWith("@usage_record"))).toBe(true);
+    const filled = fillTemplate(t, adapter, data);
+    expect(filled.missingFields).toEqual([]);
+    const got = (await db.query<CreditRow>(filled.sql)).rows;
+    expect(Object.keys(got[0])).toEqual([...CREDIT_DERIVED_FIELDS]);
+    // One event per pair the usage realisation gives.
+    expect(got.length).toBe(6);
+    expect(got.map(ckey).sort()).toEqual(expectedOverage().sort());
+    for (const r of got) {
+      expect(r.credit_event_type).toBe("consumption");
+      expect(r.consumption_basis).toBe("overage");
+      expect(Number(r.credit_amount)).toBeLessThan(0);
+      expect(r.credit_balance_before).toBeNull();
+      expect(r.credit_balance_after).toBeNull();
+      expect(r.expires_on).toBeNull();
+      expect(r.segment).toBeNull();
+      expect(r.currency).toBe("USD");
+      expect(r.event_id).toBe(`${r.subscription_id}:overage:${day(r.event_date)}`);
+    }
+    // They are the overage rows the synthetic credit ledger holds for the usage customers.
+    const ledger = fixture.tables.credit_event.filter((r) => r.consumption_basis === "overage" && String(r.customer_id) in USAGE);
+    expect(ledger.map((r) => ckey(r as CreditRow)).sort()).toEqual(got.map(ckey).sort());
+  });
+
+  it("states the whole period's overage, not MRR, and ignores a period within the commitment or with no end", async () => {
+    await db.exec("CREATE TABLE usage_for_credits AS SELECT * FROM gasp_usage_records WHERE false");
+    const rows: Array<[sub: string, customer: string, start: string, end: string | null, committed: number, used: number]> = [
+      ["s01", "c01", "2026-01-01", "2026-03-31", 3000, 3900], // a quarter: 900, as billed
+      ["s01", "c01", "2026-04-01", "2026-06-30", 4500, 4500], // met exactly: nothing
+      ["s02", "c02", "2026-02-01", "2026-02-28", 2000, 2000.004], // under a cent over: nothing
+      ["s02", "c02", "2026-03-01", null, 2000, 2500], // no end: nothing
+    ];
+    for (const [sub, c, start, end, committed, used] of rows) {
+      await db.exec(`INSERT INTO usage_for_credits (subscription_id, customer_id, period_start, period_end, committed_amount, usage_amount, currency)
+        VALUES ('${sub}', '${c}', DATE '${start}', ${end ? `DATE '${end}'` : "NULL"}, ${committed}, ${used}, 'USD')`);
+    }
+    const sql = fillTemplate(creditEventDerivation({ currency: "USD" }), adapterOver("usage_for_credits", "usage_record"), data).sql;
+    expect((await db.query<CreditRow>(sql)).rows.map(ckey)).toEqual(["c01|s01|2026-03-31|-900"]);
+  });
+
+  it("is printed in standard/cel.md as the reference SQL", () => {
+    expect(celBlock("### Consumption Events from Usage Records")).toBe(referenceCreditEventSql().trim());
+  });
+});
+
 describe("derive_cel tool", () => {
   const acme = readFileSync(join(import.meta.dirname, "fixture", "acme-adapter.json"), "utf8");
   const fixtureAdapter = JSON.stringify(adapter);
@@ -410,6 +552,56 @@ describe("derive_cel tool", () => {
     expect(report).not.toContain("usage_changes");
     const invoices = deriveCelFromText(acme, undefined, data, { currency: "EUR", source: "invoice" });
     expect(invoices).toMatch(/Unmapped fields \(left as placeholders\):.*`service_period_start@invoice`.*`recurring_amount@invoice`/);
+  });
+
+  it("reads the usage records when both they and a credit ledger are mapped, so the overage is derived once", async () => {
+    expect(adapter.datasets.credit_event).toBe("gasp_credit_events");
+    const sql = deriveCelFromText(fixtureAdapter, undefined, data, { currency: "USD", output: "sql" });
+    expect(sql).toContain("FROM gasp_usage_records");
+    expect(sql).not.toContain("gasp_credit_events");
+    const rows = (await db.query<Derived>(sql)).rows;
+    expect(rows.filter((r) => r.expansion_classification === "usage_realisation").length).toBe(12);
+    expect(new Set(rows.map((r) => r.event_id)).size).toBe(rows.length);
+    const report = deriveCelFromText(fixtureAdapter, undefined, data, { currency: "USD" });
+    expect(report).toContain("the `credit_event` dataset is mapped too and not read, so the overage is not derived twice");
+    // Asked for, the credit ledger is read instead of the usage records, never beside them.
+    const credit = deriveCelFromText(fixtureAdapter, undefined, data, { currency: "USD", usageSource: "credit_event", output: "sql" });
+    expect(credit).toContain("FROM gasp_credit_events");
+    expect(credit).not.toContain("gasp_usage_records");
+    expect(deriveCelFromText(fixtureAdapter, undefined, data, { currency: "USD", usageSource: "ledger" })).toContain("usage_source must be one of usage_record, credit_event");
+  });
+
+  it("reads the credit ledger unasked when the mapping covers it and no usage records", async () => {
+    const { usage_record: _, ...datasets } = adapter.datasets;
+    const noUsage = { ...adapter, datasets, mappings: adapter.mappings.filter((m: { warehouseRef: string }) => !m.warehouseRef.startsWith("gasp_usage_records.")) };
+    const sql = deriveCelFromText(JSON.stringify(noUsage), undefined, data, { currency: "USD", output: "sql" });
+    expect(sql).not.toContain("{{");
+    expect(sql).toContain("FROM gasp_credit_events");
+    const rows = (await db.query<Derived>(sql)).rows;
+    // The usage records' six pairs and c11's exhausted drawdown.
+    expect(rows.length).toBe(expected().length + 14);
+    const report = deriveCelFromText(JSON.stringify(noUsage), undefined, data, { currency: "USD" });
+    expect(report).toContain("# CEL Revenue_Events derived from your subscription ledger and credit ledger");
+    expect(report).toContain("the `credit_event` dataset (its overage consumption), 6 / 6 fields mapped (read because the mapping covers it");
+    expect(report).toContain("realisation-from-the-credit-ledger");
+    expect(report).toContain("**Usage realisation from the credit ledger.**");
+    expect(report).toContain("`credit_amount` (credit_event) → `gasp_credit_events.credit_amount`");
+  });
+
+  it("writes credit events from the usage records with target: credit_event", async () => {
+    const sql = deriveCelFromText(fixtureAdapter, undefined, data, { currency: "usd", target: "credit_event", output: "sql" });
+    expect(sql).not.toContain("{{");
+    expect(sql).toContain("FROM gasp_usage_records");
+    expect((await db.query(sql)).rows.length).toBe(6);
+    const report = deriveCelFromText(fixtureAdapter, undefined, data, { currency: "USD", target: "credit_event" });
+    expect(report).toContain("# CEL Credit_Events derived from your usage records");
+    expect(report).toContain("consumption-events-from-usage-records");
+    expect(report).toContain("the `usage_record` dataset, 5 / 5 fields mapped");
+    expect(report).toContain("**What the usage records can and cannot say for the credit ledger.**");
+    expect(report).toContain("Your mapping covers the `credit_event` dataset already.");
+    expect(deriveCelFromText(fixtureAdapter, undefined, data, { currency: "USD", target: "ledger" })).toContain("target must be one of revenue_event, credit_event");
+    const acmeReport = deriveCelFromText(acme, undefined, data, { currency: "EUR", target: "credit_event" });
+    expect(acmeReport).toMatch(/Unmapped fields \(left as placeholders\):.*`usage_amount@usage_record`/);
   });
 
   it("takes an Ossie mapping with its model as generate_query does", () => {

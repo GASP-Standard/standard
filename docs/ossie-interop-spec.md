@@ -26,9 +26,9 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 |  | Apache Ossie (incubating) | GASP |
 | --- | --- | --- |
 | What it is | Vendor-neutral spec for semantic models and ontology | Canonical SaaS metric standard |
-| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `custom_extensions` | 306 metrics, 94 definitions, 274 canonical fields in 53 datasets, 28 entities, 7 concepts, 22 source categories |
+| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `custom_extensions` | 313 metrics, 99 definitions, 280 canonical fields in 54 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, `OSSIE_SQL_2026`, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL and others) | GASP formula grammar (warehouse-agnostic), compiled to SQL for Postgres (which also runs on Redshift), Snowflake, BigQuery and Databricks |
-| Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 100 nodes and 200 edges across 21 edge types |
+| Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 104 nodes and 210 edges across 21 edge types |
 | Spec version | 0.1.1 released; 0.2.0.dev0 in development | v1 |
 | Governance | ASF Incubator: public lists, discussion-and-vote, three working groups (Metric Language, Catalog, Ontology) | One maintainer (Gareth O'Shea). `GOVERNANCE.md` in the public repository says how changes are decided, what counts as a breaking change and how a second maintainer is added |
 | License | Apache 2.0 | Content CC BY 4.0, code Apache 2.0 |
@@ -44,13 +44,13 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines five immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 306 metrics, 94 definitions, 23 MCP tools |
-| Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 306 metrics covered (279 formulas, 15 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
+| Canonical definitions agents can read | Strong | 313 metrics, 99 definitions, 23 MCP tools |
+| Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 313 metrics covered (286 formulas, 15 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Partial | `profile_schema` and `propose_mapping` take a pasted schema and statistics; the server has no warehouse access. `derive_cel` compiles the standard's derivation rules (`cel.md`) over the mapping, so a subscription ledger becomes CEL revenue events |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Value-distribution, key and freshness checks are still to come |
 | Ownership enforced | Strong | `validate_adapter` flags every covered metric that has no owner in `metricOwners` |
 | Definition drift | Good | `score_drift` runs a company's metrics beside the canonical ones on the synthetic dataset and explains each difference from the formula |
-| Metrics computed from CEL | Partial | The 279 query templates are compiled from formulas and read the CEL event datasets (53 datasets, each with its CEL class) wherever the formula does. Metrics whose formulas use snapshot or fact datasets still read those tables |
+| Metrics computed from CEL | Partial | The 286 query templates are compiled from formulas and read the CEL event datasets (54 datasets, each with its CEL class) wherever the formula does. Metrics whose formulas use snapshot or fact datasets still read those tables |
 | Raw source to CEL | Done | CEL is source-agnostic by design. The standard defines how a subscription ledger, an invoice ledger and usage records become Revenue_Events (`cel.md`, three rule sets executed in the test suite, 2026-11-03 and 2026-11-04); the Stripe and Salesforce worked examples (`gasp-wiki-mcp/test/fixture/`, 2026-11-04) exercise them end to end, the Stripe one from its item snapshots, its metered item's usage records and its invoices |
 | Correct multi-table SQL | Strong | `generate_query` compiles one scalar subquery per aggregate, each from the table mapped to that field's dataset, in the dialect the adapter's `warehouse` names |
 | A prioritised fix plan | Good | `plan_fixes` ranks every unmapped field and every failing readiness check by the Core metrics it unlocks, then all metrics, with an effort class shown. The O/M bridges and the value-range rules are not checks yet |
@@ -61,7 +61,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 
 - Public source: done 2026-10-13. The standard and the MCP server are mirrored to `GASP-Standard/standard`; the npm package's `repository` field points there.
 - Site counts come from the data build and are guarded by tests (2026-10-12). This document's counts are guarded the same way.
-- Depth is uneven: 279 of 306 metrics have data requirements (compiled from formulas) and only a handful carry common-mistakes notes.
+- Depth is uneven: 286 of 313 metrics have data requirements (compiled from formulas) and only a handful carry common-mistakes notes.
 - The field vocabulary was reconciled before the ontology document was published, because Ossie `ValueType` concepts make the vocabulary public. Canon decisions on 2026-10-12 settled the naming in `ontology.json` `fields`: CEL names win (`customer_id`, `event_type`, `cost` with `cost_function` and `cost_type`, `contract_event_type`, `amendment_type`) and ATL values are lowercase snake_case.
 
 ## Goals, non-goals and success metrics
@@ -329,7 +329,7 @@ About 16 weeks to launch from 2026-10-12, with community engagement from the int
 | Phase | Weeks | Work | Gate |
 | --- | --- | --- | --- |
 | 0. Hygiene | 1 to 2 | Done 2026-10-13: field vocabulary reconciled, npm 1.12.0 published, site deployed, secrets audit, public mirror with governance documents | Mirror public and linked from gaspwiki.com and npm (met) |
-| 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (294 formula entries, 274 fields, 53 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
+| 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (301 formula entries, 280 fields, 54 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
 | 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR (done 2026-11-02); mapping format and `validate_mapping` (done 2026-11-02); metric compiler into a company's model (done 2026-11-02, `compile_model`); reference model PR (branch `examples-gasp-saas` prepared, not yet open); DuckDB demo (done 2026-11-02); synthetic dataset grown from the test fixture (open) | Reference model PR open (prepared); compiled Core runs in DuckDB (met) |
 | 3. Drift and on-ramp | 10 to 16 | Drift scorer (done 2026-11-03, `score_drift`); profiler, proposer and Decide step (done 2026-11-03); the CEL derivation rules and `derive_cel`, the readiness checks and the fix plan (all done 2026-11-03); the Stripe and Salesforce worked examples (done 2026-11-04); P1 to P4 drafted | Drift report on a public vendor example (done 2026-11-04, the Stripe example); synthetic data reaches L4 (done 2026-11-03) |
 | Launch | 16+ | Ecosystem card, "GASP for Ossie" page, blog, community talk | Reference model merged |

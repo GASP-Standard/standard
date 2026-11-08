@@ -2307,3 +2307,62 @@ concept_mappings:
               concept: ForecastedRevenue
               expression: forecast.forecasted_revenue
             relationship: forecasted_revenue
+  - concept: CreditEvent
+    object_mappings:
+      - referent_mappings:
+          - relationship: event_id
+            expression: credit_event.event_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: event_id
+              expression: credit_event.event_id
+        children:
+          - object_mapping:
+              concept: Currency
+              expression: credit_event.currency
+            relationship: currency
+          - object_mapping:
+              concept: Customer
+              referent_mappings:
+                - relationship: customer_id
+                  expression: credit_event.customer_id
+            relationship: customer_id
+          - object_mapping:
+              concept: Date
+              expression: credit_event.event_date
+            relationship: event_date
+          - object_mapping:
+              concept: SegmentValue
+              expression: credit_event.segment
+            relationship: segment
+          - object_mapping:
+              concept: Subscription
+              referent_mappings:
+                - relationship: subscription_id
+                  expression: credit_event.subscription_id
+            relationship: subscription_id
+          - object_mapping:
+              concept: CreditEventType
+              expression: credit_event.credit_event_type
+            relationship: credit_event_type
+          - object_mapping:
+              concept: CreditAmount
+              expression: credit_event.credit_amount
+            relationship: credit_amount
+          - object_mapping:
+              concept: ConsumptionBasis
+              expression: credit_event.consumption_basis
+            relationship: consumption_basis
+          - object_mapping:
+              concept: CreditBalanceBefore
+              expression: credit_event.credit_balance_before
+            relationship: credit_balance_before
+          - object_mapping:
+              concept: CreditBalanceAfter
+              expression: credit_event.credit_balance_after
+            relationship: credit_balance_after
+          - object_mapping:
+              concept: Date
+              expression: credit_event.expires_on
+            relationship: expires_on

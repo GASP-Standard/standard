@@ -1,5 +1,5 @@
--- Stripe as it lands in Redshift through Stripe Data Pipeline, and the four
--- snapshot tables a company keeps on top of it. Redshift DDL, the input to
+-- Stripe as it lands in Redshift through Stripe Data Pipeline, and the five
+-- tables a company keeps on top of it. Redshift DDL, the input to
 -- profile_schema. Column names follow the Stripe API reference as Data
 -- Pipeline and Sigma flatten them: nested fields join with an underscore
 -- (recurring.interval is recurring_interval, status_transitions.paid_at is
@@ -183,6 +183,30 @@ CREATE TABLE stripe_snapshots.usage_records (
   usage_amount BIGINT NOT NULL,
   currency CHAR(3),
   PRIMARY KEY (period_start, subscription_item_id)
+);
+
+-- Kept by the company: Stripe's billing credits ledger. Credit grants and
+-- credit balance transactions are Billing API objects (Billing.CreditGrant,
+-- Billing.CreditBalanceTransaction, API version 2024-10-28); this example does
+-- not assume Data Pipeline lands them, so the nightly job copies each new
+-- transaction from the API (List credit balance transactions, per customer)
+-- with its grant's category and expiry. Stripe's ledger is immutable and
+-- append-only, so the table is too. A transaction is a credit
+-- (credits_granted, credits_application_invoice_voided) or a debit
+-- (credits_applied, credits_expired, credits_voided); it carries the amount
+-- and no running balance. Credits apply to metered prices only.
+CREATE TABLE stripe_snapshots.credit_balance_transactions (
+  id VARCHAR(255) NOT NULL PRIMARY KEY,
+  customer_id VARCHAR(255) NOT NULL,
+  credit_grant_id VARCHAR(255) NOT NULL,
+  effective_at TIMESTAMP NOT NULL,
+  type VARCHAR(8) NOT NULL,
+  credit_type VARCHAR(48),
+  debit_type VARCHAR(48),
+  amount BIGINT NOT NULL,
+  currency CHAR(3) NOT NULL,
+  grant_category VARCHAR(16) NOT NULL,
+  grant_expires_at TIMESTAMP
 );
 
 -- Written by the SQL derive_cel returns for adapter.json (see README.md), then

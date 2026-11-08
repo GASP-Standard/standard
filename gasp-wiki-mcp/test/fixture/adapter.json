@@ -41,6 +41,7 @@
     "balance_sheet": "gasp_balance_sheet",
     "revenue_schedule": "gasp_revenue_schedule",
     "usage_record": "gasp_usage_records",
+    "credit_event": "gasp_credit_events",
     "forecast": "gasp_forecasts",
     "quote": "gasp_quotes",
     "order": "gasp_orders",
@@ -354,6 +355,11 @@
       "warehouseRef": "gasp_usage_records.currency"
     },
     {
+      "gaspField": "currency",
+      "dataset": "credit_event",
+      "warehouseRef": "gasp_credit_events.currency"
+    },
+    {
       "gaspField": "customer_id",
       "dataset": "revenue_event",
       "warehouseRef": "gasp_revenue_events.account_ref"
@@ -447,6 +453,11 @@
       "gaspField": "customer_id",
       "dataset": "usage_record",
       "warehouseRef": "gasp_usage_records.customer_id"
+    },
+    {
+      "gaspField": "customer_id",
+      "dataset": "credit_event",
+      "warehouseRef": "gasp_credit_events.customer_id"
     },
     {
       "gaspField": "customer_status",
@@ -559,6 +570,11 @@
       "warehouseRef": "gasp_product_events.occurred_on"
     },
     {
+      "gaspField": "event_date",
+      "dataset": "credit_event",
+      "warehouseRef": "gasp_credit_events.event_date"
+    },
+    {
       "gaspField": "event_id",
       "dataset": "revenue_event",
       "warehouseRef": "gasp_revenue_events.event_id"
@@ -587,6 +603,11 @@
       "gaspField": "event_id",
       "dataset": "product_event",
       "warehouseRef": "gasp_product_events.event_id"
+    },
+    {
+      "gaspField": "event_id",
+      "dataset": "credit_event",
+      "warehouseRef": "gasp_credit_events.event_id"
     },
     {
       "gaspField": "event_type",
@@ -1523,6 +1544,11 @@
       "warehouseRef": "gasp_subscriptions.segment"
     },
     {
+      "gaspField": "segment",
+      "dataset": "credit_event",
+      "warehouseRef": "gasp_credit_events.segment"
+    },
+    {
       "gaspField": "severity",
       "warehouseRef": "gasp_incidents.severity"
     },
@@ -1738,6 +1764,11 @@
       "warehouseRef": "gasp_usage_records.subscription_id"
     },
     {
+      "gaspField": "subscription_id",
+      "dataset": "credit_event",
+      "warehouseRef": "gasp_credit_events.sub_ref"
+    },
+    {
       "gaspField": "subscription_status",
       "warehouseRef": "gasp_subscriptions.status"
     },
@@ -1868,6 +1899,30 @@
     {
       "gaspField": "written_off_hours",
       "warehouseRef": "gasp_time_entries.written_off_hours"
+    },
+    {
+      "gaspField": "credit_event_type",
+      "warehouseRef": "gasp_credit_events.credit_event_type"
+    },
+    {
+      "gaspField": "credit_amount",
+      "warehouseRef": "gasp_credit_events.credit_amount"
+    },
+    {
+      "gaspField": "consumption_basis",
+      "warehouseRef": "gasp_credit_events.consumption_basis"
+    },
+    {
+      "gaspField": "credit_balance_before",
+      "warehouseRef": "gasp_credit_events.credit_balance_before"
+    },
+    {
+      "gaspField": "credit_balance_after",
+      "warehouseRef": "gasp_credit_events.credit_balance_after"
+    },
+    {
+      "gaspField": "expires_on",
+      "warehouseRef": "gasp_credit_events.expires_on"
     }
   ]
 }

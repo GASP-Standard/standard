@@ -388,25 +388,25 @@ describe("SQL dialects", () => {
   };
   const expected: Record<DialectName, Record<keyof typeof constructs, string>> = {
     postgres: {
-      cast: "CAST((SELECT COUNT", shift: "({{_period_end}} - INTERVAL '3 month')", window: "> ({{_period_end}} - INTERVAL '7 day')",
+      cast: "CAST((SELECT COUNT", shift: "(({{_period_end}} + INTERVAL '1 day') - INTERVAL '3 month')", window: ">= (({{_period_end}} + INTERVAL '1 day') - INTERVAL '7 day')",
       dateDiff: "AVG(({{due_on@ticket}} - {{opened_on@ticket}}))", tsDiff: "AVG((EXTRACT(EPOCH FROM ({{resolved_at@ticket}} - {{created_at@ticket}})) / 86400.0))",
       percentile: "PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY {{minutes@ticket}})", median: "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY {{minutes@ticket}})",
       periodDays: "({{_period_end}} - {{_period_start}} + 1)",
     },
     snowflake: {
-      cast: "AS DOUBLE)", shift: "DATEADD(quarter, -1, {{_period_end}})", window: "> DATEADD(day, -7, {{_period_end}})",
+      cast: "AS DOUBLE)", shift: "DATEADD(quarter, -1, DATEADD(day, 1, {{_period_end}}))", window: ">= DATEADD(day, -7, DATEADD(day, 1, {{_period_end}}))",
       dateDiff: "AVG(DATEDIFF(day, {{opened_on@ticket}}, {{due_on@ticket}}))", tsDiff: "AVG((DATEDIFF(second, {{created_at@ticket}}, {{resolved_at@ticket}}) / 86400.0))",
       percentile: "PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY {{minutes@ticket}})", median: "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY {{minutes@ticket}})",
       periodDays: "(DATEDIFF(day, {{_period_start}}, {{_period_end}}) + 1)",
     },
     bigquery: {
-      cast: "AS FLOAT64)", shift: "DATE_SUB({{_period_end}}, INTERVAL 1 QUARTER)", window: "> DATE_SUB({{_period_end}}, INTERVAL 7 DAY)",
+      cast: "AS FLOAT64)", shift: "DATE_SUB(DATE_ADD({{_period_end}}, INTERVAL 1 DAY), INTERVAL 1 QUARTER)", window: ">= DATE_SUB(DATE_ADD({{_period_end}}, INTERVAL 1 DAY), INTERVAL 7 DAY)",
       dateDiff: "AVG(DATE_DIFF({{due_on@ticket}}, {{opened_on@ticket}}, DAY))", tsDiff: "AVG((TIMESTAMP_DIFF({{resolved_at@ticket}}, {{created_at@ticket}}, SECOND) / 86400.0))",
       percentile: "APPROX_QUANTILES({{minutes@ticket}}, 1000)[OFFSET(900)]", median: "APPROX_QUANTILES({{minutes@ticket}}, 1000)[OFFSET(500)]",
       periodDays: "(DATE_DIFF({{_period_end}}, {{_period_start}}, DAY) + 1)",
     },
     databricks: {
-      cast: "AS DOUBLE)", shift: "DATEADD(QUARTER, -1, {{_period_end}})", window: "> DATEADD(DAY, -7, {{_period_end}})",
+      cast: "AS DOUBLE)", shift: "DATEADD(QUARTER, -1, DATEADD(DAY, 1, {{_period_end}}))", window: ">= DATEADD(DAY, -7, DATEADD(DAY, 1, {{_period_end}}))",
       dateDiff: "AVG(DATEDIFF({{due_on@ticket}}, {{opened_on@ticket}}))", tsDiff: "AVG((TIMESTAMPDIFF(SECOND, {{created_at@ticket}}, {{resolved_at@ticket}}) / 86400.0))",
       percentile: "PERCENTILE({{minutes@ticket}}, 0.9)", median: "PERCENTILE({{minutes@ticket}}, 0.5)",
       periodDays: "(DATEDIFF({{_period_end}}, {{_period_start}}) + 1)",

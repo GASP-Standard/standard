@@ -3329,6 +3329,96 @@ ontology:
         multiplicity: OneToOne
         verbalizes:
           - "{Forecast} is identified by {Date}"
+  - concept: CreditEvent
+    type: EntityType
+    description: "Credit event (event dataset `credit_event`). CEL class: Credit_Event."
+    identify_by:
+      - event_id
+    relationships:
+      - name: currency
+        description: ISO 4217 currency code
+        roles:
+          - concept: Currency
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {Currency}"
+      - name: customer_id
+        description: Customer (account) identifier. Primary business noun; CEL name
+        roles:
+          - concept: Customer
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} belongs to {Customer}"
+      - name: event_date
+        description: Date the event occurred
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has event date {Date}"
+      - name: event_id
+        description: Unique, immutable event identifier
+        roles:
+          - concept: EventId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{CreditEvent} is identified by {EventId}"
+      - name: segment
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+        roles:
+          - concept: SegmentValue
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {SegmentValue}"
+      - name: subscription_id
+        description: Subscription identifier
+        roles:
+          - concept: Subscription
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} belongs to {Subscription}"
+      - name: credit_event_type
+        description: "CEL Credit_Event classifier: purchase (a prepaid commitment or block of credits paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)"
+        roles:
+          - concept: CreditEventType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {CreditEventType}"
+      - name: credit_amount
+        description: "Signed amount in currency at the contract's rates: positive for purchase and a granting adjustment, negative for consumption, expiry and a reducing adjustment. The sign convention mirrors mrr_change"
+        roles:
+          - concept: CreditAmount
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {CreditAmount}"
+      - name: consumption_basis
+        description: "On consumption events: committed (drawn from a prepaid balance), overage (above an exhausted or per-period commitment), on_demand (no commitment). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand alone"
+        roles:
+          - concept: ConsumptionBasis
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {ConsumptionBasis}"
+      - name: credit_balance_before
+        description: "The customer's prepaid balance before the event; equal to credit_balance_after on on_demand consumption. Optional: billing systems that carry the signed amount alone leave it empty and the balance is summed"
+        roles:
+          - concept: CreditBalanceBefore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {CreditBalanceBefore}"
+      - name: credit_balance_after
+        description: "The customer's prepaid balance after the event. With credit_balance_before it gives the ledger its identity check: before + amount = after"
+        roles:
+          - concept: CreditBalanceAfter
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has {CreditBalanceAfter}"
+      - name: expires_on
+        description: "On purchase events: the date the granted balance expires; empty when it does not. A balance that rolls over has no expiry event and the new term's grant carries the new date"
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{CreditEvent} has expires on {Date}"
   - concept: Revenue
     type: EntityType
     description: Revenue (GAAP). Recognized revenue under accrual accounting. The financial outcome of delivering on subscription obligations.
@@ -4491,5 +4581,34 @@ ontology:
   - concept: WrittenOffHours
     type: ValueType
     description: Hours written off
+    extends:
+      - Decimal
+  - concept: CreditEventType
+    type: ValueType
+    description: "CEL Credit_Event classifier: purchase (a prepaid commitment or block of credits paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)"
+    extends:
+      - String
+    requires:
+      - CreditEventType == 'purchase' OR CreditEventType == 'consumption' OR CreditEventType == 'expiry' OR CreditEventType == 'adjustment'
+  - concept: CreditAmount
+    type: ValueType
+    description: "Signed amount in currency at the contract's rates: positive for purchase and a granting adjustment, negative for consumption, expiry and a reducing adjustment. The sign convention mirrors mrr_change"
+    extends:
+      - Decimal
+  - concept: ConsumptionBasis
+    type: ValueType
+    description: "On consumption events: committed (drawn from a prepaid balance), overage (above an exhausted or per-period commitment), on_demand (no commitment). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand alone"
+    extends:
+      - String
+    requires:
+      - ConsumptionBasis == 'committed' OR ConsumptionBasis == 'overage' OR ConsumptionBasis == 'on_demand'
+  - concept: CreditBalanceBefore
+    type: ValueType
+    description: "The customer's prepaid balance before the event; equal to credit_balance_after on on_demand consumption. Optional: billing systems that carry the signed amount alone leave it empty and the balance is summed"
+    extends:
+      - Decimal
+  - concept: CreditBalanceAfter
+    type: ValueType
+    description: "The customer's prepaid balance after the event. With credit_balance_before it gives the ledger its identity check: before + amount = after"
     extends:
       - Decimal

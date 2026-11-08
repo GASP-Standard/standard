@@ -3,7 +3,7 @@
   "version": "1.1",
   "organization": "Stripe example",
   "warehouse": "redshift",
-  "_instructions": "A worked example, not a product integration: the GASP subscription, customer, invoice and usage_record datasets read from the nightly snapshots a company keeps of its Stripe Data Pipeline tables (schema.sql, snapshot.sql), and the revenue_event dataset from the table derive_cel fills. See README.md.",
+  "_instructions": "A worked example, not a product integration: the GASP subscription, customer, invoice, usage_record and credit_event datasets read from the nightly snapshots a company keeps of its Stripe Data Pipeline tables (schema.sql, snapshot.sql), and the revenue_event dataset from the table derive_cel fills. See README.md.",
   "metricOwners": [
     { "metric": "MRR", "team": "Finance" },
     { "metric": "NRR", "team": "Finance" },
@@ -14,6 +14,7 @@
     "customer": "stripe_snapshots.customers",
     "invoice": "stripe_snapshots.invoices",
     "usage_record": "stripe_snapshots.usage_records",
+    "credit_event": "stripe_snapshots.credit_balance_transactions",
     "revenue_event": "gasp.revenue_events"
   },
   "mappings": [
@@ -76,6 +77,14 @@
     { "gaspField": "committed_amount", "dataset": "usage_record", "warehouseRef": "committed_amount", "transform": "{{value}} / 100.0", "notes": "The MRR of the subscription's licensed items on the period's last day, as the nightly job computes it: the commitment Stripe has no field for." },
     { "gaspField": "usage_amount", "dataset": "usage_record", "warehouseRef": "usage_amount", "transform": "{{value}} / 100.0", "notes": "The commitment plus the metered line's charge, which Stripe bills for the calls beyond the volume the licensed price includes. A metered price with no included volume realises every call as usage; a company on such a price records its usage as the metered charge alone and its commitment as 0, outside GASP's scope." },
     { "gaspField": "currency", "dataset": "usage_record", "warehouseRef": "currency", "transform": "UPPER({{value}})" },
+    { "gaspField": "event_id", "dataset": "credit_event", "warehouseRef": "id" },
+    { "gaspField": "event_date", "dataset": "credit_event", "warehouseRef": "effective_at", "transform": "CAST({{value}} AS DATE)" },
+    { "gaspField": "customer_id", "dataset": "credit_event", "warehouseRef": "customer_id", "notes": "Credit grants belong to a customer, not a subscription, so subscription_id stays unmapped; the balance and consumption metrics do not read it. A grant scoped to prices (applicability_config) is still the customer's balance." },
+    { "gaspField": "credit_event_type", "dataset": "credit_event", "warehouseRef": "type", "transform": "CASE WHEN {{value}} = 'credit' AND credit_type = 'credits_granted' AND grant_category = 'paid' THEN 'purchase' WHEN {{value}} = 'debit' AND debit_type = 'credits_applied' THEN 'consumption' WHEN {{value}} = 'debit' AND debit_type = 'credits_expired' THEN 'expiry' ELSE 'adjustment' END", "notes": "A paid grant is a purchase; a promotional grant, a credit back from a voided invoice and a voided grant are adjustments, positive or negative by type. Stripe's own grant categories, paid and promotional, are the split the ledger needs." },
+    { "gaspField": "credit_amount", "dataset": "credit_event", "warehouseRef": "amount", "transform": "CASE WHEN type = 'debit' THEN -{{value}} ELSE {{value}} END / 100.0", "notes": "Stripe states the monetary amount in the smallest currency unit and the direction in type; GASP signs it like mrr_change." },
+    { "gaspField": "consumption_basis", "dataset": "credit_event", "warehouseRef": "debit_type", "transform": "CASE WHEN {{value}} = 'credits_applied' THEN 'committed' END", "notes": "Every application draws a prepaid balance. Metered usage beyond the credits is billed on the invoice and reaches the ledger through derive_cel target credit_event over the usage records, as overage." },
+    { "gaspField": "expires_on", "dataset": "credit_event", "warehouseRef": "grant_expires_at", "transform": "CASE WHEN credit_type = 'credits_granted' THEN CAST({{value}} AS DATE) END", "notes": "The grant's expires_at, on the granting transaction only." },
+    { "gaspField": "currency", "dataset": "credit_event", "warehouseRef": "currency", "transform": "UPPER({{value}})" },
     { "gaspField": "event_id", "dataset": "revenue_event", "warehouseRef": "event_id" },
     { "gaspField": "event_date", "dataset": "revenue_event", "warehouseRef": "event_date" },
     { "gaspField": "customer_id", "dataset": "revenue_event", "warehouseRef": "customer_id" },

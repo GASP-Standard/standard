@@ -78,6 +78,7 @@ export const TABLES: Record<string, string> = {
   balance_sheet: "gasp_balance_sheet",
   revenue_schedule: "gasp_revenue_schedule",
   usage_record: "gasp_usage_records",
+  credit_event: "gasp_credit_events",
   forecast: "gasp_forecasts",
   quote: "gasp_quotes",
   order: "gasp_orders",
@@ -123,6 +124,7 @@ export const COLUMNS: Record<string, Record<string, string>> = {
   deal_registration: { close_date: "closed_on", partner_id: "partner_ref" },
   onboarding: { snapshot_date: "snap_date", contract_start: "contract_began" },
   trial: { customer_id: "account_id", trial_status: "outcome" },
+  credit_event: { subscription_id: "sub_ref" },
 };
 
 export function columnName(dataset: string, field: string): string {
@@ -164,6 +166,8 @@ const maxDate = (a: string, b: string) => (a > b ? a : b);
 const weekday = (iso: string) => new Date(iso + "T00:00:00Z").getUTCDay(); // 0 Sunday
 const pad = (n: number) => String(n).padStart(2, "0");
 const MONTHS = [1, 2, 3, 4, 5, 6].map((m) => `2026-${pad(m)}`);
+/** Last day of a month, `2026-02` → `2026-02-28`. */
+const monthEnd = (m: string) => addDays(`${nextMonth(m)}-01`, -1);
 
 // ── stories ──────────────────────────────────────────────────────────────────
 
@@ -254,6 +258,50 @@ export const USAGE: Record<string, Record<string, number>> = {
   c02: { "2026-01": 1800, "2026-02": 2300, "2026-03": 1550, "2026-04": 1750, "2026-05": 1600, "2026-06": 1600 },
   c07: { "2026-01": 2800, "2026-02": 3000, "2026-03": 3400, "2026-04": 2900, "2026-05": 3900, "2026-06": 4500 },
   c10: { "2026-01": 2100, "2026-02": 2000, "2026-03": 1900, "2026-04": 2000, "2026-05": 2200, "2026-06": 2000 },
+};
+/**
+ * The credit ledger (Credit_Event, cel.md). Four customers that are active from
+ * before the window to its end and are not in USAGE, so the ledger moves no MRR
+ * figure: c09 and c11 are the two whose MRR never changes in the window and hold
+ * the prepaid drawdowns; c01 and c06 pay as they go.
+ * - c09 buys 9,000 of credits on 2026-01-01 expiring 2026-06-30, draws them down
+ *   each month end and forfeits the 300 left on 2026-06-30 (breakage).
+ * - c11 buys 6,000 expiring 2026-03-31, runs out in March and pays 300 overage,
+ *   then buys 6,000 more on 2026-04-01 expiring 2026-09-30; 100 is left at 2026-06-30.
+ * - c01 and c06 consume on demand, no balance.
+ * The USAGE customers also get one overage consumption row per month their usage
+ * passes the commitment, so the credit ledger and usage_record realise the same overage.
+ */
+export interface CreditStory {
+  type: "purchase" | "consumption" | "expiry" | "adjustment";
+  date: string;
+  amount: number;
+  basis?: "committed" | "overage" | "on_demand";
+  before: number;
+  after: number;
+  expires?: string;
+}
+const drawdown = (amounts: number[], opening: number): CreditStory[] => {
+  let balance = opening;
+  return amounts.map((a, i) => ({ type: "consumption", date: monthEnd(MONTHS[i]), amount: -a, basis: "committed", before: balance, after: (balance -= a) }));
+};
+const onDemand = (amounts: number[]): CreditStory[] =>
+  amounts.map((a, i) => ({ type: "consumption", date: monthEnd(MONTHS[i]), amount: -a, basis: "on_demand", before: 0, after: 0 }));
+export const CREDITS: Record<string, CreditStory[]> = {
+  c09: [
+    { type: "purchase", date: "2026-01-01", amount: 9000, before: 0, after: 9000, expires: "2026-06-30" },
+    ...drawdown([1200, 1500, 1400, 1700, 1600, 1300], 9000),
+    { type: "expiry", date: "2026-06-30", amount: -300, before: 300, after: 0 },
+  ],
+  c11: [
+    { type: "purchase", date: "2026-01-01", amount: 6000, before: 0, after: 6000, expires: "2026-03-31" },
+    ...drawdown([1800, 2100, 2100], 6000),
+    { type: "consumption", date: "2026-03-31", amount: -300, basis: "overage", before: 0, after: 0 },
+    { type: "purchase", date: "2026-04-01", amount: 6000, before: 0, after: 6000, expires: "2026-09-30" },
+    ...drawdown([1900, 2000, 2000], 6000).map((r, i) => ({ ...r, date: monthEnd(MONTHS[i + 3]) })),
+  ],
+  c01: onDemand([400, 450, 500, 520, 610, 700]),
+  c06: onDemand([300, 300, 350, 300, 400, 380]),
 };
 /** Customers acquired in the window spend 14 days in trial first. */
 const TRIAL_DAYS = 14;
@@ -592,7 +640,6 @@ function renewalState(c: string, d: string): Row {
 // Everything below draws from a second PRNG (SEED + 1), so adding it left every
 // row of the original eleven datasets as it was.
 
-const monthEnd = (m: string) => addDays(`${nextMonth(m)}-01`, -1);
 function nextMonth(m: string): string {
   const [y, mo] = m.split("-").map(Number);
   return mo === 12 ? `${y + 1}-01` : `${y}-${pad(mo + 1)}`;
@@ -1226,6 +1273,30 @@ function generateExtensions(t: Record<string, Row[]>): void {
         committed_amount: committed, usage_amount: byMonth[month], currency: "USD",
       }));
     }
+  }
+
+  // credit_event: the CREDITS stories, then one overage consumption per USAGE customer and
+  // month where usage passes the commitment (the MRR on the 1st, as usage_record reads it).
+  // Every value comes from the stories, so no PRNG draw.
+  const credits: Record<string, CreditStory[]> = Object.fromEntries(Object.entries(CREDITS).map(([c, rows]) => [c, [...rows]]));
+  for (const [c, byMonth] of Object.entries(USAGE)) {
+    for (const month of MONTHS) {
+      const committed = mrrOn(c, `${month}-01`);
+      const usage = byMonth[month];
+      if (committed <= 0 || usage === undefined || usage <= committed) continue;
+      (credits[c] ??= []).push({ type: "consumption", date: monthEnd(month), amount: -(usage - committed), basis: "overage", before: 0, after: 0 });
+    }
+  }
+  for (const [c, rows] of Object.entries(credits)) {
+    const sub = subscriptionOf(c);
+    rows.forEach((r, i) => {
+      const id = `${sub}:credit:${i + 1}`;
+      t.credit_event.push(row("credit_event", id, {
+        event_id: id, event_date: r.date, customer_id: c, subscription_id: sub, currency: "USD", segment: segmentOf(c),
+        credit_event_type: r.type, credit_amount: r.amount, consumption_basis: r.type === "consumption" ? r.basis ?? null : null,
+        credit_balance_before: r.before, credit_balance_after: r.after, expires_on: r.type === "purchase" ? r.expires ?? null : null,
+      }));
+    });
   }
 }
 

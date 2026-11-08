@@ -104,6 +104,26 @@ Average monthly recurring revenue per customer account.
 - **Canonical definition:** [Core Metrics](metrics/core.md#arpa-average-revenue-per-account)
 - **Used in:** Core (LTV, CAC Payback), Finance
 
+### Consumption Revenue
+Revenue earned as customers use the product: consumption drawn from a prepaid balance, billed as overage above a commitment or billed on demand with no commitment.
+- **Canonical definition:** [Finance Metrics](metrics/finance.md#consumption-revenue)
+- **Used in:** Finance
+
+### Usage Run-Rate (Usage ARR)
+On-demand consumption revenue over the trailing three months, annualised. Added to ARR it gives ARR Including Usage Run-Rate without counting any usage twice.
+- **Canonical definition:** [Finance Metrics](metrics/finance.md#usage-run-rate)
+- **Used in:** Finance
+
+### Prepaid Credit Balance (Remaining Commitment)
+The prepaid commitment customers have paid for and not yet consumed or forfeited: the part of the deferred revenue balance that is prepaid consumption.
+- **Canonical definition:** [Finance Metrics](metrics/finance.md#prepaid-credit-balance)
+- **Used in:** Finance
+
+### Credit Breakage
+The prepaid balance forfeited at expiry in a period. The commercial fact behind breakage revenue, which the accounting standards recognise on their own timing.
+- **Canonical definition:** [Finance Metrics](metrics/finance.md#credit-breakage)
+- **Used in:** Finance
+
 ---
 
 ## Retention Terms
@@ -135,6 +155,11 @@ Percentage of MRR lost to churn and contraction in a period. Gross (losses only,
 Percentage of contracts renewed at term.
 - **Canonical definition:** [Customer Success Metrics](metrics/customer-success.md#renewal-rate)
 - **Used in:** Customer Success, RevOps
+
+### Consumption Net Revenue Retention
+The consumption revenue of the customers active at period start over twelve months, divided by the same customers' consumption revenue over the twelve months before. A second basis beside NRR, reported as Consumption NRR rather than as NRR.
+- **Canonical definition:** [Finance Metrics](metrics/finance.md#consumption-net-revenue-retention)
+- **Used in:** Finance
 
 ---
 

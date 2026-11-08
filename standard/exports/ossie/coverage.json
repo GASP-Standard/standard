@@ -1,20 +1,20 @@
 {
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
   "counts": {
-    "direct": 190,
-    "staged": 164,
+    "direct": 194,
+    "staged": 169,
     "notComputable": 15
   },
   "stagedReasons": {
-    "cohort": 10,
-    "lag": 5,
+    "cohort": 11,
+    "lag": 6,
     "at period_start": 34,
     "total": 6,
     "period bound in filter": 93,
-    "to_date": 3,
+    "to_date": 4,
     "period_days": 2,
     "bucket": 1,
-    "window": 5,
+    "window": 7,
     "distinct pair": 1,
     "all_time": 4
   },
@@ -23,16 +23,16 @@
     "rungs": {
       "M0": 0,
       "M2": 51,
-      "M3": 139
+      "M3": 143
     },
     "constructs": {
-      "filtered aggregate": 139,
+      "filtered aggregate": 143,
       "count distinct": 77,
-      "arithmetic over aggregates": 122,
+      "arithmetic over aggregates": 126,
       "cross-dataset": 35,
       "date scalar": 17,
       "percentile": 10,
-      "null guard": 85
+      "null guard": 89
     }
   },
   "metrics": {
@@ -2888,6 +2888,76 @@
       "ossieName": "gasp_trial_to_paid_conversion_rate_by_start_date",
       "stagedDataset": "gasp_staged_gasp_trial_to_paid_conversion_rate_by_start_date",
       "reason": "all_time"
+    },
+    "consumption_revenue": {
+      "kind": "direct",
+      "ossieName": "gasp_consumption_revenue",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "consumption_revenue:by_basis": {
+      "kind": "direct",
+      "ossieName": "gasp_consumption_revenue_by_basis",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "consumption_revenue:by_segment": {
+      "kind": "direct",
+      "ossieName": "gasp_consumption_revenue_by_segment",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "usage_run_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_usage_run_rate",
+      "stagedDataset": "gasp_staged_gasp_usage_run_rate",
+      "reason": "window"
+    },
+    "prepaid_credit_balance": {
+      "kind": "staged",
+      "ossieName": "gasp_prepaid_credit_balance",
+      "stagedDataset": "gasp_staged_gasp_prepaid_credit_balance",
+      "reason": "to_date"
+    },
+    "arr_including_usage_run_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_arr_including_usage_run_rate",
+      "stagedDataset": "gasp_staged_gasp_arr_including_usage_run_rate",
+      "reason": "window"
+    },
+    "credit_breakage": {
+      "kind": "direct",
+      "ossieName": "gasp_credit_breakage",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "consumption_revenue_growth_rate": {
+      "kind": "staged",
+      "ossieName": "gasp_consumption_revenue_growth_rate",
+      "stagedDataset": "gasp_staged_gasp_consumption_revenue_growth_rate",
+      "reason": "lag"
+    },
+    "consumption_net_revenue_retention": {
+      "kind": "staged",
+      "ossieName": "gasp_consumption_net_revenue_retention",
+      "stagedDataset": "gasp_staged_gasp_consumption_net_revenue_retention",
+      "reason": "cohort"
     }
   }
 }

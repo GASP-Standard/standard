@@ -4,5 +4,5 @@
 -- compiled by GASP from the formula (Postgres dialect; the GASP extension on the dataset carries
 -- Snowflake, BigQuery and Databricks). It reads the tables in ../../data/, including gasp.period_spine.
 SELECT value
-FROM (SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date > (p.period_end - INTERVAL '1 day') AND event_date <= p.period_end AND product_event_type = 'qualifying')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date > (p.period_end - INTERVAL '30 day') AND event_date <= p.period_end AND product_event_type = 'qualifying')), 0))) AS value FROM gasp.period_spine p) AS s
+FROM (SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= ((p.period_end + INTERVAL '1 day') - INTERVAL '1 day') AND event_date <= p.period_end AND product_event_type = 'qualifying')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= ((p.period_end + INTERVAL '1 day') - INTERVAL '30 day') AND event_date <= p.period_end AND product_event_type = 'qualifying')), 0))) AS value FROM gasp.period_spine p) AS s
 WHERE period_start = DATE '2026-01-01';

@@ -119,7 +119,9 @@ Every CEL event is tagged according to these rules.
 
 ### Rule 1: Every event gets a Lifecycle tag
 
-All five event classes receive exactly one `lifecycle_attribution` tag.
+Every `Revenue_Event`, `Cost_Event` and `Amendment_Event` receives exactly one `lifecycle_attribution` tag. The other three classes carry none: a `Contract_Event` is tagged through the `Revenue_Event` it generates, a `Lifecycle_State_Change` is itself the lifecycle transition, and a `Credit_Event` records a movement on a prepaid balance.
+
+A `Credit_Event` carries no `expansion_classification` and no `cost_function` tag either. The realised usage it feeds is tagged on the `Revenue_Event` the derivation writes, as [Deriving Usage Realisation](cel.md#deriving-usage-realisation) says.
 
 ### Rule 2: Revenue growth and amendments get an Expansion tag
 

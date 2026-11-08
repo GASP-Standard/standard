@@ -305,6 +305,38 @@
       "slug": "revenue-per-employee"
     },
     {
+      "id": "consumption_revenue",
+      "label": "Consumption Revenue",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "consumption-revenue"
+    },
+    {
+      "id": "usage_run_rate",
+      "label": "Usage Run-Rate",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 2,
+      "slug": "usage-run-rate"
+    },
+    {
+      "id": "prepaid_credit_balance",
+      "label": "Prepaid Credit Balance",
+      "department": "Finance",
+      "signalType": "operational",
+      "level": 3,
+      "slug": "prepaid-credit-balance"
+    },
+    {
+      "id": "arr_including_usage_run_rate",
+      "label": "ARR Including Usage Run-Rate",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 1,
+      "slug": "arr-including-usage-run-rate"
+    },
+    {
       "id": "partner_sourced_revenue",
       "label": "Partner-Sourced Revenue",
       "department": "Partnerships",
@@ -1025,6 +1057,16 @@
       "type": "component"
     },
     {
+      "source": "arr",
+      "target": "arr_including_usage_run_rate",
+      "type": "component"
+    },
+    {
+      "source": "usage_run_rate",
+      "target": "arr_including_usage_run_rate",
+      "type": "component"
+    },
+    {
       "source": "new_customers",
       "target": "cac",
       "type": "component"
@@ -1215,6 +1257,11 @@
       "type": "measures"
     },
     {
+      "source": "arr_including_usage_run_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "at_risk_rate",
       "target": "entity_customer",
       "type": "measures"
@@ -1236,6 +1283,11 @@
     },
     {
       "source": "churned_mrr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
+      "source": "consumption_revenue",
       "target": "entity_customer",
       "type": "measures"
     },
@@ -1315,6 +1367,11 @@
       "type": "measures"
     },
     {
+      "source": "prepaid_credit_balance",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "qbr_completion",
       "target": "entity_customer",
       "type": "measures"
@@ -1345,6 +1402,11 @@
       "type": "measures"
     },
     {
+      "source": "usage_run_rate",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "acv",
       "target": "entity_subscription",
       "type": "measures"
@@ -1356,6 +1418,11 @@
     },
     {
       "source": "arr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "arr_including_usage_run_rate",
       "target": "entity_subscription",
       "type": "measures"
     },
@@ -1376,6 +1443,11 @@
     },
     {
       "source": "churned_mrr",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "consumption_revenue",
       "target": "entity_subscription",
       "type": "measures"
     },
@@ -1455,6 +1527,11 @@
       "type": "measures"
     },
     {
+      "source": "prepaid_credit_balance",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
       "source": "reactivation_mrr",
       "target": "entity_subscription",
       "type": "measures"
@@ -1476,6 +1553,11 @@
     },
     {
       "source": "rule_of_40",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "usage_run_rate",
       "target": "entity_subscription",
       "type": "measures"
     },

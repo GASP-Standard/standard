@@ -388,6 +388,8 @@ Deferred Revenue = Cumulative billings - Cumulative recognized revenue
 
 **What it tells you:** Revenue already billed that the company still owes in service.
 
+The [Prepaid Credit Balance](finance.md#prepaid-credit-balance) is the part of the deferred revenue balance that is prepaid consumption.
+
 ---
 
 ### Unbilled Revenue

@@ -3,7 +3,8 @@
  * written from public API documentation and never standard content
  * (DECISIONS.md 2026-11-03). Stripe, on Redshift: the mapping validates,
  * derive_cel over the sample ledger gives the events stated beside it, the
- * classification step fills the ATL tag, the checks pass, the readiness
+ * classification step fills the ATL tag, the billing credits ledger gives the
+ * consumption, balance and breakage metrics, the checks pass, the readiness
  * report climbs from level 2 to 4 and the drift report names the planted
  * difference, the interop spec's "drift report on a public vendor example".
  * Salesforce, on BigQuery: the mapping validates, Win Rate and Pipeline Value
@@ -20,6 +21,7 @@ import { DIALECT } from "../src/dialect.js";
 import { loadStandard } from "../src/loader.js";
 import { readiness, type ReadinessResult } from "../src/readiness.js";
 import { breakdownTemplate, checkAdapter, fillTemplate, type Adapter } from "../src/tools.js";
+import { bind } from "./fixture-db.js";
 import { resolveCompany, validateMapping, type Company } from "../src/ossie/adapt.js";
 import { compileModel } from "../src/ossie/company.js";
 import { closeSyntheticEngine, companyMetrics, formatDriftReport, scoreDrift, syntheticEngine, type Engine } from "../src/ossie/drift.js";
@@ -59,16 +61,17 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
   }, 120_000);
   afterAll(async () => { await db?.close(); await closeSyntheticEngine(); });
 
-  it("validates as a mapping and covers the Core revenue metrics from five datasets", () => {
+  it("validates as a mapping and covers the Core revenue metrics from six datasets", () => {
     const r = checkAdapter(adapter, data);
     expect(r.schemaErrors).toEqual([]);
     expect(r.problems).toEqual([]);
     expect(r.conflicts).toEqual([]);
-    expect(r.tableCount).toBe(5);
-    expect(r.fully.length).toBe(24);
+    expect(r.tableCount).toBe(6);
+    expect(r.fully.length).toBe(31); // 24 from the revenue datasets and the seven credit ledger metrics
     const fully = r.fully.map((f) => f.metric);
     expect(core(fully).length).toBe(18);
     for (const m of ["MRR (Monthly Recurring Revenue)", "Net Revenue Retention (NRR)", "Net New MRR", "Logo Churn Rate (Customer Churn)"]) expect(fully).toContain(m);
+    for (const m of ["Consumption Revenue", "Usage Run-Rate", "Prepaid Credit Balance", "ARR Including Usage Run-Rate", "Credit Breakage", "Consumption Revenue Growth Rate", "Consumption Net Revenue Retention"]) expect(fully).toContain(m);
     // The enum columns without a transform already hold GASP values: the derived events and the status the nightly job writes.
     expect(r.enumNoTransform.map((e) => e.field)).toEqual(["change_nature", "customer_status", "event_type", "expansion_classification", "lifecycle_attribution"]);
     const report = validateMapping(text, undefined, data);
@@ -124,10 +127,31 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
     expect(report).toContain("Where a subscription ledger exists it is the better source");
   });
 
+  it("reads Stripe's billing credits ledger: consumption, balance and breakage from typed transactions with no running balance", async () => {
+    const run = async (id: string, start: string, end: string) => {
+      const filled = fillTemplate(data.queryTemplates[id], adapter, data);
+      expect([...filled.missingFields, ...filled.missingTables], id).toEqual([]);
+      const sql = bind(filled.sql, start, end);
+      const v = Object.values((await db.query<Record<string, unknown>>(sql)).rows[0])[0];
+      return v === null ? null : Number(v);
+    };
+    // cus_B's $100 paid grant on 02-01, $60 applied to the February usage invoice on 03-01, $40 expired on 03-31;
+    // cus_A's $20 promotional grant is an adjustment, voided unused, so it nets to nothing.
+    expect(await run("consumption_revenue", "2026-02-01", "2026-02-28")).toBe(0);
+    expect(await run("consumption_revenue", "2026-03-01", "2026-03-31")).toBe(60);
+    expect(await run("prepaid_credit_balance", "2026-01-01", "2026-01-31")).toBe(20);
+    expect(await run("prepaid_credit_balance", "2026-02-01", "2026-02-28")).toBe(100);
+    expect(await run("prepaid_credit_balance", "2026-03-01", "2026-03-31")).toBe(0);
+    expect(await run("credit_breakage", "2026-03-01", "2026-03-31")).toBe(40);
+    // Stripe carries no running balance, so the identity check names the two balances it needs instead of passing vacuously.
+    const identity = compileChecks(adapter, data, "postgres", FRESH).find((c) => c.check.id === "credit_balance_identity")!;
+    expect(identity.sql).toBeFalsy();
+  });
+
   it("fails only the expansion tag check before classify.sql and passes every check after it", async () => {
     const compiled = compileChecks(adapter, data, "postgres", FRESH);
-    expect(compiled.length).toBe(32);
-    expect(compiled.filter((c) => c.sql).length).toBe(15); // the rest need datasets the mapping lacks (costs, contracts, amendments) or mrr_start
+    expect(compiled.length).toBe(36);
+    expect(compiled.filter((c) => c.sql).length).toBe(18); // the rest need datasets the mapping lacks (costs, contracts, amendments), mrr_start or the credit balances Stripe does not carry
     before = (await db.query<CheckResult>(checksAsOneQuery(compiled))).rows;
     const failing = (rows: CheckResult[]) => rows.filter((r) => Number(r.violations) > 0).map((r) => `${r.check_id}:${r.violations}`);
     expect(failing(before)).toEqual(["expansion_tag:revenue_event:5"]);
@@ -139,7 +163,7 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
     expect(Object.fromEntries(tags.map((t) => [t.event_id, t.expansion_classification]))).toEqual(Object.fromEntries(expected.map((e) => [e.event_id, e.expansion_classification])));
     after = (await db.query<CheckResult>(checksAsOneQuery(compiled))).rows;
     expect(failing(after)).toEqual([]);
-    expect(generateChecksFromText(text, undefined, data, { ...FRESH, results: JSON.stringify(after) })).toContain("15 runnable over this mapping, 17 need fields the mapping lacks; 15 pass, 0 fail.");
+    expect(generateChecksFromText(text, undefined, data, { ...FRESH, results: JSON.stringify(after) })).toContain("18 runnable over this mapping, 18 need fields the mapping lacks; 18 pass, 0 fail.");
   });
 
   it("climbs from readiness level 2 to 4: the adapter, the check rows, the classification, the compiled model", async () => {
@@ -158,7 +182,7 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
     const clean = await readiness(c, undefined, data, { ...FRESH, results: after });
     if ("error" in clean) throw new Error(clean.error);
     expect(clean.level).toBe(3);
-    expect(clean.checks).toMatchObject({ given: true, fail: 0, notRun: 0, runnable: 15 });
+    expect(clean.checks).toMatchObject({ given: true, fail: 0, notRun: 0, runnable: 18 });
     expect(new Set(clean.checks.core.clean)).toEqual(new Set(clean.mapping.core.covered));
     expect(blockers(clean, 4)[0]).toContain("run compile_model");
 

@@ -16,7 +16,9 @@
  * period by the dataset's date field; snapshot rows are taken as of the period
  * end, or the point named by `at`. `to_date` widens an event or fact filter to
  * everything up to the period end. `window` replaces it with the n units ending
- * at the period end. `all_time` drops it. `lag` shifts both bounds. `over cohort`
+ * at the period end. `all_time` drops it. `lag` shifts both bounds (an end bound as the
+ * day after it, stepped back a day, so a month taken from a month-end lands on the
+ * previous month-end). `over cohort`
  * restricts every aggregate to keys present in the key's dataset at the point.
  * Intervals are emitted in units Postgres accepts (a quarter is 3 months).
  * A sum over no matching rows is 0 (COALESCE), as a count is, so a metric that
@@ -258,8 +260,19 @@ class Compiler {
 
   private bound(point: Point, scope: Scope): string {
     let b = `{{_period_${point === "period_start" ? "start" : "end"}}}`;
-    for (const sh of scope.shift) b = this.d.minus(b, sh.n, sh.unit);
+    for (const sh of scope.shift) b = this.shiftBack(b, sh.n, sh.unit, point === "period_end");
     return b;
+  }
+
+  /**
+   * `b` moved back n units. A period end is the last day of its period, and a
+   * calendar unit taken from a last day lands short (2026-02-28 less a month is
+   * 2026-01-28, not 2026-01-31), so an end bound is shifted as the day after it,
+   * then stepped back a day. Days and weeks are exact either way.
+   */
+  private shiftBack(b: string, n: number, unit: LagUnit, isEnd: boolean): string {
+    if (!isEnd || unit === "day" || unit === "week") return this.d.minus(b, n, unit);
+    return this.d.minus(this.d.minus(this.d.plus(b, 1, "day"), n, unit), 1, "day");
   }
 
   /** A tagged field placeholder on the given dataset. */
@@ -444,10 +457,11 @@ class Compiler {
       // The where clause bounds the rows itself (for example relative to another date field).
     } else if (scope.window) {
       const end = this.bound(scope.point ?? "period_end", scope);
-      // Dates: (end - n, end]. Timestamps: [end + 1 day - n, end + 1 day), so the whole first and last days count.
-      where.push(ts
-        ? `${date} >= ${this.d.toTimestamp(this.d.minus(this.d.plus(end, 1, "day"), scope.window.n, scope.window.unit))}`
-        : `${date} > ${this.d.minus(end, scope.window.n, scope.window.unit)}`, this.upTo(date, end, ts));
+      // The n units ending at the end: [end + 1 day - n, end] for dates, [end + 1 day - n, end + 1 day) for
+      // timestamps, so the whole first and last days count and a calendar unit taken from a month's last
+      // day does not land short (3 months ending 2026-06-30 start on 2026-04-01, not 2026-03-31).
+      const from = this.d.minus(this.d.plus(end, 1, "day"), scope.window.n, scope.window.unit);
+      where.push(ts ? `${date} >= ${this.d.toTimestamp(from)}` : `${date} >= ${from}`, this.upTo(date, end, ts));
     } else if (scope.toDate) {
       where.push(this.upTo(date, this.bound(scope.point ?? "period_end", scope), ts));
     } else if (scope.point) {

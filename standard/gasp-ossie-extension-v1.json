@@ -46,7 +46,7 @@
       "description": "On a dataset. A reference dataset carries kind with cel and activeWhen where the ontology declares them; a staged dataset carries staged, for, reason and source_dialect; the period spine carries period_spine; a profiled dataset carries profile. record_decision adds profile to whatever a dataset already carries.",
       "properties": {
         "kind": { "enum": ["event", "snapshot", "fact"], "description": "The GASP dataset kind (ontology.json datasets)" },
-        "cel": { "enum": ["Revenue_Event", "Cost_Event", "Contract_Event", "Amendment_Event", "Lifecycle_State_Change"], "description": "The CEL event class the dataset holds" },
+        "cel": { "enum": ["Revenue_Event", "Cost_Event", "Contract_Event", "Amendment_Event", "Lifecycle_State_Change", "Credit_Event"], "description": "The CEL event class the dataset holds" },
         "activeWhen": { "type": "string", "description": "Grammar condition selecting live rows, used for cohort membership" },
         "staged": { "const": true, "description": "The dataset is a staged per-period dataset holding one metric's value" },
         "for": { "type": "string", "description": "The metric the staged dataset holds" },

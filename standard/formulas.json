@@ -1573,6 +1573,44 @@
         "by_start_date": "all_time(count_distinct(field.trial_id where field.trial_status = 'converted' and in_period(field.trial_start_date))) / all_time(count_distinct(field.trial_id where in_period(field.trial_start_date)))"
       },
       "notes": "Trials are counted by the date they ended (the trial dataset's date), so every trial in the denominator has an outcome; a trial that converts ends on the day it converts. The by_start_date variant counts trials started in the period, lifting the end-date period filter with all_time(); it understates recent periods while trials are still running."
+    },
+    "consumption_revenue": {
+      "formula": "-sum(field.credit_amount where field.credit_event_type = 'consumption')",
+      "unit": "currency",
+      "breakdowns": {
+        "by_basis": "field.consumption_basis",
+        "by_segment": "field.segment"
+      },
+      "notes": "Consumption events carry a negative credit_amount; the metric reports a positive amount. Revenue recognised as usage occurs: drawn from a prepaid balance (committed), above a commitment (overage) or with no commitment (on_demand). Usage within a ratable commitment is no event; that revenue is the commitment, in MRR. by_basis returns one row per consumption basis."
+    },
+    "usage_run_rate": {
+      "formula": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis = 'on_demand'), 3 month) * 4",
+      "unit": "currency",
+      "notes": "Also called Usage ARR. The trailing three months of on-demand consumption, annualised. Committed consumption is already in ARR through the commitment and overage through the usage_realisation pair, so only on-demand consumption enters, and ARR + Usage Run-Rate counts nothing twice. GASP fixes the window at three months (MongoDB's 90 days, Confluent's three months) so two companies' figures compare."
+    },
+    "prepaid_credit_balance": {
+      "formula": "sum(field.credit_amount where field.credit_event_type in ('purchase', 'expiry', 'adjustment') or field.consumption_basis = 'committed') to_date",
+      "unit": "currency",
+      "notes": "Also called Remaining Commitment. Purchases and granting adjustments less committed consumption, expiries and reducing adjustments, cumulative to period end. On-demand and overage consumption draw no balance and are left out. The part of the deferred revenue balance that is prepaid consumption."
+    },
+    "arr_including_usage_run_rate": {
+      "formula": "metric.arr + metric.usage_run_rate",
+      "unit": "currency",
+      "notes": "What consumption companies print as ARR: committed ARR plus annualised uncommitted usage. GASP keeps ARR committed and names the combined figure, so the two cannot be confused."
+    },
+    "credit_breakage": {
+      "formula": "-sum(field.credit_amount where field.credit_event_type = 'expiry')",
+      "unit": "currency",
+      "notes": "Expiry events carry a negative credit_amount; the metric reports a positive amount. The prepaid balance forfeited at expiry in the period: the commercial fact behind breakage revenue (ASC 606-10-55-48, IFRS 15.B46). A company that expects breakage recognises it in proportion to consumption; the expiry event is the forfeiture, not the recognition."
+    },
+    "consumption_revenue_growth_rate": {
+      "formula": "(metric.consumption_revenue - lag(metric.consumption_revenue, 1 month)) / lag(metric.consumption_revenue, 1 month)",
+      "unit": "percent"
+    },
+    "consumption_net_revenue_retention": {
+      "formula": "metric.consumption_revenue / lag(metric.consumption_revenue, 12 month) over cohort(field.customer_id, period_start)",
+      "unit": "percent",
+      "notes": "The cohort's consumption revenue over the period divided by the same cohort's consumption revenue in the twelve months before, on a twelve-month period: year two over year one, Snowflake's basis. A customer in the cohort that consumed nothing in the period counts at zero. A second basis beside NRR, which reads MRR movements; a company reporting this figure names it as such rather than as NRR."
     }
   }
 }

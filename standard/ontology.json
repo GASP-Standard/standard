@@ -400,6 +400,7 @@
       "active_accounts",
       "acv",
       "arpa",
+      "arr_including_usage_run_rate",
       "arr_per_csm",
       "at_risk_rate",
       "bookings",
@@ -410,9 +411,13 @@
       "carry_mrr",
       "churned_customers",
       "churned_mrr",
+      "consumption_net_revenue_retention",
+      "consumption_revenue",
+      "consumption_revenue_growth_rate",
       "contact_coverage",
       "contraction_mrr",
       "cost_per_onboarding",
+      "credit_breakage",
       "cross_sell_rate",
       "day_30_retention_post_onboarding",
       "executive_sponsor_coverage",
@@ -438,6 +443,7 @@
       "onboardings_per_resource",
       "order_to_activation_time",
       "pqas",
+      "prepaid_credit_balance",
       "qbr_completion",
       "reactivation_mrr",
       "revenue_churn_rate",
@@ -450,12 +456,14 @@
       "total_customers",
       "trial_to_paid_conversion_rate",
       "ttfv",
-      "upsell_rate"
+      "upsell_rate",
+      "usage_run_rate"
     ],
     "subscription": [
       "acv",
       "arpa",
       "arr",
+      "arr_including_usage_run_rate",
       "arr_per_csm",
       "auto_renewal_rate",
       "bookings",
@@ -465,10 +473,15 @@
       "carry_mrr",
       "churned_customers",
       "churned_mrr",
+      "consumption_net_revenue_retention",
+      "consumption_revenue",
+      "consumption_revenue_growth_rate",
       "contraction_mrr",
+      "credit_breakage",
       "cross_sell_rate",
       "days_to_renewal",
       "deferred_revenue_balance",
+      "error_rate_user_facing",
       "expansion_mrr",
       "expansion_rate",
       "grr",
@@ -484,6 +497,7 @@
       "new_customers",
       "new_mrr",
       "nrr",
+      "prepaid_credit_balance",
       "reactivation_mrr",
       "recognized_vs_billed",
       "renewal_forecast_accuracy",
@@ -495,7 +509,8 @@
       "revenue_recognition_accuracy",
       "rule_of_40",
       "unbilled_revenue",
-      "upsell_rate"
+      "upsell_rate",
+      "usage_run_rate"
     ],
     "license": [
       "license_utilization"
@@ -1421,7 +1436,8 @@
         "cost_event",
         "contract_event",
         "invoice",
-        "usage_record"
+        "usage_record",
+        "credit_event"
       ],
       "sources": [
         "billing",
@@ -1452,7 +1468,8 @@
         "revenue_schedule",
         "contact",
         "trial",
-        "usage_record"
+        "usage_record",
+        "credit_event"
       ],
       "sources": [
         "billing",
@@ -1464,7 +1481,7 @@
         "survey_tool"
       ],
       "description": "Customer (account) identifier. Primary business noun; CEL name",
-      "metricCount": 29
+      "metricCount": 30
     },
     {
       "id": "customer_status",
@@ -1483,7 +1500,7 @@
         "dormant"
       ],
       "description": "Customer lifecycle status; active means at least one active subscription",
-      "metricCount": 19
+      "metricCount": 20
     },
     {
       "id": "deflections",
@@ -1697,7 +1714,8 @@
         "contract_event",
         "amendment_event",
         "lifecycle_event",
-        "product_event"
+        "product_event",
+        "credit_event"
       ],
       "sources": [
         "billing",
@@ -1706,7 +1724,7 @@
         "product_analytics"
       ],
       "description": "Date the event occurred",
-      "metricCount": 63
+      "metricCount": 70
     },
     {
       "id": "event_id",
@@ -1717,7 +1735,8 @@
         "contract_event",
         "amendment_event",
         "lifecycle_event",
-        "product_event"
+        "product_event",
+        "credit_event"
       ],
       "sources": [
         "billing",
@@ -2647,7 +2666,7 @@
         "billing"
       ],
       "description": "Monthly recurring revenue of the subscription",
-      "metricCount": 16
+      "metricCount": 17
     },
     {
       "id": "mrr_change",
@@ -3945,7 +3964,8 @@
         "contract_event",
         "amendment_event",
         "customer",
-        "subscription"
+        "subscription",
+        "credit_event"
       ],
       "sources": [
         "crm",
@@ -3953,7 +3973,7 @@
       ],
       "dimension": true,
       "description": "Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.",
-      "metricCount": 20
+      "metricCount": 21
     },
     {
       "id": "severity",
@@ -4033,7 +4053,7 @@
         "derived"
       ],
       "description": "As-of date of the snapshot row",
-      "metricCount": 171
+      "metricCount": 173
     },
     {
       "id": "sql_date",
@@ -4152,7 +4172,8 @@
         "revenue_schedule",
         "license",
         "invoice",
-        "usage_record"
+        "usage_record",
+        "credit_event"
       ],
       "sources": [
         "billing"
@@ -4176,7 +4197,7 @@
         "paused"
       ],
       "description": "Subscription status",
-      "metricCount": 16
+      "metricCount": 17
     },
     {
       "id": "survey_completed",
@@ -4598,6 +4619,90 @@
       ],
       "description": "Hours written off",
       "metricCount": 1
+    },
+    {
+      "id": "credit_event_type",
+      "type": "enum",
+      "datasets": [
+        "credit_event"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "values": [
+        "purchase",
+        "consumption",
+        "expiry",
+        "adjustment"
+      ],
+      "description": "CEL Credit_Event classifier: purchase (a prepaid commitment or block of credits paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)",
+      "metricCount": 7
+    },
+    {
+      "id": "credit_amount",
+      "type": "decimal",
+      "datasets": [
+        "credit_event"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "Signed amount in currency at the contract's rates: positive for purchase and a granting adjustment, negative for consumption, expiry and a reducing adjustment. The sign convention mirrors mrr_change",
+      "metricCount": 7
+    },
+    {
+      "id": "consumption_basis",
+      "type": "enum",
+      "datasets": [
+        "credit_event"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "values": [
+        "committed",
+        "overage",
+        "on_demand"
+      ],
+      "dimension": true,
+      "description": "On consumption events: committed (drawn from a prepaid balance), overage (above an exhausted or per-period commitment), on_demand (no commitment). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand alone",
+      "metricCount": 4
+    },
+    {
+      "id": "credit_balance_before",
+      "type": "decimal",
+      "datasets": [
+        "credit_event"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "The customer's prepaid balance before the event; equal to credit_balance_after on on_demand consumption. Optional: billing systems that carry the signed amount alone leave it empty and the balance is summed",
+      "metricCount": 0
+    },
+    {
+      "id": "credit_balance_after",
+      "type": "decimal",
+      "datasets": [
+        "credit_event"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "The customer's prepaid balance after the event. With credit_balance_before it gives the ledger its identity check: before + amount = after",
+      "metricCount": 0
+    },
+    {
+      "id": "expires_on",
+      "type": "date",
+      "datasets": [
+        "credit_event"
+      ],
+      "sources": [
+        "billing"
+      ],
+      "description": "On purchase events: the date the granted balance expires; empty when it does not. A balance that rolls over has no expiry event and the new term's grant carries the new date",
+      "metricCount": 0
     }
   ],
   "datasets": {
@@ -5064,6 +5169,17 @@
       "date": "period_start",
       "key": "period_start",
       "label": "Revenue forecast"
+    },
+    "credit_event": {
+      "kind": "event",
+      "date": "event_date",
+      "key": "event_id",
+      "cel": "Credit_Event",
+      "entities": [
+        "customer",
+        "subscription"
+      ],
+      "label": "Credit event"
     }
   },
   "temporalMapping": {
@@ -5360,7 +5476,14 @@
     "ticket_escalation_rate": "Resolution",
     "project_escalation_rate": "Team",
     "product_activation_rate": "Activation",
-    "trial_to_paid_conversion_rate": "Activation"
+    "trial_to_paid_conversion_rate": "Activation",
+    "consumption_revenue": "Consumption Revenue",
+    "usage_run_rate": "Usage Run-Rate",
+    "prepaid_credit_balance": "Balances (to date)",
+    "arr_including_usage_run_rate": "Usage Run-Rate",
+    "credit_breakage": "Consumption Revenue",
+    "consumption_revenue_growth_rate": "Consumption Revenue",
+    "consumption_net_revenue_retention": "NRR / GRR (trailing 12 months)"
   },
   "temporalSemantics": {
     "ARR / MRR": {
@@ -5786,6 +5909,18 @@
       "frequency": "Daily",
       "aggregation": "snapshot",
       "period": "day"
+    },
+    "Consumption Revenue": {
+      "grain": "Per credit event, aggregate monthly",
+      "frequency": "Daily sync",
+      "aggregation": "aggregate",
+      "period": "month"
+    },
+    "Usage Run-Rate": {
+      "grain": "On-demand consumption in the trailing 3 months ending at period end, annualised",
+      "frequency": "Monthly",
+      "aggregation": "window",
+      "period": "month"
     }
   },
   "validationRules": {
@@ -7504,6 +7639,13 @@
         "type": "min",
         "value": 0
       }
+    ],
+    "prepaid-credit-balance": [
+      {
+        "type": "min",
+        "value": 0,
+        "note": "A prepaid balance cannot be negative: consumption beyond it is overage, not a negative balance."
+      }
     ]
   },
   "concepts": [
@@ -7628,7 +7770,11 @@
       "dso":                         { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "employee_turnover":           { "sensitivityTier": "restricted",   "accessScope": "unscoped" },
       "enps":                        { "sensitivityTier": "restricted",   "accessScope": "unscoped" },
-      "partner_sourced_revenue":     { "sensitivityTier": "confidential", "accessScope": "department-scoped" }
+      "partner_sourced_revenue":     { "sensitivityTier": "confidential", "accessScope": "department-scoped" },
+      "consumption_revenue":         { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "usage_run_rate":              { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "prepaid_credit_balance":      { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "arr_including_usage_run_rate": { "sensitivityTier": "confidential", "accessScope": "unscoped" }
     }
   },
   "structuredFormulas": {
@@ -7684,6 +7830,30 @@
         }
       ],
       "fields": [
+        "mrr",
+        "snapshot_date",
+        "subscription_status"
+      ]
+    },
+    "arr_including_usage_run_rate": {
+      "expression": "metric.arr + metric.usage_run_rate",
+      "inputs": [
+        {
+          "ref": "arr",
+          "role": "addend",
+          "polarity": "positive"
+        },
+        {
+          "ref": "usage_run_rate",
+          "role": "addend",
+          "polarity": "positive"
+        }
+      ],
+      "fields": [
+        "consumption_basis",
+        "credit_amount",
+        "credit_event_type",
+        "event_date",
         "mrr",
         "snapshot_date",
         "subscription_status"
@@ -7772,6 +7942,15 @@
         "event_date",
         "event_type",
         "mrr_change"
+      ]
+    },
+    "consumption_revenue": {
+      "expression": "-sum(field.credit_amount where field.credit_event_type = 'consumption')",
+      "inputs": [],
+      "fields": [
+        "credit_amount",
+        "credit_event_type",
+        "event_date"
       ]
     },
     "contraction_mrr": {
@@ -8355,6 +8534,16 @@
         "snapshot_date"
       ]
     },
+    "prepaid_credit_balance": {
+      "expression": "sum(field.credit_amount where field.credit_event_type in ('purchase', 'expiry', 'adjustment') or field.consumption_basis = 'committed') to_date",
+      "inputs": [],
+      "fields": [
+        "consumption_basis",
+        "credit_amount",
+        "credit_event_type",
+        "event_date"
+      ]
+    },
     "qbr_completion": {
       "expression": "count_distinct(field.customer_id where field.qbr_completed = true) / count_distinct(field.customer_id where field.qbr_due = true)",
       "inputs": [],
@@ -8545,6 +8734,16 @@
         "period_start"
       ]
     },
+    "usage_run_rate": {
+      "expression": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis = 'on_demand'), 3 month) * 4",
+      "inputs": [],
+      "fields": [
+        "consumption_basis",
+        "credit_amount",
+        "credit_event_type",
+        "event_date"
+      ]
+    },
     "win_rate": {
       "expression": "count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in ('closed_won', 'closed_lost') and in_period(field.close_date))",
       "inputs": [],
@@ -8559,11 +8758,32 @@
   "entityRelationships": {
     "description": "Entity-to-entity and entity-to-concept edges that model the SaaS business structure. These complement the metric-to-entity MEASURES edges to form a complete digital twin.",
     "edgeTypeClassification": {
-      "structural": ["OWNS", "GRANTS", "PARENT_OF", "PRICED_BY"],
-      "lifecycle": ["CONVERTS_TO"],
-      "behavioral": ["SUBMITS", "ENGAGES_VIA"],
-      "assignment": ["MANAGES", "SOURCES", "SERVES", "REPRESENTED_BY"],
-      "generative": ["GENERATES", "PRODUCES", "CONTRIBUTES_TO", "INCURS", "BELONGS_TO"]
+      "structural": [
+        "OWNS",
+        "GRANTS",
+        "PARENT_OF",
+        "PRICED_BY"
+      ],
+      "lifecycle": [
+        "CONVERTS_TO"
+      ],
+      "behavioral": [
+        "SUBMITS",
+        "ENGAGES_VIA"
+      ],
+      "assignment": [
+        "MANAGES",
+        "SOURCES",
+        "SERVES",
+        "REPRESENTED_BY"
+      ],
+      "generative": [
+        "GENERATES",
+        "PRODUCES",
+        "CONTRIBUTES_TO",
+        "INCURS",
+        "BELONGS_TO"
+      ]
     },
     "edges": [
       {

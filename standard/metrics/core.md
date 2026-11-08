@@ -33,6 +33,8 @@ MRR contribution = Annual Contract Value / 12
 - Variable/usage-based fees (unless contractually guaranteed)
 - Non-recurring charges
 
+Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue).
+
 **Inputs:**
 - Active customer list
 - Subscription/contract value for each customer
@@ -76,6 +78,8 @@ ARR = MRR × 12
 ```
 
 **Include:** Same inclusions/exclusions as MRR, annualized.
+
+**Industry equivalents:** Committed ARR, CARR (Committed Annual Recurring Revenue), Baseline ARR and CMRR (Committed Monthly Recurring Revenue, annualised). GASP's ARR includes contractual commitments and leaves uncommitted usage out, which is what each of these names describes. Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
 
 ARR is reported per customer segment.
 
@@ -469,6 +473,8 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 
 NRR is reported per customer segment, each snapshot and event counting in the segment it carries.
 
+**Usage and consumption:** NRR already includes realised usage: overage above a commitment is expansion tagged `usage_realisation`, and for a customer on a prepaid commitment the commitment sits in the MRR base. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The retention of consumption revenue itself is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), a separate basis reported under its own name.
+
 **What it tells you:** Whether the customers you had a year ago are paying you more or less today. Above 100%, the existing base grows on its own and new customers add on top; below it, new sales first have to replace what the base lost.
 
 **Common mistakes:**
@@ -575,6 +581,8 @@ GRR = Sum of min(Beginning MRR, Current MRR) per customer / Beginning MRR × 100
 - High ACV Enterprise: 95%+ expected
 
 GRR is reported per customer segment, each snapshot and event counting in the segment it carries.
+
+**Usage and consumption:** GRR runs on the same MRR base as NRR, so a prepaid commitment counts in it. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The consumption-revenue basis is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention).
 
 **What it tells you:** The baseline health of your customer relationships, independent of upsell. Investors examine GRR alongside NRR because strong expansion can mask high churn.
 
