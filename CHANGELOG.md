@@ -4,6 +4,8 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+## [1.20.0] - 2026-11-08
+
 ### Added
 - A sixth CEL event class, `Credit_Event`, on the `credit_event` dataset: the prepaid balance ledger as billing systems keep it (purchase, consumption, expiry, adjustment; signed `credit_amount`; `consumption_basis` committed, overage or on demand; optional balances before and after; `expires_on` on purchases). Seven Finance metrics read it: Consumption Revenue, Usage Run-Rate (the trailing three months of on-demand consumption, annualised), Prepaid Credit Balance, ARR Including Usage Run-Rate, Credit Breakage, Consumption Revenue Growth Rate and Consumption Net Revenue Retention. MRR, ARR, NRR and GRR are unchanged; consumption pricing with or without a commitment is in scope. 313 metrics, 280 fields, 54 datasets, 301 formula entries. The decision and the sources: `DECISIONS.md` 2026-11-08 and `docs/usage-based-proposal.md`.
 - `cel.md` "Deriving Credit Events": the usage realisation pair derived from the credit ledger's overage consumption by calendar month, and consumption events with basis overage derived from `usage_record`. `derive_cel` gains `usage_source` (`usage_record`, the default when the mapping covers it, or `credit_event`) and `target` (`revenue_event`, the default, or `credit_event`).
