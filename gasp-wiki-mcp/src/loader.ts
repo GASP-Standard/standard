@@ -23,7 +23,7 @@ function repoRoot(): string {
   return join(thisDir, "..", "..");
 }
 
-const DATA_URL = "https://gaspwiki.com/api/standard.json";
+const DATA_URL = "https://koinedata.com/api/standard.json";
 
 /** Load pre-parsed data bundled with the npm package (offline fallback) */
 export function loadBundled(): StandardData {
@@ -35,7 +35,7 @@ export function loadBundled(): StandardData {
   return JSON.parse(raw) as StandardData;
 }
 
-/** Fetch pre-parsed standard data from gaspwiki.com (for global/npx installs) */
+/** Fetch pre-parsed standard data from koinedata.com (for global/npx installs) */
 export async function loadRemote(): Promise<StandardData> {
   const res = await fetch(DATA_URL);
   if (!res.ok) throw new Error(`Failed to fetch ${DATA_URL}: ${res.status}`);
@@ -431,7 +431,7 @@ export interface SearchResult {
   name: string;
   snippet: string;
   department?: string;
-  /** gaspwiki.com page for this result */
+  /** koinedata.com page for this result */
   url?: string;
   /** Where the query matched: name, alias, term, definition, formula, field, category or department */
   matched: string;

@@ -2,7 +2,7 @@
 
 **Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 313 metrics across 13 departments, 99 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 274 fields across 53 datasets, a relationship graph of 100 nodes and 200 edges plus an MCP server that gives AI agents all of it as structured tools.
 
-The standard is published at **https://gaspwiki.com**. This repository holds its source and the tooling that compiles it. It works with Apache Ossie (incubating): `npm run derive` writes the standard out as Ossie files, which pass the upstream validator.
+The standard is published at **https://koinedata.com**. This repository holds its source and the tooling that compiles it. It works with Apache Ossie (incubating): `npm run derive` writes the standard out as Ossie files, which pass the upstream validator.
 
 ## What is here
 
@@ -19,7 +19,7 @@ The standard is published at **https://gaspwiki.com**. This repository holds its
 
 ## Use it
 
-**Read the standard** at https://gaspwiki.com/v1/overview, or in the per-department files under `standard/metrics/`.
+**Read the standard** at https://koinedata.com/v1/overview, or in the per-department files under `standard/metrics/`.
 
 **Give it to an agent.** The MCP server has twenty-three tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a target writer that hands them back as a Snowflake Cortex Analyst model or a Cube data model in your warehouse's SQL, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model, a mapping proposer and a Decide step that records the answers people give, the SQL that derives CEL revenue events from your subscription ledger, the readiness checks, the ranked fix plan and a readiness report that says which level you have reached, and three graph traversal tools.
 

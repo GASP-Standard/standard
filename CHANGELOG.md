@@ -4,6 +4,9 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+### Changed
+- The GASP Standard moves to https://koinedata.com. Every metric and definition URL the tools return, the remote data and version fetch, the package `homepage`, the registry `websiteUrl` and the hosted endpoint in the docs (`https://mcp.koinedata.com/mcp`, the Workspace resource default) use the new domain; gaspwiki.com redirects permanently to the same path, and `mcp.gaspwiki.com` keeps serving. The schema `$id`s and the Ossie ontology IRI stay on gaspwiki.com: they are identifiers every adapter and exported document names, and they change only with a v2 schema.
+
 ## [1.20.0] - 2026-11-08
 
 ### Added

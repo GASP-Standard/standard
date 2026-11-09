@@ -1,7 +1,16 @@
 # GASP Standard: Decisions
 
-Architecture decision records for the GASP Standard project (gaspwiki.com site +
+Architecture decision records for the GASP Standard project (koinedata.com site, formerly gaspwiki.com, +
 gasp-wiki-mcp server). Append new entries at the top.
+
+---
+
+## [2026-11-09] koinedata.com becomes the primary domain; gaspwiki.com redirects
+**Decision:** The site, the canonical URLs the MCP tools emit and the hosted MCP endpoint move to koinedata.com, the corporate home of Koine Data, the team that publishes and uses GASP. The GASP Standard keeps its name, its npm package and its registry name; Koine Data is named as the publisher (JSON-LD Organization, footer). gaspwiki.com and www.gaspwiki.com answer with a 301 to the same path on koinedata.com, except `/schemas/*`, which keeps serving so a validator fetching a schema by its id never meets a redirect. The hosted MCP server answers on both `mcp.koinedata.com` and `mcp.gaspwiki.com`, with koinedata the advertised URL and the Workspace's OAuth resource default. `aicf.gaspwiki.com` and the email addresses (`hello@`, `noreply@`) stay on gaspwiki.com until they move on their own.
+
+**Identifiers stay:** the two schema `$id`s (`https://gaspwiki.com/schemas/gasp-adapter-v1.json`, `.../gasp-ossie-extension-v1.json`) and `GASP_ONTOLOGY_IRI` are identifiers, not locations, as JSON Schema treats `$id`; every adapter and exported Ossie document names them, so changing them is a breaking change under `GOVERNANCE.md`. They move only with a v2 schema. Texts already posted upstream and the history documents keep their gaspwiki.com links, which the redirect resolves.
+
+**Context:** The owner bought koinedata.com on 2026-11-09 as the company's face. `GOVERNANCE.md` calls the `/v1/` URLs stable identifiers, so the move keeps every path and relies on a permanent, path-preserving redirect.
 
 ---
 

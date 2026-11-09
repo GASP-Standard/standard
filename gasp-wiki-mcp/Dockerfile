@@ -6,7 +6,7 @@
 # is still propagating.
 #
 #   docker build -t gasp-standard-mcp .
-#   docker run -p 3000:3000 -e MCP_ALLOWED_HOSTS=mcp.gaspwiki.com gasp-standard-mcp
+#   docker run -p 3000:3000 -e MCP_ALLOWED_HOSTS=mcp.koinedata.com gasp-standard-mcp
 #
 # The endpoint is /mcp; / and /health answer with the version and tool count.
 FROM node:22-alpine

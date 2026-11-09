@@ -126,7 +126,7 @@ metrics:
     sql: SUM(CASE WHEN revenue_event.event_type = 'expansion' THEN revenue_event.mrr_change ELSE 0 END)
   ai_context:
     synonyms: ["upsell MRR"]
-    instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#expansion-mrr"
+    instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#expansion-mrr"
   custom_extensions:
   - vendor_name: GASP
     data: '{"gasp_id":"expansion_mrr","gasp_version":"1","unit":"currency","formula":"sum(field.mrr_change where field.event_type = ''expansion'')"}'
@@ -137,7 +137,7 @@ metrics:
     sql: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
   ai_context:
     synonyms: ["net dollar retention", "NDR", "NRR-O"]
-    instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr. Operating form counts same_product and usage_realisation expansion only."
+    instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#net-revenue-retention-nrr. Operating form counts same_product and usage_realisation expansion only."
   custom_extensions:
   - vendor_name: GASP
     data: '{"gasp_id":"nrr","gasp_version":"1","form":"O","unit":"percent","staged_from":"gasp_account_cohorts"}'
@@ -148,7 +148,7 @@ metrics:
     sql: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
   ai_context:
     synonyms: ["net dollar retention", "NDR", "NRR-M"]
-    instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr. Market form counts every expansion classification plus reactivation of cohort customers."
+    instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#net-revenue-retention-nrr. Market form counts every expansion classification plus reactivation of cohort customers."
   custom_extensions:
   - vendor_name: GASP
     data: '{"gasp_id":"nrr","gasp_version":"1","form":"M","unit":"percent","staged_from":"gasp_account_cohorts"}'

@@ -96,14 +96,14 @@ describe("the Streamable HTTP server", () => {
   });
 
   it("refuses an origin it was not told to allow", async () => {
-    const guarded = startHttpServer({ port: 0, host: "127.0.0.1", allowedOrigins: ["https://gaspwiki.com"] });
+    const guarded = startHttpServer({ port: 0, host: "127.0.0.1", allowedOrigins: ["https://koinedata.com"] });
     await listening(guarded);
     try {
       const p = (guarded.address() as AddressInfo).port;
       const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "t", version: "0" } } });
       const headers = { "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
       expect((await fetch(`http://127.0.0.1:${p}/mcp`, { method: "POST", headers: { ...headers, Origin: "https://evil.example" }, body })).status).toBe(403);
-      expect((await fetch(`http://127.0.0.1:${p}/mcp`, { method: "POST", headers: { ...headers, Origin: "https://gaspwiki.com" }, body })).status).toBe(200);
+      expect((await fetch(`http://127.0.0.1:${p}/mcp`, { method: "POST", headers: { ...headers, Origin: "https://koinedata.com" }, body })).status).toBe(200);
     } finally {
       await new Promise<void>((resolve) => guarded.close(() => resolve()));
     }

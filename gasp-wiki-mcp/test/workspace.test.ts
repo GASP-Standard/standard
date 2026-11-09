@@ -25,7 +25,7 @@ import { AuthError, DEFAULT_PROTECTED_TOOLS, protectedResourceMetadata, verifyBe
 import { QUERIES, SCHEMA } from "../src/workspace/store.js";
 
 const ISSUER = "https://gasp-test.authkit.app";
-const RESOURCE = "https://mcp.gaspwiki.com/mcp";
+const RESOURCE = "https://mcp.koinedata.com/mcp";
 const text = (r: { content?: unknown }): string => (r.content as Array<{ type: string; text?: string }>).map((c) => c.text ?? "").join("\n");
 const listening = (s: Server): Promise<void> => new Promise((resolve) => (s.listening ? resolve() : s.once("listening", () => resolve())));
 const auth = (org: string, sub: string, email?: string): AuthInfo => ({ token: "t", clientId: "c", scopes: [], extra: { org_id: org, sub, ...(email ? { email } : {}) } });
@@ -151,7 +151,7 @@ describe("verifyBearer", () => {
 
   it("describes the protected resource", () => {
     expect(protectedResourceMetadata({ issuer: ISSUER, resource: RESOURCE })).toEqual({
-      resource: RESOURCE, authorization_servers: [ISSUER], bearer_methods_supported: ["header"], scopes_supported: [], resource_documentation: "https://gaspwiki.com/workspace",
+      resource: RESOURCE, authorization_servers: [ISSUER], bearer_methods_supported: ["header"], scopes_supported: [], resource_documentation: "https://koinedata.com/workspace",
     });
   });
 });
@@ -222,7 +222,7 @@ describe("the HTTP server with the Workspace on", () => {
   it("challenges a protected call without a token, and with a refused one", async () => {
     const missing = await call("save_workspace", { mapping: "{}" });
     expect(missing.status).toBe(401);
-    expect(missing.headers.get("www-authenticate")).toBe('Bearer resource_metadata="https://mcp.gaspwiki.com/.well-known/oauth-protected-resource"');
+    expect(missing.headers.get("www-authenticate")).toBe('Bearer resource_metadata="https://mcp.koinedata.com/.well-known/oauth-protected-resource"');
     expect(missing.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
     const body = await missing.json();
     expect(body.error.message).toContain("save_workspace needs a signed-in GASP Workspace company");

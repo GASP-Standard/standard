@@ -341,7 +341,7 @@ describe("parseDefinitions", () => {
 
 The total predictable revenue from active subscriptions, normalized to a monthly cadence.
 
-**Canonical definition:** [MRR](https://gaspwiki.com/v1/metrics/core#mrr)
+**Canonical definition:** [MRR](https://koinedata.com/v1/metrics/core#mrr)
 
 **Used in:** Core, Finance, RevOps
 
@@ -349,7 +349,7 @@ The total predictable revenue from active subscriptions, normalized to a monthly
 
 Annualized value of all recurring subscription revenue.
 
-**Canonical definition:** [ARR](https://gaspwiki.com/v1/metrics/core#arr)
+**Canonical definition:** [ARR](https://koinedata.com/v1/metrics/core#arr)
 
 **Used in:** Core, Finance
 
@@ -385,7 +385,7 @@ A billing entity with one or more subscriptions.
 
   it("extracts canonical link", () => {
     expect(defs[0].canonicalLink).toBe(
-      "https://gaspwiki.com/v1/metrics/core#mrr"
+      "https://koinedata.com/v1/metrics/core#mrr"
     );
   });
 

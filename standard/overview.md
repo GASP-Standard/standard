@@ -16,7 +16,7 @@ The GASP Standard provides canonical definitions for SaaS metrics across all dep
 - Core financial metrics (ARR, NRR, GRR, CAC, etc.) with precise formulas and benchmarks
 - Operational metrics across all departments (Support, Engineering, Product, HR, etc.)
 - Relationships between metrics showing cause and effect
-- This overview and the [metrics index](https://gaspwiki.com/v1/metrics), which together give the standard view of business health
+- This overview and the [metrics index](https://koinedata.com/v1/metrics), which together give the standard view of business health
 - Practical implementation guidance
 
 We follow industry consensus where it exists and fill the gaps from practitioner input and published research.
@@ -37,7 +37,7 @@ The GASP Standard writes down how the industry already measures performance: a c
 - **Exact formulas**, one calculation per metric, written in a machine-readable grammar. Each compiles to SQL in four dialects (Postgres, Snowflake, BigQuery and Databricks) and ships as Apache Ossie files. Breakdowns such as by segment or by plan are declared on the metric itself
 - **Industry benchmarks** for context
 - **Relationships** between metrics, showing how they move together
-- **The [metrics index](https://gaspwiki.com/v1/metrics)**, every metric by department with the Core Metrics as the view of business health
+- **The [metrics index](https://koinedata.com/v1/metrics)**, every metric by department with the Core Metrics as the view of business health
 
 The standard is opinionated on purpose and expects you to adopt the definitions as written.
 
@@ -124,7 +124,7 @@ The aim is a foundation any SaaS business can adopt. Daily is the atomic unit, w
 
 ## Signal Types
 
-Every metric carries one primary signal type of four: outcome, leading, efficiency or operational. [taxonomy.json](taxonomy.json) defines each type and classifies every metric; the site renders it at [gaspwiki.com/v1/taxonomy](https://gaspwiki.com/v1/taxonomy).
+Every metric carries one primary signal type of four: outcome, leading, efficiency or operational. [taxonomy.json](taxonomy.json) defines each type and classifies every metric; the site renders it at [koinedata.com/v1/taxonomy](https://koinedata.com/v1/taxonomy).
 
 ---
 
@@ -164,6 +164,6 @@ Every metric carries one primary signal type of four: outcome, leading, efficien
 
 3. **Implement the canonical formulas as defined.** If your business needs a local variant, keep the canonical formula unchanged, document the variant beside it and record how your data differs in the adapter's field `transform` and `notes`.
 
-4. **Start from the [metrics index](https://gaspwiki.com/v1/metrics).** The [Core Metrics](metrics/core.md) give the standard view of business health.
+4. **Start from the [metrics index](https://koinedata.com/v1/metrics).** The [Core Metrics](metrics/core.md) give the standard view of business health.
 
 5. **Investigate with Departmental Metrics.** When a core number is off, drill into the department behind it.

@@ -308,7 +308,7 @@ export function exportOntology(data: StandardData): OssieOntology {
     version: OSSIE_VERSION,
     name: "GASP",
     description:
-      "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://gaspwiki.com.",
+      "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://koinedata.com.",
     ontology: concepts,
   };
 }

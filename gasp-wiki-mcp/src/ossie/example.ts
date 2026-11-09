@@ -81,7 +81,7 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
   const model: OssieSemanticModel = {
     ...exp.model,
     name: "GASP SaaS core",
-    description: `The Core metrics of the GASP Standard (Generally Accepted SaaS Principles) as an Apache Ossie semantic model: ${metrics.length} metrics over ${datasets.length} datasets, cut from the full reference model at https://gaspwiki.com/downloads/ossie/. Each metric carries its canonical page and its GASP formula.`,
+    description: `The Core metrics of the GASP Standard (Generally Accepted SaaS Principles) as an Apache Ossie semantic model: ${metrics.length} metrics over ${datasets.length} datasets, cut from the full reference model at https://koinedata.com/downloads/ossie/. Each metric carries its canonical page and its GASP formula.`,
     datasets: keptDatasets,
     relationships: (exp.model.relationships ?? []).filter((r) => keptNames.has(r.from) && keptNames.has(r.to)),
     metrics,
@@ -117,7 +117,7 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
   const ontology: OssieOntology = {
     ...exp.ontology,
     name: "GASP SaaS core",
-    description: `The concepts behind the Core metrics of the GASP Standard: ${entityConcepts.size} entity types (one per dataset the metrics read), their relationships and ${valueTypes.size} value types, cut from the full GASP ontology at https://gaspwiki.com/downloads/ossie/.`,
+    description: `The concepts behind the Core metrics of the GASP Standard: ${entityConcepts.size} entity types (one per dataset the metrics read), their relationships and ${valueTypes.size} value types, cut from the full GASP ontology at https://koinedata.com/downloads/ossie/.`,
     ...(exp.ontology.requires ? { requires: exp.ontology.requires.filter((line) => mentions(line).every((n) => kept.has(n))) } : {}),
     ontology: concepts,
   };
@@ -170,7 +170,7 @@ export function exampleReadme(ex: OssieExample, data: StandardData): string {
   });
   return `# GASP SaaS core: an Apache Ossie example
 
-Generated from the GASP Standard (https://gaspwiki.com) by \`npm run derive\` in \`gasp-wiki-mcp\`. Do not edit; edit \`/standard/\` and re-run.
+Generated from the GASP Standard (https://koinedata.com) by \`npm run derive\` in \`gasp-wiki-mcp\`. Do not edit; edit \`/standard/\` and re-run.
 
 The Core department of the GASP Standard (Generally Accepted SaaS Principles) as three Apache Ossie (incubating) documents, in the layout of the upstream \`examples/flights.*\` set: an ontology, a semantic model and the mapping between them. It is the compact form of the full export beside it, cut to the ${ex.datasets.length} datasets the ${ex.entries.length} Core metric entries read, and is the draft of the example GASP proposes to contribute to \`apache/ossie/examples/\`.
 

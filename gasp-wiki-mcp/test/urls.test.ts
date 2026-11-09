@@ -8,7 +8,7 @@ import type { StandardData } from "../src/types.js";
 
 // Regression: agents were handed definitions with no URL and guessed their
 // own (/v1/definitions/signal_type, /v1/taxonomy/signal-type, ...), which 404.
-// Every URL the MCP emits must be a real gaspwiki.com page.
+// Every URL the MCP emits must be a real koinedata.com page.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = join(__dirname, "..", "..", "gasp-wiki-frontend");

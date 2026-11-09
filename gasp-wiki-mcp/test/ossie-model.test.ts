@@ -209,7 +209,7 @@ describe("Ossie model: metrics", () => {
       expect(typeof x.formula).toBe("string");
       expect(x.unit).toBeTruthy();
       expect(m.datatype).toBe(x.unit === "count" ? "Integer" : "Decimal");
-      expect((m.ai_context as any).instructions, m.name).toMatch(/Canonical definition: https:\/\/gaspwiki\.com\/v1\/metrics\//);
+      expect((m.ai_context as any).instructions, m.name).toMatch(/Canonical definition: https:\/\/koinedata\.com\/v1\/metrics\//);
     }
   });
 

@@ -73,7 +73,7 @@ describe("readiness checks", () => {
     expect(grr.sql("postgres")).toContain("FROM gasp.period_spine p");
     expect(grr.sql("postgres")).not.toMatch(/\{\{_period_(start|end)\}\}/);
     expect(grr.rule).toContain("GRR cannot exceed 100%");
-    expect(grr.source).toMatch(/^https:\/\/gaspwiki\.com\/v1\/metrics\/core\//);
+    expect(grr.source).toMatch(/^https:\/\/koinedata\.com\/v1\/metrics\/core\//);
     expect(grr.protects).toEqual({ metric: "Gross Revenue Retention (GRR)" });
     // NPS is scaled by its formula and its rule has no unit: bounds as given.
     expect(checks.find((c) => c.id === `range:${idOf("nps-net-promoter-score")}`)!.sql("postgres")).toMatch(/v\.value < -100 OR v\.value > 100/);

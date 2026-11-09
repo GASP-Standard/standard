@@ -27,6 +27,7 @@ import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
 import { GASP_VENDOR, OSSIE_VERSION, expressionText, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, normaliseExtensions } from "./types.js";
 
+/** An identifier, not a location: it stays on gaspwiki.com (where it was first published) so mappings already written keep matching; the file itself is served on koinedata.com and gaspwiki.com redirects there. */
 export const GASP_ONTOLOGY_IRI = "https://gaspwiki.com/downloads/ossie/gasp.ontology.yaml";
 const REF = /^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/;
 
@@ -324,7 +325,7 @@ export function checkMapping(input: { document: unknown; model?: unknown }, data
       conversionProblems: problems, gaps: [], adapter, coverage, ossie: { model, mapping },
     };
   }
-  return { error: "The document is neither a GASP adapter (an object with a \"mappings\" array; template: https://gaspwiki.com/downloads/gasp-adapter-template.json) nor an Ossie mapping (an object with \"concept_mappings\"; reference: https://gaspwiki.com/downloads/ossie/gasp.mapping.yaml)." };
+  return { error: "The document is neither a GASP adapter (an object with a \"mappings\" array; template: https://koinedata.com/downloads/gasp-adapter-template.json) nor an Ossie mapping (an object with \"concept_mappings\"; reference: https://koinedata.com/downloads/ossie/gasp.mapping.yaml)." };
 }
 
 export function formatMappingReport(v: MappingValidation, data: StandardData): string {

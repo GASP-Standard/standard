@@ -1,7 +1,7 @@
-# Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
+# Generated from the GASP Standard (https://koinedata.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
 version: 0.2.0.dev0
 name: GASP
-description: "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://gaspwiki.com."
+description: "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://koinedata.com."
 ontology:
   - concept: RevenueEvent
     type: EntityType

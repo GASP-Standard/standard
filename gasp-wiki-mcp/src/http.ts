@@ -2,7 +2,7 @@
 
 /**
  * The GASP Standard MCP server over Streamable HTTP, for a hosted endpoint
- * such as https://mcp.gaspwiki.com/mcp that Claude connects to as a remote
+ * such as https://mcp.koinedata.com/mcp that Claude connects to as a remote
  * server. Stateless: every request gets its own transport and server over the
  * data loaded once, so any number of instances can sit behind one hostname.
  * No authentication unless GASP Workspace is configured: the standard is
@@ -26,7 +26,7 @@
  * Every tool call is written to stderr as one JSON line, `{"event":"tool",
  * "tool":"lookup_metric","ms":12,"ok":true,"client":"claude-ai/1.0"}`, so the
  * host's log stream counts calls per tool. Arguments and results are never
- * logged, which is what the privacy policy at gaspwiki.com/privacy promises.
+ * logged, which is what the privacy policy at koinedata.com/privacy promises.
  *
  * GASP Workspace, on only when `WORKSPACE_DATABASE_URL` and `WORKSPACE_ISSUER`
  * are both set (`workspaceFromEnv`). The server is then an OAuth resource
@@ -42,7 +42,7 @@
  * is untouched, so anonymous use of the free tools stays anonymous. Other
  * variables: `WORKSPACE_JWKS_URL` (default `<issuer>/oauth2/jwks`),
  * `WORKSPACE_AUDIENCE` (the `aud` a token must carry, unchecked when unset),
- * `WORKSPACE_RESOURCE` (default https://mcp.gaspwiki.com/mcp) and
+ * `WORKSPACE_RESOURCE` (default https://mcp.koinedata.com/mcp) and
  * `WORKSPACE_DATABASE_CA` (the database's CA certificate in PEM).
  */
 import { createServer as createHttp, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -168,7 +168,7 @@ export function startHttpServer(options: HttpOptions = {}): Server {
   const challenge = (res: ServerResponse, tool: string, refused?: string): void => {
     const quoted = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
     const header = `Bearer resource_metadata=${quoted(metadataUrl(ws!.resource))}${refused ? `, error="invalid_token", error_description=${quoted(refused)}` : ""}`;
-    const message = `${refused ? `${refused} ` : ""}${tool} needs a signed-in GASP Workspace company on the hosted server: sign in when your client asks (https://gaspwiki.com/workspace). The same tool runs free, without sign-in, in the npm package gasp-standard-mcp.`;
+    const message = `${refused ? `${refused} ` : ""}${tool} needs a signed-in GASP Workspace company on the hosted server: sign in when your client asks (https://koinedata.com/workspace). The same tool runs free, without sign-in, in the npm package gasp-standard-mcp.`;
     rpcError(res, 401, -32001, message, { "WWW-Authenticate": header, "Access-Control-Expose-Headers": `${CORS["Access-Control-Expose-Headers"]}, WWW-Authenticate` });
   };
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -217,7 +217,7 @@ export function startHttpServer(options: HttpOptions = {}): Server {
     }
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
       res.writeHead(200, { "Content-Type": "application/json", ...CORS });
-      res.end(JSON.stringify({ name: "gasp-standard", version: PKG_VERSION, tools: toolCount(!!ws), endpoint: path, documentation: "https://gaspwiki.com/v1/tools" }));
+      res.end(JSON.stringify({ name: "gasp-standard", version: PKG_VERSION, tools: toolCount(!!ws), endpoint: path, documentation: "https://koinedata.com/v1/tools" }));
       return;
     }
     res.writeHead(404, { "Content-Type": "text/plain" });

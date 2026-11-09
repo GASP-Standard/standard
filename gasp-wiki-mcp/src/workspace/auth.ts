@@ -76,7 +76,7 @@ export function protectedResourceMetadata(config: { issuer: string; resource: st
     authorization_servers: [config.issuer],
     bearer_methods_supported: ["header"],
     scopes_supported: [],
-    resource_documentation: "https://gaspwiki.com/workspace",
+    resource_documentation: "https://koinedata.com/workspace",
   };
 }
 

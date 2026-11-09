@@ -35,7 +35,7 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 
 The Ossie project reports 100+ commits and 35 merged PRs from Snowflake, Dremio, Salesforce, Databricks, dbt Labs, RelationalAI, GoodData and Honeydew, with growth from 17 launch partners to 50+ organizations ([announcement](https://ossie.apache.org/updates/ossie-enters-apache-incubator/)). Snowflake imports and exports Ossie YAML natively; an Iqea DuckDB extension executes Ossie models directly ([ecosystem](https://ossie.apache.org/ecosystem/)).
 
-GASP has the pieces a domain package needs: canonical definitions, an adapter that maps warehouse columns to canonical fields and an MCP server that exposes formulas, data requirements, SQL generation and graph reasoning ([tools](https://gaspwiki.com/v1/tools)). Until phase 1 it had no home format that other tools read. Ossie gives it one.
+GASP has the pieces a domain package needs: canonical definitions, an adapter that maps warehouse columns to canonical fields and an MCP server that exposes formulas, data requirements, SQL generation and graph reasoning ([tools](https://koinedata.com/v1/tools)). Until phase 1 it had no home format that other tools read. Ossie gives it one.
 
 ## Readiness review: what GASP does today
 
@@ -66,7 +66,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 
 ## Goals, non-goals and success metrics
 
-The goal is to be the SaaS answer inside Ossie, measured by merges and listings upstream rather than by what gaspwiki.com says.
+The goal is to be the SaaS answer inside Ossie, measured by merges and listings upstream rather than by what koinedata.com says.
 
 **Goals**
 
@@ -183,7 +183,7 @@ metrics:
       sql: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
     ai_context:
       synonyms: ["net dollar retention", "NDR"]
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr"
+      instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#net-revenue-retention-nrr"
     custom_extensions:
       - vendor_name: GASP
         data: '{"gasp_id":"nrr","gasp_version":"1","form":"O","unit":"percent"}'
@@ -282,7 +282,7 @@ This is one person's plan for earning a place in an Apache community. Credibilit
 
 **1. Earn merges in the Apache repository (highest credibility)**
 
-- Done 2026-10-13: the standard and the MCP server are public through the read-only mirror `GASP-Standard/standard` (the monorepo with the site code stays private and a workflow mirrors the public paths on every push), linked from gaspwiki.com and the npm package's `repository` field. History audited for secrets the same day. The mirror carries `GOVERNANCE.md` and `CONTRIBUTING.md`.
+- Done 2026-10-13: the standard and the MCP server are public through the read-only mirror `GASP-Standard/standard` (the monorepo with the site code stays private and a workflow mirrors the public paths on every push), linked from koinedata.com and the npm package's `repository` field. History audited for secrets the same day. The mirror carries `GOVERNANCE.md` and `CONTRIBUTING.md`.
 - Sign the ASF ICLA before the first PR; add Apache license headers to anything contributed.
 - Open with P0 (two dialect enum values). A small merged PR means reviewers know the name before the larger one arrives.
 - Post an introduction in GitHub Discussions and on dev@ before submitting the reference model, written as the person who built GASP. Decisions there go through open discussion and vote. A PR that arrives without that conversation tends to stall.
@@ -320,7 +320,7 @@ Ship one synthetic SaaS dataset (seeded, ~1,000 accounts, 24 months of CEL event
 
 **5. Launch**
 
-One coordinated week: reference model merged, ecosystem card live, a gaspwiki.com "GASP for Ossie" page, a blog post with the DuckDB demo and the drift report run on a public Snowflake or Databricks example plus a talk slot at an Ossie community meeting.
+One coordinated week: reference model merged, ecosystem card live, a koinedata.com "GASP for Ossie" page, a blog post with the DuckDB demo and the drift report run on a public Snowflake or Databricks example plus a talk slot at an Ossie community meeting.
 
 ## Roadmap
 
@@ -328,7 +328,7 @@ About 16 weeks to launch from 2026-10-12, with community engagement from the int
 
 | Phase | Weeks | Work | Gate |
 | --- | --- | --- | --- |
-| 0. Hygiene | 1 to 2 | Done 2026-10-13: field vocabulary reconciled, npm 1.12.0 published, site deployed, secrets audit, public mirror with governance documents | Mirror public and linked from gaspwiki.com and npm (met) |
+| 0. Hygiene | 1 to 2 | Done 2026-10-13: field vocabulary reconciled, npm 1.12.0 published, site deployed, secrets audit, public mirror with governance documents | Mirror public and linked from koinedata.com and npm (met) |
 | 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (301 formula entries, 280 fields, 54 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
 | 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR (done 2026-11-02); mapping format and `validate_mapping` (done 2026-11-02); metric compiler into a company's model (done 2026-11-02, `compile_model`); reference model PR (branch `examples-gasp-saas` prepared, not yet open); DuckDB demo (done 2026-11-02); synthetic dataset grown from the test fixture (open) | Reference model PR open (prepared); compiled Core runs in DuckDB (met) |
 | 3. Drift and on-ramp | 10 to 16 | Drift scorer (done 2026-11-03, `score_drift`); profiler, proposer and Decide step (done 2026-11-03); the CEL derivation rules and `derive_cel`, the readiness checks and the fix plan (all done 2026-11-03); the Stripe and Salesforce worked examples (done 2026-11-04); P1 to P4 drafted | Drift report on a public vendor example (done 2026-11-04, the Stripe example); synthetic data reaches L4 (done 2026-11-03) |
@@ -390,6 +390,6 @@ Design partners come after launch so the launch depends only on work in this rep
 - [Ossie ecosystem page](https://ossie.apache.org/ecosystem/)
 - [Ossie discussion #277: reified relationships proposal](https://github.com/apache/ossie/discussions/277)
 - [Ossie PR #113: datatype field](https://github.com/apache/ossie/pull/113)
-- [GASP overview](https://gaspwiki.com/v1/overview)
-- [GASP adapter spec](https://gaspwiki.com/v1/adapter)
-- [GASP AI tools and knowledge graph](https://gaspwiki.com/v1/tools)
+- [GASP overview](https://koinedata.com/v1/overview)
+- [GASP adapter spec](https://koinedata.com/v1/adapter)
+- [GASP AI tools and knowledge graph](https://koinedata.com/v1/tools)

@@ -330,7 +330,7 @@ export interface AdapterValidation {
   nextToMap: Array<{ pair: string; unlocks: number }>;
 }
 
-const NO_MAPPINGS = 'Adapter must have a "mappings" array, so coverage cannot be scored. Template: https://gaspwiki.com/downloads/gasp-adapter-template.json';
+const NO_MAPPINGS = 'Adapter must have a "mappings" array, so coverage cannot be scored. Template: https://koinedata.com/downloads/gasp-adapter-template.json';
 
 /** Runs every validate_adapter check: the schema first, then fields, datasets, owners and coverage. */
 export function checkAdapter(adapter: Adapter, data: StandardData): AdapterValidation {

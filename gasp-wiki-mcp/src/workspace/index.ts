@@ -22,7 +22,7 @@ export const DEFAULT_PROTECTED_TOOLS: readonly string[] = [
   ...WORKSPACE_TOOLS,
 ];
 
-export const DEFAULT_RESOURCE = "https://mcp.gaspwiki.com/mcp";
+export const DEFAULT_RESOURCE = "https://mcp.koinedata.com/mcp";
 
 export interface WorkspaceOptions extends AuthConfig {
   /** The canonical URL of this MCP resource, named in the metadata and the challenge. */

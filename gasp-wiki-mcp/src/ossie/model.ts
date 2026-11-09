@@ -293,7 +293,7 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
   const model: OssieSemanticModel = {
     version: OSSIE_VERSION,
     name: "GASP reference model",
-    description: "GASP Standard reference model: the canonical SaaS datasets, their joins and every computable GASP metric. Sources and columns use the canonical names; an adopter's mapping replaces them. https://gaspwiki.com",
+    description: "GASP Standard reference model: the canonical SaaS datasets, their joins and every computable GASP metric. Sources and columns use the canonical names; an adopter's mapping replaces them. https://koinedata.com",
     datasets: [...datasets, ...staged],
     relationships,
     metrics,

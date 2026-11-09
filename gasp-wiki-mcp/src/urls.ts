@@ -1,5 +1,5 @@
 /**
- * Canonical gaspwiki.com URLs for standard content.
+ * Canonical koinedata.com URLs for standard content.
  *
  * Mirrors the website's routing (gasp-wiki-frontend/src/pages and
  * utils/metric-helpers.ts) so agents get working links instead of guessing.
@@ -7,7 +7,7 @@
  */
 import type { Metric, Definition, RelationshipNode } from "./types.js";
 
-export const SITE = "https://gaspwiki.com";
+export const SITE = "https://koinedata.com";
 
 function deptSlug(dept: string): string {
   return dept.toLowerCase().replace(/\s+/g, "-");

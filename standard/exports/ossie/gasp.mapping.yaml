@@ -1,4 +1,4 @@
-# Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
+# Generated from the GASP Standard (https://koinedata.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
 version: 0.2.0.dev0
 name: gasp_reference_mapping
 description: Maps the GASP ontology onto the GASP reference semantic model, whose datasets and fields are named by their GASP ids. A customer mapping keeps this shape and swaps in its own dataset and field names.

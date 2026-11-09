@@ -55,7 +55,7 @@ import { parseDecisions } from "./ossie/decide.js";
 import { parseResults } from "./checks.js";
 import { callerOf, storeFor, DOCUMENT_KINDS, type DocumentKind, type WorkspaceOptions } from "./workspace/index.js";
 
-// Load data: local repo files → bundled JSON → remote fetch from gaspwiki.com
+// Load data: local repo files → bundled JSON → remote fetch from koinedata.com
 let data: StandardData;
 try {
   data = loadStandard();
@@ -73,7 +73,7 @@ try {
 }
 
 // Background version check: non-blocking, stderr only
-const VERSION_URL = "https://gaspwiki.com/api/standard-version.json";
+const VERSION_URL = "https://koinedata.com/api/standard-version.json";
 (async () => {
   try {
     const res = await fetch(VERSION_URL);
@@ -93,7 +93,7 @@ const VERSION_URL = "https://gaspwiki.com/api/standard-version.json";
       );
     }
   } catch {
-    // Offline or gaspwiki.com unreachable: silently ignore
+    // Offline or koinedata.com unreachable: silently ignore
   }
 })();
 
@@ -811,7 +811,7 @@ tool(
 const VALIDATE_DESCRIPTION =
   "Check a warehouse mapping against the GASP Standard and score its coverage. Accepts either format: a GASP adapter (JSON; schema https://gaspwiki.com/schemas/gasp-adapter-v1.json, versions 1.0 and 1.1) or an Apache Ossie mapping document (YAML or JSON) over your semantic model, which you can pass as semantic_model. A GASP adapter is converted on load into an Ossie mapping over a model synthesised from its tables and columns. Layers, each reported in its own section: the schema (the adapter JSON Schema with each violation's JSON path, and the Ossie mapping schema for the Ossie form), GASP's cross-document checks (every concept, relationship and field reference resolves against the GASP ontology and the model), then coverage: unknown fields and datasets, fields mapped to a dataset that does not carry them, bare column names on fields that live on several datasets, datasets whose fields point at different tables, pairs mapped twice, the field and dataset pairs mapped, every metric with a formula scored against the pairs its compiled SQL reads (fully covered, partially covered with the missing pairs, not covered), enum fields mapped without a transform, covered metrics with no declared owner, owners naming unknown metrics and up to 15 unmapped pairs ranked by how many partially covered metrics need them. Run it before generate_query.";
 const VALIDATE_PARAMS = {
-  adapter: z.string().describe("The mapping as text: a GASP adapter (JSON; template: https://gaspwiki.com/downloads/gasp-adapter-template.json) or an Ossie mapping document (YAML or JSON; reference: https://gaspwiki.com/downloads/ossie/gasp.mapping.yaml)."),
+  adapter: z.string().describe("The mapping as text: a GASP adapter (JSON; template: https://koinedata.com/downloads/gasp-adapter-template.json) or an Ossie mapping document (YAML or JSON; reference: https://koinedata.com/downloads/ossie/gasp.mapping.yaml)."),
   semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), so its datasets, fields, keys and sources are checked. Without it, names are taken from the mapping's expressions."),
 };
 const validateHandler = async ({ adapter, semantic_model }: { adapter: string; semantic_model?: string }) =>
@@ -992,7 +992,7 @@ tool(
 // --- Tool 18: infer_drivers ---
 tool(
   "infer_drivers",
-  "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://gaspwiki.com/v1/twin-modifier.",
+  "Rank the upstream metrics that could explain an observed movement in a metric. Walks the GASP relationship graph backwards from the metric up to maxDepth edges and returns up to 25 candidates, each with the direction it would have moved, a score and its path to the metric. Direction flips across a reduces edge and across an input with negative polarity (a denominator or subtracted term), marked ↓ in the path. A baseline input (read at period start, as NRR reads MRR) is listed as a candidate but not walked through, since its own drivers cannot move the metric within the period. Scores are products of edge attenuations: they rank structural links and say nothing about magnitude. Works on metric nodes only. Follow up with explain_path for the chain behind a candidate or coverage_gap to check you track it; for 'what if' simulation use the TWIN Modifier at https://koinedata.com/v1/twin-modifier.",
   {
     metric: z.string().describe("Metric name, abbreviation or graph id (e.g. 'ARR', 'Net Revenue Retention', 'nrr'), resolved as in lookup_metric. It must be a metric in the relationship graph."),
     direction: z.enum(["up", "down"]).describe("Observed movement of the metric: up or down"),
@@ -1189,7 +1189,7 @@ type Register = <Args extends ZodRawShapeCompat>(name: ToolName, description: st
 
 const textResult = (text: string, isError = false): CallToolResult => ({ content: [{ type: "text", text }], ...(isError ? { isError: true } : {}) });
 
-const SIGN_IN_TEXT = "This tool needs a signed-in GASP Workspace company, and this call carried no token. Connect the GASP Standard server in Claude and sign in when it asks; see https://gaspwiki.com/workspace.";
+const SIGN_IN_TEXT = "This tool needs a signed-in GASP Workspace company, and this call carried no token. Connect the GASP Standard server in Claude and sign in when it asks; see https://koinedata.com/workspace.";
 
 const KIND_LABEL: Record<DocumentKind, string> = { mapping: "Mapping", model: "Semantic model", decisions: "Decisions", results: "Check results" };
 

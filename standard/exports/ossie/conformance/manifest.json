@@ -64,7 +64,7 @@
           "value": 0.9867549668874173
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/core/net-revenue-retention-nrr"
+      "canonical": "https://koinedata.com/v1/metrics/core/net-revenue-retention-nrr"
     },
     {
       "id": "c02_lag_mrr_growth_rate",
@@ -85,7 +85,7 @@
           "value": 0.11009174311926606
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/core/mrr-growth-rate"
+      "canonical": "https://koinedata.com/v1/metrics/core/mrr-growth-rate"
     },
     {
       "id": "c03_at_period_start_logo_churn_rate",
@@ -107,7 +107,7 @@
           "value": 0.25
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/core/logo-churn-rate-customer-churn"
+      "canonical": "https://koinedata.com/v1/metrics/core/logo-churn-rate-customer-churn"
     },
     {
       "id": "c04_total_ticket_distribution_by_type",
@@ -150,7 +150,7 @@
           "value": 0.0967741935483871
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/support/ticket-distribution-by-type"
+      "canonical": "https://koinedata.com/v1/metrics/support/ticket-distribution-by-type"
     },
     {
       "id": "c05_period_bound_in_filter_win_rate",
@@ -171,7 +171,7 @@
           "value": 0.5
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/sales/win-rate"
+      "canonical": "https://koinedata.com/v1/metrics/sales/win-rate"
     },
     {
       "id": "c06_to_date_ticket_backlog",
@@ -192,7 +192,7 @@
           "value": 7
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/support/ticket-backlog"
+      "canonical": "https://koinedata.com/v1/metrics/support/ticket-backlog"
     },
     {
       "id": "c07_period_days_uptime",
@@ -213,7 +213,7 @@
           "value": 0.9997582872928177
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/engineering/uptime-availability"
+      "canonical": "https://koinedata.com/v1/metrics/engineering/uptime-availability"
     },
     {
       "id": "c08_bucket_aging_buckets",
@@ -248,7 +248,7 @@
           "value": 0
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/revops/aging-buckets"
+      "canonical": "https://koinedata.com/v1/metrics/revops/aging-buckets"
     },
     {
       "id": "c09_window_dau_mau",
@@ -269,7 +269,7 @@
           "value": 0.23809523809523808
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/product/daumau-ratio-stickiness"
+      "canonical": "https://koinedata.com/v1/metrics/product/daumau-ratio-stickiness"
     },
     {
       "id": "c10_distinct_pair_breadth_of_adoption",
@@ -290,7 +290,7 @@
           "value": 4.785714285714286
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/product/breadth-of-adoption"
+      "canonical": "https://koinedata.com/v1/metrics/product/breadth-of-adoption"
     },
     {
       "id": "c11_all_time_user_retention_day_n",
@@ -312,7 +312,7 @@
           "value": 0.7142857142857143
         }
       ],
-      "canonical": "https://gaspwiki.com/v1/metrics/product/user-retention-day-n"
+      "canonical": "https://koinedata.com/v1/metrics/product/user-retention-day-n"
     }
   ]
 }

@@ -21,7 +21,7 @@ export function exportOssie(data: StandardData): OssieExport {
   return { ontology, model, mapping, coverage };
 }
 
-const HEADER = "# Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.\n";
+const HEADER = "# Generated from the GASP Standard (https://koinedata.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.\n";
 
 /** YAML text for one document, with the generated-file header. */
 export function ossieYaml(doc: unknown): string {

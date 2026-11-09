@@ -20,7 +20,7 @@ Wording fixes, examples and tooling changes go straight to review without a deci
 
 The standard and the MCP package carry separate versions.
 
-**The standard** is versioned by its content path. Every page lives under `/v1/` on gaspwiki.com. The metric and definition URLs under it are stable identifiers that agents, adapters and the Apache Ossie export all point at. The MCP package and the site also publish a content hash (`standard-version.json`) so a client can tell when the canon changed.
+**The standard** is versioned by its content path. Every page lives under `/v1/` on koinedata.com (moved from gaspwiki.com in November 2026; every gaspwiki.com URL redirects permanently to the same path). The metric and definition URLs under it are stable identifiers that agents, adapters and the Apache Ossie export all point at. The MCP package and the site also publish a content hash (`standard-version.json`) so a client can tell when the canon changed.
 
 A breaking change to the canon is one that makes an existing implementation silently wrong or unable to resolve a reference:
 

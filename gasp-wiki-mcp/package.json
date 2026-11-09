@@ -5,7 +5,7 @@
   "type": "module",
   "license": "Apache-2.0",
   "author": "Gareth O'Shea",
-  "homepage": "https://gaspwiki.com/v1/tools",
+  "homepage": "https://koinedata.com/v1/tools",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GASP-Standard/standard.git",

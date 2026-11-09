@@ -1,6 +1,6 @@
 # GASP SaaS core: an Apache Ossie example
 
-Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in `gasp-wiki-mcp`. Do not edit; edit `/standard/` and re-run.
+Generated from the GASP Standard (https://koinedata.com) by `npm run derive` in `gasp-wiki-mcp`. Do not edit; edit `/standard/` and re-run.
 
 The Core department of the GASP Standard (Generally Accepted SaaS Principles) as three Apache Ossie (incubating) documents, in the layout of the upstream `examples/flights.*` set: an ontology, a semantic model and the mapping between them. It is the compact form of the full export beside it, cut to the 6 datasets the 40 Core metric entries read, and is the draft of the example GASP proposes to contribute to `apache/ossie/examples/`.
 
