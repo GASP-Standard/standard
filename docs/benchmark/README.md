@@ -39,6 +39,7 @@ The same system prompt in every model condition states the period convention (a 
 ## Caveats
 
 - **Synthetic data, one month, 24 questions.** The warehouse is the standard's seeded fixture, not a customer's. March 2026 was chosen because every Core metric but Rule of 40 (whose one-year lag has no data) has a value. More periods, more departments and the derived questions ("what drove NRR down?") are the next rounds.
+- **It tests the written definition, not GASP's values.** With a definition in the context the model follows it, so a company's own Operating form written in the grammar would be followed the same way. Whether GASP's definition is the right one for a given business is a separate question this run does not answer.
 - **The judge is a model vendor's own models.** Both conditions were run on Claude. A cross-vendor run is the obvious follow-up.
 - **The GASP context includes the mapping.** The layer condition and the GASP condition both know which column each field lives in, because that is what a semantic layer holds. The raw condition has the column names only. That is the comparison the benchmark is about; it is not a test of schema linking in isolation.
 - **Run 1 (`results-2026-11-07-run1`)** had a weaker GASP context: the formula of the asked metric without the formulas of the metrics it references. Sonnet missed CAC Payback five times out of five by guessing what CAC meant; Opus did not. The context was corrected to carry the referenced definitions, which the layer holds, and the whole benchmark rerun. Both runs are kept.

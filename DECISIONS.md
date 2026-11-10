@@ -5,6 +5,13 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-09] Certification attests a company's metrics as declared
+**Decision:** GASP certification attests that a company's own definitions are written down, mapped and tested, and that every difference from the GASP Standard is named and explained (the drift report). It never grades a company pass or fail against GASP's values. The directory listing calls GASP "the open standard for SaaS metrics" rather than "the open semantic layer".
+
+**Context:** A CFO-voice skeptic's brief (TODO 0d) put the buyer's sharpest fear as a published "right" number becoming a conformance stick that acquirers and auditors use against them. Certifying conformance would sell that fear; certifying declared definitions sells the opposite, a number the company can defend. The semantic-layer wording invited "I already run dbt or Cube"; GASP compiles into those layers, so the listing names what it is.
+
+---
+
 ## [2026-11-09] koinedata.com becomes the primary domain; gaspwiki.com redirects
 **Decision:** The site, the canonical URLs the MCP tools emit and the hosted MCP endpoint move to koinedata.com, the corporate home of Koine Data, the team that publishes and uses GASP. The GASP Standard keeps its name, its npm package and its registry name; Koine Data is named as the publisher (JSON-LD Organization, footer). gaspwiki.com and www.gaspwiki.com answer with a 301 to the same path on koinedata.com, except `/schemas/*`, which keeps serving so a validator fetching a schema by its id never meets a redirect. The hosted MCP server answers on both `mcp.koinedata.com` and `mcp.gaspwiki.com`, with koinedata the advertised URL and the Workspace's OAuth resource default. `aicf.gaspwiki.com` and the email addresses (`hello@`, `noreply@`) stay on gaspwiki.com until they move on their own.
 
