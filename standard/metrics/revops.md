@@ -203,7 +203,7 @@ Billing Accuracy = Invoices without correction / Total invoices × 100
 
 **Target:** >98%
 
-**What it tells you:** Billing process reliability.
+**What it tells you:** How often invoices go out right first time, with the 98% target allowing one correction in fifty invoices.
 
 ---
 
@@ -245,12 +245,12 @@ Billing Disputes are reported per payment status as of period end.
 
 **Formula:**
 ```
-Credit Memo Rate = Credit memos issued / Total invoices × 100
+Credit Memo Rate = Invoices with a credit memo / Total invoices × 100
 ```
 
 **Target:** <2%
 
-**What it tells you:** Billing errors and adjustments.
+**What it tells you:** How often an invoice has to be adjusted after it is issued.
 
 ---
 
@@ -429,6 +429,8 @@ Recognition Accuracy = Revenue recognized correctly / Total revenue × 100
 Notification Rate = Renewals notified on time / Total renewals × 100
 ```
 
+Total renewals are the contracts whose term ends in the period, renewed or lapsed, since notice is due before the outcome is known.
+
 **Target:** 100%
 
 ---
@@ -442,7 +444,9 @@ Notification Rate = Renewals notified on time / Total renewals × 100
 Auto-Renewal Rate = Auto-renewed contracts / Total renewals × 100
 ```
 
-**What it tells you:** Renewal process efficiency.
+Total renewals are the contracts ending in the period that renewed.
+
+**What it tells you:** How many renewals go through without anyone processing them by hand.
 
 ---
 

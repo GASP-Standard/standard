@@ -11,7 +11,7 @@
  *   checkMapping     either input, validated in layers: the Ossie schemas
  *                    (bundled, so it works offline), GASP's cross-document
  *                    checks against the GASP ontology, then the coverage,
- *                    transform and ownership checks of validate_adapter
+ *                    transform and ownership checks of validate_mapping
  *
  * A mapping expression is `<dataset>.<field>` over the company's model. A field
  * whose model expression is not its bare column name carries that expression
@@ -19,7 +19,7 @@
  */
 import { parse as parseYaml } from "yaml";
 import type { ValidateFunction } from "ajv";
-import { checkAdapter, columnOf, formatSchemaError, formatValidationReport, newAjv, resolveAdapter, tableOf, type Adapter, type AdapterValidation, type Mapping } from "../tools.js";
+import { checkAdapter, columnOf, formatSchemaError, formatValidationReport, newAjv, resolveAdapter, type Adapter, type AdapterValidation, type Mapping } from "../tools.js";
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
@@ -73,7 +73,6 @@ export { expressionText };
 
 /** A v1 adapter as the two Ossie documents: the company's model and the GASP mapping onto it. */
 export function adapterToOssie(adapter: Adapter, data: StandardData): OssieForm {
-  const fieldById = new Map((data.ontology?.fields ?? []).map((f) => [f.id, f]));
   const datasets = data.ontology?.datasets ?? {};
   const r = resolveAdapter(adapter, data);
   const org = adapter.organization?.trim() || "Company";
@@ -290,7 +289,7 @@ export interface MappingValidation {
   /** Datasets or field groups the v1 conversion left out of the mapping */
   gaps: MappingGap[];
   adapter: Adapter;
-  /** The validate_adapter checks over the (converted) adapter */
+  /** The validate_mapping checks over the (converted) adapter */
   coverage: AdapterValidation;
   ossie: { model: OssieSemanticModel; mapping: OssieMapping };
 }

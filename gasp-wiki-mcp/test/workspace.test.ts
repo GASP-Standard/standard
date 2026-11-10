@@ -96,8 +96,10 @@ describe("the workspace store", () => {
     expect(await store.saveDocument(other.company.id, "mapping", { o: 1 }, "user_o")).toBe(1);
   });
 
-  it("refuses a kind outside the four", async () => {
+  it("keeps schema snapshots as a kind and refuses a kind outside the five", async () => {
     const { company } = await store.ensureCompany(auth("org_versions", "user_v"));
+    expect(await store.saveDocument(company.id, "schema", [{ table: "t", column: "c", type: "int" }], null)).toBe(1);
+    expect(await store.saveDocument(company.id, "schema", [{ table: "t", column: "c", type: "bigint" }], null)).toBe(2);
     await expect(store.saveDocument(company.id, "secrets" as "mapping", {}, null)).rejects.toThrow();
   });
 
@@ -108,7 +110,8 @@ describe("the workspace store", () => {
       // Every read of documents or members is filtered: no FROM without a WHERE on the company.
       for (const from of sql.match(/FROM (documents|members)\b[^)]*/g) ?? []) expect(from, name).toMatch(/WHERE company_id = \$1/);
     }
-    expect(SCHEMA.every((s) => s.startsWith("CREATE TABLE IF NOT EXISTS"))).toBe(true);
+    // Idempotent statements only: tables created if absent, the kinds constraint dropped if present and re-added.
+    expect(SCHEMA.every((s) => s.startsWith("CREATE TABLE IF NOT EXISTS") || /^ALTER TABLE documents (DROP CONSTRAINT IF EXISTS|ADD CONSTRAINT) documents_kind_check\b/.test(s))).toBe(true);
   });
 });
 

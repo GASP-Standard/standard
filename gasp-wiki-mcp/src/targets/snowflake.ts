@@ -140,7 +140,7 @@ export function writeSnowflake(tm: TargetModel, opts: SnowflakeOptions = {}): { 
     files["staged_views.sql"] = [head.join("\n"), ...spineSql, ...views].join("\n\n") + "\n";
   }
 
-  notes.push("semantic_model.yaml is a Snowflake Cortex Analyst semantic model; Cortex Analyst reads it as is, and SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML loads it as a semantic view.");
+  notes.push("semantic_model.yaml is a Snowflake Cortex Analyst semantic model; Cortex Analyst reads it as is. SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML loads it as a semantic view.");
   if (files["staged_views.sql"]) notes.push(`Run staged_views.sql first: it creates the period spine table (fill it with your reporting periods) and the ${views.length} view${views.length === 1 ? "" : "s"} the staged tables name${schema ? ` in schema ${upper(schema)}` : ""}.`);
   if (missingDb.length) notes.push(`${missingDb.length} table${missingDb.length === 1 ? " lacks" : "s lack"} a database or schema in base_table (${missingDb.slice(0, 5).join(", ")}${missingDb.length > 5 ? ", ..." : ""}); pass database${schema ? "" : " and staged_schema"} so every base table is database.schema.table.`);
   return { files, notes };

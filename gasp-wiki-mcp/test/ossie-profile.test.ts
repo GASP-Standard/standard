@@ -214,8 +214,7 @@ describe("Profile: the Acme DDL", () => {
     expect(ext.profile).toMatchObject({ kind: "snapshot", confidence: { kind: "high", key: "medium", time: "high" } });
   });
 
-  const upstream = uvAvailable() ? it : it.skip;
-  upstream("passes the upstream validator", async () => {
+  it.skipIf(!uvAvailable())("passes the upstream validator", async () => {
     const dir = mkdtempSync(join(tmpdir(), "gasp-profile-"));
     try {
       const file = join(dir, "acme_saas.semantic_model.yaml");

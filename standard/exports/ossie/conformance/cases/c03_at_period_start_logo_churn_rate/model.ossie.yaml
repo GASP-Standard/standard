@@ -50,7 +50,7 @@ datasets:
       - name: expansion_classification
         expression:
           sql: expansion_classification
-        description: ATL expansion tag; required for NRR-M and ARR-M
+        description: ATL expansion tag; read by ARR-O, NRR-O and NRR-M
         datatype: String
         ai_context:
           instructions: One of same_product, new_module, new_buying_centre, pricing_adjustment, recontracting, usage_realisation

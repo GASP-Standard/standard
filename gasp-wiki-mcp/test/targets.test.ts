@@ -5,11 +5,11 @@
  * Snowflake writer turns the Acme adapter into a Cortex Analyst model whose
  * expressions run on Snowflake and whose staged views are the compiled
  * Snowflake sources; the Cube writer turns the fixture adapter into cubes whose
- * measures and staged queries give the canonical values on PGlite; the
- * compile_target tool answers in each output shape.
+ * measures and staged queries give the canonical values on PGlite; the dbt
+ * writer keys every composite-key table by a surrogate, and on PGlite its
+ * models, its staged models and every metric rebuilt from its YAML give the
+ * canonical values; the compile_target tool answers in each output shape.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -24,15 +24,18 @@ import { directQuery } from "../src/ossie/demo.js";
 import { directExpressionFor, emitMetric, type EmitContext } from "../src/ossie/metrics.js";
 import { exportModel } from "../src/ossie/model.js";
 import { compileTarget, compileTargetFromText, withDatabase, type TargetResult } from "../src/targets/index.js";
+import { aggregatesIn, DBT_DIR, SURROGATE_KEY } from "../src/targets/dbt.js";
+import type { TargetModel } from "../src/targets/common.js";
 import { TOOL_TITLES, createServer } from "../src/server.js";
 import { addOssieViews, adapter as fixtureAdapter, fixtureDb, scalar } from "./fixture-db.js";
 import { columnName, TABLES } from "./fixture/generate.js";
+import { acmeAdapter } from "./ossie-helpers.js";
 
 const data = loadStandard();
 const fields = Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f]));
 const gaspDatasets = data.ontology!.datasets!;
 const ctx: EmitContext = { fields, datasets: gaspDatasets, formulas: data.formulas! };
-const acme = JSON.parse(readFileSync(join(process.cwd(), "test", "fixture", "acme-adapter.json"), "utf-8")) as Adapter;
+const acme: Adapter = acmeAdapter();
 const reference = exportModel(data);
 const refMetric = new Map(reference.model.metrics!.map((m) => [m.name, m.expression.sql!]));
 const directKeys = Object.entries(reference.coverage).flatMap(([key, c]) => (c.kind === "direct" ? [{ key, name: c.ossieName }] : []));
@@ -293,6 +296,206 @@ describe("Cube target: the fixture adapter on PGlite", () => {
   });
 });
 
+type DbtMeasure = { name: string; agg: string; expr: string; agg_params?: { percentile: number }; non_additive_dimension?: { name: string; window_choice: string } };
+type DbtSemanticModel = { name: string; model: string; defaults?: { agg_time_dimension: string }; entities?: Array<{ name: string; type: string; expr: string }>; dimensions?: Array<{ name: string; type: string }>; measures?: DbtMeasure[] };
+type DbtMetric = { name: string; type: "simple" | "ratio" | "derived"; type_params: { measure?: { name: string; fill_nulls_with?: number }; numerator?: string; denominator?: string; expr?: string; metrics?: Array<{ name: string }> } };
+const dbtParts = (r: TargetResult) => ({
+  semantic: parse(r.files[`${DBT_DIR}/_gasp__semantic_models.yml`]).semantic_models as DbtSemanticModel[],
+  metrics: parse(r.files[`${DBT_DIR}/_gasp__metrics.yml`]).metrics as DbtMetric[],
+});
+
+/** A metric written back as SQL over `<semantic model>.<field>`, from the YAML alone (the target model only names each table's fields). */
+function rebuild(name: string, tm: TargetModel, semantic: DbtSemanticModel[], metrics: DbtMetric[]): string {
+  const dialect = DIALECT[tm.dialect];
+  const fieldsOf = new Map(tm.tables.map((t) => [t.name, new Set(t.fields.map((f) => f.name))]));
+  const measures = new Map(semantic.flatMap((sm) => (sm.measures ?? []).map((m) => [m.name, { sm: sm.name, m }] as const)));
+  const byName = new Map(metrics.map((m) => [m.name, m]));
+  const qualify = (expr: string, sm: string) => expr.split(/('(?:[^']|'')*')/).map((part, i) => (i % 2 ? part
+    : part.replace(/(?<![\w.])([a-z_][a-z0-9_]*)\b(?!\s*[(.])/g, (w) => (fieldsOf.get(sm)?.has(w) ? `${sm}.${w}` : w)))).join("");
+  const agg = (m: DbtMeasure, sm: string): string => {
+    const e = qualify(m.expr, sm);
+    switch (m.agg) {
+      case "sum": return `SUM(${e})`;
+      case "count": return `COUNT(${e})`;
+      case "count_distinct": return `COUNT(DISTINCT ${e})`;
+      case "average": return `AVG(${e})`;
+      case "min": return `MIN(${e})`;
+      case "max": return `MAX(${e})`;
+      case "percentile": return dialect.percentile(m.agg_params!.percentile, e);
+      default: return dialect.percentile(0.5, e);
+    }
+  };
+  const sqlOf = (n: string): string => {
+    const m = byName.get(n);
+    if (!m) throw new Error(`no metric ${n}`);
+    if (m.type === "simple") {
+      const x = measures.get(m.type_params.measure!.name);
+      if (!x) throw new Error(`no measure ${m.type_params.measure!.name}`);
+      const a = agg(x.m, x.sm);
+      return m.type_params.measure!.fill_nulls_with === 0 ? `COALESCE(${a}, 0)` : a;
+    }
+    if (m.type === "ratio") return `(${dialect.toDouble(sqlOf(m.type_params.numerator!))} / NULLIF(${sqlOf(m.type_params.denominator!)}, 0))`;
+    for (const i of m.type_params.metrics!) if (!byName.has(i.name)) throw new Error(`${n} reads ${i.name}, which is not written`);
+    return `(${m.type_params.expr!.replace(/\b[a-z0-9_]+__\d+(?:_filled)?\b/g, (x) => sqlOf(x))})`;
+  };
+  return sqlOf(name);
+}
+
+describe("dbt target", () => {
+  describe("the Acme adapter", () => {
+    const c = company(acme);
+    const r = target(c, { target: "dbt" });
+    const model = compiled(c, "snowflake");
+    const { semantic, metrics } = dbtParts(r);
+
+    it("writes a model per table, the sources and YAML that parses", () => {
+      const models = Object.keys(r.files).filter((p) => p.endsWith(".sql"));
+      expect(models).toHaveLength(model.model.datasets.length);
+      for (const p of Object.keys(r.files)) expect(p.startsWith(`${DBT_DIR}/`), p).toBe(true);
+      expect(semantic.map((s) => s.name).sort()).toEqual(model.model.datasets.filter((d) => d.name !== "gasp_period_spine").map((d) => d.name).sort());
+      for (const s of semantic) expect(r.files[`${DBT_DIR}/${s.model.replace(/^ref\('(.+)'\)$/, "$1")}.sql`], s.name).toBeDefined();
+      const sources = parse(r.files[`${DBT_DIR}/_gasp__sources.yml`]).sources as Array<{ name: string; schema: string; tables: Array<{ name: string }> }>;
+      expect(sources.find((x) => x.name === "billing")!.tables.map((t) => t.name)).toContain("subscriptions");
+      const sub = r.files[`${DBT_DIR}/gasp_subscription.sql`];
+      expect(sub).toContain("mrr_cents / 100 AS mrr");
+      expect(sub).toContain(`CAST(subscription_id AS VARCHAR) || '_' || CAST(snapshot_date AS VARCHAR) AS ${SURROGATE_KEY}`);
+      expect(sub).toContain("FROM {{ source('billing', 'subscriptions') }}");
+    });
+
+    it("gives every semantic model one single-column primary entity, the surrogate key where the key is composite", () => {
+      for (const s of semantic) {
+        const d = model.model.datasets.find((x) => x.name === s.name)!;
+        const primary = (s.entities ?? []).filter((e) => e.type === "primary");
+        expect(primary, s.name).toHaveLength(1);
+        expect(primary[0].expr, s.name).toMatch(/^[a-z_][a-z0-9_]*$/);
+        if (new Set(d.primary_key).size > 1) {
+          expect(primary[0].expr, s.name).toBe(SURROGATE_KEY);
+          expect(r.files[`${DBT_DIR}/${s.model.replace(/^ref\('(.+)'\)$/, "$1")}.sql`], s.name).toContain(`AS ${SURROGATE_KEY}`);
+        }
+      }
+      for (const name of ["customer", "subscription", "invoice"]) expect(semantic.find((s) => s.name === name)!.entities![0]).toEqual({ name, type: "primary", expr: SURROGATE_KEY });
+      // A foreign entity onto a snapshot builds the same key from its own join columns.
+      expect(semantic.find((s) => s.name === "revenue_event")!.entities).toContainEqual({ name: "customer", type: "foreign", expr: "CAST(customer_id AS VARCHAR) || '_' || CAST(event_date AS VARCHAR)" });
+      expect(semantic.find((s) => s.name === "subscription")!.defaults).toEqual({ agg_time_dimension: "snapshot_date" });
+    });
+
+    it("writes every direct and staged metric over measures that exist, with unique names", () => {
+      const want = Object.values(model.coverage).flatMap((x) => (x.kind === "direct" || x.kind === "staged" ? [x.ossieName] : []));
+      expect(metrics.filter((m) => !/__\d/.test(m.name)).map((m) => m.name).sort()).toEqual(want.sort());
+      const measureNames = semantic.flatMap((s) => (s.measures ?? []).map((m) => m.name));
+      expect(new Set(measureNames).size).toBe(measureNames.length);
+      expect(new Set(metrics.map((m) => m.name)).size).toBe(metrics.length);
+      for (const m of metrics) if (m.type === "simple") expect(measureNames, m.name).toContain(m.type_params.measure!.name);
+      const mrr = metrics.find((m) => m.name === "gasp_mrr")!;
+      expect(mrr.type_params.measure!.fill_nulls_with).toBe(0);
+      const measure = semantic.find((s) => s.name === "subscription")!.measures!.find((m) => m.name === mrr.type_params.measure!.name)!;
+      expect(measure).toEqual({ name: "gasp_mrr__1", agg: "sum", expr: "CASE WHEN subscription_status = 'active' THEN mrr END", non_additive_dimension: { name: "snapshot_date", window_choice: "max" } });
+      expect(metrics.find((m) => m.name === "gasp_arpa")!.type).toBe("ratio");
+      expect(metrics.find((m) => m.name === "gasp_nrr")!.type_params.measure!.name).toBe("gasp_nrr__value");
+      expect(r.notes.join(" ")).toMatch(/composite key/);
+      expect(r.notes.join(" ")).not.toMatch(/Left out/);
+    });
+
+    it("writes snowflake, bigquery and databricks without FILTER or a forbidden token", () => {
+      for (const d of ["snowflake", "bigquery", "databricks"] as const) {
+        const x = target(c, { target: "dbt", dialect: d });
+        expect(x.model.dialect).toBe(d);
+        for (const [p, s] of Object.entries(x.files)) {
+          expect(s, `${d} ${p}`).not.toContain("FILTER (WHERE");
+          for (const token of DIALECT[d].forbidden) expect(s, `${d} ${p}`).not.toContain(token);
+        }
+        expect(x.files[`${DBT_DIR}/gasp_subscription.sql`]).toContain(DIALECT[d].toText("subscription_id"));
+      }
+    });
+  });
+
+  it("splits each aggregate with its COALESCE, DISTINCT and percentile", () => {
+    const a = aggregatesIn("(CAST(COALESCE(SUM(CASE WHEN t.x = 'a,(b' THEN t.y END), 0) AS DOUBLE PRECISION) / NULLIF(COUNT(DISTINCT t.id), 0))");
+    expect(a.map((x) => [x.agg, x.expr, x.fill])).toEqual([["sum", "CASE WHEN t.x = 'a,(b' THEN t.y END", 0], ["count_distinct", "t.id", undefined]]);
+    expect(aggregatesIn("PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY t.ms) * 2")[0]).toMatchObject({ agg: "percentile", expr: "t.ms", percentile: { p: 0.99 } });
+    expect(aggregatesIn("APPROX_QUANTILES(t.ms, 1000)[OFFSET(500)]")[0]).toMatchObject({ agg: "percentile", expr: "t.ms", percentile: { p: 0.5, approximate: true } });
+    expect(aggregatesIn("COALESCE(t.a, 0) + MAX(t.b)").map((x) => x.agg)).toEqual(["max"]);
+  });
+
+  describe("the fixture adapter on PGlite", () => {
+    const c = company(fixtureAdapter as Adapter);
+    const r = target(c, { target: "dbt" });
+    const model = compiled(c, "postgres");
+    const { semantic, metrics } = dbtParts(r);
+    let db: PGlite;
+    beforeAll(async () => {
+      db = await fixtureDb();
+      await addOssieViews(db);
+      await db.exec(`CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE); INSERT INTO gasp.period_spine VALUES ('${period.start}', '${period.end}'); CREATE SCHEMA dbt`);
+      // Each model as a view in schema dbt; a source() call resolves to the table it names (each source is named after its schema here).
+      for (const [p, sql] of Object.entries(r.files)) {
+        if (!p.endsWith(".sql")) continue;
+        const body = sql.replace(/\{\{ source\('([^']+)', '([^']+)'\) \}\}/g, "$1.$2");
+        await db.exec(`CREATE VIEW dbt.${p.slice(DBT_DIR.length + 1, -4)} AS ${body}`);
+      }
+    }, 120_000);
+    afterAll(async () => { await db?.close(); });
+
+    it("every surrogate-key model keeps every source row with a key that is never null and distinct per key", async () => {
+      const keyed = semantic.filter((s) => s.entities?.[0]?.expr === SURROGATE_KEY && !s.name.startsWith("gasp_staged_"));
+      expect(keyed.length).toBeGreaterThan(25);
+      for (const s of keyed) {
+        const view = `dbt.gasp_${s.name}`;
+        const [row] = (await db.query<{ n: number; k: number; nulls: number }>(`SELECT COUNT(*)::int AS n, COUNT(DISTINCT ${SURROGATE_KEY})::int AS k, COUNT(*) FILTER (WHERE ${SURROGATE_KEY} IS NULL)::int AS nulls FROM ${view}`)).rows;
+        expect(row.n, s.name).toBe(await scalar(db, `SELECT COUNT(*) FROM ${TABLES[s.name]}`));
+        expect(row.nulls, s.name).toBe(0);
+        const pk = [...new Set(model.model.datasets.find((d) => d.name === s.name)!.primary_key!)];
+        expect(row.k, s.name).toBe(await scalar(db, `SELECT COUNT(*) FROM (SELECT DISTINCT ${pk.join(", ")} FROM ${view}) x`));
+      }
+    }, 120_000);
+
+    it("every staged model is its compiled source and returns the same rows", async () => {
+      const rows = async (source: string) => (await db.query<Record<string, unknown>>(`SELECT * FROM (${source}) s`)).rows.map((row) => JSON.stringify(Object.values(row))).sort();
+      const staged = model.model.datasets.filter((d) => d.name.startsWith("gasp_staged_"));
+      expect(staged.length).toBeGreaterThan(100);
+      let wrapped = 0;
+      for (const d of staged) {
+        const file = r.files[`${DBT_DIR}/${d.name}.sql`];
+        const columns = (d.fields ?? []).map((f) => f.name).join(", ");
+        if (new Set(d.primary_key).size > 1) {
+          // A breakdown: the compiled source inside, the surrogate around it, one key per period and group.
+          wrapped++;
+          expect(file, d.name).toContain(`FROM (\n${d.source.trim()}\n) AS staged`);
+          const [k] = (await db.query<{ n: number; k: number }>(`SELECT COUNT(*)::int AS n, COUNT(DISTINCT ${SURROGATE_KEY})::int AS k FROM dbt.${d.name}`)).rows;
+          expect(k.k, d.name).toBe(k.n);
+        } else expect(file.split("\n").slice(1).join("\n").trim(), d.name).toBe(d.source.trim());
+        expect(await rows(`SELECT ${columns} FROM dbt.${d.name}`), d.name).toEqual(await rows(`SELECT ${columns} FROM (${d.source}) src`));
+        expect((await rows(`SELECT ${columns} FROM dbt.${d.name}`)).length, d.name).toBeGreaterThan(0);
+      }
+      expect(wrapped).toBeGreaterThan(0);
+    }, 300_000);
+
+    it("every direct metric rebuilt from the YAML gives the canonical value over the models", async () => {
+      const physical = { table: (ds: string) => `dbt.gasp_${ds}`, date: (ds: string) => columnName(ds, gaspDatasets[ds].date) };
+      const failures: string[] = [];
+      const checked: string[] = [];
+      const direct = new Set(Object.values(model.coverage).flatMap((x) => (x.kind === "direct" ? [x.ossieName] : [])));
+      for (const m of metrics) {
+        if (!direct.has(m.name)) continue;
+        const ossie = refMetric.get(m.name)!;
+        if (reserved(ossie)) continue;
+        try {
+          const sql = rebuild(m.name, r.model, semantic, metrics);
+          const want = await scalar(db, `SELECT ${toPostgres(directQuery(ossie, gaspDatasets, fields, period))}`);
+          const got = await scalar(db, `SELECT ${directQuery(sql, gaspDatasets, fields, period, physical)}`);
+          close(got, want, m.name);
+          checked.push(m.name);
+        } catch (e) {
+          failures.push(`${m.name}: ${(e as Error).message.split("\n")[0]}`);
+        }
+      }
+      expect(failures).toEqual([]);
+      for (const name of ["gasp_mrr", "gasp_arr", "gasp_gross_margin", "gasp_arpa", "gasp_new_mrr"]) expect(checked).toContain(name);
+      expect(checked.length).toBeGreaterThan(150);
+    }, 300_000);
+  });
+});
+
 describe("compile_target", () => {
   const text = JSON.stringify(acme);
 
@@ -306,7 +509,8 @@ describe("compile_target", () => {
     expect(report).toContain("**Written:**");
     expect(report).not.toContain("## Files");
     expect(compileTargetFromText(text, undefined, data, { target: "snowflake", metrics: "MRR", output: "report" })).toContain("**Written:** 1 metric (1 direct, 0 staged)");
-    expect(compileTargetFromText(text, undefined, data, { target: "dbt" as never })).toMatch(/Unknown target/);
+    expect(compileTargetFromText(text, undefined, data, { target: "looker" as never })).toMatch(/Unknown target/);
+    expect(compileTargetFromText(text, undefined, data, { target: "dbt", metrics: "MRR", output: "files" })).toContain(`### ${DBT_DIR}/_gasp__metrics.yml`);
     expect(compileTargetFromText(text, undefined, data, { target: "cube", metrics: "nope" })).toMatch(/not a metric/);
   });
 

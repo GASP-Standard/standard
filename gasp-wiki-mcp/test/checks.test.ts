@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { loadStandard, metricFormulaId } from "../src/loader.js";
 import { DRIFT_PERIODS } from "../src/ossie/drift.js";
@@ -10,6 +8,7 @@ import { checkReport, checksAsOneQuery, compileChecks, generateChecksFromText, p
 import { DERIVED_FIELDS, revenueEventDerivation } from "../src/cel.js";
 import { END } from "../src/synthetic.js";
 import { adapter, fixtureDb, scalar } from "./fixture-db.js";
+import { acmeAdapterText } from "./ossie-helpers.js";
 
 // The readiness checks (docs/ossie-interop-spec.md, level 3) run on the synthetic
 // dataset, which must pass them all; on a copy with planted violations, which must
@@ -195,7 +194,7 @@ describe("readiness checks", () => {
   });
 
   it("lists a check the mapping cannot run with what it needs, and compiles in every dialect", () => {
-    const acme = readFileSync(join(import.meta.dirname, "fixture", "acme-adapter.json"), "utf8");
+    const acme = acmeAdapterText;
     const report = generateChecksFromText(acme, undefined, data, FRESH);
     expect(report).toContain("snowflake (from the adapter's warehouse");
     expect(report).toMatch(/`cost_function_tag` \| cannot run \(needs cost_function@cost_event, table for cost_event\)/);

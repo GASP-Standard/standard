@@ -138,7 +138,7 @@ Exclude open deals and deals disqualified before reaching qualified stage.
 - Not specifying stage (win rate from MQL vs SQL vs Qualified Opp will differ dramatically)
 - Comparing across deal sizes without adjusting expectations
 
-**Key insight:** Track your own win rate over time. Benchmarks are a rough guide to where you sit.
+Compare your win rate with its own history first. The benchmarks only place you roughly.
 
 **Sources:**
 - [Walnut: B2B Benchmarks for SaaS Sales](https://www.walnut.io/blog/sales-tips/saas-and-b2b-sales-benchmarks-what-to-measure-and-how/)

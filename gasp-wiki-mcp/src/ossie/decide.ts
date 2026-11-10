@@ -39,7 +39,7 @@ import { bareName } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
 import type { DatasetKind, Question } from "./profile.js";
 import { calculatedField, matchColumns, readModel, type Candidate } from "./propose.js";
-import { readGaspExtension, writeGaspExtension, type OssieDataType, type OssieDataset, type OssieField, type OssieMapping, type OssieSemanticModel } from "./types.js";
+import { readGaspExtension, writeGaspExtension, type OssieDataType, type OssieDataset, type OssieMapping, type OssieSemanticModel } from "./types.js";
 import { parse as parseYaml } from "yaml";
 
 export type DecisionAbout = "key" | "time" | "kind" | "type" | "table" | "field" | "owner" | "topic";

@@ -8,8 +8,8 @@
  * GASP ratios are unscaled and `unit` says how to display them, so NRR is
  * 1.07 where the rule says 107 percent: a `percent` rule on a `percent`
  * formula is divided by 100. Every other rule is taken as written (NPS
- * multiplies by 100 in its formula and its rule carries no unit; DAU/MAU is a
- * ratio with a ratio rule; ARR, CAC Payback and LTV:CAC are raw).
+ * multiplies by 100 in its formula and its rule carries no unit; ARR, CAC
+ * Payback and LTV:CAC are raw).
  */
 import { isMetricStub, metricFormulaId } from "./loader.js";
 import type { Metric, StandardData } from "./types.js";

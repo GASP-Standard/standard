@@ -51,7 +51,7 @@ import { pathToFileURL } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { PKG_VERSION, createServer, toolCount, type HeavyLimit, type ToolCallRecord } from "./server.js";
-import { AuthError, DEFAULT_PROTECTED_TOOLS, DEFAULT_RESOURCE, metadataUrl, protectedResourceMetadata, verifyBearer, WORKSPACE_TOOLS, type WorkspaceOptions } from "./workspace/index.js";
+import { AuthError, DEFAULT_PROTECTED_TOOLS, DEFAULT_RESOURCE, metadataUrl, protectedResourceMetadata, verifyBearer, WORKSPACE_TOOL_NAMES, type WorkspaceOptions } from "./workspace/index.js";
 
 export interface HttpOptions {
   port?: number;
@@ -86,7 +86,7 @@ export function workspaceFromEnv(env: NodeJS.ProcessEnv): WorkspaceOptions | und
     ...(env.WORKSPACE_AUDIENCE?.trim() ? { audience: env.WORKSPACE_AUDIENCE.trim() } : {}),
     resource: env.WORKSPACE_RESOURCE?.trim() || DEFAULT_RESOURCE,
     // The workspace tools always need a company, whatever the list says.
-    tools: tools?.length ? [...new Set([...tools, ...WORKSPACE_TOOLS])] : DEFAULT_PROTECTED_TOOLS,
+    tools: tools?.length ? [...new Set([...tools, ...WORKSPACE_TOOL_NAMES])] : DEFAULT_PROTECTED_TOOLS,
   };
 }
 

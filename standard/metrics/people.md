@@ -41,7 +41,7 @@ Exclude: Contractors (track separately)
 Growth Rate = (Headcount end - Headcount start) / Headcount start × 100
 ```
 
-**What it tells you:** Organizational scaling velocity.
+**What it tells you:** How fast the team grows, net of leavers.
 
 ---
 
@@ -148,6 +148,8 @@ Averaged over active employees at period end and reported in months.
 90-Day Turnover = Departures within 90 days / New hires × 100
 ```
 
+New hires are the people hired in the period, and departures are those of them who left within 90 days of their hire date. The count reads the period-end snapshot, so a hire who leaves within 90 days but after period end is not counted.
+
 90-Day Turnover is reported per hiring source.
 
 **Benchmarks:**
@@ -183,7 +185,7 @@ Based on: "How likely are you to recommend [company] as a place to work?" (0-10)
 
 **Company size effect:** Smaller companies (0-250) average 30; larger companies (5000+) average 9.
 
-**What it tells you:** Employee satisfaction and advocacy.
+**What it tells you:** How many more employees would recommend the company as a place to work than would not, with a score below 0 meaning detractors outnumber promoters.
 
 **Sources:**
 - [AIHR: Employee Net Promoter Score Guide](https://www.aihr.com/blog/employee-net-promoter-score-enps/)
@@ -194,6 +196,11 @@ Based on: "How likely are you to recommend [company] as a place to work?" (0-10)
 ### Engagement Score
 
 **Definition:** Composite score from engagement survey.
+
+**Formula:**
+```
+Engagement Score = Average composite score across employee survey responses
+```
 
 **Measurement:** Usually an annual or quarterly survey covering:
 - Job satisfaction
@@ -232,6 +239,11 @@ Participation Rate = Surveys completed / Surveys sent × 100
 ### Open Positions
 
 **Definition:** Number of open requisitions (unfilled roles) at the end of the period.
+
+**Formula:**
+```
+Open Positions = Count of open requisitions at period end
+```
 
 **What it tells you:** Hiring backlog and growth plans.
 
@@ -333,8 +345,6 @@ Source share = Hires in period from the source / Total hires in period
 
 Source of Hire is reported per source: one share for each source, with the shares summing to 100%.
 
-**What it tells you:** Most effective recruiting channels.
-
 ---
 
 ## Compensation Metrics
@@ -368,7 +378,7 @@ GASP compares employees from underrepresented groups (Group A) with everyone els
 
 **Target:** 0.98-1.02 (within 2%)
 
-**What it tells you:** Fairness in compensation practices.
+**What it tells you:** How far pay for underrepresented groups sits from everyone else's in the same role, with a ratio below 0.98 meaning they are paid more than 2% less.
 
 ---
 
@@ -377,6 +387,11 @@ GASP compares employees from underrepresented groups (Group A) with everyone els
 ### Diversity Representation
 
 **Definition:** Percentage of workforce from underrepresented groups.
+
+**Formula:**
+```
+Diversity Representation = Active employees from underrepresented groups / Active employees × 100, at period end
+```
 
 **Dimensions:**
 - Gender

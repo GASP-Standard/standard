@@ -10,6 +10,8 @@
  *
  *   snowflake   semantic_model.yaml (Cortex Analyst) and staged_views.sql
  *   cube        model/cubes/<table>.yml per table and model/views/<model>.yml
+ *   dbt         models/gasp/: a model per table (a surrogate key on a composite
+ *               key), the sources, the semantic models and the metrics (MetricFlow)
  *
  * Only direct and staged metrics are written; the unmapped and the not
  * computable are listed in the report as compile_model lists them.
@@ -23,22 +25,23 @@ import { PERIOD_SPINE } from "../ossie/model.js";
 import { targetModel, type TargetModel } from "./common.js";
 import { writeSnowflake } from "./snowflake.js";
 import { writeCube } from "./cube.js";
+import { writeDbt } from "./dbt.js";
 
-export const TARGETS = ["snowflake", "cube"] as const;
+export const TARGETS = ["snowflake", "cube", "dbt"] as const;
 export type TargetName = (typeof TARGETS)[number];
 
-const TARGET_LABEL: Record<TargetName, string> = { snowflake: "Snowflake (Cortex Analyst semantic model)", cube: "Cube (data model)" };
+const TARGET_LABEL: Record<TargetName, string> = { snowflake: "Snowflake (Cortex Analyst semantic model)", cube: "Cube (data model)", dbt: "dbt (MetricFlow semantic layer)" };
 
 export interface TargetOptions {
   target: TargetName;
-  /** SQL dialect of the metrics and staged sources: snowflake for the snowflake target; the adapter's warehouse, else postgres, for cube */
+  /** SQL dialect of the metrics and staged sources: snowflake for the snowflake target; the adapter's warehouse, else postgres, for cube and dbt */
   dialect?: string;
   only?: Set<string>;
   spine?: string;
   /** Snowflake: prepended to two-part sources */
   database?: string;
   /** Snowflake: schema of the staged views */
-  staged_schema?: string;
+  stagedSchema?: string;
 }
 
 export interface TargetResult {
@@ -82,8 +85,9 @@ export function compileTarget(company: Company, data: StandardData, opts: Target
   if ("error" in r) return { error: r.error };
   const tm = targetModel(r, data);
   const written = opts.target === "snowflake"
-    ? writeSnowflake(tm, { database: opts.database, stagedSchema: opts.staged_schema })
-    : writeCube(tm, { database: opts.database });
+    ? writeSnowflake(tm, { database: opts.database, stagedSchema: opts.stagedSchema })
+    : opts.target === "cube" ? writeCube(tm, { database: opts.database })
+    : writeDbt(tm);
   const counts = {
     direct: tm.metrics.filter((m) => !m.staged).length,
     staged: tm.metrics.filter((m) => m.staged).length,

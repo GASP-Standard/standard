@@ -17,9 +17,9 @@
 // MATCH (n) DETACH DELETE n;
 
 // ─── Metric Nodes (69) ─────────────────────────
-CREATE (:Metric {id: 'arr', name: 'ARR', department: 'Core', signalType: 'outcome', level: 1, definition: 'The annualized value of recurring revenue. ARR represents the yearly run rate of subscription revenue.', formula: 'metric.mrr * 12', url: 'https://koinedata.com/v1/metrics/core/arr-annual-recurring-revenue', grain: 'End-of-month snapshot', frequency: 'Monthly', period: 'month'});
+CREATE (:Metric {id: 'arr', name: 'ARR', department: 'Core', signalType: 'outcome', level: 1, definition: 'The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.', formula: 'metric.mrr * 12', url: 'https://koinedata.com/v1/metrics/core/arr-annual-recurring-revenue', grain: 'End-of-month snapshot', frequency: 'Monthly', period: 'month'});
 CREATE (:Metric {id: 'rule_of_40', name: 'Rule of 40', department: 'Core', signalType: 'outcome', level: 1, definition: 'A heuristic that balances growth and profitability. A healthy SaaS company\'s growth rate plus profit margin should equal 40% or more.', formula: '(metric.arr - lag(metric.arr, 1 year)) / lag(metric.arr, 1 year) + metric.ebitda_margin', url: 'https://koinedata.com/v1/metrics/core/rule-of-40', grain: 'Monthly aggregate', frequency: 'Monthly', period: 'month'});
-CREATE (:Metric {id: 'mrr', name: 'MRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The total predictable revenue from active subscriptions, normalized to a monthly value.', formula: 'sum(field.mrr where field.subscription_status = \'active\') at period_end', url: 'https://koinedata.com/v1/metrics/core/mrr-monthly-recurring-revenue', grain: 'End-of-month snapshot', frequency: 'Daily sync', period: 'month'});
+CREATE (:Metric {id: 'mrr', name: 'MRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The total predictable revenue from active subscriptions, normalised to a monthly value.', formula: 'sum(field.mrr where field.subscription_status = \'active\') at period_end', url: 'https://koinedata.com/v1/metrics/core/mrr-monthly-recurring-revenue', grain: 'End-of-month snapshot', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'net_new_mrr', name: 'Net New MRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The net change in MRR after accounting for all movements.', formula: 'metric.new_mrr + metric.expansion_mrr + metric.reactivation_mrr - metric.churned_mrr - metric.contraction_mrr', url: 'https://koinedata.com/v1/metrics/core/net-new-mrr', grain: 'Per event, aggregate monthly', frequency: 'Daily sync', period: 'month'});
 CREATE (:Metric {id: 'nrr', name: 'NRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Also known as Net Dollar Retention (NDR).', formula: '(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)', url: 'https://koinedata.com/v1/metrics/core/net-revenue-retention-nrr', grain: 'Customer cohort at period start', frequency: 'Monthly', period: 'trailing_12_months'});
 CREATE (:Metric {id: 'grr', name: 'GRR', department: 'Core', signalType: 'outcome', level: 2, definition: 'The percentage of revenue retained from existing customers, excluding expansion revenue. Also known as Gross Dollar Retention.', formula: '(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)', url: 'https://koinedata.com/v1/metrics/core/gross-revenue-retention-grr', grain: 'Customer cohort at period start', frequency: 'Monthly', period: 'trailing_12_months'});
@@ -236,7 +236,7 @@ CREATE (:Field {id: 'certification_status', type: 'enum', metricCount: 1, values
 CREATE (:Field {id: 'ces_score', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'change_nature', type: 'enum', metricCount: 2, values: 'permanent|temporary|scheduled_reversal'});
 CREATE (:Field {id: 'channel', type: 'enum', metricCount: 5, values: 'paid_ads|organic_search|email|events|content|referral|marketplace|direct|other'});
-CREATE (:Field {id: 'close_date', type: 'date', metricCount: 27});
+CREATE (:Field {id: 'close_date', type: 'date', metricCount: 28});
 CREATE (:Field {id: 'close_date_valid', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'closed_revenue', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'committed_at', type: 'timestamp', metricCount: 1});
@@ -357,7 +357,7 @@ CREATE (:Field {id: 'operating_cash_flow', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'opportunity_amount', type: 'decimal', metricCount: 22});
 CREATE (:Field {id: 'opportunity_created_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'opportunity_id', type: 'string', metricCount: 15});
-CREATE (:Field {id: 'opportunity_stage', type: 'enum', metricCount: 31, values: 'qualification|discovery|proposal|negotiation|closed_won|closed_lost'});
+CREATE (:Field {id: 'opportunity_stage', type: 'enum', metricCount: 32, values: 'qualification|discovery|proposal|negotiation|closed_won|closed_lost'});
 CREATE (:Field {id: 'order_completed_at', type: 'timestamp', metricCount: 3});
 CREATE (:Field {id: 'order_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'order_received_at', type: 'timestamp', metricCount: 1});
@@ -410,7 +410,7 @@ CREATE (:Field {id: 'renewal_amount', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'renewal_complete_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'renewal_notified_on_time', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'renewal_trigger_date', type: 'date', metricCount: 1});
-CREATE (:Field {id: 'renewed', type: 'boolean', metricCount: 2});
+CREATE (:Field {id: 'renewed', type: 'boolean', metricCount: 3});
 CREATE (:Field {id: 'reopened', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'rep_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'request_count', type: 'integer', metricCount: 1});
@@ -451,7 +451,7 @@ CREATE (:Field {id: 'state_category', type: 'enum', metricCount: 1, values: 'act
 CREATE (:Field {id: 'steps_completed', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'steps_total', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'subscription_id', type: 'string', metricCount: 3});
-CREATE (:Field {id: 'subscription_status', type: 'enum', metricCount: 17, values: 'active|cancelled|expired|paused'});
+CREATE (:Field {id: 'subscription_status', type: 'enum', metricCount: 18, values: 'active|cancelled|expired|paused'});
 CREATE (:Field {id: 'survey_completed', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'survey_date', type: 'date', metricCount: 12});
 CREATE (:Field {id: 'survey_type', type: 'enum', metricCount: 11, values: 'customer|onboarding|project|partner|employee|prospect'});

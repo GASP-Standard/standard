@@ -131,7 +131,7 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
     expect(c.evidence).toContain("values flex are not among the standard's");
   });
 
-  it("validates as a mapping over the model and covers the metrics the adapter covers", async () => {
+  it("validates as a mapping over the model and covers the metrics the adapter covers", () => {
     const r = propose(movementValues);
     expect(r.problems).toEqual([]);
     expect(r.gaps).toEqual([]);
@@ -143,7 +143,10 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
     const acme = checkMapping({ document: acmeAdapter(), model: undefined }, data);
     if ("error" in acme) throw new Error(acme.error);
     expect(v.coverage.fully.map((m) => m.metric).sort()).toEqual(acme.coverage.fully.map((m) => m.metric).sort());
-    if (!uvAvailable()) return;
+  });
+
+  it.skipIf(!uvAvailable())("passes the upstream validator", async () => {
+    const r = propose(movementValues);
     const dir = mkdtempSync(join(tmpdir(), "gasp-propose-"));
     try {
       const model = join(dir, "acme_saas.semantic_model.yaml");

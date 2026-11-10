@@ -2,7 +2,7 @@
 
 Oct 13, 2026 · Gareth O'Shea
 
-v0.4 replaces v0.3 (Oct 12). Phases 0 to 2 are done and phase 3 is under way: the standard is public, the Ossie files pass the upstream validator in CI, the compiler has a dialect layer, the introduction is posted on dev@, and the mapping format, the metric compiler, the drift scorer, the profiler, the proposer and the Decide step have shipped (see "Resolved since v0.4"). The plan is written as mine, an individual contributor's, because that is who will be on the Ossie lists.
+v0.4 replaces v0.3 (Oct 12). Phases 0 to 3 are met on the repository side; what remains is upstream: the reference model PR (prepared, phase 2's gate), the 0.3.0 move and proposals P1 to P4. The standard is public, the Ossie files pass the upstream validator in CI, the compiler has a dialect layer and the introduction is posted on dev@. The mapping format, the metric compiler, the drift scorer, the profiler, the proposer, the Decide step and the readiness report have shipped (see "Resolved since v0.4"). The plan is written as mine, an individual contributor's, because that is who will be on the Ossie lists.
 
 ## TL;DR
 
@@ -29,7 +29,7 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 | Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `custom_extensions` | 313 metrics, 99 definitions, 280 canonical fields in 54 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, `OSSIE_SQL_2026`, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL and others) | GASP formula grammar (warehouse-agnostic), compiled to SQL for Postgres (which also runs on Redshift), Snowflake, BigQuery and Databricks |
 | Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 104 nodes and 210 edges across 21 edge types |
-| Spec version | 0.1.1 released; 0.2.0.dev0 in development | v1 |
+| Spec version | 0.3.0.dev0 on main since 2026-11-09 (#691); GASP pins 0.2.0.dev0 until #522 lands | v1 |
 | Governance | ASF Incubator: public lists, discussion-and-vote, three working groups (Metric Language, Catalog, Ontology) | One maintainer (Gareth O'Shea). `GOVERNANCE.md` in the public repository says how changes are decided, what counts as a breaking change and how a second maintainer is added |
 | License | Apache 2.0 | Content CC BY 4.0, code Apache 2.0 |
 
@@ -39,21 +39,21 @@ GASP has the pieces a domain package needs: canonical definitions, an adapter th
 
 ## Readiness review: what GASP does today
 
-GASP serves a company that already has a clean, modelled warehouse and wants consistent definitions. The target persona is a company that knows its data is not ready for LLMs and does not know where to start. GASP does not serve that company yet. This review checked the published site and the code of `gasp-standard-mcp` as of 2026-11-03.
+GASP serves a company that already has a clean, modelled warehouse and wants consistent definitions. The target persona is a company that knows its data is not ready for LLMs and does not know where to start. The pipeline tools in this plan, shipped between 2026-11-02 and 2026-11-04, are built for that company. This review checked the published site and the code of `gasp-standard-mcp` as of 2026-11-03 and was brought up to date on 2026-11-10.
 
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
-| A target shape for clean data | Strong | CEL defines five immutable event classes; ATL defines strict tagging rules |
+| A target shape for clean data | Strong | CEL defines six immutable event classes; ATL defines strict tagging rules |
 | Canonical definitions agents can read | Strong | 313 metrics, 99 definitions, 23 MCP tools |
 | Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 313 metrics covered (286 formulas, 15 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Partial | `profile_schema` and `propose_mapping` take a pasted schema and statistics; the server has no warehouse access. `derive_cel` compiles the standard's derivation rules (`cel.md`) over the mapping, so a subscription ledger becomes CEL revenue events |
-| Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Value-distribution, key and freshness checks are still to come |
+| Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Freshness, row identity and unique-id checks are in `generate_checks`; value-distribution checks are still to come |
 | Ownership enforced | Strong | `validate_adapter` flags every covered metric that has no owner in `metricOwners` |
 | Definition drift | Good | `score_drift` runs a company's metrics beside the canonical ones on the synthetic dataset and explains each difference from the formula |
 | Metrics computed from CEL | Partial | The 286 query templates are compiled from formulas and read the CEL event datasets (54 datasets, each with its CEL class) wherever the formula does. Metrics whose formulas use snapshot or fact datasets still read those tables |
 | Raw source to CEL | Done | CEL is source-agnostic by design. The standard defines how a subscription ledger, an invoice ledger and usage records become Revenue_Events (`cel.md`, three rule sets executed in the test suite, 2026-11-03 and 2026-11-04); the Stripe and Salesforce worked examples (`gasp-wiki-mcp/test/fixture/`, 2026-11-04) exercise them end to end, the Stripe one from its item snapshots, its metered item's usage records and its invoices |
 | Correct multi-table SQL | Strong | `generate_query` compiles one scalar subquery per aggregate, each from the table mapped to that field's dataset, in the dialect the adapter's `warehouse` names |
-| A prioritised fix plan | Good | `plan_fixes` ranks every unmapped field and every failing readiness check by the Core metrics it unlocks, then all metrics, with an effort class shown. The O/M bridges and the value-range rules are not checks yet |
+| A prioritised fix plan | Good | `plan_fixes` ranks every unmapped field and every failing readiness check by the Core metrics it unlocks, then all metrics, with an effort class shown. The value ranges are checks (`range:<formulaId>`); the O/M bridges are scored in `score_drift` |
 
 **Raw material for readiness checks already exists.** CEL rows carry a built-in invariant (`prior_mrr + mrr_change = new_mrr`). ATL requires exactly one tag per dimension per event. The Core O/M bridges carry explicit reconciliation formulas, such as CAC-O = CAC-M + implementation and onboarding cost per customer. All of these compile to SQL tests.
 
@@ -80,7 +80,6 @@ The goal is to be the SaaS answer inside Ossie, measured by merges and listings 
 
 - Forcing the metric canon into Ossie before the spec can hold it. Blobs in `custom_extensions` that other tools ignore would be native in name only.
 - Pushing GASP's opinions into Ossie core. The canon stays GASP's; only format gaps go upstream.
-- Usage-based pricing metrics, which GASP itself scopes out.
 
 **Success metrics**
 
@@ -94,8 +93,8 @@ The goal is to be the SaaS answer inside Ossie, measured by merges and listings 
 | Ossie tools shown running a GASP-mapped model | 3+ | Recorded demos |
 | Upstream proposals opened | 4 | GitHub Discussions + dev@ thread |
 | GASP extension keys retired by upstream merges | 1 within 12 months | Extension schema changelog |
-| Design partners taken from L0 to L3 on real messy data (after launch) | 3 | Readiness reports |
-| Time from first session to ranked fix list | Under 1 day | Design-partner logs |
+| Pilots taken from L0 to L3 on real messy data (after launch) | 3 | Readiness reports |
+| Time from first session to ranked fix list | Under 1 day | Pilot logs |
 
 ## Architecture
 
@@ -148,11 +147,11 @@ The v1 adapter and the Ossie mapping merge into one format: an Ossie mapping doc
 
 ### Decide step
 
-Done 2026-11-03 as the `record_decision` tool (`gasp-wiki-mcp/src/ossie/decide.ts`), closing readiness level 2. Record the decisions people make on a profiled and proposed warehouse, the Decide step of readiness level 2. Each decision names what it is about, its subject by content and its owner: a profiler question answered (the key, the time field, the kind or a datatype, written into the model), a candidate accepted or rejected (a table as a GASP dataset, with its columns matched as the proposer would; a column as a GASP field, with an optional transform that becomes a calculated field), a metric owner (the slot `validate_mapping` reads) or a judgement call GASP cannot apply (which system owns customer identity, the reporting currency, what date marks churn), recorded with its answer. Every decision lands in the mapping's GASP extension; a later decision on the same subject replaces the earlier one. With no decisions it lists what is open: the questions no decision or model state has settled, the candidates no decision has settled and the covered metrics without an owner. Decided with the owner: a decision names its subject by content (the dataset, the column, the GASP dataset or field, the metric, the topic) rather than by a generated id, which would have to survive a re-profile; the profiler writes its questions in full into each dataset's GASP extension and the proposer its candidates and unmatched tables into the mapping's, so the step reads the documents alone and a company can come back to its mapping later; level 2 is reached when no question and no candidate is open, the line the readiness report will reuse. On the Acme proposal the two planted questions (the usage table's key, the price list's VARIANT column), the two candidates (the price list as `plan`, the movement column with a value the recode table does not know, accepted with a `CASE`), two rejected pairs, two owners and two judgement calls reach level 2 and pass the upstream validator; on the synthetic dataset's own schema the five questions and the one candidate decided give every field pair of the fixture adapter.
+Done 2026-11-03 as the `record_decision` tool (`gasp-wiki-mcp/src/ossie/decide.ts`), closing readiness level 2. Record the decisions people make on a profiled and proposed warehouse, the Decide step of readiness level 2. Each decision names what it is about, its subject by content and its owner: a profiler question answered (the key, the time field, the kind or a datatype, written into the model), a candidate accepted or rejected (a table as a GASP dataset, with its columns matched as the proposer would; a column as a GASP field, with an optional transform that becomes a calculated field), a metric owner (the slot `validate_mapping` reads) or a judgement call GASP cannot apply (which system owns customer identity, the reporting currency, what date marks churn), recorded with its answer. Every decision lands in the mapping's GASP extension; a later decision on the same subject replaces the earlier one. With no decisions it lists what is open: the questions no decision or model state has settled, the candidates no decision has settled and the covered metrics without an owner. Decided with the owner: a decision names its subject by content (the dataset, the column, the GASP dataset or field, the metric, the topic) rather than by a generated id, which would have to survive a re-profile; the profiler writes its questions in full into each dataset's GASP extension and the proposer its candidates and unmatched tables into the mapping's, so the step reads the documents alone and a company can come back to its mapping later; level 2 is reached when no question and no candidate is open, the line the readiness report will reuse. On the Acme proposal the two planted questions (the usage table's key, the price list's VARIANT column), the two candidates (the price list as `plan`, the movement column with a value the recode table does not know, accepted with a `CASE`), two rejected pairs, two owners and two judgement calls reach level 2 and pass the upstream validator; on the synthetic dataset's own schema the six questions and the one candidate decided give every field pair of the fixture adapter.
 
 ### Mapping proposer
 
-Done 2026-11-03 as the `propose_mapping` tool (`gasp-wiki-mcp/src/ossie/propose.ts`). It takes the model the profiler wrote (or a company's own Ossie model, or a schema profiled on the way in) and proposes a GASP mapping. Every table is scored against every GASP dataset on four signals, in order of weight: how many of its columns find a field of that dataset, how its profiled kind, key and time field line up with the dataset's declared ones and its name. Every column of a proposed table is scored against the dataset's fields: the same name, the structural role (the table's time field is the dataset's date, its key the dataset's key), a short synonym and abbreviation list kept in the proposer since the ontology carries no synonyms, the same words in another order or a near name through the fuzzy matcher, each checked against the warehouse type and, for an enum field, the listed values. Two transforms are proposed when the evidence is in the name or the values: a column in cents becomes `{{value}} / 100` and enum values the standard does not use are recoded with a `CASE` when the recode table knows them. Decided with the owner: those four signals, both transforms and only high-confidence pairs in the mapping, medium ones listed as candidates with their evidence and what would settle them. The mapping comes back as an Ossie mapping over the model (a transform becomes a calculated field), ready for `validate_mapping`, or as a GASP adapter. On the synthetic dataset's own schema it proposes all 52 tables and every field pair of the fixture adapter but one near name, which is a candidate; on the Acme DDL it reproduces the Acme adapter with both transforms, the recode once the movement values are listed.
+Done 2026-11-03 as the `propose_mapping` tool (`gasp-wiki-mcp/src/ossie/propose.ts`). It takes the model the profiler wrote (or a company's own Ossie model, or a schema profiled on the way in) and proposes a GASP mapping. Every table is scored against every GASP dataset on four signals, in order of weight: how many of its columns find a field of that dataset, how its profiled kind, key and time field line up with the dataset's declared ones and its name. Every column of a proposed table is scored against the dataset's fields: the same name, the structural role (the table's time field is the dataset's date, its key the dataset's key), a short synonym and abbreviation list kept in the proposer since the ontology carries no synonyms, the same words in another order or a near name through the fuzzy matcher, each checked against the warehouse type and, for an enum field, the listed values. Two transforms are proposed when the evidence is in the name or the values: a column in cents becomes `{{value}} / 100` and enum values the standard does not use are recoded with a `CASE` when the recode table knows them. Decided with the owner: those four signals, both transforms and only high-confidence pairs in the mapping, medium ones listed as candidates with their evidence and what would settle them. The mapping comes back as an Ossie mapping over the model (a transform becomes a calculated field), ready for `validate_mapping`, or as a GASP adapter. On the synthetic dataset's own schema it proposes all 54 tables and every field pair of the fixture adapter but one near name, which is a candidate; on the Acme DDL it reproduces the Acme adapter with both transforms, the recode once the movement values are listed.
 
 ### Schema profiler
 
@@ -211,14 +210,15 @@ Generated from rules GASP already has:
 - Unique, immutable `event_id`; corrections appear as adjustment events and the original row stays
 - ATL completeness: exactly one lifecycle tag per event, one expansion tag where required, one cost function tag per cost event
 - Identity reconciliation: every billing customer resolves to one CRM account and the reverse
-- O/M bridges: each Core bridge reconciles, e.g. CAC-O = CAC-M + implementation and onboarding cost per customer
+- O/M bridges: scored in `score_drift` on the company's own O and M numbers (a bridge between two GASP formulas holds by construction)
+- Value ranges: the ontology's hard min and max per metric, per period of the spine
 - Freshness: latest event date per source is within the agreed sync window
 
 ### Changes to existing tooling
 
 - Done: query templates and data requirements are compiled from `formulas.json` at load time and the formulas read CEL event datasets directly. Remaining: move the snapshot and fact datasets onto CEL events
 - Done: `generate_query` resolves a table per dataset, with one scalar subquery per aggregate
-- Done: `validate_adapter` checks field and dataset names, enum transforms and metric owners. Remaining: value-distribution, key and freshness checks
+- Done: `validate_adapter` checks field and dataset names, enum transforms and metric owners. Remaining: value-distribution checks
 - Done: `structuredFormulas`, `entityMappings` and field metric counts are derived from `formulas.json` by `npm run derive` and tested current
 - Done (2026-10-13): `npm run derive` writes the Ossie ontology, reference semantic model and mapping from `/standard/` (`gasp-wiki-mcp/src/ossie/`). The vendored upstream validator and GASP's own cross-reference checks run on them in CI. Every formula is a direct `OSSIE_SQL_2026` metric or a staged per-period dataset; `coverage.json` says which and why
 - Done (2026-10-13): the compiler takes a dialect (`gasp-wiki-mcp/src/dialect.ts`): Postgres by default (Redshift reads the same SQL), Snowflake, BigQuery and Databricks. `generate_query` picks it from the adapter's `warehouse` and staged Ossie datasets carry all four sources
@@ -232,19 +232,25 @@ What Ossie cannot yet hold travels in `custom_extensions` under `vendor_name: GA
 
 **Schema:** published 2026-11-03 at `https://gaspwiki.com/schemas/gasp-ossie-extension-v1.json` from `standard/gasp-ossie-extension-v1.json`, versioned independently of the mapping. It defines the parsed payload per placement (model, dataset, metric, mapping) with no additional properties, and `checkExport` (`gasp-wiki-mcp/src/ossie/check.ts`) validates every GASP payload against it, so a key the schema does not list fails the cross-document checks.
 
-| Level | Key | Content | Exit |
+| Placement | Keys | Content | Exit |
 | --- | --- | --- | --- |
-| Metric | Canonical formula over concepts | The GASP grammar expression before any warehouse exists | P3 (concept-level metrics) |
-| Model | `metric_edges[]` | `{from, to, type, classification}` for `DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF` | P1 (metric relationships) |
-| Model | `gasp_version`, `ontology_version` | Which GASP release produced the file | Stays; provenance |
-| Model | `metric_owners[]`, `decisions[]` | Who resolves definition disputes; recorded mapping decisions | Catalog WG candidate |
-| Dataset | `sources` | A staged dataset's compiled query per warehouse dialect, keyed by Ossie dialect name | A `dialects` form for `Dataset.source`, matching expressions (question for the Metric Language WG) |
-| Metric | `gasp_id`, `department`, `signal_type`, `layer`, `unit` | GASP taxonomy | Stays; GASP-specific |
+| Model | `profiled`, `compiled` | How the model was made: written by `profile_schema`, or GASP metrics compiled into it by `compile_model` | Stays; provenance |
+| Dataset | `kind`, `cel`, `activeWhen` | The GASP dataset kind, its CEL event class and the condition selecting live rows (cohort membership) | Stays; GASP-specific |
+| Dataset | `staged`, `for`, `reason`, `period_spine` | A staged per-period dataset holding one metric's value, the metric it holds and the construct Ossie cannot state; the table of reporting periods the staged datasets read | P2 (period-over-period and cohort metrics) |
+| Dataset | `source_dialect`, `sources` | The dialect of a staged dataset's source query and the query in each other dialect, keyed by Ossie dialect name | A `dialects` form for `Dataset.source`, matching expressions (question for the Metric Language WG) |
+| Dataset | `profile` | What the profiler inferred about the table: kind, confidence, evidence, open questions and listed enum values | Stays; pipeline state |
+| Metric | `gasp_id`, `gasp_version`, `variant`, `unit` | The GASP formula id, the extension version, the named variant and the unit (ratios unscaled) | Stays; GASP-specific |
+| Metric | `formula` | The canonical formula in the GASP grammar, before any warehouse exists | P3 (concept-level metrics) |
 | Metric | `form` | `O` (operating) or `M` (market); one Ossie metric per form | Stays; GASP-specific |
 | Metric | `gasp_breakdown` | The field a direct metric is grouped by | Stays until Ossie metrics can declare a grouping |
-| Metric | `sensitivity`, `access_scope` | From the GASP governance framework | Catalog WG candidate |
-| Field | `source_category`, `owner`, `notes` | Lineage and accountability | Catalog WG candidate |
-| Field | `change_nature` | CEL permanence flag, where mapped | Stays; GASP-specific |
+| Metric | `staged` | The metric reads a staged dataset | P2 |
+| Mapping | `adapter_version`, `organization`, `warehouse` | The v1 adapter's metadata, kept when a mapping is converted from one | Stays; provenance |
+| Mapping | `metricOwners`, `decisions` | Who owns each metric definition; every recorded mapping decision, one per subject | Catalog WG candidate |
+| Mapping | `proposed` | What the mapping proposer paired and what it left to review | Stays; pipeline state |
+
+GASP writes no extension on fields or relationships (`standard/gasp-ossie-extension-v1.json`).
+
+**Not emitted yet.** Metric edges (`DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF`; exit P1), the GASP taxonomy (department, signal type, layer), the access classes from the governance framework (`sensitivity`, `access_scope`; Catalog WG candidate), field lineage and accountability (`source_category`, `owner`, `notes`; Catalog WG candidate) and the ontology version. They stay in `standard/` until a placement is added to the schema.
 
 **Rules**
 
@@ -254,9 +260,9 @@ What Ossie cannot yet hold travels in `custom_extensions` under `vendor_name: GA
 
 **What does not fit the Ossie ontology yet**
 
-- **Metric edges** (`DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF`). Ossie metrics are not ontology concepts, so there is nowhere to hang "Logo Churn reduces NRR". Modelling metrics as fake entity types would validate but mislead other tools. Extension now, proposal P1.
+- **Metric edges** (`DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF`). Ossie metrics are not ontology concepts, so there is nowhere to hang "Logo Churn reduces NRR". Modelling metrics as fake entity types would validate but mislead other tools. Not emitted yet; proposal P1.
 - **Financial flows** (`GENERATES`, `PRODUCES`, `CONTRIBUTES_TO`, `INCURS`) link entities to metrics such as Revenue or Pipeline. Where the target is a real business object (Invoice) it maps; where it is a metric, it waits for P1.
-- **Source category lineage** (`SOURCED_FROM`) belongs to the Catalog working group's scope. Extension.
+- **Source category lineage** (`SOURCED_FROM`) belongs to the Catalog working group's scope. Not emitted yet.
 
 Everything else in the entity layer maps directly: entities to `EntityType` concepts, canonical fields to `ValueType` concepts with relationships from the entity, entity edges (`OWNS`, `GRANTS`, `CONVERTS_TO`, `PARENT_OF`, `PRICED_BY` and others) to `relationships[]` with `roles`, `multiplicity` and `verbalizes`. Segments map to `extends` subtypes.
 
@@ -269,7 +275,7 @@ Ossie metrics are single aggregate SQL expressions. That suits ARR or win rate. 
 | P0 | Add `POSTGRES` and `REDSHIFT` to the dialect enum | Small PR | Postgres sources held in `source` with no dialect label | The compiler already emits Postgres SQL that runs on Redshift; this PR is the two enum values. A low-risk first contribution |
 | P1 | Metric relationships: typed edges between metrics (drives, reduces, predicts, component of) | Ontology WG, via GitHub Discussions | `metric_edges[]` | The GASP graph's metric edges, with `infer_drivers` and `explain_path` as the consuming use case |
 | P2 | Period-over-period and cohort metrics | Metric Language WG's work on advanced metric logic and windowing | Staged datasets | Every staged GASP formula is a conformance test with a canonical answer, executed in the GASP test suite |
-| P3 | Concept-level metrics: a metric defined against ontology concepts, resolved to SQL through any model's ontology mapping | Ontology and Metric Language WGs jointly | Metric compiler and the canonical-formula extension | 274 warehouse-agnostic formulas in a tested grammar; the clearest case for why a domain standard needs this |
+| P3 | Concept-level metrics: a metric defined against ontology concepts, resolved to SQL through any model's ontology mapping | Ontology and Metric Language WGs jointly | Metric compiler and the canonical-formula extension | 286 warehouse-agnostic formulas in a tested grammar; the clearest case for why a domain standard needs this |
 | P4 | Catalog resolution of `ontology_ref` by name and version plus converter support for standalone mapping documents | Ontology WG | Embedded-mapping fallback | The 0.2.0.dev0 mapping document already references the ontology by name and `iri`; the missing piece is tooling that resolves it |
 
 P3 is the largest. It would let a standard like GASP live entirely inside Ossie. Because it benefits any future vertical (healthcare, retail, fintech), it is an easier sell than a SaaS-only change. The GASP formula grammar is a working prototype of what P3 would need to express.
@@ -283,7 +289,7 @@ This is one person's plan for earning a place in an Apache community. Credibilit
 **1. Earn merges in the Apache repository (highest credibility)**
 
 - Done 2026-10-13: the standard and the MCP server are public through the read-only mirror `GASP-Standard/standard` (the monorepo with the site code stays private and a workflow mirrors the public paths on every push), linked from koinedata.com and the npm package's `repository` field. History audited for secrets the same day. The mirror carries `GOVERNANCE.md` and `CONTRIBUTING.md`.
-- Sign the ASF ICLA before the first PR; add Apache license headers to anything contributed.
+- No ICLA is needed to contribute (the ICLA is for committers); add Apache licence headers to anything contributed.
 - Open with P0 (two dialect enum values). A small merged PR means reviewers know the name before the larger one arrives.
 - Post an introduction in GitHub Discussions and on dev@ before submitting the reference model, written as the person who built GASP. Decisions there go through open discussion and vote. A PR that arrives without that conversation tends to stall.
 - Contribute a compact SaaS reference model and ontology example under Apache 2.0. Keep the full canon in GASP's repository, linked, so no CC BY content needs to enter the Apache tree.
@@ -333,9 +339,9 @@ About 16 weeks to launch from 2026-10-12, with community engagement from the int
 | 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR (done 2026-11-02); mapping format and `validate_mapping` (done 2026-11-02); metric compiler into a company's model (done 2026-11-02, `compile_model`); reference model PR (branch `examples-gasp-saas` prepared, not yet open); DuckDB demo (done 2026-11-02); synthetic dataset grown from the test fixture (open) | Reference model PR open (prepared); compiled Core runs in DuckDB (met) |
 | 3. Drift and on-ramp | 10 to 16 | Drift scorer (done 2026-11-03, `score_drift`); profiler, proposer and Decide step (done 2026-11-03); the CEL derivation rules and `derive_cel`, the readiness checks and the fix plan (all done 2026-11-03); the Stripe and Salesforce worked examples (done 2026-11-04); P1 to P4 drafted | Drift report on a public vendor example (done 2026-11-04, the Stripe example); synthetic data reaches L4 (done 2026-11-03) |
 | Launch | 16+ | Ecosystem card, "GASP for Ossie" page, blog, community talk | Reference model merged |
-| Prove | after launch | Three design partners on real messy data | One partner at L3 |
+| Prove | after launch | Three pilots on real messy data | One pilot at L3 |
 
-Design partners come after launch so the launch depends only on work in this repository and upstream review. Partner failures become new checks or templates rather than one-off fixes.
+Pilots come after launch so the launch depends only on work in this repository and upstream review. Pilot failures become new checks or templates rather than one-off fixes.
 
 ## Risks, open questions and references
 
@@ -343,7 +349,7 @@ Design partners come after launch so the launch depends only on work in this rep
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Spec churn: the ontology spec is 0.2.0.dev0 and may change | Generated files break between releases | Ossie files are generated, so churn lands in one exporter; the validator is vendored and pinned by commit; attend the Ontology WG |
+| Spec churn: the spec is 0.x and breaks between minor releases (agreed on dev@ 2026-11-04) | Generated files break between releases | Ossie files are generated, so churn lands in one exporter; the validator is vendored and pinned by commit; attend the Ontology WG |
 | Ontology mapping semantics are thinly documented | The exporter builds on a misreading | Confirm the mapping example with the Ontology WG before building more tooling on it |
 | No cross-document imports | Bundled copies of the GASP ontology drift | Mapping documents reference the ontology by name and `iri`; P4 adds the resolver |
 | "Opinionated by design" reads as one author setting the standard | Maintainers resist | Contribute format gaps and examples upstream; keep the canon in GASP's repository |
@@ -352,7 +358,7 @@ Design partners come after launch so the launch depends only on work in this rep
 | P1 to P4 rejected or slow | Extension and tooling stay longer | The native layer stands on its own; proposals are upside rather than a dependency |
 | A tool named without a working demo | Credibility damage | Name a tool only with CI or a demo its maintainers have seen |
 | Formula coverage stalls on metrics needing fields that do not exist | Compiler and drift cover Core only | Field additions proposed and reviewed centrally; `notComputable` with a reason is an acceptable outcome |
-| Design partners' data is messier than the derivation rules expect | Partners stall below L3 | Exercise the rules on vendor fixtures before partners (done 2026-11-04: the Stripe example reaches L4, the Salesforce example shows where a CRM stops); treat every partner failure as a new check or a new rule |
+| Pilots' data is messier than the derivation rules expect | Pilots stall below L3 | Exercise the rules on vendor fixtures before pilots (done 2026-11-04: the Stripe example reaches L4, the Salesforce example shows where a CRM stops); treat every pilot failure as a new check or a new rule |
 
 **Resolved since v0.4**
 
@@ -378,7 +384,7 @@ Design partners come after launch so the launch depends only on work in this rep
 
 **Open questions**
 
-- MCP telemetry: the server collects none, so adoption metrics need another source (npm downloads, mirror activity, the ecosystem listing).
+- MCP telemetry: the hosted server logs one record per tool call (tool, duration, outcome, client; never the arguments). Adoption beyond that needs npm downloads, mirror activity and the ecosystem listing.
 - Resolved 2026-10-12: CEL names win (`mrr_start`, `event_type`, `customer_id`). Remaining question: which Ossie `ValueType` names the exporter derives from them.
 - The questions for the working groups are listed in `docs/ossie-spike.md` and in the introduction plan in `TODO.md`.
 

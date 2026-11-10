@@ -447,18 +447,13 @@ describe("Ossie model: values match the compiled templates on the fixture, June 
 });
 
 describe("Ossie model: upstream validator", () => {
-  const hasUv = uvAvailable();
   const dir = mkdtempSync(join(tmpdir(), "gasp-ossie-"));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  it.skipIf(!hasUv)("passes validation/validate.py", async () => {
+  it.skipIf(!uvAvailable())("passes validation/validate.py", async () => {
     const file = join(dir, "gasp.semantic_model.yaml");
     writeFileSync(file, stringify(model, { lineWidth: 0 }));
     const r = await validateUpstream(file, "model");
     expect(r.ok, r.output).toBe(true);
   }, 120_000);
-
-  it.runIf(!hasUv)("skips the upstream validator", () => {
-    console.log("Skipping the Ossie validator: uv is not on PATH");
-  });
 });

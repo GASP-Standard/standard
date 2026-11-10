@@ -200,7 +200,7 @@ LVR = (Qualified leads this month - Qualified leads last month) / Qualified lead
 - 10%/month: Target after $1M ARR
 - 8%/month: Target after $3M ARR (supports 100%+ YoY growth)
 
-**Critical:** Must use **qualified** leads (MQLs), not raw leads. Otherwise it becomes a vanity metric.
+LVR counts qualified leads (MQLs), not raw leads.
 
 **What it tells you:** Pipeline growth momentum. If LVR is consistently positive, you have the raw ingredients for growth.
 
@@ -217,7 +217,7 @@ LVR = (Qualified leads this month - Qualified leads last month) / Qualified lead
 
 ### Customer Acquisition Cost (CAC)
 
-See [Core Metrics](core.md#cac-customer-acquisition-cost) for full definition.
+See [Core Metrics](core.md#cac-customer-acquisition-cost) for the canonical definition: go-to-market cost over new customers in the period.
 
 Marketing typically owns a portion of CAC (marketing spend / new customers).
 
@@ -261,8 +261,6 @@ CAC by Channel is reported per channel: one value for each channel. Spend is cam
 ```
 CPL = Marketing spend / Leads generated
 ```
-
-**What it tells you:** Top-of-funnel efficiency.
 
 ---
 
@@ -458,6 +456,11 @@ Share of Voice = Brand mentions / (Brand + Competitor mentions) × 100
 ### NPS (Marketing context)
 
 **Definition:** Net Promoter Score for prospects/market (vs customers).
+
+**Formula:**
+```
+NPS (Marketing context) = % Promoters (9-10) - % Detractors (0-6), among prospect respondents
+```
 
 **What it tells you:** Brand perception in broader market.
 

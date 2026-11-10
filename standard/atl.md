@@ -14,7 +14,7 @@ ATL defines three orthogonal tag dimensions. Each dimension answers a different 
 
 | Dimension | Question | Applies to |
 |-----------|----------|------------|
-| **Lifecycle Attribution** | Where is this customer in their journey? | All event classes |
+| **Lifecycle Attribution** | Which lifecycle stage is the event part of? | `Revenue_Event`, `Cost_Event`, `Amendment_Event` |
 | **Expansion Classification** | What kind of growth is this? | `Revenue_Event` (expansion/contraction/reactivation), `Amendment_Event` |
 | **Cost Function Attribution** | What commercial function incurred this cost? | `Cost_Event` |
 
@@ -22,7 +22,7 @@ ATL defines three orthogonal tag dimensions. Each dimension answers a different 
 
 ## Lifecycle Attribution
 
-Every CEL event receives exactly one lifecycle tag. This is the primary dimension. It tells you *why* the event happened in the context of the customer relationship.
+Every `Revenue_Event`, `Cost_Event` and `Amendment_Event` receives exactly one lifecycle tag. This is the primary dimension. It tells you *why* the event happened in the context of the customer relationship.
 
 ### Values
 
@@ -30,7 +30,7 @@ Every CEL event receives exactly one lifecycle tag. This is the primary dimensio
 |-----|-----------|---------|
 | `acquisition` | First commercial engagement with a new customer. | New customer signs a $2,000/mo contract. |
 | `activation` | Customer reaches first value milestone after acquisition. | Customer completes onboarding and goes live in production. |
-| `retention` | Existing customer continues or renews without change. | Annual renewal at the same MRR. |
+| `retention` | Existing customer renews, contracts or churns: what was kept and what was lost. | Annual renewal at the same MRR; a downgrade. |
 | `expansion` | Existing customer increases their commercial commitment. | Customer upgrades from Professional to Enterprise tier. |
 | `reactivation` | Previously churned customer returns. | Customer who cancelled 6 months ago signs a new contract. |
 | `servicing` | Ongoing delivery cost for an active customer. | Monthly infrastructure cost, support staffing. |
@@ -38,7 +38,7 @@ Every CEL event receives exactly one lifecycle tag. This is the primary dimensio
 ### Assignment Rules
 
 1. A customer's first `Revenue_Event` is always `acquisition`.
-2. `Lifecycle_State_Change` events with `state_category = activation` or `state_category = onboarding_complete` are `activation`.
+2. A cost incurred to bring a customer to its first value milestone (implementation, onboarding) is `activation`; the `Lifecycle_State_Change` with `state_category` `activation` or `onboarding_complete` marks when that stage ends.
 3. `Revenue_Event` with `event_type = renewal` and zero MRR change is `retention`.
 4. `Revenue_Event` with `event_type = expansion` is `expansion`.
 5. `Revenue_Event` with `event_type = reactivation` is `reactivation`.
@@ -72,7 +72,7 @@ Expansion classification separates the Operating form of Net Revenue Retention (
 - **NRR-O (Operating)** focuses on organic, durable expansion: `same_product` and `usage_realisation`. These signal product-market fit and natural customer growth.
 - **NRR-M (Market)** includes all expansion types because investor-comparable NRR counts everything that is not net-new logo acquisition.
 
-With expansion classification the same ledger reports organic growth apart from growth that came through new modules, new buying centres or pricing actions. Each number answers a different question.
+With expansion classification the same ledger reports organic growth apart from growth that came through new modules, new buying centres or pricing actions.
 
 ---
 
@@ -106,7 +106,7 @@ Every cost event carries one `cost_function` value (Rule 3), so the enum covers 
 
 Cost function attribution separates CAC-O from CAC-M.
 
-- **CAC-O (Operating)** includes all costs to make a customer productive: `gtm` + `implementation` + `onboarding`. This reflects the true economic cost of acquiring a revenue-generating customer.
+- **CAC-O (Operating)** includes all costs to make a customer productive: `gtm` + `implementation` + `onboarding`. It is the whole cost of acquiring a customer who pays.
 - **CAC-M (Market)** includes only `gtm` costs, matching the S&M-based CAC that investors use for benchmarking.
 
 Tagging each cost once lets both forms come from the same cost events, where a team without the tag ends up maintaining two separate cost allocation models.
@@ -117,7 +117,7 @@ Tagging each cost once lets both forms come from the same cost events, where a t
 
 Every CEL event is tagged according to these rules.
 
-### Rule 1: Every event gets a Lifecycle tag
+### Rule 1: Revenue, cost and amendment events get a Lifecycle tag
 
 Every `Revenue_Event`, `Cost_Event` and `Amendment_Event` receives exactly one `lifecycle_attribution` tag. The other three classes carry none: a `Contract_Event` is tagged through the `Revenue_Event` it generates, a `Lifecycle_State_Change` is itself the lifecycle transition, and a `Credit_Event` records a movement on a prepaid balance.
 
@@ -289,19 +289,32 @@ SELECT
 
 ### NRR-O (Operating): Organic Retention
 
+NRR-O counts the expansion tagged `same_product` or `usage_realisation` and every contraction and churn of the customers with MRR at period start. This matches the `nrr` operating form in `formulas.json`.
+
 ```sql
+-- Beginning MRR is the sum of all movements before the period; :period_start
+-- and :period_end bound the trailing twelve months.
+WITH cohort AS (
+    SELECT customer_id, SUM(mrr_change) AS beginning_mrr
+    FROM cel_revenue_events
+    WHERE event_date < :period_start
+    GROUP BY customer_id
+    HAVING SUM(mrr_change) > 0
+),
+movements AS (
+    SELECT e.event_type, e.expansion_classification, e.mrr_change
+    FROM cel_revenue_events e
+    JOIN cohort c ON c.customer_id = e.customer_id
+    WHERE e.event_date BETWEEN :period_start AND :period_end
+)
 SELECT
-    SUM(CASE WHEN event_type IN ('expansion') AND expansion_classification IN ('same_product', 'usage_realisation')
-             THEN mrr_change ELSE 0 END)
-  + SUM(CASE WHEN event_type IN ('contraction', 'churn')
-             THEN mrr_change ELSE 0 END)
-  + SUM(CASE WHEN event_type = 'renewal' THEN new_mrr ELSE 0 END)
-AS nrr_o_numerator
-FROM cel_revenue_events
-WHERE lifecycle_attribution IN ('retention', 'expansion')
-  AND (expansion_classification IS NULL
-       OR expansion_classification IN ('same_product', 'usage_realisation'))
-  AND event_date BETWEEN '2025-03-01' AND '2026-02-28';
+  ((SELECT SUM(beginning_mrr) FROM cohort)
+    + SUM(CASE WHEN event_type = 'expansion'
+                AND expansion_classification IN ('same_product', 'usage_realisation')
+               THEN mrr_change ELSE 0 END)
+    + SUM(CASE WHEN event_type IN ('contraction', 'churn') THEN mrr_change ELSE 0 END))
+  / (SELECT SUM(beginning_mrr) FROM cohort) AS nrr_o
+FROM movements;
 ```
 
 ---
@@ -313,14 +326,15 @@ ATL tags are the mechanism that distinguishes Operating (O) from Market (M) metr
 | Metric | Operating (O) Includes | Market (M) Includes |
 |--------|----------------------|-------------------|
 | **CAC** | `cost_function` ∈ (gtm, implementation, onboarding) | `cost_function` = gtm |
-| **NRR** | `expansion_classification` ∈ (same_product, usage_realisation) | All `expansion_classification` except net-new logos |
+| **NRR** | `expansion_classification` ∈ (same_product, usage_realisation) | All six `expansion_classification` values, on expansion and on reactivation of cohort customers |
 | **LTV** | Contribution margin (includes implementation, onboarding costs) | Gross margin (COGS only) |
 | **Churn** | Revenue churn: MRR-weighted churned and contraction MRR | Logo-based: binary churned/active |
 | **ARR** | Durable ARR: excludes recontracting, pricing_adjustment (trailing 12 months, customers active at period end) | Contracted ARR: all recurring revenue |
 | **LTV:CAC** | LTV-O over CAC-O (contribution margin; gtm, implementation and onboarding cost) | LTV-M over CAC-M (gross margin; gtm cost only) |
 | **CAC Payback** | CAC-O over ARPA × GM-O | CAC-M over ARPA × GM-M |
+| **Gross Margin** | Contribution margin: revenue less `infrastructure`, `support`, `success_engineering`, `implementation` and `onboarding` cost | `infrastructure` cost only |
 
-The full inclusion/exclusion rules for each dual-lens Core metric are specified as `ATL Inclusion` lines in the O/M subsections of [Core Metrics](metrics/core.md). Rule of 40 has no separate O/M form and needs none. The ATL dimensions defined here are the building blocks for those rules.
+The full inclusion/exclusion rules for each dual-lens Core metric are specified as `ATL Inclusion` lines in the O/M subsections of [Core Metrics](metrics/core.md). Rule of 40 takes its forms from its inputs (ARR-O growth and GM-O, ARR-M growth and EBITDA Margin) and needs no inclusion rules of its own. The ATL dimensions defined here are the building blocks for those rules.
 
 ---
 

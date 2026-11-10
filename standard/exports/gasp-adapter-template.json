@@ -3,7 +3,7 @@
   "version": "1.1",
   "organization": "",
   "warehouse": "",
-  "_instructions": "Map a warehouse table to each dataset you have (schema.table) and a column to each field (a bare column name, or schema.table.column). Fields that live on several datasets appear once per dataset; fill the ones you have. Fields you cannot map can be left with an empty warehouseRef or removed. Enum fields list the values the column must produce after transform. Run validate_adapter (GASP MCP) to see which metrics you can compute and which owners are missing.",
+  "_instructions": "Map a warehouse table to each dataset you have (schema.table) and a column to each field (a bare column name, or schema.table.column). Fields that live on several datasets appear once per dataset; fill the ones you have. Fields you cannot map can be left with an empty warehouseRef or removed. Enum fields list the values the column must produce after transform. Run validate_mapping (GASP MCP) to see which metrics you can compute and which owners are missing.",
   "metricOwners": [],
   "datasets": {
     "amendment_event": "",
@@ -446,6 +446,7 @@
       "usedBy": [
         "Average Deal Size",
         "Average Partner Revenue",
+        "Average Services Deal Size",
         "CAC by Channel",
         "Channel Revenue Percentage",
         "Commit Accuracy",
@@ -482,6 +483,7 @@
       "usedBy": [
         "Average Deal Size",
         "Average Partner Revenue",
+        "Average Services Deal Size",
         "CAC by Channel",
         "Channel Revenue Percentage",
         "Commit Accuracy",
@@ -518,6 +520,7 @@
       "usedBy": [
         "Average Deal Size",
         "Average Partner Revenue",
+        "Average Services Deal Size",
         "CAC by Channel",
         "Channel Revenue Percentage",
         "Commit Accuracy",
@@ -3947,6 +3950,7 @@
       "usedBy": [
         "Average Deal Size",
         "Average Partner Revenue",
+        "Average Services Deal Size",
         "CAC by Channel",
         "Channel Revenue Percentage",
         "Commit Accuracy",
@@ -3995,6 +3999,7 @@
       "usedBy": [
         "Average Deal Size",
         "Average Partner Revenue",
+        "Average Services Deal Size",
         "CAC by Channel",
         "Channel Revenue Percentage",
         "Commit Accuracy",
@@ -5480,6 +5485,7 @@
       "warehouseRef": "",
       "source": "Billing",
       "usedBy": [
+        "Auto-Renewal Rate",
         "Renewal Forecast Accuracy",
         "Renewal Rate"
       ]
@@ -10808,6 +10814,7 @@
         "ARR per CSM",
         "CAC Payback Period",
         "Carry MRR",
+        "Days to Renewal",
         "Expansion Revenue Rate",
         "Gross Revenue Retention (GRR)",
         "LTV (Customer Lifetime Value)",

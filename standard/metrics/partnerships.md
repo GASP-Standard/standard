@@ -42,7 +42,7 @@ Tier Distribution = Partners in tier / Total partners × 100
 
 Partner Tier Distribution is reported per tier: one share for each tier, with the shares summing to 100%.
 
-**What it tells you:** Partner ecosystem maturity.
+**What it tells you:** A rising share in the Gold and Platinum tiers means more partners are reaching the upper levels of the program.
 
 ---
 
@@ -149,7 +149,7 @@ Average Partner Revenue = Total partner revenue / Active partners
 
 Total partner revenue is Partner-Influenced Revenue: closed revenue on every deal with a partner involved, partner-sourced deals included.
 
-**What it tells you:** Partner productivity.
+**What it tells you:** How much partner-influenced revenue each active partner brings, so adding partners who close nothing pulls it down.
 
 ---
 

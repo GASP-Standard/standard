@@ -135,7 +135,7 @@ describe("Drift: the Acme metrics", () => {
     const s = score("cancelled_mrr");
     expect(s).toMatchObject({ status: "differs", gasp: "Churned MRR", differing: 3 });
     expect(s.periods.map((p) => [p.yours, p.canonical])).toEqual([[null, 0], [500, 500], [null, 0], [800, 800], [null, 0], [600, 600]]);
-    expect(s.causes[0]).toBe("yours is null in 3 of 6 periods where canonical has a value: a sum over no matching rows is NULL in SQL, and GASP compiles sum() as COALESCE(SUM(...), 0), so a period with no event of a type the formula sums gives 0; in the 3 periods where both sides have a value they agree");
+    expect(s.causes[0]).toBe("yours is null in 3 of 6 periods where canonical has a value: a sum over no matching rows is NULL in SQL; GASP compiles sum() as COALESCE(SUM(...), 0), so a period with no event of a type the formula sums gives 0; in the 3 periods where both sides have a value they agree");
     expect(formatDriftReport(r)).toContain("| Jan 2026 | null | 0 ≠ |");
   });
 

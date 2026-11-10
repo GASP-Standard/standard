@@ -8,14 +8,14 @@ Metrics for measuring financial health, efficiency and operational performance.
 
 ### Revenue (GAAP)
 
-**Definition:** Recognized revenue according to accounting standards.
+**Definition:** Recognised revenue according to accounting standards.
 
 **Formula:**
 ```
-Revenue = Recognized revenue in period (per ASC 606)
+Revenue = Recognised revenue in period (per ASC 606)
 ```
 
-**Note:** Different from bookings or billings. Revenue is recognized as service is delivered.
+**Note:** Different from bookings or billings. Revenue is recognised as service is delivered.
 
 **What it tells you:** Actual earned revenue for the period.
 
@@ -56,13 +56,13 @@ Billings are reported per payment status (paid, unpaid, partial, written off) as
 
 ### ARR / MRR
 
-See [Core Metrics: MRR](core.md#mrr-monthly-recurring-revenue) and [ARR](core.md#arr-annual-recurring-revenue) for full definitions.
+See [Core Metrics: MRR](core.md#mrr-monthly-recurring-revenue) and [ARR](core.md#arr-annual-recurring-revenue) for the canonical definitions: recurring revenue at period end, monthly and annualised.
 
 ---
 
 ### Deferred Revenue
 
-See [RevOps](revops.md#deferred-revenue-balance) for the canonical definition. Deferred revenue is a balance: cumulative billings to date minus cumulative revenue recognised to date. It arises on billing, not on cash receipt.
+See [RevOps](revops.md#deferred-revenue-balance) for the canonical definition: deferred revenue is a balance, cumulative billings to date minus cumulative revenue recognised to date. It arises on billing, not on cash receipt.
 
 ---
 
@@ -154,7 +154,7 @@ Usage Run-Rate = On-demand Consumption Revenue in the three months ending at per
 
 **Formula:**
 ```
-Prepaid Credit Balance = Purchases + granting adjustments − committed consumption − expiries − reducing adjustments, cumulative to period end
+Prepaid Credit Balance = Purchases + granting adjustments - committed consumption - expiries - reducing adjustments, cumulative to period end
 ```
 
 Every `purchase`, `expiry` and `adjustment` event and every consumption with basis `committed` is summed from the start of the ledger to period end, each with the sign it carries.
@@ -256,7 +256,7 @@ Expiry events carry a negative `credit_amount` and the metric reports the positi
 
 **Formula:**
 ```
-Consumption Revenue Growth Rate = (Consumption Revenue this month − Consumption Revenue last month) / Consumption Revenue last month × 100
+Consumption Revenue Growth Rate = (Consumption Revenue this month - Consumption Revenue last month) / Consumption Revenue last month × 100
 ```
 
 **What it tells you:** Whether usage is accelerating or slowing. It is the consumption counterpart of MRR Growth Rate and the figure consumption companies discuss on their earnings calls.
@@ -329,7 +329,7 @@ Revenue per Employee = ARR / Total employees
 
 ### Gross Margin
 
-See [Core Metrics](core.md#gross-margin) for full definition.
+See [Core Metrics](core.md#gross-margin) for the canonical definition: revenue minus COGS over revenue.
 
 ---
 
@@ -354,7 +354,7 @@ Operating Income = Revenue - COGS - Operating Expenses
 
 ### EBITDA Margin
 
-**Definition:** Earnings before interest, taxes, depreciation and amortization as a percentage of revenue.
+**Definition:** Earnings before interest, taxes, depreciation and amortisation as a percentage of revenue.
 
 **Formula:**
 ```
@@ -374,13 +374,13 @@ EBITDA Margin = EBITDA / Revenue × 100
 Net Income Margin = Net Income / Revenue × 100
 ```
 
-**What it tells you:** Bottom line profitability.
+**What it tells you:** How much of each dollar of revenue is left after every cost.
 
 ---
 
 ### Rule of 40
 
-See [Core Metrics](core.md#rule-of-40) for full definition.
+See [Core Metrics](core.md#rule-of-40) for the canonical definition: year-over-year ARR growth plus EBITDA margin.
 
 ---
 
@@ -452,13 +452,13 @@ FCF Margin = Free Cash Flow / Revenue × 100
 
 ### CAC Payback Period
 
-See [Core Metrics](core.md#cac-payback-period) for full definition.
+See [Core Metrics](core.md#cac-payback-period) for the canonical definition: CAC over ARPA times gross margin.
 
 ---
 
 ### LTV:CAC Ratio
 
-See [Core Metrics](core.md#ltvcac-ratio) for full definition.
+See [Core Metrics](core.md#ltvcac-ratio) for the canonical definition: LTV over CAC.
 
 ---
 
@@ -487,7 +487,7 @@ Magic Number = (QoQ ARR growth) / (Prior quarter S&M spend)
 
 ### Burn Multiple
 
-**Definition:** Net burn divided by net new ARR. Popularized by David Sacks.
+**Definition:** Net burn divided by net new ARR. Popularised by David Sacks.
 
 **Formula:**
 ```

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "../src/tools.js";
 import { enumFilters, formatFilters } from "../src/filters.js";
 import { compileMetric, exampleSql, interval } from "../src/compile.js";
+import { adapter as fixtureAdapter } from "./fixture-db.js";
 
 // Every lookup resolves by exact match or says not found. A substring guess
 // ("revenue" -> Revenue Churn Rate, "churn" -> Churned MRR) is worse than no answer.
@@ -325,7 +326,7 @@ describe("get_formula form filters", () => {
 });
 
 describe("generate_query named breakdown", () => {
-  const adapter = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "fixture", "adapter.json"), "utf-8"));
+  const adapter = structuredClone(fixtureAdapter);
 
   it("MRR by_plan fills every placeholder from the fixture adapter and groups by plan_id, labelled by plan_name", () => {
     const b = breakdownTemplate(data, "mrr", "by_plan");
@@ -431,7 +432,7 @@ describe("get_formula named breakdowns", () => {
 
 describe("validateAdapter schema check", () => {
   const here = new URL(".", import.meta.url).pathname;
-  const fixture = JSON.parse(readFileSync(join(here, "fixture", "adapter.json"), "utf-8"));
+  const fixture = structuredClone(fixtureAdapter);
   const template = JSON.parse(readFileSync(join(here, "..", "..", "standard", "exports", "gasp-adapter-template.json"), "utf-8"));
   const base = { version: "1.1", mappings: [{ gaspField: "mrr", warehouseRef: "billing.subscriptions.mrr" }] };
   /** The lines under the Schema heading, up to the next blank line. */
@@ -484,7 +485,7 @@ describe("validateAdapter schema check", () => {
 
 describe("exported report formatters", () => {
   it("formatValidationReport over checkAdapter is the validate_adapter report", () => {
-    const fixture = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "fixture", "adapter.json"), "utf-8"));
+    const fixture = structuredClone(fixtureAdapter);
     const result = checkAdapter(fixture, data);
     expect(result.schemaErrors).toEqual([]);
     expect(result.fully.length).toBeGreaterThan(0);

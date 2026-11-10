@@ -48,14 +48,6 @@ CREATE TABLE stripe.subscriptions (
   livemode BOOLEAN
 );
 
-CREATE TABLE stripe.subscription_items (
-  id VARCHAR(255) NOT NULL PRIMARY KEY,
-  subscription_id VARCHAR(255) NOT NULL REFERENCES stripe.subscriptions (id),
-  price_id VARCHAR(255) NOT NULL REFERENCES stripe.prices (id),
-  quantity BIGINT,
-  created TIMESTAMP NOT NULL
-);
-
 CREATE TABLE stripe.prices (
   id VARCHAR(255) NOT NULL PRIMARY KEY,
   product_id VARCHAR(255) NOT NULL,
@@ -70,6 +62,14 @@ CREATE TABLE stripe.prices (
   billing_scheme VARCHAR(16),
   nickname VARCHAR(255),
   livemode BOOLEAN
+);
+
+CREATE TABLE stripe.subscription_items (
+  id VARCHAR(255) NOT NULL PRIMARY KEY,
+  subscription_id VARCHAR(255) NOT NULL REFERENCES stripe.subscriptions (id),
+  price_id VARCHAR(255) NOT NULL REFERENCES stripe.prices (id),
+  quantity BIGINT,
+  created TIMESTAMP NOT NULL
 );
 
 CREATE TABLE stripe.invoices (

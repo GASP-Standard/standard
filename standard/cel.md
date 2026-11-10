@@ -10,13 +10,13 @@ Every revenue, retention and cost metric in this standard derives from atomic co
 
 SaaS companies typically compute metrics from derived tables: MRR snapshots, billing system exports, CRM rollups. These derived sources drift: two teams querying MRR from different derived tables get different numbers. The CEL removes the drift by computing every commercial metric from one event-level layer.
 
-The CEL is a conceptual standard for how commercial events are captured, stored and governed, which you implement in your warehouse, your lakehouse or your operational database. The schema is the contract.
+The CEL is a conceptual standard for how commercial events are captured, stored and governed, which you implement in your warehouse, your lakehouse or your operational database.
 
 ---
 
 ## Design Principles
 
-1. **Immutable events.** Once recorded, a CEL event is never modified. Corrections are new events (e.g., a `Revenue_Event` of type `adjustment`). This preserves auditability and enables point-in-time reconstruction.
+1. **Immutable events.** Once recorded, a CEL event is never modified. Corrections are new events: a correcting `Revenue_Event` of the opposite sign, or an `adjustment` `Credit_Event` on a prepaid balance. This preserves auditability and enables point-in-time reconstruction.
 
 2. **No derived data upstream.** The CEL contains atomic facts. MRR, ARR, NRR and every other metric are computed *from* CEL events, never stored *in* the CEL. Derived values live downstream.
 
@@ -24,13 +24,15 @@ The CEL is a conceptual standard for how commercial events are captured, stored 
 
 4. **One event, one truth.** Each commercial event is recorded once. If a subscription renewal generates both a `Revenue_Event` and a `Contract_Event`, those are two distinct events rather than one event with two types.
 
-5. **Source-system agnostic.** The CEL defines *what* to capture, not *where* it comes from. Events may originate in billing systems, CRMs, HRIS or manual entries. The CEL schema is the normalization layer.
+5. **Source-system agnostic.** The CEL defines *what* to capture, not *where* it comes from. Events may originate in billing systems, CRMs, HRIS or manual entries. The CEL schema is the normalisation layer.
 
 ---
 
 ## Event Classes
 
 The CEL defines six event classes. Every commercial event in a SaaS business sold by subscription, by consumption or by both falls into one of these.
+
+Each class is a dataset in `ontology.json`, named in lower case (`revenue_event`, `cost_event`, `contract_event`, `amendment_event`, `credit_event`), except `Lifecycle_State_Change`, held in `lifecycle_event`.
 
 ### Revenue_Event
 
@@ -47,6 +49,7 @@ A change in recurring revenue. This is the primary input for MRR, ARR, NRR, GRR 
 | `currency` | `string` | ISO 4217 currency code |
 | `prior_mrr` | `decimal` | MRR before this event |
 | `new_mrr` | `decimal` | MRR after this event |
+| `lifecycle_attribution` | `enum` | ATL lifecycle tag: `acquisition`, `activation`, `retention`, `expansion`, `reactivation`, `servicing`. See [ATL](atl.md#lifecycle-attribution). |
 | `expansion_classification` | `enum` (expansion, contraction and reactivation only) | `same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`. See [ATL](atl.md#expansion-classification). The NRR and ARR forms read it. |
 | `change_nature` | `enum` (optional) | `permanent` (default), `temporary`, `scheduled_reversal`. See [Change Nature](#change-nature). |
 | `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
@@ -110,6 +113,8 @@ A mid-term change to an existing subscription. Distinct from `Contract_Event` be
 | `new_plan` | `string` | Plan/tier after amendment |
 | `prior_quantity` | `integer` (nullable) | Seat/unit count before (if applicable) |
 | `new_quantity` | `integer` (nullable) | Seat/unit count after (if applicable) |
+| `lifecycle_attribution` | `enum` | ATL lifecycle tag: `acquisition`, `activation`, `retention`, `expansion`, `reactivation`, `servicing`. See [ATL](atl.md#lifecycle-attribution). |
+| `expansion_classification` | `enum` | ATL expansion tag: `same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`. See [ATL](atl.md#expansion-classification). |
 | `change_nature` | `enum` (optional) | `permanent` (default), `temporary`, `scheduled_reversal`. See [Change Nature](#change-nature). |
 | `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
 
@@ -189,18 +194,21 @@ A new customer signs up for a $500/mo plan.
 }
 ```
 
-### 2. Usage Commit Realisation
+### 2. Usage Above a Commitment
 
-An existing customer's usage commitment triggers an additional $200/mo.
+A customer's usage in February exceeds its commitment by $200, billed as overage for that month. A `contraction` of the same amount, dated 2026-03-01 and tagged `scheduled_reversal`, reverses it, as [Deriving Usage Realisation](#deriving-usage-realisation) says.
 
 ```json
 {
   "event_class": "Revenue_Event",
-  "event_id": "rev-002",
-  "event_date": "2026-02-15",
+  "event_id": "sub-1450:usage:2026-02-28",
+  "event_date": "2026-02-28",
   "customer_id": "cust-0783",
   "subscription_id": "sub-1450",
   "event_type": "expansion",
+  "expansion_classification": "usage_realisation",
+  "lifecycle_attribution": "expansion",
+  "change_nature": "temporary",
   "mrr_change": 200.00,
   "currency": "USD",
   "prior_mrr": 1000.00,
@@ -458,13 +466,9 @@ CREATE TABLE cel_cost_events (
 ### Querying: MRR at End of Month
 
 ```sql
-SELECT
-    DATE_TRUNC('month', event_date) AS month,
-    SUM(mrr_change) AS net_mrr_change
+SELECT SUM(mrr_change) AS mrr
 FROM cel_revenue_events
-WHERE event_date <= '2026-02-28'
-GROUP BY 1
-ORDER BY 1;
+WHERE event_date <= '2026-02-28';
 ```
 
 ### Querying: New MRR in February
@@ -496,7 +500,7 @@ An optional field on `Revenue_Event` and `Amendment_Event` that captures the int
 
 2. **Default is permanent.** If `change_nature` is omitted the event is treated as permanent. Teams adopt this field incrementally by tagging only the events where temporality matters.
 
-3. **No subjective judgment.** The values describe contractual or operational facts, not interpretations. A temporary upgrade is temporary because the contract says so, not because someone thinks it might reverse.
+3. **No subjective judgement.** The values describe contractual or operational facts, not interpretations. A temporary upgrade is temporary because the contract says so, not because someone thinks it might reverse.
 
 ### Example: Temporary Upgrade and Reversal
 
@@ -545,12 +549,13 @@ Under standard GASP metrics this produces +$600 expansion in April and -$600 con
 Teams that adopt `change_nature` can compute an adjusted NRR that excludes temporary movements. It sits beside standard NRR as an internal measure of revenue quality.
 
 ```
-Adjusted NRR = (Beginning MRR + Permanent Expansion - Permanent Contraction - Churn) / Beginning MRR x 100
+Adjusted NRR = (Beginning MRR + Permanent Expansion - Permanent Contraction - Permanent Churn) / Beginning MRR
 ```
 
 Where:
 - **Permanent Expansion** = expansion events where `change_nature` is `permanent` or omitted
 - **Permanent Contraction** = contraction events where `change_nature` is `permanent` or omitted
+- **Permanent Churn** = churn events where `change_nature` is `permanent` or omitted
 
 The standard NRR (reported to investors and boards) includes all movements regardless of `change_nature`. Adjusted NRR is an internal signal. Both are computed from the same CEL events.
 
@@ -604,7 +609,7 @@ The GASP `subscription` dataset: `subscription_id`, `customer_id`, `snapshot_dat
 3. **Opening balances.** Rows on the ledger's first snapshot date are opening balances. They seed each customer's MRR and produce no event, and a customer that churned before that date comes back as `new`, since the ledger cannot know otherwise. If the ledger begins after the oldest subscription, its first date is the day from which events are trusted. A ledger that begins with the business has no opening balances: say so, and every first row is a step from 0.
 4. **One event per step.** The event is dated the snapshot that first shows the change. `mrr_change` is the subscription's change. `prior_mrr` and `new_mrr` are the customer's MRR before and after the step, chained through the customer's steps in `snapshot_date` order, increases before decreases and then `subscription_id`, so `prior_mrr + mrr_change = new_mrr` holds on every row and the rows of one date add up to the customer's net movement.
 5. **Event type**, from the customer's MRR at the start and the end of the step's date. An increase on a date the customer started at 0 is `new`, or `reactivation` when the customer had MRR on an earlier date. A decrease on a date the customer ends at 0 is `churn`. Any other increase is `expansion` and any other decrease `contraction`. So a plan swap onto a new subscription id is an expansion and a contraction, and two subscriptions cancelled on one date are two churns. A `renewal` changes no MRR and is not derived from the ledger; it comes from `Contract_Event` or the subscription's renewal fields.
-6. **Tags and defaults.** `lifecycle_attribution` follows the [ATL assignment rules](atl.md#assignment-rules) for the event type: `new` is `acquisition`, `expansion` is `expansion`, `reactivation` is `reactivation`, `contraction` and `churn` are `retention`. `change_nature` is `permanent`. `segment` is the snapshot's. `currency` is the ledger's currency, supplied as a parameter because the `subscription` dataset carries none. `expansion_classification` is empty: the ledger shows that MRR moved, not whether the customer bought seats, a module or a price rise, and the Operating forms of ARR and NRR read that tag. Until the tag is filled from the amendment records, an ATL completeness check flags every derived expansion, contraction and reactivation.
+6. **Tags and defaults.** `lifecycle_attribution` follows the [ATL assignment rules](atl.md#assignment-rules) for the event type: `new` is `acquisition`, `expansion` is `expansion`, `reactivation` is `reactivation`, `contraction` and `churn` are `retention`. `change_nature` is `permanent`. `segment` is the snapshot's. `currency` is the ledger's currency, supplied as a parameter because the `subscription` dataset carries none. `expansion_classification` is empty: the ledger shows that MRR moved, not whether the customer bought seats, a module or a price rise, and ARR-O, NRR-O and NRR-M read that tag. Until the tag is filled from the amendment records, an ATL completeness check flags every derived expansion, contraction and reactivation.
 7. **Identity.** `event_id` is `<subscription_id>:<snapshot_date>`, a colon and the date in ISO 8601 form, so re-running the derivation over a longer ledger produces the same ids for the same events. The [usage realisation](#deriving-usage-realisation) events put `usage` between the two, `<subscription_id>:usage:<date>`, so a ledger step and a usage event on one day keep distinct ids.
 
 ### Cadence
@@ -907,7 +912,7 @@ The GASP Standard defines a three-level entity hierarchy in [Definitions](defini
 | **Subscription** | `subscription_id` on `Revenue_Event`, `Contract_Event`, `Amendment_Event` and `Credit_Event`. MRR lives here, and so does a prepaid credit balance: a `Credit_Event` names the subscription or commitment its balance belongs to. |
 | **License** | Not directly in the CEL. Licenses are derived from subscriptions. Seat counts appear on `Amendment_Event` as `prior_quantity` / `new_quantity`. |
 
-The CEL sits beside the entity model and records *events that happen to* entities. The entity model defines the nouns; the CEL defines the verbs.
+The CEL sits beside the entity model and records *events that happen to* entities.
 
 ---
 
@@ -915,7 +920,7 @@ The CEL sits beside the entity model and records *events that happen to* entitie
 
 **The CEL covers:**
 - All recurring revenue changes (new, expansion, contraction, churn, reactivation, renewal)
-- Costs, tagged by function (S&M, COGS, implementation, support, R&D, G&A)
+- Costs, tagged with the ATL cost function (go-to-market, infrastructure, implementation, support, research and development, general and administrative and the rest of the `cost_function` values)
 - Contractual milestones (new, renewal, amendment, cancellation)
 - Mid-term subscription changes
 - Customer lifecycle state transitions

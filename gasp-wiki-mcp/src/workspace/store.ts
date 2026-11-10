@@ -1,7 +1,8 @@
 /**
  * GASP Workspace storage: one row per company (a WorkOS organisation), its
- * members and its documents (the mapping, the semantic model, the decisions
- * and the pasted check results), each kind versioned so the history is kept.
+ * members and its documents (the mapping, the semantic model, the decisions,
+ * the pasted check results and the schema snapshots), each kind versioned so
+ * the history is kept.
  * The store runs over any `SqlRunner`: `pg` against the managed Postgres in
  * production, PGlite in the tests. Every statement that reads or writes a
  * company's rows filters by its company id; there is no cross-company read.
@@ -18,7 +19,7 @@ export interface SqlRunner {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
 }
 
-export const DOCUMENT_KINDS = ["mapping", "model", "decisions", "results"] as const;
+export const DOCUMENT_KINDS = ["mapping", "model", "decisions", "results", "schema"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
 export interface Company {
@@ -71,13 +72,16 @@ export const SCHEMA: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS documents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    kind text NOT NULL CHECK (kind IN ('mapping', 'model', 'decisions', 'results')),
+    kind text NOT NULL,
     version integer NOT NULL,
     body jsonb NOT NULL,
     author_user_id text,
     created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (company_id, kind, version)
   )`,
+  // The kinds live in one named constraint, replaced on every migration so a new kind needs no other step.
+  `ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_kind_check`,
+  `ALTER TABLE documents ADD CONSTRAINT documents_kind_check CHECK (kind IN (${DOCUMENT_KINDS.map((k) => `'${k}'`).join(", ")}))`,
 ];
 
 /**

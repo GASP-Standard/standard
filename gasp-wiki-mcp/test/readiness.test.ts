@@ -8,8 +8,6 @@
  * proposal is at 1 until its questions and candidates are decided; the tool
  * answers in prose and as data.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { checksAsOneQuery, compileChecks, type CheckResult } from "../src/checks.js";
@@ -26,10 +24,10 @@ import { proposeMapping } from "../src/ossie/propose.js";
 import { portable, type OssieSemanticModel } from "../src/ossie/types.js";
 import { columnName, END } from "../src/synthetic.js";
 import { adapter as fixtureAdapter, fixtureDb } from "./fixture-db.js";
-import { acmeDdl, parsedSchema } from "./ossie-helpers.js";
+import { acmeAdapterText, acmeDdl, parsedSchema } from "./ossie-helpers.js";
 
 const data = loadStandard();
-const acmeText = readFileSync(join(process.cwd(), "test", "fixture", "acme-adapter.json"), "utf-8");
+const acmeText = acmeAdapterText;
 const FRESH = { asOf: END, window: 30 };
 
 const company = (text: string, model?: string): Company => {

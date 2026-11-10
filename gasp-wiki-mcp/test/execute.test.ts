@@ -157,9 +157,11 @@ describe("compiled SQL runs on Postgres", () => {
 
   // An empty table or a filter that matches nothing reads as NULL, so this holds
   // the fixture to having rows for every metric, not just valid SQL.
-  // The one exception reads twelve months back: the credit ledger starts in 2026 and the customers
+  // Two exceptions. One reads twelve months back: the credit ledger starts in 2026 and the customers
   // in the June 2026 cohort have no June 2025 consumption, so the lagged denominator is 0 and the ratio NULL.
-  const NULL_BY_DESIGN = new Set(["consumption_net_revenue_retention"]);
+  // Average Services Deal Size reads services deals won in the period, and the one won services deal (o19)
+  // closed in April, so June has none (formula-fixes.test.ts checks April).
+  const NULL_BY_DESIGN = new Set(["consumption_net_revenue_retention", "average_services_deal_size"]);
   it("every fully mapped template returns a value, June", async () => {
     const nulls: string[] = [];
     for (const f of runnable) {
@@ -376,7 +378,8 @@ describe("hand-computed metric values, extended datasets", () => {
     expect(ending.map((r) => r.customer_id).sort()).toEqual(["c08", "c11", "c12"]);
     expect(await run("renewal_rate", ...JUNE)).toBeCloseTo(ending.filter((r) => r.renewed === true).length / ending.length, 10);
     expect(await run("renewal_rate", ...JUNE)).toBeCloseTo(2 / 3, 10);
-    expect(await run("auto_renewal_rate", ...JUNE)).toBeCloseTo(ending.filter((r) => r.auto_renewed === true).length / ending.length, 10);
+    const renewed = ending.filter((r) => r.renewed === true);
+    expect(await run("auto_renewal_rate", ...JUNE)).toBeCloseTo(renewed.filter((r) => r.auto_renewed === true).length / renewed.length, 10);
   });
 
   it("MTTR, June (minutes from start to resolution, averaged over incidents started in June)", async () => {

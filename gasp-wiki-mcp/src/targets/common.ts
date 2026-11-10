@@ -17,7 +17,7 @@
  *                  datasets the mapping covers (model.ts relationshipsOf), in the
  *                  company's dataset and field names
  *
- * The writers (snowflake.ts, cube.ts) are shape transforms over this model.
+ * The writers (snowflake.ts, cube.ts, dbt.ts) are shape transforms over this model.
  */
 import type { DialectName } from "../dialect.js";
 import { OSSIE_DIALECT_OF } from "../dialect.js";
@@ -57,6 +57,10 @@ export interface TargetTable {
   staged?: { for: string; reason: string };
   /** Set on the period spine dataset */
   spine?: boolean;
+  /** The dataset's time field (the field marked is_time, a key field first) */
+  timeField?: string;
+  /** The GASP dataset kind the mapping puts on this dataset (snapshot rows are read as of the period end) */
+  kind?: "event" | "snapshot" | "fact";
 }
 
 export interface TargetMetric {
@@ -157,9 +161,11 @@ function derivedRelationships(r: CompiledModel, data: StandardData): TargetRelat
   return out;
 }
 
-function tableOf(d: OssieDataset, r: CompiledModel, enumOf: Map<string, string[]>): TargetTable {
+function tableOf(d: OssieDataset, r: CompiledModel, enumOf: Map<string, string[]>, kindOf: Map<string, TargetTable["kind"]>): TargetTable {
   const e = ext(d);
-  const primaryKey = d.primary_key ?? [];
+  const primaryKey = [...new Set(d.primary_key ?? [])];
+  const marked = (d.fields ?? []).filter((f) => f.dimension?.is_time === true).map((f) => f.name);
+  const timeField = marked.find((x) => primaryKey.includes(x)) ?? marked[0];
   const fields: TargetField[] = (d.fields ?? []).map((f) => {
     const datatype = f.datatype ?? "String";
     const values = enumOf.get(`${d.name}.${f.name}`);
@@ -188,6 +194,8 @@ function tableOf(d: OssieDataset, r: CompiledModel, enumOf: Map<string, string[]
     fields,
     ...(e.staged === true ? { staged: { for: String(e.for ?? ""), reason: String(e.reason ?? "") } } : {}),
     ...(e.period_spine === true ? { spine: true } : {}),
+    ...(timeField ? { timeField } : {}),
+    ...(kindOf.get(d.name) ? { kind: kindOf.get(d.name) } : {}),
   };
 }
 
@@ -204,7 +212,14 @@ export function targetModel(r: CompiledModel, data: StandardData): TargetModel {
       if (f?.type === "enum" && f.values?.length) enumOf.set(`${ref.dataset}.${ref.field}`, f.values);
     }
   }
-  const tables = r.model.datasets.map((d) => tableOf(d, r, enumOf));
+  // Model dataset → the kind of the GASP dataset mapped onto it.
+  const kindOf = new Map<string, TargetTable["kind"]>();
+  for (const [gid, byField] of Object.entries(r.company.refs)) {
+    const kind = ont.datasets[gid]?.kind as TargetTable["kind"] | undefined;
+    if (!kind) continue;
+    for (const ref of Object.values(byField)) if (!kindOf.has(ref.dataset)) kindOf.set(ref.dataset, kind);
+  }
+  const tables = r.model.datasets.map((d) => tableOf(d, r, enumOf, kindOf));
   const tableNames = new Set(tables.map((t) => t.name));
 
   const ctx: EmitContext = {

@@ -20,7 +20,7 @@
  */
 import { closestNames, isMetricStub, metricFormulaId, resolveMetric } from "../loader.js";
 import { enumFilters, type EnumFilter } from "../filters.js";
-import { describeRange, outOfRange, rangeRule } from "../ranges.js";
+import { outOfRange, rangeRule } from "../ranges.js";
 import { columnName, generateFixture, loadSynthetic, TABLES, type Fixture } from "../synthetic.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { expressionText, parseDocument, resolveCompany, type Company } from "./adapt.js";
@@ -512,7 +512,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
         const both = score.periods.filter((p) => p.yours !== null && p.canonical !== null);
         const whenBoth = both.length ? `; in the ${both.length} period${both.length === 1 ? "" : "s"} where both sides have a value they ${both.every((p) => same(p.yours, p.canonical)) ? "agree" : "differ"}` : "";
         const mineNull = differing.filter((p) => p.yours === null && p.canonical !== null).length;
-        if (mineNull) score.causes.push(`yours is null in ${mineNull} of ${score.periods.length} periods where canonical has a value: a sum over no matching rows is NULL in SQL, and GASP compiles sum() as COALESCE(SUM(...), 0), so a period with no event of a type the formula sums gives 0${whenBoth}`);
+        if (mineNull) score.causes.push(`yours is null in ${mineNull} of ${score.periods.length} periods where canonical has a value: a sum over no matching rows is NULL in SQL; GASP compiles sum() as COALESCE(SUM(...), 0), so a period with no event of a type the formula sums gives 0${whenBoth}`);
         const theirNull = differing.filter((p) => p.canonical === null && p.yours !== null).length;
         if (theirNull) score.causes.push(`canonical is null in ${theirNull} of ${score.periods.length} periods where yours has a value: an average, extreme or percentile over no matching rows, or a ratio over a zero denominator, is NULL in the compiled SQL${whenBoth}`);
         if (cov.kind === "staged") score.causes.push(STAGED_WHY[cov.reason] ?? `canonical needs a construct the expression language cannot state (${cov.reason})`);

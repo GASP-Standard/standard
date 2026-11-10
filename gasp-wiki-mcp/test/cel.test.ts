@@ -10,6 +10,7 @@ import { adapterToOssie } from "../src/ossie/adapt.js";
 import { ossieYaml } from "../src/ossie/index.js";
 import { CREDITS, HISTORY_START, USAGE, addDays, customerStatusOn, mrrOn, type Row } from "../src/synthetic.js";
 import { fixture, adapter, fixtureDb, runTemplate } from "./fixture-db.js";
+import { acmeAdapterText } from "./ossie-helpers.js";
 
 // The CEL derivation rules (standard/cel.md, "Deriving Revenue Events from a
 // Subscription Ledger") run over the synthetic subscription snapshots and must
@@ -501,7 +502,7 @@ describe("credit event derivation", () => {
 });
 
 describe("derive_cel tool", () => {
-  const acme = readFileSync(join(import.meta.dirname, "fixture", "acme-adapter.json"), "utf8");
+  const acme = acmeAdapterText;
   const fixtureAdapter = JSON.stringify(adapter);
 
   it("asks for the mapping and the currency, and refuses a code that is not ISO 4217", () => {

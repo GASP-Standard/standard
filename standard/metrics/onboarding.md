@@ -57,8 +57,6 @@ TTFV = Median of (First value milestone date - Contract start date)
 Time to Go-Live = Median of (Go-live date - Contract start date)
 ```
 
-**What it tells you:** Implementation efficiency.
-
 ---
 
 ### Time to Full Adoption
@@ -83,8 +81,6 @@ Time to Full Adoption = Median of (Full adoption date - Contract start date)
 Onboarding Duration = Median of (Onboarding complete date - Onboarding start date)
 ```
 
-**What it tells you:** Length of onboarding program.
-
 ---
 
 ## Completion Metrics
@@ -106,7 +102,7 @@ Both counts come from the same period: onboardings completed in it over onboardi
 - 85-95%: Good
 - Above 95%: Excellent
 
-**What it tells you:** Onboarding program effectiveness.
+**What it tells you:** How many customers who start onboarding finish it, with a rate below 70% pointing at friction worth investigating.
 
 ---
 
@@ -129,7 +125,7 @@ Count the milestones due in the period and how many of them were reached by peri
 
 These are the canonical `onboarding_milestone` values. Data import, configuration, integration and training usually fall between kickoff and go-live. Teams whose onboarding tool records them can track them as sub-steps.
 
-**What it tells you:** Where customers get stuck.
+**What it tells you:** Where customers stall, when read per milestone.
 
 ---
 
@@ -143,8 +139,6 @@ On-Time Rate = Customers completing on time / Total customers completing × 100
 ```
 
 **Target:** >80%
-
-**What it tells you:** Predictability of onboarding timeline.
 
 ---
 
@@ -229,7 +223,7 @@ Surveyed at onboarding completion. Positive means 4 or 5 on a 5-point scale.
 Onboarding NPS = % Promoters - % Detractors
 ```
 
-**What it tells you:** Onboarding experience quality.
+**What it tells you:** Whether customers would recommend the onboarding they went through, apart from the product.
 
 ---
 
@@ -260,7 +254,7 @@ The score is an assessment against these components. The standard gives no weigh
 Onboardings per Resource = Completed onboardings / Implementation headcount
 ```
 
-**What it tells you:** Team capacity and efficiency.
+**What it tells you:** How many onboardings each implementation person completes, which sets how many the team can take on.
 
 ---
 
@@ -273,7 +267,7 @@ Onboardings per Resource = Completed onboardings / Implementation headcount
 Cost per Onboarding = Total onboarding team cost / Customers onboarded
 ```
 
-**What it tells you:** Unit economics of implementation.
+**What it tells you:** What it costs to bring one customer through onboarding, to set against what that customer pays.
 
 ---
 
@@ -339,7 +333,7 @@ A customer counts as active once it has an activation date: the date it first me
 
 **Target:** >95%
 
-**What it tells you:** Near-term stickiness after onboarding.
+**What it tells you:** Whether customers stay once onboarding ends, with the 95% target allowing one in twenty to leave in the first 30 days.
 
 ---
 

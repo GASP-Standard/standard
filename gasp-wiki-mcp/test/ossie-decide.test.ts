@@ -166,7 +166,7 @@ describe("Decide: the Acme proposal", () => {
     expect(openQuestions(changed.model, changed.decisions)).toEqual([]);
   });
 
-  it("validates as a mapping over the model and passes the upstream validator", async () => {
+  it("validates as a mapping over the model", () => {
     const r = decide();
     const v = checkMapping({ document: r.mapping, model: r.model }, data);
     if ("error" in v) throw new Error(v.error);
@@ -175,7 +175,10 @@ describe("Decide: the Acme proposal", () => {
     expect(v.conversionProblems).toEqual([]);
     expect(v.coverage.unowned).toEqual(r.open.unowned);
     expect(r.gaps).toEqual([]);
-    if (!uvAvailable()) return;
+  });
+
+  it.skipIf(!uvAvailable())("passes the upstream validator", async () => {
+    const r = decide();
     const dir = mkdtempSync(join(tmpdir(), "gasp-decide-"));
     try {
       const model = join(dir, "acme_saas.semantic_model.yaml");

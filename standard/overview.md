@@ -34,7 +34,7 @@ The GASP Standard writes down how the industry already measures performance: a c
 ## What This Standard Provides
 
 - **Canonical definitions** for every metric, from the ops review to the board room
-- **Exact formulas**, one calculation per metric, written in a machine-readable grammar. Each compiles to SQL in four dialects (Postgres, Snowflake, BigQuery and Databricks) and ships as Apache Ossie files. Breakdowns such as by segment or by plan are declared on the metric itself
+- **Exact formulas**, one calculation per metric, written in a machine-readable grammar. Each compiles to SQL in four dialects (Postgres, Snowflake, BigQuery and Databricks; the Postgres dialect also serves Redshift) and ships as Apache Ossie files. Breakdowns such as by segment or by plan are declared on the metric itself
 - **Industry benchmarks** for context
 - **Relationships** between metrics, showing how they move together
 - **The [metrics index](https://koinedata.com/v1/metrics)**, every metric by department with the Core Metrics as the view of business health
@@ -92,7 +92,7 @@ The aim is a foundation any SaaS business can adopt. Daily is the atomic unit, w
 
 | Document | Purpose |
 |----------|---------|
-| [Definitions](definitions.md) | Canonical definitions for all terms, the source of truth |
+| [Definitions](definitions.md) | Shared terms, with a link to each metric's canonical definition |
 | [Relationships](relationships.md) | How metrics connect and influence each other |
 | [Commercial Event Ledger (CEL)](cel.md) | The atomic event layer behind the revenue, retention and cost metrics |
 | [Attribution Taxonomy Layer (ATL)](atl.md) | The event tags that separate the Operating and Market forms |

@@ -233,11 +233,6 @@ export function exampleSql(sql: string): string {
     .replace(/\{\{(\w+)@\w+\}\}/g, "$1");
 }
 
-/** Strip the dataset tag from a field placeholder: "{{mrr@subscription}}" -> "{{mrr}}". */
-export function untagged(sql: string): string {
-  return sql.replace(/\{\{(\w+)@\w+\}\}/g, "{{$1}}");
-}
-
 class Compiler {
   fields = new Set<string>();
   placeholders = new Set<string>();

@@ -48,8 +48,7 @@ describe("Ossie example (GASP SaaS core)", () => {
     expect(ex.mapping.semantic_model_ref).toEqual({ name: ex.model.name, iri: `./${EXAMPLE_BASENAME}.semantic_model.yaml` });
   });
 
-  const hasUv = uvAvailable();
-  it.skipIf(!hasUv)("the three example files pass the upstream validator", async () => {
+  it.skipIf(!uvAvailable())("the three example files pass the upstream validator", async () => {
     for (const [kind, file] of [["model", DERIVED_FILES.exampleModel], ["ontology", DERIVED_FILES.exampleOntology], ["mapping", DERIVED_FILES.exampleMapping]] as const) {
       const r = await validateUpstream(file, kind);
       expect(r.ok, `${join("example", kind)}\n${r.output}`).toBe(true);
@@ -71,8 +70,7 @@ describe("Ossie example demo", () => {
   }, 180_000);
 
   const close = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
-  const onDuckDb = uvAvailable() ? it : it.skip;
-  onDuckDb("returns the expected values on DuckDB", () => {
+  it.skipIf(!uvAvailable())("returns the expected values on DuckDB", () => {
     const py = [
       "import duckdb, json, sys",
       "c = duckdb.connect()",

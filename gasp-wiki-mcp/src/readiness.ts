@@ -4,11 +4,12 @@
  * company has reached and what stands between it and the next, read from the
  * documents the pipeline already produces.
  *
- *   L1 Profiled    a semantic model exists (profiled, the company's own, or
+ *   L1 Profiled    a semantic model exists (profiled, the company's own or
  *                  synthesised from a GASP adapter)
- *   L2 Mapped      at least one metric is fully covered, and no profiler
- *                  question and no proposer candidate is open (the line
- *                  record_decision draws)
+ *   L2 Mapped      at least one metric is fully covered, no profiler question
+ *                  or proposer candidate is open (the line record_decision
+ *                  draws) and, with a schema snapshot, every mapped pair still
+ *                  reads columns that exist
  *   L3 Clean core  the CEL revenue events are mapped, the checks have been run
  *                  and every Core metric the mapping covers passes every check
  *                  that protects it
@@ -30,6 +31,8 @@ import { parseMatches, scoreDrift, type DriftResult, type Engine } from "./ossie
 import type { Question } from "./ossie/profile.js";
 import type { Candidate } from "./ossie/propose.js";
 import { expressionText, readGaspExtension, type OssieMapping, type OssieMetric, type OssieSemanticModel } from "./ossie/types.js";
+import { formatSchemaDrift, schemaColumns, schemaDrift, type SchemaDriftResult } from "./schema-drift.js";
+import type { SchemaColumn } from "./ossie/profile.js";
 import type { StandardData } from "./types.js";
 
 export type Level = 0 | 1 | 2 | 3 | 4;
@@ -71,6 +74,8 @@ export interface ReadinessResult {
     own: number;
     drift?: { engine: DriftResult["engine"]; agrees: number; differs: number; notRunnable: number; notCompiled: number; review: number; differing: Array<{ name: string; gasp: string }> };
   };
+  /** With a schema snapshot: what the warehouse's current schema does to the mapping */
+  schema?: SchemaDriftResult;
   next: string;
   problems: string[];
 }
@@ -85,6 +90,10 @@ export interface ReadinessOptions extends CheckOptions {
   engine?: Engine;
   /** The Ossie mapping document, for the candidates and decisions in its GASP extension */
   mapping?: OssieMapping;
+  /** The warehouse's current columns (a schema snapshot), compared with the mapping */
+  schema?: SchemaColumn[];
+  /** The previous snapshot, for the columns added, dropped and retyped since */
+  previousSchema?: SchemaColumn[];
 }
 
 const n = (k: number, word: string): string => `${k} ${word}${k === 1 ? "" : "s"}`;
@@ -110,7 +119,6 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
 
   // L2: coverage and the open items.
   const coverage: AdapterValidation = checkAdapter(company.adapter, data);
-  const dept = new Map(data.dataRequirements.map((dr) => [dr.metric, dr.department]));
   const coreAll = data.dataRequirements.filter((dr) => dr.department === "Core").map((dr) => dr.metric);
   const fullySet = new Set(coverage.fully.map((f) => f.metric));
   const coreCovered = coreAll.filter((m) => fullySet.has(m));
@@ -157,13 +165,23 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
   if (!coverage.fully.length) l2.push(`no metric is fully covered: map the pairs validate_mapping ranks${coverage.nextToMap.length ? ` (first: ${coverage.nextToMap.slice(0, 3).map((p) => `\`${p.pair}\``).join(", ")})` : ""}`);
   if (questions.length) l2.push(`${n(questions.length, "open question")} from the profile: ${names(questions.map((q) => `${q.dataset} ${q.about}`), 4)} (answer with record_decision)`);
   if (candidates.length) l2.push(`${n(candidates.length, "open candidate")} from the proposal: ${names(candidates.map((c) => `${c.source}${c.column ? `.${c.column}` : ""} → ${c.dataset}${c.field ? `.${c.field}` : ""}`), 3)} (accept or reject with record_decision)`);
+  const drifted = opts.schema ? schemaDrift(company.adapter, opts.schema, data, opts.previousSchema) : undefined;
+  if (drifted?.broken.length) {
+    const lostCore = drifted.metricsLost.filter((m) => m.department === "Core").map((m) => m.metric);
+    l2.push(`the schema changed under the mapping: ${n(drifted.broken.length, "mapped pair")} read${drifted.broken.length === 1 ? "s" : ""} a table or column the warehouse no longer has (${names(drifted.broken.map((b) => `\`${b.field}@${b.dataset}\``), 4)}), so ${n(drifted.metricsLost.length, "metric")} lose${drifted.metricsLost.length === 1 ? "s" : ""} coverage${lostCore.length ? `, Core among them: ${names(lostCore, 4)}` : ""} (remap with propose_mapping and record_decision, then recompile)`);
+  }
   const l2notes = [`${coverage.fully.length} fully covered, ${coverage.partial.length} partly, ${coverage.none.length} not covered of ${coverage.requirementCount} metrics with a formula; ${coreCovered.length} of ${coreAll.length} Core`];
   if (coverage.unowned.length) l2notes.push(`${n(coverage.unowned.length, "covered metric")} without an owner (record_decision about: owner)`);
   if (decisions.length) l2notes.push(`${n(decisions.length, "decision")} on file`);
+  if (drifted) {
+    const retyped = drifted.changes.filter((c) => c.change === "retyped" && c.readBy.length);
+    if (!drifted.broken.length) l2notes.push(`schema snapshot: every mapped pair reads columns that exist${drifted.hasPrevious ? `, ${n(drifted.changes.length, "column change")} since the previous snapshot` : ""}`);
+    if (retyped.length) l2notes.push(`${n(retyped.length, "mapped column")} changed type since the previous snapshot: ${names(retyped.map((c) => `${c.table}.${c.column} ${c.from} → ${c.to}`), 4)} (re-run the checks; a range check catches a scale change)`);
+  }
   add(2, l2, l2notes);
 
   const l3: string[] = [];
-  if (!celMapped) l3.push("the revenue_event dataset is not mapped: derive the CEL revenue events from your subscription ledger with derive_cel, build the table and map it");
+  if (!celMapped) l3.push("the revenue_event dataset is not mapped: derive the CEL revenue events from your subscription or invoice ledger with derive_cel, build the table and map it");
   if (!coreCovered.length) l3.push("no Core metric is fully covered");
   if (!opts.results) l3.push(`no check results: run the ${n(runnable.length, "check")} generate_checks writes for this mapping and pass the rows back as results`);
   else {
@@ -202,7 +220,7 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
   const blocked = levels.find((l) => l.status === "blocked");
   const next = blocked
     ? `Level ${blocked.level} (${blocked.name}): ${blocked.blockers[0]}.`
-    : "Level 4 reached. Keep the model published; re-run generate_checks and score_drift on a schedule and recompile after a mapping change.";
+    : "Level 4 reached. Keep the model published; schedule the generate_checks bundle (output: bundle) after each load, pass its check rows and schema snapshot back here with the previous snapshot. Recompile after a mapping change.";
 
   return {
     organization: company.adapter.organization || "unnamed",
@@ -213,6 +231,7 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
     mapping: { fully: coverage.fully.length, partial: coverage.partial.length, none: coverage.none.length, unowned: coverage.unowned.length, candidates, decisions: decisions.length, core: { covered: coreCovered, uncovered: coreAll.filter((m) => !fullySet.has(m)) } },
     checks: { given: Boolean(opts.results), celMapped, runnable: runnable.length, pass: runnable.filter((c) => c.status === "pass").length, fail: runnable.filter((c) => c.status === "fail").length, notRun: runnable.filter((c) => c.status === "not run").length, core },
     publish: { ...(compiled ? { compiled } : {}), wouldCompile, own: own.length, ...(drift ? { drift } : {}) },
+    ...(drifted ? { schema: drifted } : {}),
     next,
     problems,
   };
@@ -234,6 +253,7 @@ export function formatReadinessReport(r: ReadinessResult): string {
     if (l.level === 2 && r.mapping.core.uncovered.length) p.push(`- Core metrics not fully covered: ${names(r.mapping.core.uncovered, 8)}`);
     if (l.level === 3 && r.checks.given && r.checks.core.failing.length) for (const f of r.checks.core.failing) p.push(`- ${f.metric}: failing ${f.failing.map((c) => `\`${c}\``).join(", ")}`);
   }
+  if (r.schema) p.push("", formatSchemaDrift(r.schema));
   p.push("", "## Next", "", r.next);
   return p.join("\n");
 }
@@ -245,6 +265,10 @@ export interface ReadinessTextOptions {
   spine?: string;
   results?: string;
   matches?: string;
+  /** The warehouse's current columns, as profile_schema reads them */
+  schema?: string;
+  /** The previous snapshot, in the same shapes */
+  previousSchema?: string;
   output?: "report" | "json";
   engine?: Engine;
 }
@@ -269,7 +293,16 @@ export async function readinessFromText(documentText: string | undefined, modelT
     if (parsed.error) return parsed.error;
     results = parsed.results;
   }
-  const r = await readiness(company, model, data, { dialect: opts.dialect, window: opts.window, asOf: opts.asOf, spine: opts.spine, results, matches: parseMatches(opts.matches), engine: opts.engine, mapping });
+  let schema: SchemaColumn[] | undefined;
+  let previousSchema: SchemaColumn[] | undefined;
+  for (const [label, text] of [["schema", opts.schema], ["previous_schema", opts.previousSchema]] as const) {
+    if (text === undefined || !text.trim()) continue;
+    const cols = schemaColumns(text);
+    if ("error" in cols) return `${label}: ${cols.error}`;
+    if (label === "schema") schema = cols; else previousSchema = cols;
+  }
+  if (previousSchema && !schema) return "previous_schema needs schema: the current snapshot to compare it with.";
+  const r = await readiness(company, model, data, { dialect: opts.dialect, window: opts.window, asOf: opts.asOf, spine: opts.spine, results, matches: parseMatches(opts.matches), engine: opts.engine, mapping, schema, previousSchema });
   if ("error" in r) return r.error;
   return opts.output === "json" ? JSON.stringify(r, null, 2) : formatReadinessReport(r);
 }

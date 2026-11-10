@@ -6,7 +6,7 @@
  * mapping covers, in Acme's dialect, idempotently, from either input format,
  * and the result passes the upstream validator.
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
@@ -23,11 +23,12 @@ import { uvAvailable, validateUpstream } from "../src/ossie/validate.js";
 import { DIALECT } from "../src/dialect.js";
 import { addOssieViews, adapter as fixtureAdapter, fixtureDb, scalar } from "./fixture-db.js";
 import { columnName, TABLES } from "./fixture/generate.js";
+import { acmeAdapter } from "./ossie-helpers.js";
 
 const data = loadStandard();
 const fields = Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f]));
 const gaspDatasets = data.ontology!.datasets!;
-const acme = JSON.parse(readFileSync(join(process.cwd(), "test", "fixture", "acme-adapter.json"), "utf-8")) as Adapter;
+const acme: Adapter = acmeAdapter();
 const reference = exportModel(data);
 
 const company = (a: Adapter): Company => {
@@ -245,8 +246,7 @@ describe("Company compile: the Acme adapter", () => {
     expect(compileModelFromText(JSON.stringify(acme), undefined, data, { metrics: "nope" })).toMatch(/not a metric/);
   });
 
-  const upstream = uvAvailable() ? it : it.skip;
-  upstream("passes the upstream validator", async () => {
+  it.skipIf(!uvAvailable())("passes the upstream validator", async () => {
     const dir = mkdtempSync(join(tmpdir(), "gasp-company-"));
     try {
       const file = join(dir, "acme_saas.semantic_model.yaml");

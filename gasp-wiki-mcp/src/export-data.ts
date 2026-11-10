@@ -23,7 +23,7 @@ const version = {
   nodeCount: data.nodes.length,
   edgeCount: data.edges.length,
   dataRequirementCount: data.dataRequirements.length,
-  // sha256 of the exported data; index.ts compares it with the hash of its own loaded data
+  // sha256 of the exported data; server.ts compares it with the hash of its own loaded data
   contentHash: createHash("sha256").update(json).digest("hex"),
   buildDate: new Date().toISOString().slice(0, 10),
 };

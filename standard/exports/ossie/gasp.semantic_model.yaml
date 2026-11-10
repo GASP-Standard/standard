@@ -48,7 +48,7 @@ datasets:
       - name: expansion_classification
         expression:
           sql: expansion_classification
-        description: ATL expansion tag; required for NRR-M and ARR-M
+        description: ATL expansion tag; read by ARR-O, NRR-O and NRR-M
         datatype: String
         ai_context:
           instructions: One of same_product, new_module, new_buying_centre, pricing_adjustment, recontracting, usage_realisation
@@ -269,7 +269,7 @@ datasets:
       - name: expansion_classification
         expression:
           sql: expansion_classification
-        description: ATL expansion tag; required for NRR-M and ARR-M
+        description: ATL expansion tag; read by ARR-O, NRR-O and NRR-M
         datatype: String
         ai_context:
           instructions: One of same_product, new_module, new_buying_centre, pricing_adjustment, recontracting, usage_realisation
@@ -4263,6 +4263,32 @@ datasets:
     custom_extensions:
       - vendor_name: GASP
         data: "{\"staged\":true,\"for\":\"gasp_services_attach_rate\",\"reason\":\"period bound in filter\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((includes_services = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((includes_services = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((includes_services = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (opportunity_stage = 'closed_won' AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p\"}}"
+  - name: gasp_staged_gasp_average_services_deal_size
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p
+    description: "Staged dataset for gasp_average_services_deal_size: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    primary_key:
+      - period_start
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: Average Services Deal Size for the period
+    custom_extensions:
+      - vendor_name: GASP
+        data: "{\"staged\":true,\"for\":\"gasp_average_services_deal_size\",\"reason\":\"period bound in filter\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT opportunity_id) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((revenue_type = 'services' AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end))), 0))) AS value FROM gasp.period_spine p\"}}"
   - name: gasp_staged_gasp_services_backlog
     source: SELECT p.period_start, p.period_end, (((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND (revenue_type = 'services' AND opportunity_stage = 'closed_won')) - ((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start <= p.period_end AND revenue_type = 'services')))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_services_backlog: one row per reporting period holding the metric value, computed by the GASP compiled query (needs to_date)."
@@ -5418,7 +5444,7 @@ datasets:
       - vendor_name: GASP
         data: '{"staged":true,"for":"gasp_renewal_notification_rate","reason":"period bound in filter","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewal_notified_on_time = TRUE)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewal_notified_on_time = TRUE)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewal_notified_on_time = TRUE)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
   - name: gasp_staged_gasp_auto_renewal_rate
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND auto_renewed = TRUE)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE) AND auto_renewed = TRUE)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_auto_renewal_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -5442,7 +5468,7 @@ datasets:
         description: Auto-Renewal Rate for the period
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_auto_renewal_rate","reason":"period bound in filter","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND auto_renewed = TRUE)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND auto_renewed = TRUE)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND auto_renewed = TRUE)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
+        data: '{"staged":true,"for":"gasp_auto_renewal_rate","reason":"period bound in filter","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE) AND auto_renewed = TRUE)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE) AND auto_renewed = TRUE)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE) AND auto_renewed = TRUE)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT subscription_id) FROM gasp.subscription WHERE snapshot_date = p.period_end AND ((contract_end >= p.period_start AND contract_end <= p.period_end) AND renewed = TRUE)), 0))) AS value FROM gasp.period_spine p"}}'
   - name: gasp_staged_gasp_renewal_processing_time
     source: SELECT p.period_start, p.period_end, ((SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (renewal_complete_date - renewal_trigger_date)) FROM gasp.subscription WHERE snapshot_date = p.period_end AND (contract_end >= p.period_start AND contract_end <= p.period_end))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_renewal_processing_time: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -6430,7 +6456,7 @@ datasets:
       - vendor_name: GASP
         data: "{\"staged\":true,\"for\":\"gasp_regrettable_turnover\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND ((termination_type = 'voluntary' AND is_high_performer = TRUE) AND (termination_date >= p.period_start AND termination_date <= p.period_end))) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_start AND (is_high_performer = TRUE AND employee_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND ((termination_type = 'voluntary' AND is_high_performer = TRUE) AND (termination_date >= p.period_start AND termination_date <= p.period_end))) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_start AND (is_high_performer = TRUE AND employee_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND ((termination_type = 'voluntary' AND is_high_performer = TRUE) AND (termination_date >= p.period_start AND termination_date <= p.period_end))) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_start AND (is_high_performer = TRUE AND employee_status = 'active')), 0))) AS value FROM gasp.period_spine p\"}}"
   - name: gasp_staged_gasp_day_90_turnover
-    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND (termination_date - hire_date) <= 90)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
+    source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND (termination_date - hire_date) <= 90)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_day_90_turnover: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -6454,9 +6480,9 @@ datasets:
         description: 90-Day Turnover for the period
     custom_extensions:
       - vendor_name: GASP
-        data: '{"staged":true,"for":"gasp_day_90_turnover","reason":"period bound in filter","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND DATEDIFF(day, hire_date, termination_date) <= 90)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND DATE_DIFF(termination_date, hire_date, DAY) <= 90)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND DATEDIFF(termination_date, hire_date) <= 90)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
+        data: '{"staged":true,"for":"gasp_day_90_turnover","reason":"period bound in filter","source_dialect":"POSTGRES","sources":{"SNOWFLAKE":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND DATEDIFF(day, hire_date, termination_date) <= 90)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","BIGQUERY":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND DATE_DIFF(termination_date, hire_date, DAY) <= 90)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p","DATABRICKS":"SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND DATEDIFF(termination_date, hire_date) <= 90)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p"}}'
   - name: gasp_staged_gasp_day_90_turnover_by_hire_source
-    source: SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND (termination_date - hire_date) <= 90) AND hire_source = _d.hire_source) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d
+    source: SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND (termination_date - hire_date) <= 90) AND hire_source = _d.hire_source) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d
     description: "Staged dataset for gasp_day_90_turnover_by_hire_source: one row per reporting period and hire_source value holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
     primary_key:
       - period_start
@@ -6486,7 +6512,7 @@ datasets:
         description: 90-Day Turnover, by_hire_source breakdown for the period and hire_source
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_day_90_turnover_by_hire_source\",\"reason\":\"period bound in filter\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND DATEDIFF(day, hire_date, termination_date) <= 90) AND hire_source = _d.hire_source) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND DATE_DIFF(termination_date, hire_date, DAY) <= 90) AND hire_source = _d.hire_source) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (termination_date IS NOT NULL AND DATEDIFF(termination_date, hire_date) <= 90) AND hire_source = _d.hire_source) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d\"}}"
+        data: "{\"staged\":true,\"for\":\"gasp_day_90_turnover_by_hire_source\",\"reason\":\"period bound in filter\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND DATEDIFF(day, hire_date, termination_date) <= 90) AND hire_source = _d.hire_source) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND DATE_DIFF(termination_date, hire_date, DAY) <= 90) AND hire_source = _d.hire_source) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, _d.hire_source AS hire_source, ((CAST((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (((hire_date >= p.period_start AND hire_date <= p.period_end) AND termination_date IS NOT NULL) AND DATEDIFF(termination_date, hire_date) <= 90) AND hire_source = _d.hire_source) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT employee_id) FROM gasp.employee WHERE snapshot_date = p.period_end AND (hire_date >= p.period_start AND hire_date <= p.period_end) AND hire_source = _d.hire_source), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'referral' AS hire_source UNION ALL SELECT 'inbound' AS hire_source UNION ALL SELECT 'sourced' AS hire_source UNION ALL SELECT 'agency' AS hire_source UNION ALL SELECT 'internal' AS hire_source UNION ALL SELECT 'campus' AS hire_source UNION ALL SELECT 'other' AS hire_source) _d\"}}"
   - name: gasp_staged_gasp_time_to_fill
     source: SELECT p.period_start, p.period_end, ((SELECT AVG((filled_date - requisition_opened_date)) FROM gasp.requisition WHERE snapshot_date = p.period_end AND (filled_date >= p.period_start AND filled_date <= p.period_end))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_time_to_fill: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -7823,7 +7849,7 @@ metrics:
   - name: gasp_mrr
     expression:
       sql: COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)
-    description: MRR (Monthly Recurring Revenue). The total predictable revenue from active subscriptions, normalized to a monthly value.
+    description: MRR (Monthly Recurring Revenue). The total predictable revenue from active subscriptions, normalised to a monthly value.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -7835,7 +7861,7 @@ metrics:
   - name: gasp_mrr_by_plan
     expression:
       sql: COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)
-    description: MRR (Monthly Recurring Revenue), by_plan breakdown. The total predictable revenue from active subscriptions, normalized to a monthly value.
+    description: MRR (Monthly Recurring Revenue), by_plan breakdown. The total predictable revenue from active subscriptions, normalised to a monthly value.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -7847,7 +7873,7 @@ metrics:
   - name: gasp_mrr_by_segment
     expression:
       sql: COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)
-    description: MRR (Monthly Recurring Revenue), by_segment breakdown. The total predictable revenue from active subscriptions, normalized to a monthly value.
+    description: MRR (Monthly Recurring Revenue), by_segment breakdown. The total predictable revenue from active subscriptions, normalised to a monthly value.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -7859,7 +7885,7 @@ metrics:
   - name: gasp_arr
     expression:
       sql: ((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) * 12)
-    description: ARR (Annual Recurring Revenue). The annualized value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
+    description: ARR (Annual Recurring Revenue). The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -7871,7 +7897,7 @@ metrics:
   - name: gasp_arr_o
     expression:
       sql: SUM(gasp_staged_gasp_arr_o.value)
-    description: ARR (Annual Recurring Revenue), Operating form. The annualized value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
+    description: ARR (Annual Recurring Revenue), Operating form. The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -7883,7 +7909,7 @@ metrics:
   - name: gasp_arr_m
     expression:
       sql: ((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) * 12)
-    description: ARR (Annual Recurring Revenue), Market form. The annualized value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
+    description: ARR (Annual Recurring Revenue), Market form. The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -7895,7 +7921,7 @@ metrics:
   - name: gasp_arr_by_segment
     expression:
       sql: ((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) * 12)
-    description: ARR (Annual Recurring Revenue), by_segment breakdown. The annualized value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
+    description: ARR (Annual Recurring Revenue), by_segment breakdown. The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -8925,14 +8951,14 @@ metrics:
         data: "{\"gasp_id\":\"services_attach_rate\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"count_distinct(field.opportunity_id where field.includes_services = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
   - name: gasp_average_services_deal_size
     expression:
-      sql: (CAST(COALESCE(SUM(opportunity.opportunity_amount) FILTER (WHERE opportunity.revenue_type = 'services'), 0) AS DECIMAL) / NULLIF(COUNT(DISTINCT opportunity.opportunity_id) FILTER (WHERE opportunity.revenue_type = 'services'), 0))
+      sql: SUM(gasp_staged_gasp_average_services_deal_size.value)
     description: Average Services Deal Size. Average value of services engagements.
     datatype: Decimal
     ai_context:
-      instructions: "Canonical definition: https://koinedata.com/v1/metrics/professional-services/average-services-deal-size. Reads the opportunity snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
+      instructions: "Canonical definition: https://koinedata.com/v1/metrics/professional-services/average-services-deal-size. Staged (period bound in filter): gasp_staged_gasp_average_services_deal_size holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"average_services_deal_size\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.opportunity_amount where field.revenue_type = 'services') / count_distinct(field.opportunity_id where field.revenue_type = 'services')\"}"
+        data: "{\"gasp_id\":\"average_services_deal_size\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.opportunity_amount where field.revenue_type = 'services' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.opportunity_id where field.revenue_type = 'services' and field.opportunity_stage = 'closed_won' and in_period(field.close_date))\",\"staged\":true}"
   - name: gasp_services_backlog
     expression:
       sql: SUM(gasp_staged_gasp_services_backlog.value)
@@ -9587,14 +9613,14 @@ metrics:
         data: '{"gasp_id":"renewal_forecast_accuracy","gasp_version":"1","unit":"percent","formula":"1 - abs(sum(field.forecast_renewal_amount where in_period(field.contract_end)) - sum(field.renewal_amount where in_period(field.contract_end) and field.renewed = true)) / sum(field.renewal_amount where in_period(field.contract_end) and field.renewed = true)","staged":true}'
   - name: gasp_days_to_renewal
     expression:
-      sql: AVG(DATEDIFF(day, subscription.snapshot_date, subscription.contract_end))
+      sql: AVG(DATEDIFF(day, subscription.snapshot_date, subscription.contract_end)) FILTER (WHERE (subscription.subscription_status = 'active' AND subscription.contract_end >= subscription.snapshot_date))
     description: Days to Renewal. Average number of days until upcoming renewals.
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/customer-success/days-to-renewal. Reads the subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"days_to_renewal","gasp_version":"1","unit":"days","formula":"avg(field.contract_end - field.snapshot_date)"}'
+        data: "{\"gasp_id\":\"days_to_renewal\",\"gasp_version\":\"1\",\"unit\":\"days\",\"formula\":\"avg(field.contract_end - field.snapshot_date where field.subscription_status = 'active' and field.contract_end >= field.snapshot_date)\"}"
   - name: gasp_accounts_per_csm
     expression:
       sql: (CAST(COUNT(DISTINCT customer.customer_id) AS DECIMAL) / NULLIF(COUNT(DISTINCT customer.csm_id), 0))
@@ -9920,7 +9946,7 @@ metrics:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/revops/auto-renewal-rate. Staged (period bound in filter): gasp_staged_gasp_auto_renewal_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"auto_renewal_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.subscription_id where in_period(field.contract_end) and field.auto_renewed = true) / count_distinct(field.subscription_id where in_period(field.contract_end))","staged":true}'
+        data: '{"gasp_id":"auto_renewal_rate","gasp_version":"1","unit":"percent","formula":"count_distinct(field.subscription_id where in_period(field.contract_end) and field.renewed = true and field.auto_renewed = true) / count_distinct(field.subscription_id where in_period(field.contract_end) and field.renewed = true)","staged":true}'
   - name: gasp_renewal_processing_time
     expression:
       sql: SUM(gasp_staged_gasp_renewal_processing_time.value)
@@ -10494,7 +10520,7 @@ metrics:
   - name: gasp_revenue_gaap
     expression:
       sql: COALESCE(SUM(financials.revenue), 0)
-    description: Revenue (GAAP). Recognized revenue according to accounting standards.
+    description: Revenue (GAAP). Recognised revenue according to accounting standards.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -10586,7 +10612,7 @@ metrics:
   - name: gasp_ebitda_margin
     expression:
       sql: (CAST(COALESCE(SUM(financials.ebitda), 0) AS DECIMAL) / NULLIF((COALESCE(SUM(financials.revenue), 0)), 0))
-    description: EBITDA Margin. Earnings before interest, taxes, depreciation and amortization as a percentage of revenue.
+    description: EBITDA Margin. Earnings before interest, taxes, depreciation and amortisation as a percentage of revenue.
     datatype: Decimal
     ai_context:
       synonyms:
@@ -10660,7 +10686,7 @@ metrics:
   - name: gasp_burn_multiple
     expression:
       sql: SUM(gasp_staged_gasp_burn_multiple.value)
-    description: Burn Multiple. Net burn divided by net new ARR. Popularized by David Sacks.
+    description: Burn Multiple. Net burn divided by net new ARR. Popularised by David Sacks.
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/finance/burn-multiple. Staged (at period_start): gasp_staged_gasp_burn_multiple holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
@@ -10988,7 +11014,7 @@ metrics:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/people/90-day-turnover. Staged (period bound in filter): gasp_staged_gasp_day_90_turnover holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"day_90_turnover","gasp_version":"1","unit":"percent","formula":"count_distinct(field.employee_id where field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)","staged":true}'
+        data: '{"gasp_id":"day_90_turnover","gasp_version":"1","unit":"percent","formula":"count_distinct(field.employee_id where in_period(field.hire_date) and field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where in_period(field.hire_date))","staged":true}'
   - name: gasp_day_90_turnover_by_hire_source
     expression:
       sql: SUM(gasp_staged_gasp_day_90_turnover_by_hire_source.value)
@@ -10998,7 +11024,7 @@ metrics:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/people/90-day-turnover. Broken down by hire_source: report one value per hire_source. Staged (period bound in filter): gasp_staged_gasp_day_90_turnover_by_hire_source holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
     custom_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"day_90_turnover","gasp_version":"1","variant":"by_hire_source","unit":"percent","formula":"count_distinct(field.employee_id where field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)","gasp_breakdown":"hire_source","staged":true}'
+        data: '{"gasp_id":"day_90_turnover","gasp_version":"1","variant":"by_hire_source","unit":"percent","formula":"count_distinct(field.employee_id where in_period(field.hire_date) and field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where in_period(field.hire_date))","gasp_breakdown":"hire_source","staged":true}'
   - name: gasp_enps
     expression:
       sql: ((CAST((COUNT(survey_response.nps_score) FILTER (WHERE (survey_response.survey_type = 'employee' AND survey_response.nps_score >= 9)) - COUNT(survey_response.nps_score) FILTER (WHERE (survey_response.survey_type = 'employee' AND survey_response.nps_score <= 6))) AS DECIMAL) / NULLIF(COUNT(survey_response.nps_score) FILTER (WHERE survey_response.survey_type = 'employee'), 0)) * 100)

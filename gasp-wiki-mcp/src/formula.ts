@@ -360,11 +360,6 @@ export interface FormulaAnalysis {
   metricBaseline: Record<string, boolean>;
 }
 
-/** Maps the hand-maintained structuredFormulas roles onto polarity. */
-export function rolePolarity(role: string): Polarity {
-  return role === "denominator" || role === "subtrahend" ? "negative" : "positive";
-}
-
 export function analyzeFormula(f: Formula): FormulaAnalysis {
   const metrics = new Set<string>();
   const fields = new Set<string>();

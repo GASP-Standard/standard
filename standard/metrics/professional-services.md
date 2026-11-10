@@ -60,6 +60,8 @@ Attach Rate = Deals with services / Total deals × 100
 Avg Services Deal = Total services bookings / Number of services engagements
 ```
 
+Both figures cover services deals closed won in the period.
+
 ---
 
 ### Services Backlog
@@ -191,7 +193,7 @@ Bench Rate = Consultants without assignment / Total consultants × 100
 
 **Target:** <15%
 
-**What it tells you:** Capacity available vs excess.
+**What it tells you:** How much of the team is unbilled, with a rate above the 15% target meaning more capacity than the work needs.
 
 ---
 

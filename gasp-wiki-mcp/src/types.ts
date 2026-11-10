@@ -181,13 +181,11 @@ export interface OntologyDataset {
 }
 
 export interface ValidationRule {
-  /** benchmarks, min, max, unit, target, formula, window or period */
+  /** min, max, unit, target, formula, window or period */
   type: string;
   value?: string | number;
   unit?: string;
   note?: string;
-  ranges?: Array<{ threshold: string; label: string }>;
-  source?: string;
 }
 
 export interface OntologyData {
@@ -202,7 +200,7 @@ export interface OntologyData {
     edgeTypeClassification?: Record<string, string[]>;
   };
   structuredFormulas?: Record<string, StructuredFormula>;
-  /** Hard constraints and benchmark ranges per metric slug (ontology.json validationRules) */
+  /** Hard constraints per metric slug (ontology.json validationRules) */
   validationRules?: Record<string, ValidationRule[]>;
   accessControl?: {
     sensitivityTiers: Record<string, string>;
@@ -353,7 +351,7 @@ export interface StandardData {
   formulas?: Record<string, MetricFormula>;
   /**
    * The adapter JSON Schema (draft 2020-12), from standard/gasp-adapter-schema.json.
-   * validate_adapter applies it before the field and coverage checks. Optional so
+   * validate_mapping applies it before the field and coverage checks. Optional so
    * data fetched from an older site build still loads.
    */
   adapterSchema?: Record<string, unknown>;

@@ -6,7 +6,8 @@
  * classification step fills the ATL tag, the billing credits ledger gives the
  * consumption, balance and breakage metrics, the checks pass, the readiness
  * report climbs from level 2 to 4 and the drift report names the planted
- * difference, the interop spec's "drift report on a public vendor example".
+ * difference, the interop spec's "drift report on a public vendor example",
+ * and its DDL profiles.
  * Salesforce, on BigQuery: the mapping validates, Win Rate and Pipeline Value
  * compile in BigQuery, the checks compile, the DDL profiles, and the readiness
  * report stops at level 2 naming the revenue events a CRM cannot supply.
@@ -30,7 +31,7 @@ import { proposeMapping } from "../src/ossie/propose.js";
 import type { OssieSemanticModel } from "../src/ossie/types.js";
 
 const data = loadStandard();
-const fixture = (vendor: string, file: string) => readFileSync(join(process.cwd(), "test", "fixture", vendor, file), "utf-8");
+const fixture = (vendor: string, file: string) => readFileSync(join(import.meta.dirname, "fixture", vendor, file), "utf-8");
 const company = (text: string): Company => {
   const c = resolveCompany(text, undefined, data);
   if ("error" in c) throw new Error(c.error);
@@ -281,5 +282,18 @@ describe("Salesforce on BigQuery: a CRM mapping that stops at readiness level 2"
     expect(blockers(r, 3)[0]).toContain("the revenue_event dataset is not mapped");
     expect(r.mapping.core.covered).toEqual(["Total Customers"]);
     expect(r.next).toContain("derive_cel");
+  });
+});
+
+describe("Stripe: the DDL", () => {
+  const ddl = fixture("stripe", "schema.sql");
+
+  it("profiles the DDL to its thirteen tables", () => {
+    const parsed = parseSchema(ddl);
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.problems).toEqual([]);
+    const profile = profileSchema(parsed, [], data, { organization: "Stripe example" });
+    expect(profile.problems).toEqual([]);
+    expect(profile.model.datasets.length).toBe(13);
   });
 });

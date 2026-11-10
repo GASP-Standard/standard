@@ -3,7 +3,7 @@
  *
  * The compiler emits ANSI SQL except for the constructs below, which every
  * warehouse spells differently. Each dialect is one row of this table; adding a
- * dialect is adding a row (and a column to the README's generate_query entry).
+ * dialect is adding a row (and the dialect name in the README entries that list them).
  *
  *   construct                 postgres (default)                      snowflake                         bigquery                                  databricks
  *   date shift (a - n unit)   (a - INTERVAL 'n unit'), quarter=3 month DATEADD(unit, -n, a)              DATE_SUB(a, INTERVAL n UNIT)              DATEADD(UNIT, -n, a)

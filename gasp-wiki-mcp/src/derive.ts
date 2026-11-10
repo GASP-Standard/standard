@@ -11,6 +11,7 @@
  *   standard/exports/ossie/gasp.semantic_model.yaml Ossie reference model with every canonical metric
  *   standard/exports/ossie/gasp.mapping.yaml        Ossie mapping of the ontology onto the model
  *   standard/exports/ossie/coverage.json            how each formula was exported (direct with its portability rung, staged, not computable)
+ *   standard/exports/ossie/example/                 the Core cut for apache/ossie examples/: gasp_saas ontology, model and mapping, README.md
  *
  * The website build (gasp-wiki-frontend/scripts/generate-content.ts) copies
  * standard/exports/ to public/downloads/ and standard/gasp-adapter-schema.json
@@ -78,7 +79,6 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
   const nodeIds = new Set(data.nodes.filter((n) => !n.nodeType || n.nodeType === "metric").map((n) => n.id));
   const byId = new Map<string, Metric>();
   for (const m of data.metrics) if (!isMetricStub(m)) byId.set(metricFormulaId(data, m), m);
-  const slugOf = (id: string) => byId.get(id)?.slug;
 
   // ── per-formula analysis ────────────────────────────────────────────────
   // Field usage counts every field a metric's compiled SQL reads: direct refs, dataset date
@@ -114,7 +114,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
     structured[id] = entry;
   }
   const keyEntity = new Map<string, string>();
-  for (const [dsId, ds] of Object.entries(ont.datasets!)) for (const e of ds.entities ?? []) if (ds.key.endsWith("_id")) keyEntity.set(ds.key, e);
+  for (const ds of Object.values(ont.datasets!)) for (const e of ds.entities ?? []) if (ds.key.endsWith("_id")) keyEntity.set(ds.key, e);
   const entityMappings: Record<string, string[]> = Object.fromEntries(ont.entities.map((e) => [e.id, [] as string[]]));
   for (const [id, c] of compiled) {
     const ents = new Set<string>();
@@ -220,7 +220,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
     version: "1.1",
     organization: "",
     warehouse: "",
-    _instructions: "Map a warehouse table to each dataset you have (schema.table) and a column to each field (a bare column name, or schema.table.column). Fields that live on several datasets appear once per dataset; fill the ones you have. Fields you cannot map can be left with an empty warehouseRef or removed. Enum fields list the values the column must produce after transform. Run validate_adapter (GASP MCP) to see which metrics you can compute and which owners are missing.",
+    _instructions: "Map a warehouse table to each dataset you have (schema.table) and a column to each field (a bare column name, or schema.table.column). Fields that live on several datasets appear once per dataset; fill the ones you have. Fields you cannot map can be left with an empty warehouseRef or removed. Enum fields list the values the column must produce after transform. Run validate_mapping (GASP MCP) to see which metrics you can compute and which owners are missing.",
     metricOwners: [] as unknown[],
     datasets: Object.fromEntries(Object.keys(ont.datasets!).sort().map((d) => [d, ""])),
     mappings: ont.fields!.flatMap((f) => {

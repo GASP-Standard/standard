@@ -45,8 +45,8 @@
  * all metrics unlocked; the effort class is shown and breaks ties, never
  * multiplied into the order.
  */
+import { mappedTables, schemaSnapshotSql } from "./schema-drift.js";
 import { DIALECT, type DialectName } from "./dialect.js";
-import { exampleSql } from "./compile.js";
 import { breakdownTemplate, checkAdapter, chooseDialect, fillTemplate, type Adapter } from "./tools.js";
 import { loadAdapter } from "./ossie/adapt.js";
 import { PERIOD_SPINE } from "./ossie/model.js";
@@ -428,7 +428,7 @@ export function formatCheckReport(r: CheckReport, opts: { withSql: boolean }): s
     }
   }
   if (opts.withSql) {
-    p.push("", "## Run this", "", `One statement, one row per check.${r.spine ? ` The range checks read the period spine \`${r.spine}\` (period_start, period_end, one row per reporting period), the table compile_model reads; pass \`spine\` to name another.` : ""} Paste the rows back as \`results\` (JSON or CSV with check_id and violations) to get pass or fail per check and per metric, then plan_fixes for the ranked list.`, "", "```sql\n" + r.sql + "\n```");
+    p.push("", "## Run this", "", `One statement, one row per check.${r.spine ? ` The range checks read the period spine \`${r.spine}\` (period_start, period_end, one row per reporting period), the table compile_model reads; pass \`period_spine\` to name another.` : ""} Paste the rows back as \`results\` (JSON or CSV with check_id and violations) to get pass or fail per check and per metric, then plan_fixes for the ranked list.`, "", "```sql\n" + r.sql + "\n```");
   }
   return p.join("\n");
 }
@@ -440,7 +440,7 @@ export interface GenerateChecksOptions {
   /** The period table the range checks read (default gasp.period_spine). */
   spine?: string;
   results?: string;
-  output?: "report" | "sql" | "json";
+  output?: "report" | "sql" | "json" | "bundle";
 }
 
 /** The generate_checks tool. */
@@ -462,7 +462,39 @@ export function generateChecksFromText(documentText: string | undefined, modelTe
   const report = checkReport(compiled, chosen.note, results, opts.spine?.trim() || PERIOD_SPINE);
   if (opts.output === "sql") return report.sql;
   if (opts.output === "json") return JSON.stringify(report, null, 2);
+  if (opts.output === "bundle") return checkBundle(report, schemaSnapshotSql(mappedTables(loaded.adapter, data), chosen.dialect), chosen.note);
   return formatCheckReport(report, { withSql: !results });
+}
+
+/**
+ * The scheduled re-check as files a company runs in its own orchestrator: the
+ * checks statement and the schema snapshot over the mapped tables, with how to
+ * pass both back. GASP holds no warehouse credentials, so the schedule and the
+ * connection are the company's.
+ */
+export function checkBundle(report: CheckReport, snapshotSql: string, dialectNote: string): string {
+  const runnable = report.checks.filter((c) => c.status !== "cannot run").length;
+  return [
+    "# GASP re-check bundle",
+    "",
+    `Two statements (dialect: ${dialectNote}) to run on a schedule, after each warehouse load or at least daily, from dbt (as two analyses or run-operations), Airflow, Dagster, a cron job in CI or any runner that can query the warehouse and keep the rows. ${runnable} checks run over this mapping; the snapshot lists the mapped tables' columns.`,
+    "",
+    "Each run keeps both result sets as JSON and passes them to `readiness_report` with the mapping: the check rows as `results`, the snapshot rows as `schema` and the previous run's snapshot as `previous_schema`. The report then names any check that failed since, any mapped column that was dropped or retyped and the metrics it breaks, Core first. With GASP Workspace the same rows go to `save_workspace` (`results` and `schema`), which keeps every run.",
+    "",
+    "Alert on the report's level falling, or on the Schema drift section listing a broken pair.",
+    "",
+    "## gasp_checks.sql",
+    "",
+    "```sql",
+    report.sql,
+    "```",
+    "",
+    "## gasp_schema_snapshot.sql",
+    "",
+    "```sql",
+    snapshotSql,
+    "```",
+  ].join("\n");
 }
 
 // ── plan_fixes ───────────────────────────────────────────────────────────────
@@ -516,7 +548,7 @@ export function planFixes(adapter: Adapter, data: StandardData, dialect: Dialect
 }
 
 export function formatFixPlan(fixes: Fix[], haveResults: boolean, limit: number): string {
-  const p: string[] = ["# GASP fix plan", "**Ranked by:** Core metrics unlocked, then all metrics unlocked, then effort (smaller first). A fix unlocks a metric when it is the last thing between that metric and covered-and-passing."];
+  const p: string[] = ["# GASP fix plan", "**Ranked by:** Core metrics unlocked, then all metrics unlocked, then metrics helped, then effort (smaller first). A fix unlocks a metric when it is the last thing between that metric and covered-and-passing."];
   if (!haveResults) p.push("**No check results given**, so the plan covers mapping gaps only. Run the SQL from generate_checks and pass its rows as results to rank data fixes beside them.");
   if (!fixes.length) return [...p, "", "Nothing to fix: every metric the mapping can cover is covered and every runnable check passes."].join("\n");
   const shown = fixes.slice(0, limit);
@@ -550,5 +582,3 @@ export function planFixesFromText(documentText: string | undefined, modelText: s
   return formatFixPlan(fixes, results !== undefined, opts.limit ?? 25);
 }
 
-/** A check's SQL over the GASP field names, for documentation. */
-export const referenceCheckSql = (check: ReadinessCheck, dialect: DialectName = "postgres"): string => exampleSql(check.sql(dialect));

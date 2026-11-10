@@ -1,14 +1,15 @@
 /**
- * Shared logic behind the MCP tools: exact-first metric resolution, canonical
- * formula formatting, adapter validation against the formula field sets, and
- * filling compiled query templates from an adapter.
+ * Shared logic behind the MCP tools: the re-export of the loader's exact metric
+ * resolution, near-name suggestions, canonical formula formatting, adapter
+ * validation against the formula field sets and filling compiled query
+ * templates from an adapter.
  */
 import { metricFormulaId, closestNames } from "./loader.js";
 import { metricUrl } from "./urls.js";
 import { enumFilters, formatFilters } from "./filters.js";
 import { compileMetric, exampleSql, type CompileContext } from "./compile.js";
 import { DIALECTS, dialectOfWarehouse, type DialectName } from "./dialect.js";
-import type { StandardData, Metric, Definition, QueryTemplate, DataRequirement, BreakdownSpec } from "./types.js";
+import type { StandardData, Metric, QueryTemplate, DataRequirement, BreakdownSpec } from "./types.js";
 import Ajv2020Module from "ajv/dist/2020.js";
 import type { ValidateFunction, ErrorObject } from "ajv";
 
@@ -20,7 +21,7 @@ export const newAjv = () => new Ajv2020({ allErrors: true, strict: false });
 // ── resolution ───────────────────────────────────────────────────────────────
 
 // Exact resolution lives in the loader beside resolveNode, which shares it.
-export { resolveMetric, abbreviation, baseName, type Resolved } from "./loader.js";
+export { resolveMetric } from "./loader.js";
 
 /** Nearest names by word similarity (the matcher search falls back to), offered as suggestions rather than returned as the answer. */
 export function suggestMatches(data: StandardData, name: string, limit = 6): string {
@@ -304,7 +305,7 @@ export function adapterSchemaErrors(adapter: unknown, data: StandardData): strin
   return validate(adapter) ? [] : (validate.errors ?? []).map(formatSchemaError);
 }
 
-/** Everything validate_adapter found, before formatting. */
+/** Everything validate_mapping found, before formatting. */
 export interface AdapterValidation {
   /** One line per schema error; null when the loaded data carries no schema */
   schemaErrors: string[] | null;
@@ -332,7 +333,7 @@ export interface AdapterValidation {
 
 const NO_MAPPINGS = 'Adapter must have a "mappings" array, so coverage cannot be scored. Template: https://koinedata.com/downloads/gasp-adapter-template.json';
 
-/** Runs every validate_adapter check: the schema first, then fields, datasets, owners and coverage. */
+/** Runs every validate_mapping check: the schema first, then fields, datasets, owners and coverage. */
 export function checkAdapter(adapter: Adapter, data: StandardData): AdapterValidation {
   const schemaErrors = adapterSchemaErrors(adapter, data);
   const result: AdapterValidation = {
@@ -396,7 +397,7 @@ export function checkAdapter(adapter: Adapter, data: StandardData): AdapterValid
 }
 
 /**
- * The validate_adapter report as markdown. Pure: the MCP handler and the
+ * The validate_mapping report as markdown. Pure: the MCP handler and the
  * website's adapter page both render it from checkAdapter's result.
  */
 export function formatValidationReport(result: AdapterValidation, adapter: Adapter, data: StandardData, opts: { schemaSection?: string[]; title?: string } = {}): string {
@@ -432,7 +433,7 @@ export function formatValidationReport(result: AdapterValidation, adapter: Adapt
   return p.join("\n");
 }
 
-/** The validate_adapter report: checkAdapter then formatValidationReport. */
+/** The validate_mapping report: checkAdapter then formatValidationReport. */
 export function validateAdapter(adapter: Adapter, data: StandardData): string {
   return formatValidationReport(checkAdapter(adapter, data), adapter, data);
 }
@@ -469,4 +470,3 @@ export function formatDataRequirement(req: DataRequirement, url?: string): strin
   return parts.join("\n");
 }
 
-export { metricUrl };

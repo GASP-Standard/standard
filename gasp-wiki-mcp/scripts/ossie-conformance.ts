@@ -2,9 +2,10 @@
  * npm run conformance [--check]
  *
  * Writes standard/exports/ossie/conformance/ (see src/ossie/conformance.ts for
- * the shapes): for every case, runs the staged dataset's source on the GASP
- * fixture in PGlite for the June 2026 period to get the expected rows, slices
- * each dataset the cases read to the rows that reproduce those results, and
+ * the shapes) and the example demo under standard/exports/ossie/example/demo/:
+ * for every case, runs the staged dataset's source on the GASP fixture in PGlite
+ * for the June 2026 period to get the expected rows, slices each dataset the
+ * cases read to the rows that reproduce those results and
  * verifies the slice before writing. `--check` compares the files that would
  * be written with the files on disk and exits 1 on a difference, as
  * `npm run derive:check` does for the other derived artefacts.

@@ -10,7 +10,7 @@ Metrics for measuring customer health, retention and expansion.
 
 ### Net Revenue Retention (NRR)
 
-See [Core Metrics](core.md#net-revenue-retention-nrr) for full definition.
+See [Core Metrics](core.md#net-revenue-retention-nrr) for the canonical definition: starting MRR plus expansion, minus contraction and churn, over starting MRR.
 
 Customer Success owns NRR as the primary outcome metric.
 
@@ -18,7 +18,7 @@ Customer Success owns NRR as the primary outcome metric.
 
 ### Gross Revenue Retention (GRR)
 
-See [Core Metrics](core.md#gross-revenue-retention-grr) for full definition.
+See [Core Metrics](core.md#gross-revenue-retention-grr) for the canonical definition: starting MRR minus contraction and churn, over starting MRR.
 
 GRR shows retention with expansion taken out.
 
@@ -30,13 +30,15 @@ GRR shows retention with expansion taken out.
 
 **Formula:**
 ```
+Logo Retention Rate = 100% - Logo Churn Rate
+```
+
+Customer-count variant:
+```
 Logo Retention Rate = (Customers at end - New customers) / Customers at start × 100
 ```
 
-Or simply:
-```
-Logo Retention Rate = 100% - Logo Churn Rate
-```
+The variant reads higher when churned customers return in the period, since they sit in the end count.
 
 Logo Retention Rate is reported per customer segment.
 
@@ -259,8 +261,6 @@ Upsell Rate = Customers who upgraded / Customers eligible for upgrade × 100
 Cross-sell Rate = Customers who bought additional product / Total customers × 100
 ```
 
-**What it tells you:** Multi-product adoption and stickiness.
-
 ---
 
 ## Renewal Metrics
@@ -317,7 +317,12 @@ Forecast Accuracy = 1 - |Forecasted renewals - Actual renewals| / Actual renewal
 
 **Definition:** Average number of days until upcoming renewals.
 
-**What it tells you:** How soon the renewal workload arrives. A short average means renewals are bunched close together, which strains CSM capacity.
+**Formula:**
+```
+Days to Renewal = Average of (Contract end date - Today) across active subscriptions with an upcoming term end
+```
+
+**What it tells you:** How soon the renewal workload arrives. A falling average means more renewal work lands soon.
 
 ---
 
@@ -346,7 +351,7 @@ Accounts per CSM = Total managed accounts / Number of CSMs
 - $100K-$500K: 50-100 accounts
 - $500K+: 10-25 accounts (high-touch required)
 
-**Important:** There's no universal standard. The right ratio depends on product complexity, customer needs and engagement model. Calculate based on capacity: reserve ~2/3 of CSM time for customer-facing work.
+The right ratio depends on product complexity, customer needs and engagement model. Size it from capacity, with about two thirds of CSM time going to customer-facing work.
 
 **Sources:**
 - [Gainsight: CSM Ratio Benchmarks](https://www.gainsight.com/blog/gainsight-horizon-ai-labs-what-is-the-right-csm-to-customer-ratio/)

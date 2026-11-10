@@ -17,8 +17,9 @@
  * profile rests on names and types and says what the statistics would settle.
  *
  * For every table the profiler infers the key, the time field and the kind
- * (snapshot, event or fact, the GASP dataset kinds), each with its evidence and
- * a confidence, and the relationships the columns imply. Nothing is guessed
+ * (snapshot, event or fact, the GASP dataset kinds, or reference for a table
+ * with no date), each with its evidence and a confidence, and the relationships
+ * the columns imply. Nothing is guessed
  * silently: a low-confidence inference is left out of the model and listed as
  * a question for the Decide step. The model passes the bundled Ossie schema;
  * the profile (kind, confidence, evidence) travels in the GASP extension of
@@ -27,7 +28,7 @@
  */
 import { type DialectName } from "../dialect.js";
 import type { StandardData } from "../types.js";
-import { ossieSchemaErrors, parseDocument } from "./adapt.js";
+import { ossieSchemaErrors } from "./adapt.js";
 import { ossieYaml } from "./index.js";
 import { bareName } from "./names.js";
 import { OSSIE_VERSION, portable, writeGaspExtension, type OssieDataset, type OssieDataType, type OssieField, type OssieRelationship, type OssieSemanticModel } from "./types.js";

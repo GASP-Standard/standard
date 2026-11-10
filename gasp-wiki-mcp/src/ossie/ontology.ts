@@ -1,9 +1,9 @@
 /**
  * GASP ontology → Apache Ossie ontology document (ontology/ontology.json).
  *
- *   dataset (47)          EntityType concept, identified by its key field
- *   GASP concept (7)      EntityType concept without an identifier
- *   field (251)           ValueType concept extending the built-in for its type,
+ *   dataset               EntityType concept, identified by its key field
+ *   GASP concept          EntityType concept without an identifier
+ *   field                 ValueType concept extending the built-in for its type,
  *                         except date and timestamp fields, which play Date / DateTime
  *   field on a dataset    relationship on the dataset concept named by the field id:
  *                           key           identifying, OneToOne

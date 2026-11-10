@@ -1,5 +1,7 @@
 # Decision: ATL tags in the formulas and rate/amount cycles in the graph
 
+**Status: decided and applied 2026-10-13** (`DECISIONS.md`, the 2026-10-13 record "NRR-M keeps the cohort, ARR-O is a trailing-year measure, forms can reference forms, and no two metrics point at each other"). The text below is the proposal as reviewed. The owner chose differently on two points, with the reasons in the record: NRR-M keeps the start-of-period cohort, where this document recommends dropping it; ARR-O subtracts the pricing_adjustment and recontracting MRR change of the trailing twelve months for customers active at period end, where this document recommends the cumulative change.
+
 TODO.md next steps 4 and 5. Drafted 2026-10-13 against `main` at dd7a532 plus the working tree. Nothing in `standard/` or the graph has been changed. Every draft formula below parses, validates (fields, enum literals, one dataset per aggregate) and compiles with the real ontology; how that was checked is in A.6.
 
 ## Recommendations in one screen

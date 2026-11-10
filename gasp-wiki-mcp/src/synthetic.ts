@@ -613,7 +613,7 @@ export function generateFixture(ontology?: Pick<OntologyData, "fields" | "datase
   return { tables: t };
 }
 
-/** The datasets that carry `segment`; a post-pass sets it from customer_id so no PRNG draw moves. */
+/** The datasets carrying `segment` that the stories leave empty; a post-pass sets it from customer_id so no PRNG draw moves. The credit ledger sets it as it writes each row. */
 const SEGMENT_DATASETS = ["revenue_event", "contract_event", "amendment_event", "customer", "subscription"];
 const SEGMENTS = ["enterprise", "smb", "mid_market"];
 

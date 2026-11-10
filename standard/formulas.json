@@ -362,7 +362,7 @@
     "pipeline_velocity": {
       "formula": "count(field.opportunity_id where field.opportunity_stage not in ('closed_won', 'closed_lost')) * metric.win_rate * metric.average_deal_size / metric.sales_cycle",
       "unit": "currency",
-      "notes": "Revenue per day. Markdown describes deal size as ACV in the levers list and average deal value in the formula."
+      "notes": "Revenue per day."
     },
     "win_rate": {
       "formula": "count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in ('closed_won', 'closed_lost') and in_period(field.close_date))",
@@ -435,9 +435,9 @@
       "notes": "Denominator is closed-won product deals."
     },
     "average_services_deal_size": {
-      "formula": "sum(field.opportunity_amount where field.revenue_type = 'services') / count_distinct(field.opportunity_id where field.revenue_type = 'services')",
+      "formula": "sum(field.opportunity_amount where field.revenue_type = 'services' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.opportunity_id where field.revenue_type = 'services' and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "currency",
-      "notes": "Services bookings divided by services engagements, one engagement per booked deal."
+      "notes": "Services deals closed won in the period: their bookings divided by their count, one engagement per booked deal."
     },
     "services_backlog": {
       "formula": "sum(field.opportunity_amount where field.revenue_type = 'services' and field.opportunity_stage = 'closed_won') to_date - metric.services_revenue to_date",
@@ -718,9 +718,9 @@
       "unit": "percent"
     },
     "days_to_renewal": {
-      "formula": "avg(field.contract_end - field.snapshot_date)",
+      "formula": "avg(field.contract_end - field.snapshot_date where field.subscription_status = 'active' and field.contract_end >= field.snapshot_date)",
       "unit": "days",
-      "notes": "Averaged over upcoming renewals at the snapshot date."
+      "notes": "Averaged over active subscriptions whose term ends on or after the snapshot date."
     },
     "accounts_per_csm": {
       "formula": "count_distinct(field.customer_id) / count_distinct(field.csm_id)",
@@ -748,7 +748,7 @@
     "stage_conversion_rates": {
       "formula": "count_distinct(field.opportunity_id where field.advanced_to_next_stage = true) / count_distinct(field.opportunity_id)",
       "unit": "percent",
-      "notes": "Evaluate per stage by filtering field.stage to the stage of interest."
+      "notes": "Evaluate per stage by filtering field.opportunity_stage to the stage of interest."
     },
     "quote_volume": {
       "formula": "count_distinct(field.quote_id where in_period(field.quote_sent_at))",
@@ -880,12 +880,12 @@
     "renewal_notification_rate": {
       "formula": "count_distinct(field.subscription_id where in_period(field.contract_end) and field.renewal_notified_on_time = true) / count_distinct(field.subscription_id where in_period(field.contract_end))",
       "unit": "percent",
-      "notes": "Population is renewals in the period."
+      "notes": "Population is subscriptions whose term ends in the period, renewed or lapsed."
     },
     "auto_renewal_rate": {
-      "formula": "count_distinct(field.subscription_id where in_period(field.contract_end) and field.auto_renewed = true) / count_distinct(field.subscription_id where in_period(field.contract_end))",
+      "formula": "count_distinct(field.subscription_id where in_period(field.contract_end) and field.renewed = true and field.auto_renewed = true) / count_distinct(field.subscription_id where in_period(field.contract_end) and field.renewed = true)",
       "unit": "percent",
-      "notes": "Population is renewals in the period."
+      "notes": "Population is subscriptions whose term ended in the period and that renewed."
     },
     "renewal_processing_time": {
       "formula": "median(field.renewal_complete_date - field.renewal_trigger_date where in_period(field.contract_end))",
@@ -941,7 +941,7 @@
     "core_feature_adoption": {
       "formula": "count_distinct(field.user_id where field.core_features_adopted = true) / count_distinct(field.user_id where field.product_event_type = 'qualifying')",
       "unit": "percent",
-      "notes": "Core set is 3 to 5 features defined per product. core_features_used is true when a user used all of them."
+      "notes": "Core set is 3 to 5 features defined per product. core_features_adopted is true when a user used all of them."
     },
     "feature_depth": {
       "formula": "sum(field.usage_count) / count_distinct(field.user_id where field.usage_count > 0)",
@@ -965,7 +965,7 @@
     "session_duration": {
       "formula": "avg(field.session_duration)",
       "unit": "minutes",
-      "notes": "Equivalent to total session time divided by total sessions. Unit of the session_duration field assumed minutes."
+      "notes": "Equivalent to total session time divided by total sessions."
     },
     "time_in_product": {
       "formula": "sum(field.session_duration) / count_distinct(field.user_id)",
@@ -1021,7 +1021,7 @@
     "bug_escape_rate": {
       "formula": "count_distinct(field.issue_id where field.issue_type = 'bug' and field.issue_environment = 'production') / count_distinct(field.issue_id where field.issue_type = 'bug')",
       "unit": "percent",
-      "notes": "Production bugs divided by production bugs plus bugs caught in QA. stage is 'production' or 'qa'."
+      "notes": "Production bugs divided by production bugs plus bugs caught before release. issue_environment is 'production' or 'pre_production'."
     },
     "user_reported_issues": {
       "formula": "count_distinct(field.issue_id where field.issue_type = 'bug' and field.issue_source = 'user_report')",
@@ -1125,7 +1125,7 @@
     "time_to_patch": {
       "formula": "(avg(field.patched_at - field.discovered_at where in_period(field.patched_at))) * 24",
       "unit": "hours",
-      "notes": "Patch deploy time minus disclosure time."
+      "notes": "Patch deploy time minus discovery time."
     },
     "security_incident_count": {
       "formula": "count_distinct(field.incident_id where field.incident_type = 'security')",
@@ -1342,15 +1342,15 @@
     "average_tenure": {
       "formula": "(avg(field.snapshot_date - field.hire_date where field.employee_status = 'active') at period_end) / 30.4375",
       "unit": "months",
-      "notes": "Markdown allows months or years. Months is canonical."
+      "notes": "Months is canonical."
     },
     "day_90_turnover": {
-      "formula": "count_distinct(field.employee_id where field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)",
+      "formula": "count_distinct(field.employee_id where in_period(field.hire_date) and field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where in_period(field.hire_date))",
       "unit": "percent",
       "breakdowns": {
         "by_hire_source": "field.hire_source"
       },
-      "notes": "Cohort is new hires in the period. 90 days approximated as 3 months of tenure. by_hire_source returns one row per hiring source, which shows the channels that bring hires who leave inside 90 days."
+      "notes": "Cohort is new hires in the period, read from the period-end snapshot, so a hire who leaves within 90 days but after period end is not counted. by_hire_source returns one row per hiring source, which shows the channels that bring hires who leave inside 90 days."
     },
     "enps": {
       "formula": "(count(field.nps_score where field.survey_type = 'employee' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'employee' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'employee') * 100",

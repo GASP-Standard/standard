@@ -23,6 +23,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: npm ci
       - run: npm run build
+      # Writes build/standard-data.json and standard-version.json, which two bundle tests read.
+      - run: npm run export-data
       - name: Derived files are current
         run: npm run derive:check
       - run: npm test

@@ -350,7 +350,7 @@ Self-service resolutions are deflections: help center or chatbot sessions that e
 - 40-60%: Good
 - Above 60%: Excellent
 
-**What it tells you:** Documentation and tooling effectiveness.
+**What it tells you:** How much support demand the help center and chatbot absorb before a ticket is raised.
 
 ---
 

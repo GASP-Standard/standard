@@ -38,6 +38,8 @@ Revenue is the outcome that every other metric here drives. The diagram starts f
 └───────┘         └─────────┘  └──────────┘   └───────┘  └─────────┘    └─────────┘
 ```
 
+Contraction MRR and Reactivation MRR also move ARR; the diagram shows the three movements with the most drivers.
+
 ---
 
 ## Reading the Map
@@ -56,6 +58,8 @@ Two rules shape how the tools walk the graph:
 ---
 
 ## Revenue Drivers
+
+These decompositions show the levers; the canonical formulas are in [Core Metrics](metrics/core.md).
 
 ### ARR Growth
 
@@ -80,11 +84,11 @@ ARR moves by twelve times Net New MRR, because ARR is MRR × 12.
 ### New MRR Drivers
 
 ```
-New MRR = Deals Won × Average Deal Size
+New MRR = Deals Won × Average Deal Size (MRR)
 
-Deals Won = Pipeline × Win Rate
+Deals Won = Opportunities × Win Rate
 
-Pipeline = MQLs × MQL-to-SQL Rate × SQL-to-Opp Rate × ACV
+Opportunities = MQLs × MQL-to-SQL Rate × SQL-to-Opp Rate
 
 MQLs = Leads × Lead-to-MQL Rate
 

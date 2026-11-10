@@ -17,8 +17,6 @@ DAU = Count of unique users with qualifying activity in 24-hour period
 
 **Qualifying activity:** A core action, defined per product, that the user chose to take. Logging in on its own does not qualify.
 
-**What it tells you:** Daily engagement level.
-
 ---
 
 ### Weekly Active Users (WAU)
@@ -41,7 +39,7 @@ WAU = Count of unique users with qualifying activity in 7-day period
 MAU = Count of unique users with qualifying activity in 30-day period
 ```
 
-**What it tells you:** Monthly engagement breadth.
+**What it tells you:** How many users the product reaches in a month, the base the DAU/MAU ratio measures daily return against.
 
 ---
 
@@ -97,7 +95,7 @@ WAU/MAU = WAU / MAU × 100
 Active Accounts = Count of accounts with ≥1 active user in period
 ```
 
-**What it tells you:** Account-level engagement (vs user-level).
+**What it tells you:** How many customer accounts are in use, with an account dropping out once none of its users is active.
 
 ---
 
@@ -234,7 +232,7 @@ Each account counts each feature it used once, so the result is the average numb
 Session Frequency = Total sessions / Active users
 ```
 
-**What it tells you:** How often users return.
+**What it tells you:** How often active users come back in the period, so a fall with steady active users means lighter use.
 
 ---
 
@@ -262,8 +260,6 @@ Session Duration = Total session time / Total sessions
 Time in Product = Sum of session duration per user
 ```
 
-**What it tells you:** Overall engagement intensity.
-
 ---
 
 ### Actions per Session
@@ -275,7 +271,7 @@ Time in Product = Sum of session duration per user
 Actions per Session = Total actions / Total sessions
 ```
 
-**What it tells you:** Productivity per session.
+**What it tells you:** How much users do per visit, so a fall with steady session counts means emptier visits.
 
 ---
 
@@ -294,7 +290,7 @@ PQA = Accounts meeting product engagement threshold
 - Added Z users
 - Reached usage limit
 
-**What it tells you:** Product-driven sales signals.
+**What it tells you:** How many accounts the product marks as ready for sales, by the threshold the team sets.
 
 ---
 
@@ -355,8 +351,6 @@ Resurrection Rate = Reactivated users / Dormant users × 100
 Release Frequency = Releases per period
 ```
 
-**What it tells you:** Product development velocity.
-
 **Note:** Related to Engineering's Deployment Frequency, but measured at feature/product level vs code deployment level.
 
 ---
@@ -370,7 +364,7 @@ Release Frequency = Releases per period
 Delivery Rate = Features shipped on time / Features planned × 100
 ```
 
-**What it tells you:** Roadmap predictability.
+**What it tells you:** How much of the plan ships on schedule, so a falling rate means more planned features slip.
 
 ---
 

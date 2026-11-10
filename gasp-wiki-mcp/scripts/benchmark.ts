@@ -13,7 +13,7 @@
  * Ground truth is the canonical compiled SQL on the same data, which the test
  * suite pins against independently computed values.
  *
- * Usage (from gasp-wiki-mcp, after npm run build):
+ * Usage (from gasp-wiki-mcp):
  *   npx tsx scripts/benchmark.ts --dry-run                 # questions, truth and the layer condition, no API calls
  *   npx tsx scripts/benchmark.ts --runs 5 --models claude-sonnet-5-5,claude-opus-5-5
  * Reads ANTHROPIC_API_KEY from the environment or from gasp-wiki-mcp/.env (KEY=value lines).

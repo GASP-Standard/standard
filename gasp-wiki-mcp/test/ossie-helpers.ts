@@ -10,7 +10,7 @@ import { parseSchema, type ParsedSchema } from "../src/ossie/profile.js";
 import type { StandardData } from "../src/types.js";
 import { resolveAdapter, type Adapter } from "../src/tools.js";
 
-const fixtureDir = join(process.cwd(), "test", "fixture");
+const fixtureDir = join(import.meta.dirname, "fixture");
 
 /** Acme SaaS's billing schema as a Snowflake DDL dump (see fixture/README.md). */
 export const acmeDdl = readFileSync(join(fixtureDir, "acme-schema.sql"), "utf-8");

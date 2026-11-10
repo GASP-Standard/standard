@@ -2,7 +2,7 @@
 
 Single source of truth for all terms used in the GASP Standard.
 
-When a term appears in multiple departmental metrics, this is the authoritative definition. Departmental files reference this document; they do not redefine.
+For a metric, the canonical definition is the metric page each entry links to; for every other shared term, this page is the authority and the departmental files link here.
 
 ---
 
@@ -27,7 +27,7 @@ A specific capability, quantity or configuration granted by a subscription. The 
 - **Types:**
   - **Feature Gates.** Binary access (on/off): SSO, API access, advanced analytics
   - **Quantity Limits.** Numeric caps: seats, storage, API calls
-  - **Configuration.** Behavioral parameters: data retention, SLA tier
+  - **Configuration.** Behavioural parameters: data retention, SLA tier
 - **Key metrics at this level:** License Utilization, Feature Adoption Rate, Core Feature Adoption
 - **Industry equivalents:** Entitlements (Stripe), Licenses (Salesforce, Microsoft), Rate Plan Charges (Zuora)
 
@@ -42,12 +42,12 @@ A specific capability, quantity or configuration granted by a subscription. The 
 ## Revenue Terms
 
 ### MRR (Monthly Recurring Revenue)
-The total predictable revenue from active subscriptions, normalized to a monthly value.
+The total predictable revenue from active subscriptions, normalised to a monthly value.
 - **Canonical definition:** [Core Metrics](metrics/core.md#mrr-monthly-recurring-revenue)
 - **Used in:** Core, Finance, Customer Success
 
 ### ARR (Annual Recurring Revenue)
-MRR × 12. The annualized value of recurring revenue.
+MRR × 12. The annualised value of recurring revenue.
 - **Canonical definition:** [Core Metrics](metrics/core.md#arr-annual-recurring-revenue)
 - **Used in:** Core, Finance, Sales, Customer Success, People
 
@@ -84,7 +84,7 @@ The net change in MRR after all movements.
 - **Used in:** Core
 
 ### Revenue (GAAP)
-Recognized revenue according to ASC 606 accounting standards.
+Recognised revenue according to ASC 606 accounting standards.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#revenue-gaap)
 - **Used in:** Finance, RevOps
 
@@ -94,7 +94,7 @@ Total contract value signed in a period.
 - **Used in:** Finance, Sales
 
 ### ACV (Annual Contract Value)
-The annualized value of a contract, normalizing multi-year deals to a single year. When aggregated, represents average deal size on an annual basis.
+The annualised value of a contract, normalising multi-year deals to a single year. When aggregated, represents average deal size on an annual basis.
 - **Canonical definition:** [Sales Metrics](metrics/sales.md#acv-annual-contract-value)
 - **Used in:** Sales, Finance
 
@@ -129,13 +129,13 @@ The prepaid balance forfeited at expiry in a period. The commercial fact behind 
 ## Retention Terms
 
 ### NRR (Net Revenue Retention)
-Percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Two methods are widely used: cohort method (preferred) and formula method. Recommended: trailing 12 months, annualized if using shorter periods.
+Percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Two methods are widely used: cohort method (preferred) and formula method. GASP runs the formula method over the customers active at period start, which keeps new customers out as the cohort method does. Recommended: trailing 12 months, annualised if using shorter periods.
 - **Canonical definition:** [Core Metrics](metrics/core.md#net-revenue-retention-nrr)
 - **Used in:** Core, Customer Success
 - **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted NRR excluding temporary revenue movements.
 
 ### GRR (Gross Revenue Retention)
-Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. Two methods are widely used: cohort method (preferred) and formula method.
+Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. GASP uses the formula method over the customers active at period start; the cohort method is a labelled alternative.
 - **Canonical definition:** [Core Metrics](metrics/core.md#gross-revenue-retention-grr)
 - **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted GRR excluding temporary revenue movements.
 - **Used in:** Core, Customer Success
@@ -207,7 +207,7 @@ Sales efficiency metric: QoQ ARR growth divided by prior quarter S&M spend.
 - **Used in:** Finance
 
 ### Burn Multiple
-Capital efficiency metric: Net burn divided by net new ARR. Popularized by David Sacks.
+Capital efficiency metric: Net burn divided by net new ARR. Popularised by David Sacks.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#burn-multiple)
 - **Used in:** Finance
 
@@ -328,7 +328,7 @@ Costs of running the business (excluding COGS).
 - **Categories:** S&M, R&D, G&A
 
 ### EBITDA
-Earnings before interest, taxes, depreciation and amortization.
+Earnings before interest, taxes, depreciation and amortisation.
 - **Formula:** Net income + Interest + Taxes + Depreciation + Amortization
 
 ### Burn Rate
@@ -362,12 +362,12 @@ Contractual commitment for service levels (uptime, response time, etc.).
 
 ### Incident
 An unplanned interruption or degradation of service.
-- **Severity levels:** SEV1 (critical), SEV2 (major), SEV3 (minor)
+- **Severity levels:** SEV1 (critical), SEV2 (major), SEV3 (minor), SEV4 (low)
 
-### MTTR (Mean Time to Resolve/Recover)
+### MTTR (Mean Time to Resolve)
 Average time from incident start to resolution.
 - **Canonical definition:** [Engineering Metrics](metrics/engineering.md#mean-time-to-resolve-mttr)
-- **Note:** DORA uses "Mean Time to Recovery" for the same concept
+- **Distinct from:** [Mean Time to Recovery](metrics/engineering.md#mean-time-to-recovery-mttr), the DORA measure from failure to service restored, which shares the abbreviation.
 
 ### Error Rate
 Percentage of requests resulting in errors.
@@ -484,10 +484,10 @@ Standard measurement frequencies by metric type. Always specify the period used.
 ### Retention Metrics
 | Metric | Typical Period | Notes |
 |--------|---------------|-------|
-| NRR | Annual (trailing 12 months) | Monthly for operational tracking; annualize if using shorter periods |
+| NRR | Annual (trailing 12 months) | Monthly for operational tracking; annualise if using shorter periods |
 | GRR | Annual (trailing 12 months) | Same as NRR |
 | Logo Churn Rate | Monthly or Annual | Always specify which; monthly × 12 ≠ annual |
-| Revenue Churn Rate | Monthly | Annualize for comparison: (1 - monthly rate)^12 |
+| Revenue Churn Rate | Monthly | Annualise for comparison: 1 - (1 - monthly rate)^12 |
 
 ### Efficiency Metrics
 | Metric | Typical Period | Notes |
@@ -521,7 +521,7 @@ The tagging layer that classifies CEL events by lifecycle stage, expansion type 
 - **Used in:** Core metrics with dual-lens forms (ARR, NRR, CAC, LTV, LTV:CAC, CAC Payback, Gross Margin, Churn)
 
 ### Adapter
-The JSON mapping file that connects GASP's canonical vocabulary to your warehouse: a table for each GASP dataset you have, a column (`schema.table.column`) for each field and optional owners for field data and metric definitions. The adapter is the only file a consuming organization writes.
+The mapping that connects GASP's canonical vocabulary to your warehouse: a table for each GASP dataset you have, a column for each field and optional owners for field data and metric definitions. It is written as a GASP adapter (JSON) or as an Apache Ossie mapping; every GASP tool reads either.
 - **Reference:** [Adapter Guide](/v1/adapter)
 
 ### Digital Twin
@@ -537,13 +537,13 @@ A classification that describes what kind of signal a metric provides. Every GAS
 - **Outcome.** A result that matters on its own (ARR, NRR, Gross Margin).
 - **Leading.** Predicts a future outcome (Pipeline Value, Health Score, NPS).
 - **Efficiency.** A ratio measuring productivity (CAC Payback, LTV:CAC, Magic Number).
-- **Operational.** Operational health or throughput (Uptime, MTTR, Ticket Volume).
+- **Operational.** Operational health or throughput (MTTR, Ticket Volume, Deployment Frequency).
 - **Reference:** [Taxonomy](/v1/taxonomy)
 
 ### Sensitivity Tier
 GASP's recommended data sensitivity classification for each metric. Aligns with ISO 27001 and OSSA `data_classification` conventions.
 - **`public`.** Shareable externally with no restriction (rare for internal SaaS metrics).
-- **`internal`.** Shareable across the organization. Default for most operational metrics.
+- **`internal`.** Shareable across the organisation. Default for most operational metrics.
 - **`confidential`.** Cross-functional but sensitive. Typically restricted to managers and above.
 - **`restricted`.** Highly sensitive. Executive and finance-leadership only by default.
 - **Reference:** [Governance](/v1/governance#sensitivity-tier)
@@ -563,16 +563,16 @@ Optional CEL field that captures the intent behind a revenue movement. Does not 
 - **Reference:** [CEL change_nature](/v1/cel#change-nature)
 
 ### Segment
-The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract and amendment events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. Segment is a dimension for slicing metrics rather than an ATL tag. Pricing tier lives on the plan.
+The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract, amendment and credit events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. Segment is a dimension for slicing metrics rather than an ATL tag. Pricing tier lives on the plan.
 - **Canonical definition:** [CEL segment](cel.md#segment-on-events)
-- **Used in:** Named `by_segment` breakdowns of MRR, ARR, NRR, GRR, the churn and movement metrics, ARPA and Health Score
+- **Used in:** Named `by_segment` breakdowns of MRR, ARR, ARPA, NRR, GRR, the customer counts, the churn and movement metrics, the health score metrics, Expansion Rate and Consumption Revenue
 
 ### Structured Formula
 A decomposed representation of a metric's canonical formula, derived from formulas.json: explicit references to other metric nodes (with roles like numerator, denominator, addend) and the raw fields required. Enables agents to walk the dependency tree without parsing formula text.
 - **Reference:** ontology.json structuredFormulas in the GASP repository
 
 ### Metric Owner
-The named team or person responsible for a metric definition in an organization's adapter. The adapter schema recommends an owner for every metric you report and the validator lists metrics without one. When a metric value is disputed, the owner resolves the dispute. GASP provides the canonical definition; the owner decides whether their organization follows it or deviates and documents any deviation.
+The named team or person responsible for a metric definition in an organisation's adapter. The adapter schema recommends an owner for every metric you report and the validator lists metrics without one. When a metric value is disputed, the owner resolves the dispute. GASP provides the canonical definition; the owner decides whether their organisation follows it or deviates and documents any deviation.
 - **Reference:** [Adapter Guide](/v1/adapter#metric-owners)
 
 ### Temporal Semantics

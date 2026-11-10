@@ -10,7 +10,7 @@ These metrics describe the health of a SaaS business. Every SaaS business should
 
 ### MRR (Monthly Recurring Revenue)
 
-**Definition:** The total predictable revenue from active subscriptions, normalized to a monthly value.
+**Definition:** The total predictable revenue from active subscriptions, normalised to a monthly value.
 
 **Formula:**
 ```
@@ -44,13 +44,13 @@ MRR is reported per plan (by plan id and plan name) and per customer segment.
 
 **What it tells you:** The current run rate of your recurring revenue engine.
 
-**Important:** MRR is a business insights metric, not a GAAP/FASB accounting term. It is representative of, but not identical to, recognized revenue.
+**Important:** MRR is a business insights metric, not a GAAP/FASB accounting term. It is representative of, but not identical to, recognised revenue.
 
 **Common mistakes:**
 - Including one-time fees (setup, professional services)
 - Including usage/consumption revenue that isn't guaranteed
 - Double-counting customers during plan changes
-- Not normalizing annual contracts to monthly
+- Not normalising annual contracts to monthly
 - Treating MRR as an accounting figure
 
 **Related metrics:** ARR, MRR Growth Rate, New MRR, Expansion MRR, Churned MRR
@@ -64,11 +64,11 @@ MRR is reported per plan (by plan id and plan name) and per customer segment.
 
 ### ARR (Annual Recurring Revenue)
 
-**Definition:** The annualized value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
+**Definition:** The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
 
 **Note:** ARR is used to mean two things in the industry:
-1. **Annualized Run Rate** = MRR × 12 (common for monthly-billing companies)
-2. **Annual Recurring Revenue** = Sum of annualized contract values (common for annual-contract companies)
+1. **Annualised Run Rate** = MRR × 12 (common for monthly-billing companies)
+2. **Annual Recurring Revenue** = Sum of annualised contract values (common for annual-contract companies)
 
 Both are valid. The GASP Standard uses **MRR × 12** for consistency across business models.
 
@@ -77,7 +77,7 @@ Both are valid. The GASP Standard uses **MRR × 12** for consistency across busi
 ARR = MRR × 12
 ```
 
-**Include:** Same inclusions/exclusions as MRR, annualized.
+**Include:** Same inclusions/exclusions as MRR, annualised.
 
 **Industry equivalents:** Committed ARR, CARR (Committed Annual Recurring Revenue), Baseline ARR and CMRR (Committed Monthly Recurring Revenue, annualised). GASP's ARR includes contractual commitments and leaves uncommitted usage out, which is what each of these names describes. Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
 
@@ -86,7 +86,7 @@ ARR is reported per customer segment.
 **What it tells you:** The scale of the business on an annual basis. Used for valuation, planning and investor reporting.
 
 **Common mistakes:**
-- Calculating from annual contracts directly without normalizing (leads to timing mismatches)
+- Calculating from annual contracts directly without normalising (leads to timing mismatches)
 - Treating ARR as cash (it's a run rate, not collected revenue)
 - Mixing definitions without declaring which one you're using
 
@@ -104,7 +104,7 @@ ARR-O measures organic recurring revenue by excluding MRR changes that come from
 
 **Formula:**
 ```
-ARR-O = (MRR − TTM_Pricing_Adjustment_MRR − TTM_Recontracting_MRR) × 12
+ARR-O = (MRR - TTM_Pricing_Adjustment_MRR - TTM_Recontracting_MRR) × 12
 ```
 Where TTM_Pricing_Adjustment_MRR and TTM_Recontracting_MRR are the MRR changes tagged with `expansion_classification` `pricing_adjustment` or `recontracting` in the trailing 12 months, counted for customers active at period end. MRR is the period-end MRR used by ARR-M. ARR-O is therefore a trailing twelve month measure. Stripping price rises out of ARR is a GASP construct rather than an industry convention; where price and volume are separated elsewhere, it is a growth decomposition over the period.
 
@@ -132,7 +132,7 @@ All MRR sources included.
 ARR-M = ARR-O + TTM_Pricing_Adjustment_MRR × 12 + TTM_Recontracting_MRR × 12
 ```
 
-**Diagnostic:** The delta (ARR-M − ARR-O) is the **Durability Gap.** Because ARR-O subtracts only the trailing 12 months of tagged MRR change for customers active at period end, the Durability Gap is a trailing-year growth decomposition: it shows how much of reported ARR growth came from pricing and contract changes rather than organic customer expansion. A growing gap means ARR growth that may not last. KeyBanc tracks it implicitly in its annual SaaS survey. Public SaaS companies report total ARR (ARR-M), while internal planning teams strip out pricing actions to see the growth the product earned.
+**Diagnostic:** The delta (ARR-M - ARR-O) is the **Durability Gap.** Because ARR-O subtracts only the trailing 12 months of tagged MRR change for customers active at period end, the Durability Gap is a trailing-year growth decomposition: it shows how much of reported ARR growth came from pricing and contract changes rather than organic customer expansion. A growing gap means ARR growth that may not last. KeyBanc tracks it implicitly in its annual SaaS survey. Public SaaS companies report total ARR (ARR-M), while internal planning teams strip out pricing actions to see the growth the product earned.
 
 ---
 
@@ -207,7 +207,7 @@ Expansion MRR is reported per customer segment.
 
 **What it tells you:** How much revenue you grow from customers you already have, which usually costs far less than winning new ones.
 
-**Key insight:** Expansion MRR rate should exceed churn rate for negative net churn.
+Net revenue churn turns negative once Expansion MRR exceeds Churned MRR plus Contraction MRR.
 
 **Sources:** [Wall Street Prep](https://www.wallstreetprep.com/knowledge/expansion-revenue-mrr/), [Drivetrain](https://www.drivetrain.ai/strategic-finance-glossary/mrr-in-saas)
 
@@ -285,7 +285,7 @@ Carry MRR = Beginning MRR - Churned MRR - Contraction MRR
 
 **What it tells you:** How much of last period's revenue base is still in place. Carry MRR is Gross Revenue Retention (GRR) in dollar terms: divide it by beginning MRR and you get GRR.
 
-**Key insight:** If carry is declining while expansion masks it, you have a retention problem hiding behind growth.
+A falling Carry MRR beside rising Expansion MRR means retention is weakening under the growth.
 
 **Sources:** [Baremetrics](https://baremetrics.com/academy/saas-calculate-mrr), [ChartMogul](https://chartmogul.com/blog/mrr-movements/)
 
@@ -453,11 +453,11 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 
 **Time period:** The GASP Standard measures NRR over the **trailing 12 months**, which smooths seasonality and is the basis boards and investors expect.
 
-**Annualization:** If calculating over a shorter period, annualize by raising to the appropriate power:
-- Monthly NRR annualized: `(Monthly NRR / 100) ^ 12 × 100`
-- Quarterly NRR annualized: `(Quarterly NRR / 100) ^ 4 × 100`
+**Annualisation:** If calculating over a shorter period, annualise by raising to the appropriate power:
+- Monthly NRR annualised: `(Monthly NRR / 100) ^ 12 × 100`
+- Quarterly NRR annualised: `(Quarterly NRR / 100) ^ 4 × 100`
 
-**Does NOT include:** New customer revenue. NRR measures existing customer behavior only.
+**Does NOT include:** New customer revenue. NRR measures existing customer behaviour only.
 
 **Benchmarks (per KeyBanc 2024, SaaS Capital 2025):**
 - Below 90%: Leaky bucket. Growth requires constant new acquisition.
@@ -521,7 +521,7 @@ NRR-M = MRR of cohort today (all expansion types and cohort reactivation) / MRR 
 ```
 Equivalently, as the formula method over the same cohort:
 ```
-NRR-M = (Beginning MRR + All Expansion MRR + Cohort Reactivation MRR − Contraction MRR − Churned MRR) / Beginning MRR × 100
+NRR-M = (Beginning MRR + All Expansion MRR + Cohort Reactivation MRR - Contraction MRR - Churned MRR) / Beginning MRR × 100
 ```
 
 **What it tells you:** The total revenue retention and expansion picture that investors use for benchmarking and valuation.
@@ -534,7 +534,7 @@ NRR-M ≈ NRR-O + Reactivation + Cross-Module + New Buying Centre + Pricing Adju
 ```
 (Expressed as percentage-point contributions to the NRR rate.)
 
-**Diagnostic:** The delta (NRR-M − NRR-O) is the **Expansion Integrity Gap.** It shows how much of reported NRR comes from commercial motion (cross-sell, reactivation, pricing) rather than organic product expansion. A wide gap means NRR depends on sales execution more than product-led growth. That can be a sound strategy. The board should still know which one drives retention. SaaS Metrics Standards Board recommends the cohort method. Public SaaS companies report cohort-based NRR (NRR-M), so both forms use the cohort method and differ only in which expansion counts.
+**Diagnostic:** The delta (NRR-M - NRR-O) is the **Expansion Integrity Gap.** It shows how much of reported NRR comes from commercial motion (cross-sell, reactivation, pricing) rather than organic product expansion. A wide gap means NRR depends on sales execution more than product-led growth. That can be a sound strategy. The board should still know which one drives retention. SaaS Metrics Standards Board recommends the cohort method. Public SaaS companies report cohort-based NRR (NRR-M), so both forms use the cohort method and differ only in which expansion counts.
 
 ---
 
@@ -562,11 +562,11 @@ GRR = Sum of min(Beginning MRR, Current MRR) per customer / Beginning MRR × 100
 
 **Time period:** Typically measured annually.
 
-**Annualization:** If calculating over a shorter period, annualize by raising to the appropriate power:
-- Monthly GRR annualized: `(Monthly GRR / 100) ^ 12 × 100`
-- Quarterly GRR annualized: `(Quarterly GRR / 100) ^ 4 × 100`
+**Annualisation:** If calculating over a shorter period, annualise by raising to the appropriate power:
+- Monthly GRR annualised: `(Monthly GRR / 100) ^ 12 × 100`
+- Quarterly GRR annualised: `(Quarterly GRR / 100) ^ 4 × 100`
 
-**Critical:** GRR **cannot exceed 100%**. Unlike NRR, it does not include upsells, cross-sells or expansion. Maximum GRR = 100% (zero churn).
+GRR tops out at 100%, reached with zero churn and zero contraction, because it leaves expansion out.
 
 **Benchmarks (per SaaS Capital 2025):**
 - Below 80%: Severe retention problem
@@ -823,7 +823,7 @@ CAC-M = S&M Spend / New Customers Acquired
 CAC-O = CAC-M + Implementation_Cost_per_Customer + Onboarding_Cost_per_Customer
 ```
 
-**Diagnostic:** The delta (CAC-O − CAC-M) is the **Activation Delta:** the cost of making customers productive, which S&M-based benchmarks leave out. A large Activation Delta means investor-comparable CAC understates what acquisition really costs. Implementation complexity, onboarding duration and services intensity drive it. SaaS Metrics Standards Board defines the Blended CAC Ratio as S&M-only (CAC-M). SaaS Capital and a16z recommend tracking fully loaded CAC (CAC-O) alongside for unit economics.
+**Diagnostic:** The delta (CAC-O - CAC-M) is the **Activation Delta:** the cost of making customers productive, which S&M-based benchmarks leave out. A large Activation Delta means investor-comparable CAC understates what acquisition really costs. Implementation complexity, onboarding duration and services intensity drive it. SaaS Metrics Standards Board defines the Blended CAC Ratio as S&M-only (CAC-M). SaaS Capital and a16z recommend tracking fully loaded CAC (CAC-O) alongside for unit economics.
 
 ---
 
@@ -841,7 +841,7 @@ Where:
 - **Gross Margin** = typically 70-85% for SaaS
 - **Revenue Churn Rate** = monthly churn rate
 
-**Why gross margin is included:** LTV measures profit contribution, not just revenue. Using gross margin reflects what you actually retain after delivery costs. This is the canonical formula.
+**Why gross margin:** LTV counts what a customer leaves after delivery costs, so revenue is multiplied by gross margin.
 
 **What it tells you:** The upper bound of what you should spend to acquire a customer.
 
@@ -867,7 +867,7 @@ LTV-O uses contribution margin: revenue minus every variable cost, including imp
 ```
 LTV-O = (ARPA × Contribution Margin) / Revenue Churn Rate
 ```
-Where Contribution Margin = Revenue − COGS − Implementation − Onboarding − Support − Success Engineering costs.
+Where Contribution Margin = Revenue - COGS - Implementation - Onboarding - Support - Success Engineering costs.
 
 **What it tells you:** The realistic lifetime profit from a customer after all variable delivery costs. The number to use for pricing and unit economics decisions.
 
@@ -891,11 +891,11 @@ LTV-M = (ARPA × Gross Margin) / Revenue Churn Rate
 
 **Reconciliation:**
 ```
-LTV-M − LTV-O = Variable Service Costs per Customer × Customer Lifetime
+LTV-M - LTV-O = Variable Service Costs per Customer × Customer Lifetime
 ```
 The gap is the lifetime profit consumed by variable service costs (implementation, onboarding, support, CS).
 
-**Diagnostic:** The delta (LTV-M − LTV-O) is the **Contribution Leakage.** Large leakage means the business model depends on services that erode unit economics. It points to services that could be productised or onboarding that could be self-serve. The canonical LTV formula in investor contexts uses gross margin (LTV-M). This is what a16z, Bessemer and SaaS Capital reference. Contribution margin LTV (LTV-O) is recommended by growth equity investors for deeper unit economics analysis.
+**Diagnostic:** The delta (LTV-M - LTV-O) is the **Contribution Leakage.** Large leakage means the business model depends on services that erode unit economics. It points to services that could be productised or onboarding that could be self-serve. The canonical LTV formula in investor contexts uses gross margin (LTV-M). This is what a16z, Bessemer and SaaS Capital reference. Contribution margin LTV (LTV-O) is recommended by growth equity investors for deeper unit economics analysis.
 
 ---
 
@@ -977,7 +977,7 @@ CAC Payback = CAC / (ARPA × Gross Margin)
 
 Result in months.
 
-**Why include Gross Margin:** Using gross margin (not just revenue) reflects actual profit recovery. Without it, payback appears shorter than reality.
+**Why gross margin:** payback is measured on the margin each month returns. On revenue alone it reads shorter than it is.
 
 **Benchmarks (per Benchmarkit 2025, KeyBanc 2024):**
 - Under 12 months: Good, investor-friendly target (best-in-class)
@@ -1046,14 +1046,14 @@ ARPA is the same in both forms, so the gap comes from the Activation Delta and t
 Gross Margin = (Revenue (GAAP) - COGS) / Revenue (GAAP) × 100
 ```
 
-**Note:** Use GAAP-recognized revenue, not MRR/ARR. Gross Margin is a financial statement metric.
+**Note:** Use GAAP-recognised revenue, not MRR/ARR. Gross Margin is a financial statement metric.
 
 **Include in COGS** (ATL `cost_function` = `infrastructure`):
 - Hosting/infrastructure costs (AWS, Azure, etc.)
 - DevOps team costs that keep the service running
 - Payment processing fees
 - Third-party software for product delivery
-- Capitalized software amortization
+- Capitalised software amortisation
 
 **Exclude from COGS:**
 - Customer Support and Customer Success teams (`cost_function` = `support`, `success_engineering`). These are subtracted in the Operating Form below, not in COGS.
@@ -1075,7 +1075,7 @@ The canonical Gross Margin is the Market Form (GM-M) below. Companies that alloc
 - 75-80%: Series B+ expected, attractive to investors
 - 80-85%: Best-in-class (commands valuation premium)
 
-**What it tells you:** How much of each dollar of revenue is available after delivery costs. Higher margins = more scalable business.
+**What it tells you:** How much of each dollar of revenue is available after delivery costs.
 
 **Sources:**
 - [The SaaS CFO: How to Calculate SaaS Gross Margin](https://www.thesaascfo.com/how-to-calculate-saas-gross-margin/)
@@ -1091,7 +1091,7 @@ Contribution Margin is revenue minus every variable cost of serving customers. I
 
 **Formula:**
 ```
-GM-O = (Revenue − COGS − Support − CS − Implementation − Onboarding) / Revenue × 100
+GM-O = (Revenue - COGS - Support - CS - Implementation - Onboarding) / Revenue × 100
 ```
 Typical range: 50-70% for SaaS.
 
@@ -1106,7 +1106,7 @@ SaaS Gross Margin is revenue minus COGS only (hosting, infrastructure and paymen
 
 **Formula:**
 ```
-GM-M = (Revenue − COGS) / Revenue × 100
+GM-M = (Revenue - COGS) / Revenue × 100
 ```
 Typical range: 70-85% for SaaS.
 
@@ -1121,7 +1121,7 @@ Typical range: 70-85% for SaaS.
 GM-M = GM-O + (Support + CS + Implementation + Onboarding costs) / Revenue × 100
 ```
 
-**Diagnostic:** The delta (GM-M − GM-O) is the **Services Drag:** the cost of running a customer operation that depends on people. A delta that declines over time points to more automation and self-serve adoption. SaaS Capital 2025 guidance on COGS allocation supports both approaches. VCs typically expect 70%+ SaaS gross margin (GM-M) while internal teams should track contribution margin (GM-O) for pricing and unit economics.
+**Diagnostic:** The delta (GM-M - GM-O) is the **Services Drag:** the cost of running a customer operation that depends on people. A delta that declines over time points to more automation and self-serve adoption. SaaS Capital 2025 guidance on COGS allocation supports both approaches. VCs typically expect 70%+ SaaS gross margin (GM-M) while internal teams should track contribution margin (GM-O) for pricing and unit economics.
 
 ---
 

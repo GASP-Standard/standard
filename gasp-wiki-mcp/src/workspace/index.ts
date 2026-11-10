@@ -13,13 +13,13 @@ export { verifyBearer, protectedResourceMetadata, metadataUrl, callerOf, AuthErr
 export { WorkspaceStore, pgRunner, DOCUMENT_KINDS, type SqlRunner, type DocumentKind } from "./store.js";
 
 /** The tools that read and write a workspace; registered only when the Workspace is on. */
-export const WORKSPACE_TOOLS = ["save_workspace", "load_workspace"] as const;
+export const WORKSPACE_TOOL_NAMES = ["save_workspace", "load_workspace"] as const;
 
 /** The implementation tools that need a signed-in company on the hosted server when the Workspace is on (`DECISIONS.md` 2026-11-07), plus the workspace tools. */
 export const DEFAULT_PROTECTED_TOOLS: readonly string[] = [
   "profile_schema", "propose_mapping", "record_decision", "compile_model", "compile_target",
   "score_drift", "derive_cel", "generate_checks", "plan_fixes", "readiness_report",
-  ...WORKSPACE_TOOLS,
+  ...WORKSPACE_TOOL_NAMES,
 ];
 
 export const DEFAULT_RESOURCE = "https://mcp.koinedata.com/mcp";

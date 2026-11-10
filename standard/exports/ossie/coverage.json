@@ -1,8 +1,8 @@
 {
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
   "counts": {
-    "direct": 194,
-    "staged": 169,
+    "direct": 193,
+    "staged": 170,
     "notComputable": 15
   },
   "stagedReasons": {
@@ -10,7 +10,7 @@
     "lag": 6,
     "at period_start": 34,
     "total": 6,
-    "period bound in filter": 93,
+    "period bound in filter": 94,
     "to_date": 4,
     "period_days": 2,
     "bucket": 1,
@@ -22,17 +22,17 @@
     "description": "Direct entries by the highest rung of the upstream portability ladder (compliance/portability, M0 to M3) whose construct they use, and the constructs the published rungs do not measure yet. A filtered aggregate is written FILTER (WHERE ...) as the expression language requires; the M3 fixture uses the CASE WHEN form. Every sum is COALESCE(SUM(...), 0), the null guard construct, so no entry is a bare M0 sum.",
     "rungs": {
       "M0": 0,
-      "M2": 51,
+      "M2": 50,
       "M3": 143
     },
     "constructs": {
       "filtered aggregate": 143,
-      "count distinct": 77,
-      "arithmetic over aggregates": 126,
+      "count distinct": 76,
+      "arithmetic over aggregates": 125,
       "cross-dataset": 35,
       "date scalar": 17,
       "percentile": 10,
-      "null guard": 89
+      "null guard": 88
     }
   },
   "metrics": {
@@ -881,15 +881,10 @@
       "reason": "period bound in filter"
     },
     "average_services_deal_size": {
-      "kind": "direct",
+      "kind": "staged",
       "ossieName": "gasp_average_services_deal_size",
-      "rung": "M3",
-      "constructs": [
-        "filtered aggregate",
-        "count distinct",
-        "arithmetic over aggregates",
-        "null guard"
-      ]
+      "stagedDataset": "gasp_staged_gasp_average_services_deal_size",
+      "reason": "period bound in filter"
     },
     "services_backlog": {
       "kind": "staged",
@@ -1432,8 +1427,9 @@
     "days_to_renewal": {
       "kind": "direct",
       "ossieName": "gasp_days_to_renewal",
-      "rung": "M2",
+      "rung": "M3",
       "constructs": [
+        "filtered aggregate",
         "date scalar"
       ]
     },

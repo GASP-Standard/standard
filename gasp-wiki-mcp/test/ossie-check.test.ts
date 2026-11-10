@@ -90,8 +90,7 @@ describe("validateUpstream", () => {
     }
   }, 120_000);
 
-  it("fails a document with broken SQL in a metric", async () => {
-    if (!uvAvailable()) return;
+  it.skipIf(!uvAvailable())("fails a document with broken SQL in a metric", async () => {
     const d = load();
     expr(d.model.metrics![0]).expression = "SUM(revenue_event.mrr_change";
     const f = join(mkdtempSync(join(tmpdir(), "ossie-")), "bad.yaml");

@@ -234,10 +234,9 @@ describe("Ossie reference mapping", () => {
 
 import { validateUpstream, uvAvailable } from "../src/ossie/validate.js";
 
-const hasUv = uvAvailable();
-if (!hasUv) console.warn("[ossie] skipping the upstream validator: uv is not on PATH");
+if (!uvAvailable()) console.warn("[ossie] skipping the upstream validator: uv is not on PATH");
 
-describe.skipIf(!hasUv)("upstream Ossie validator", () => {
+describe.skipIf(!uvAvailable())("upstream Ossie validator", () => {
   const dir = mkdtempSync(join(tmpdir(), "gasp-ossie-"));
   const ontologyFile = join(dir, "gasp.ontology.yaml");
   const mappingFile = join(dir, "gasp.mapping.yaml");

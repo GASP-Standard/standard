@@ -1,6 +1,6 @@
 # GASP Standard
 
-**Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 313 metrics across 13 departments, 99 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 274 fields across 53 datasets, a relationship graph of 100 nodes and 200 edges plus an MCP server that gives AI agents all of it as structured tools.
+**Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 313 metrics across 13 departments, 99 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 280 fields across 54 datasets, a relationship graph of 104 nodes and 210 edges plus an MCP server that gives AI agents all of it as structured tools.
 
 The standard is published at **https://koinedata.com**. This repository holds its source and the tooling that compiles it. It works with Apache Ossie (incubating): `npm run derive` writes the standard out as Ossie files, which pass the upstream validator.
 
@@ -8,10 +8,10 @@ The standard is published at **https://koinedata.com**. This repository holds it
 
 | Path | What it is | Licence |
 | --- | --- | --- |
-| `standard/` | The canon. Metric definitions per department (`metrics/*.md`), the glossary (`definitions.md`), the Commercial Event Ledger (`cel.md`) and Attribution Taxonomy Layer (`atl.md`), the ontology (`ontology.json`: fields, datasets, 28 entities and 7 concepts), the formulas (`formulas.json`: 294 entries, 279 computable and 15 with the reason they are not), the signal taxonomy, the adapter schema and the relationship graph (`relationships.json`) | CC BY 4.0 (`standard/LICENSE`) |
+| `standard/` | The canon. Metric definitions per department (`metrics/*.md`), the glossary (`definitions.md`), the Commercial Event Ledger (`cel.md`) and Attribution Taxonomy Layer (`atl.md`), the ontology (`ontology.json`: fields, datasets, 28 entities and 7 concepts), the formulas (`formulas.json`: 301 entries, 286 computable and 15 with the reason they are not), the signal taxonomy, the adapter schema and the relationship graph (`relationships.json`) | CC BY 4.0 (`standard/LICENSE`) |
 | `standard/exports/` | Generated from the canon by `npm run derive`: the Neo4j Cypher export, the adapter template and the Apache Ossie ontology, reference semantic model and mapping | CC BY 4.0 |
 | `gasp-wiki-mcp/` | The MCP server, published on npm as [`gasp-standard-mcp`](https://www.npmjs.com/package/gasp-standard-mcp). The parser, formula grammar, SQL compiler, graph traversal, Ossie exporters and the test suite, which runs every compiled formula against a seeded dataset in an in-process Postgres | Apache 2.0 (`LICENSE`) |
-| `docs/` | Decision documents, the Ossie spike findings and the Ossie interop spec (`docs/ossie-interop-spec.md`) | CC BY 4.0 |
+| `docs/` | Decision documents, the Ossie spike findings, the Ossie interop spec (`docs/ossie-interop-spec.md`) and the benchmark method and results (`docs/benchmark/`) | CC BY 4.0 |
 | `DECISIONS.md` | Architecture decision records, newest first | CC BY 4.0 |
 | `GOVERNANCE.md` | Who maintains the standard, how changes are decided, what counts as a breaking change and what happens if the maintainer stops | |
 | `CONTRIBUTING.md` | How to propose a change and what the tests require | |
@@ -21,10 +21,10 @@ The standard is published at **https://koinedata.com**. This repository holds it
 
 **Read the standard** at https://koinedata.com/v1/overview, or in the per-department files under `standard/metrics/`.
 
-**Give it to an agent.** The MCP server has twenty-three tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a target writer that hands them back as a Snowflake Cortex Analyst model or a Cube data model in your warehouse's SQL, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model, a mapping proposer and a Decide step that records the answers people give, the SQL that derives CEL revenue events from your subscription ledger, the readiness checks, the ranked fix plan and a readiness report that says which level you have reached, and three graph traversal tools.
+**Give it to an agent.** The MCP server has twenty-three tools: metric and glossary lookup, canonical formulas, data requirements, SQL generation from your adapter for Postgres, Snowflake, BigQuery or Databricks, mapping validation, a compiler that writes the covered metrics into your Apache Ossie semantic model, a target writer that hands them back as a Snowflake Cortex Analyst model, a Cube data model or a dbt MetricFlow project in your warehouse's SQL, a drift scorer that runs your metrics against the canonical ones on the synthetic dataset, a schema profiler that turns your warehouse schema into a minimal Ossie model, a mapping proposer and a Decide step that records the answers people give, the SQL that derives CEL revenue and credit events from your subscription, invoice or usage ledger, the readiness checks, the ranked fix plan and a readiness report that says which level you have reached, and three graph traversal tools.
 
 ```json
-{ "mcpServers": { "gasp": { "command": "npx", "args": ["-y", "gasp-standard-mcp"] } } }
+{ "mcpServers": { "gasp-standard": { "command": "npx", "args": ["-y", "gasp-standard-mcp"] } } }
 ```
 
 **Map your warehouse.** `standard/gasp-adapter-schema.json` describes the adapter file, `standard/gasp-ossie-extension-v1.json` the GASP payloads in the Ossie documents GASP writes, and `standard/exports/gasp-adapter-template.json` lists every field to fill in. `validate_mapping` (also `validate_adapter`) checks a mapping and `generate_query` compiles a metric against it.
@@ -49,4 +49,4 @@ The formula grammar is documented at the top of `gasp-wiki-mcp/src/formula.ts`. 
 
 GASP is written and maintained by Gareth O'Shea. Contributions are welcome: issues for proposals and questions, pull requests for wording, examples and tooling.
 
-This repository is a read-only mirror of the public parts of the GASP working repository, updated on every change there. The website's source stays private. Pull requests opened here are reviewed here and applied upstream by the maintainer. The change appears here with the next mirror push. `MIRROR` names the source commit.
+This repository is a mirror of the public parts of the GASP working repository, updated on every change there, so nothing merges here directly. The website's source stays private. Pull requests opened here are reviewed here and applied upstream by the maintainer. The change appears here with the next mirror push. `MIRROR` names the source commit.

@@ -23,7 +23,7 @@ Uptime = (Total time - Downtime) / Total time × 100
 - 99.95%: ~22 minutes downtime (typical SLA)
 - 99.99%: ~4.3 minutes downtime (four nines, high reliability)
 
-**What it tells you:** Basic platform reliability.
+**What it tells you:** How much of the time customers could not reach the product, at about 43 minutes a month for each 0.1% below 100%.
 
 **Common mistakes:**
 - Excluding "scheduled maintenance" (customers don't care why it's down)
@@ -82,7 +82,7 @@ GASP's canonical latency is P95, with P50 and P99 as variants. Report percentile
 - P95: < 500ms
 - P99: < 1000ms
 
-**What it tells you:** User experience. Slow responses impact satisfaction and conversion.
+**What it tells you:** How long users wait, tail included, with a rising P95 beside a steady P50 meaning a minority of requests have slowed.
 
 ---
 
@@ -120,7 +120,7 @@ MTTD = Average of (Detection time - Incident start time)
 
 **Target:** < 5 minutes for critical services
 
-**What it tells you:** Monitoring and alerting effectiveness.
+**What it tells you:** How long an incident runs before monitoring or alerting catches it.
 
 ---
 
@@ -135,7 +135,7 @@ MTTA = Average of (Acknowledgment time - Alert time)
 
 **Target:** < 15 minutes
 
-**What it tells you:** On-call responsiveness.
+**What it tells you:** How long a fired alert waits before someone on call picks it up.
 
 ---
 
@@ -155,7 +155,7 @@ MTTR is reported per severity and per incident type, since resolution targets di
 - SEV2: < 4 hours
 - SEV3: < 24 hours
 
-**What it tells you:** Incident response capability.
+**What it tells you:** How long customers live with an incident, read per severity because the targets differ.
 
 ---
 
@@ -239,7 +239,7 @@ MTTR = Average of (Recovery time - Failure time)
 - Medium: 1 day to 1 week
 - Low: More than 1 week
 
-**What it tells you:** Resilience and recovery capability.
+**What it tells you:** How long a failure keeps the service down, the DORA measure of how quickly a team recovers.
 
 ---
 
@@ -298,6 +298,11 @@ Headroom is the complement of Infrastructure Utilization (1 minus utilization).
 
 **Definition:** Number of known vulnerabilities still open in your systems.
 
+**Formula:**
+```
+Vulnerability Count = Count of open vulnerabilities at period end
+```
+
 **Categorize by severity:** Critical, High, Medium, Low
 
 **Targets:**
@@ -313,7 +318,7 @@ Headroom is the complement of Infrastructure Utilization (1 minus utilization).
 
 **Formula:**
 ```
-Time to Patch = Average of (Patch deploy time - Disclosure time)
+Time to Patch = Average of (Patch deploy time - Discovery time)
 ```
 
 **Targets:**
@@ -327,7 +332,12 @@ Time to Patch = Average of (Patch deploy time - Disclosure time)
 
 **Definition:** Number of security incidents in a period.
 
-**Target:** Zero breaches. Track and reduce attempted attacks.
+**Formula:**
+```
+Security Incident Count = Count of incidents of type security started in the period
+```
+
+**Target:** Zero security incidents.
 
 ---
 

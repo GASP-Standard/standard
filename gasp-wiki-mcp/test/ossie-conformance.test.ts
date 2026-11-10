@@ -40,8 +40,7 @@ describe("Ossie conformance set", async () => {
     }
   });
 
-  const hasUv = uvAvailable();
-  it.skipIf(!hasUv)("every case model passes the upstream validator", async () => {
+  it.skipIf(!uvAvailable())("every case model passes the upstream validator", async () => {
     for (const c of CONFORMANCE_CASES) {
       const id = Object.keys(files).find((k) => k.startsWith("cases/") && k.includes(`_${c.entry.replace(":", "_")}/model`))!;
       const r = await validateUpstream(join(CONFORMANCE_DIR, id), "model");

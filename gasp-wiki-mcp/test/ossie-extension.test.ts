@@ -29,6 +29,7 @@ import { validateMapping } from "../src/ossie/adapt.js";
 import { parse as parseYaml } from "yaml";
 import type { Adapter } from "../src/tools.js";
 import { acmeAdapterText, acmeDdl, parsedSchema } from "./ossie-helpers.js";
+import { adapter as fixtureAdapter } from "./fixture-db.js";
 
 const data = loadStandard();
 const schemaPath = join(process.cwd(), "..", "standard", "gasp-ossie-extension-v1.json");
@@ -124,7 +125,7 @@ describe("GASP Ossie extension schema", () => {
   });
 
   it("describes the fixture and Acme adapters compiled into their models", () => {
-    const fixture = readFileSync(join(process.cwd(), "test", "fixture", "adapter.json"), "utf-8");
+    const fixture = JSON.stringify(fixtureAdapter);
     for (const [text, o] of [[fixture, {}], [acmeAdapterText, { dialect: "snowflake" }]] as const) {
       const c = company(text);
       const r = compiled(c, o);
