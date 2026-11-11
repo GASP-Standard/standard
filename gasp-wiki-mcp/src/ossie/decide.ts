@@ -152,7 +152,7 @@ export function openQuestions(model: OssieSemanticModel, decisions: DecisionReco
   const decided = new Set(decisions.map(subjectOf));
   const out: Question[] = [];
   for (const d of model.datasets) {
-    const profile = readExt<{ profile?: Profile }>(d.custom_extensions)?.profile;
+    const profile = readExt<{ profile?: Profile }>(d.nonportable_extensions)?.profile;
     const questions = Array.isArray(profile?.questions) ? profile.questions : [];
     for (const q of questions) {
       const settled = q.about === "key" ? Boolean(d.primary_key?.length) || decided.has(`key:${d.name}`)
@@ -169,7 +169,7 @@ export function recordDecisions(model: OssieSemanticModel, mapping: OssieMapping
   const plan = planOntology(data);
   const datasets = data.ontology?.datasets ?? {};
   const fieldById = new Map((data.ontology?.fields ?? []).map((f) => [f.id, f]));
-  const ext: Extension = readExt<Extension>(mapping.custom_extensions) ?? {};
+  const ext: Extension = readExt<Extension>(mapping.nonportable_extensions) ?? {};
   const organization = ext.organization ?? mapping.semantic_model_ref?.name?.replace(/ semantic model$/i, "") ?? "Company";
   const onFile: DecisionRecord[] = Array.isArray(ext.decisions) ? ext.decisions : [];
   let candidates: Candidate[] = Array.isArray(ext.proposed?.candidates) ? ext.proposed.candidates : [];
@@ -183,12 +183,12 @@ export function recordDecisions(model: OssieSemanticModel, mapping: OssieMapping
     const q = name.toLowerCase();
     return out.datasets.find((d) => d.name.toLowerCase() === q) ?? out.datasets.find((d) => d.source?.toLowerCase() === q) ?? out.datasets.find((d) => bareName(d.source ?? d.name) === bareName(q));
   };
-  const profileOf = (d: OssieDataset): Profile => readExt<{ profile?: Profile }>(d.custom_extensions)?.profile ?? {};
+  const profileOf = (d: OssieDataset): Profile => readExt<{ profile?: Profile }>(d.nonportable_extensions)?.profile ?? {};
   const setProfile = (d: OssieDataset, edit: (p: Profile) => void) => {
-    const whole = readExt<{ profile?: Profile; [k: string]: unknown }>(d.custom_extensions) ?? {};
+    const whole = readExt<{ profile?: Profile; [k: string]: unknown }>(d.nonportable_extensions) ?? {};
     const p = whole.profile ?? {};
     edit(p);
-    d.custom_extensions = writeExt(d.custom_extensions, { ...whole, profile: p });
+    d.nonportable_extensions = writeExt(d.nonportable_extensions, { ...whole, profile: p });
   };
   let modelChanged = false;
   /** The model field a transform over a column reads: an existing calculated field with that expression, else a new one. */
@@ -392,7 +392,7 @@ export function recordDecisions(model: OssieSemanticModel, mapping: OssieMapping
       ...(owners.length ? { metricOwners: owners } : {}),
       decisions: all,
     };
-    outMapping = { ...base, custom_extensions: writeExt(mapping.custom_extensions, extension) };
+    outMapping = { ...base, nonportable_extensions: writeExt(mapping.nonportable_extensions, extension) };
   }
 
   const final = resolveMapping(outMapping, out, data);

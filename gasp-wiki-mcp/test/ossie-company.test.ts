@@ -41,7 +41,7 @@ const compiled = (c: Company, opts = {}): CompiledModel => {
   if ("error" in r) throw new Error(r.error);
   return r;
 };
-const ext = (x: { custom_extensions?: Array<{ vendor_name: string; data: string }> }) => JSON.parse(x.custom_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data);
+const ext = (x: { nonportable_extensions?: Array<{ vendor_name: string; data: Record<string, any> }> }) => x.nonportable_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data; // eslint-disable-line @typescript-eslint/no-explicit-any
 const exprOf = (m: { expression: { sql?: string } }) => m.expression.sql!;
 
 describe("Company compile: the fixture adapter reproduces the reference export", () => {

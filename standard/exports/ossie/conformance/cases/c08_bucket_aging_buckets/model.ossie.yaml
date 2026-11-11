@@ -1,5 +1,5 @@
 # Generated from the GASP Standard (https://koinedata.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: gasp_conformance_c08_bucket_aging_buckets
 description: 'GASP conformance case c08_bucket_aging_buckets: a dimension defined by ranges over a per-row expression. The metric gasp_aging_buckets is staged because its formula needs "bucket", which OSSIE_SQL_2026 cannot state; its staged dataset carries the compiled SQL. Formula: sum(field.outstanding_amount) / total(sum(field.outstanding_amount))'
 ai_context:
@@ -108,9 +108,10 @@ datasets:
           sql: subscription_id
         description: Subscription identifier
         datatype: String
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"kind":"snapshot"}'
+        data:
+          kind: snapshot
   - name: gasp_staged_gasp_aging_buckets
     source: SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN (snapshot_date - invoice_date) BETWEEN 0 AND 30 THEN 'current' WHEN (snapshot_date - invoice_date) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN (snapshot_date - invoice_date) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN (snapshot_date - invoice_date) >= 91 THEN 'days_90_plus' END = _d.bucket) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d
     description: "Staged dataset for gasp_aging_buckets: one row per reporting period and bucket value holding the metric value, computed by the GASP compiled query (needs bucket, total)."
@@ -140,9 +141,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Aging Buckets for the period and bucket
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_aging_buckets\",\"reason\":\"bucket\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN DATEDIFF(day, invoice_date, snapshot_date) BETWEEN 0 AND 30 THEN 'current' WHEN DATEDIFF(day, invoice_date, snapshot_date) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN DATEDIFF(day, invoice_date, snapshot_date) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN DATEDIFF(day, invoice_date, snapshot_date) >= 91 THEN 'days_90_plus' END = _d.bucket) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) BETWEEN 0 AND 30 THEN 'current' WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) >= 91 THEN 'days_90_plus' END = _d.bucket) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN DATEDIFF(snapshot_date, invoice_date) BETWEEN 0 AND 30 THEN 'current' WHEN DATEDIFF(snapshot_date, invoice_date) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN DATEDIFF(snapshot_date, invoice_date) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN DATEDIFF(snapshot_date, invoice_date) >= 91 THEN 'days_90_plus' END = _d.bucket) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d\"}}"
+        data:
+          staged: true
+          for: gasp_aging_buckets
+          reason: bucket
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN DATEDIFF(day, invoice_date, snapshot_date) BETWEEN 0 AND 30 THEN 'current' WHEN DATEDIFF(day, invoice_date, snapshot_date) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN DATEDIFF(day, invoice_date, snapshot_date) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN DATEDIFF(day, invoice_date, snapshot_date) >= 91 THEN 'days_90_plus' END = _d.bucket) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d
+            BIGQUERY: SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) BETWEEN 0 AND 30 THEN 'current' WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN DATE_DIFF(snapshot_date, invoice_date, DAY) >= 91 THEN 'days_90_plus' END = _d.bucket) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d
+            DATABRICKS: SELECT p.period_start, p.period_end, _d.bucket AS bucket, ((CAST((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end AND CASE WHEN DATEDIFF(snapshot_date, invoice_date) BETWEEN 0 AND 30 THEN 'current' WHEN DATEDIFF(snapshot_date, invoice_date) BETWEEN 31 AND 60 THEN 'days_31_60' WHEN DATEDIFF(snapshot_date, invoice_date) BETWEEN 61 AND 90 THEN 'days_61_90' WHEN DATEDIFF(snapshot_date, invoice_date) >= 91 THEN 'days_90_plus' END = _d.bucket) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(outstanding_amount), 0) FROM gasp.invoice WHERE snapshot_date = p.period_end), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'current' AS bucket UNION ALL SELECT 'days_31_60' AS bucket UNION ALL SELECT 'days_61_90' AS bucket UNION ALL SELECT 'days_90_plus' AS bucket) _d
 metrics:
   - name: gasp_aging_buckets
     expression:
@@ -151,6 +160,12 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/revops/aging-buckets. Broken down by bucket: report one value per bucket. Staged (bucket): gasp_staged_gasp_aging_buckets holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"aging_buckets","gasp_version":"1","unit":"percent","formula":"sum(field.outstanding_amount) / total(sum(field.outstanding_amount))","gasp_breakdown":"bucket","staged":true}'
+        data:
+          gasp_id: aging_buckets
+          gasp_version: "1"
+          unit: percent
+          formula: sum(field.outstanding_amount) / total(sum(field.outstanding_amount))
+          gasp_breakdown: bucket
+          staged: true

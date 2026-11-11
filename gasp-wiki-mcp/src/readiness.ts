@@ -110,8 +110,8 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
   if ("error" in chosen) return { error: chosen.error };
   const problems = [...company.problems];
   const given = model ?? company.model;
-  const ext = readGaspExtension<{ profiled?: unknown; compiled?: { metrics?: number; staged?: number; dialect?: string } }>(given.custom_extensions) ?? {};
-  const mappingExt = readGaspExtension<{ proposed?: { candidates?: Candidate[] }; decisions?: DecisionRecord[] }>(opts.mapping?.custom_extensions) ?? {};
+  const ext = readGaspExtension<{ profiled?: unknown; compiled?: { metrics?: number; staged?: number; dialect?: string } }>(given.nonportable_extensions) ?? {};
+  const mappingExt = readGaspExtension<{ proposed?: { candidates?: Candidate[] }; decisions?: DecisionRecord[] }>(opts.mapping?.nonportable_extensions) ?? {};
   const decisions: DecisionRecord[] = Array.isArray(mappingExt.decisions) ? mappingExt.decisions : [];
   const candidates: Candidate[] = Array.isArray(mappingExt.proposed?.candidates) ? mappingExt.proposed.candidates : [];
   const questions = openQuestions(given, decisions);

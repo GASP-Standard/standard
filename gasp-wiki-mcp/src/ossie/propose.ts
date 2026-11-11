@@ -155,7 +155,7 @@ export interface Table {
 /** The model as the proposer and the Decide step read it: one table per dataset with the profile's kind, key, time field and listed values. */
 export function readModel(model: OssieSemanticModel): Table[] {
   return model.datasets.map((d) => {
-    const profile = readGaspExtension<{ profile?: { kind?: DatasetKind; confidence?: { kind?: Confidence }; values?: Record<string, string[]> } }>(d.custom_extensions)?.profile ?? {};
+    const profile = readGaspExtension<{ profile?: { kind?: DatasetKind; confidence?: { kind?: Confidence }; values?: Record<string, string[]> } }>(d.nonportable_extensions)?.profile ?? {};
     const columns: Column[] = (d.fields ?? []).map((f) => {
       const text = expressionText(f);
       const hint = typeof f.ai_context === "object" ? f.ai_context?.instructions : undefined;
@@ -424,7 +424,7 @@ export function proposeMapping(model: OssieSemanticModel, data: StandardData, op
     datasets: proposed.map((p) => p.dataset),
     include: (ds, f) => Boolean(names[ds]?.[f]),
     expr: (ds, f) => `${names[ds][f].dataset}.${names[ds][f].field}`,
-    custom_extensions: writeGaspExtension(undefined, { organization, proposed: { datasets: proposed.length, fields: proposed.reduce((n, p) => n + p.fields.length, 0), transforms: proposed.reduce((n, p) => n + p.fields.filter((f) => f.transform).length, 0), candidates, unmatched: unmatchedTables } }),
+    nonportable_extensions: writeGaspExtension(undefined, { organization, proposed: { datasets: proposed.length, fields: proposed.reduce((n, p) => n + p.fields.length, 0), transforms: proposed.reduce((n, p) => n + p.fields.filter((f) => f.transform).length, 0), candidates, unmatched: unmatchedTables } }),
   });
   const resolved = resolveMapping(mapping, out, data);
   problems.push(...resolved.problems);

@@ -262,7 +262,7 @@ export function loadStandard(): StandardData {
 
   // The adapter schema travels with the data so validate_mapping can apply it offline
   const adapterSchema = JSON.parse(readFileSync(join(standardDir, "gasp-adapter-schema.json"), "utf-8")) as Record<string, unknown>;
-  // So does the GASP Ossie extension schema, which checkExport applies to every GASP custom_extensions payload
+  // So does the GASP Ossie extension schema, which checkExport applies to every GASP nonportable_extensions payload
   const extensionSchema = JSON.parse(readFileSync(join(standardDir, "gasp-ossie-extension-v1.json"), "utf-8")) as Record<string, unknown>;
 
   // The upstream Ossie schemas travel too, so validate_mapping can check an Ossie mapping offline (absent when the package dir is not beside them)

@@ -81,7 +81,7 @@ describe("Drift: the fixture adapter's own compiled metrics agree with the canon
     // The compiled gasp_ metrics as if they were the company's own: named by formula id, without the GASP extension.
     const mine: OssieMetric[] = compiled.model.metrics!
       .filter((m) => { const key = Object.entries(compiled.coverage).find(([, v]) => "ossieName" in v && v.ossieName === m.name)?.[0]; return key && !key.includes(":") && compiled.coverage[key].kind === "direct"; })
-      .map((m) => ({ name: m.name.replace(/^gasp_/, ""), expression: m.expression, custom_extensions: m.custom_extensions?.filter((e) => e.vendor_name !== GASP_VENDOR) }));
+      .map((m) => ({ name: m.name.replace(/^gasp_/, ""), expression: m.expression, nonportable_extensions: m.nonportable_extensions?.filter((e) => e.vendor_name !== GASP_VENDOR) }));
     expect(mine.length).toBeGreaterThan(100);
     const r = await scored(c, mine, { engine, periods: [DRIFT_PERIODS[0], DRIFT_PERIODS[5]] });
     expect(r.review).toEqual([]);

@@ -26,10 +26,10 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 |  | Apache Ossie (incubating) | GASP |
 | --- | --- | --- |
 | What it is | Vendor-neutral spec for semantic models and ontology | Canonical SaaS metric standard |
-| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `custom_extensions` | 313 metrics, 99 definitions, 280 canonical fields in 54 datasets, 28 entities, 7 concepts, 22 source categories |
+| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 313 metrics, 99 definitions, 280 canonical fields in 54 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, `OSSIE_SQL_2026`, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL and others) | GASP formula grammar (warehouse-agnostic), compiled to SQL for Postgres (which also runs on Redshift), Snowflake, BigQuery and Databricks |
 | Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 104 nodes and 210 edges across 21 edge types |
-| Spec version | 0.3.0.dev0 on main since 2026-11-09 (#691); GASP pins 0.2.0.dev0 until #522 lands | v1 |
+| Spec version | 0.3.0.dev0 on main since 2026-11-09 (#691); GASP writes it since 2026-11-11, when #522 merged | v1 |
 | Governance | ASF Incubator: public lists, discussion-and-vote, three working groups (Metric Language, Catalog, Ontology) | One maintainer (Gareth O'Shea). `GOVERNANCE.md` in the public repository says how changes are decided, what counts as a breaking change and how a second maintainer is added |
 | License | Apache 2.0 | Content CC BY 4.0, code Apache 2.0 |
 
@@ -78,7 +78,7 @@ The goal is to be the SaaS answer inside Ossie, measured by merges and listings 
 
 **Non-goals**
 
-- Forcing the metric canon into Ossie before the spec can hold it. Blobs in `custom_extensions` that other tools ignore would be native in name only.
+- Forcing the metric canon into Ossie before the spec can hold it. Blobs in `nonportable_extensions` that other tools ignore would be native in name only.
 - Pushing GASP's opinions into Ossie core. The canon stays GASP's; only format gaps go upstream.
 
 **Success metrics**
@@ -107,9 +107,9 @@ The goal is to be the SaaS answer inside Ossie, measured by merges and listings 
 | Reference model | | `standard/exports/ossie/gasp.semantic_model.yaml`, `gasp.mapping.yaml`, `coverage.json` | Ossie semantic model and mapping |
 | Company mapping | Decisions only (owners, currency, identity) | Everything else, from a profile or an existing Ossie model | Ossie mapping document |
 | Company model | | Compiled metrics and staged datasets added to their model | Ossie semantic model |
-| Extension data | | `custom_extensions` under `vendor_name: GASP` | Ossie, plus a published JSON Schema |
+| Extension data | | `nonportable_extensions` under `vendor_name: GASP` | Ossie, plus a published JSON Schema |
 
-**Why generated rather than hand-edited Ossie.** The Ossie ontology spec is `0.2.0.dev0` and may change. Generating the Ossie files keeps spec churn inside one exporter and its tests, so the authoring flow for 301 metrics is untouched when the spec moves. GASP data that Ossie cannot hold yet (metric-to-metric edges, access classifications, temporal semantics) stays in one place rather than splitting across two sources. The published files are fully native either way. Revisit when the ontology spec reaches 1.0.
+**Why generated rather than hand-edited Ossie.** The Ossie ontology spec is `0.3.0.dev0`, still a development version that may change. Generating the Ossie files keeps spec churn inside one exporter and its tests, so the authoring flow for 301 metrics is untouched when the spec moves. GASP data that Ossie cannot hold yet (metric-to-metric edges, access classifications, temporal semantics) stays in one place rather than splitting across two sources. The published files are fully native either way. Revisit when the ontology spec reaches 1.0.
 
 ## The pipeline
 
@@ -137,7 +137,7 @@ The v1 adapter and the Ossie mapping merge into one format: an Ossie mapping doc
 | `transform` (`{{value}} / 100`) | The mapping's `expression` | Portable SQL (`OSSIE_SQL_2026`) |
 | Entity identity (`customer_id`) | `object_mappings` with `referent_mappings` on the concept's `identify_by` relationship | |
 | Keys and joins | The company's `primary_key` and `relationships` | |
-| `metricOwners`, field `owner`, `notes`, decisions | `custom_extensions`, `vendor_name: GASP` | No core slot yet |
+| `metricOwners`, field `owner`, `notes`, decisions | `nonportable_extensions`, `vendor_name: GASP` | No core slot yet |
 
 **Worked example.** `gasp-wiki-mcp/test/fixture/ossie-spike/` holds the hand-written ontology, semantic model and mapping for the NRR subset from the spike; `standard/exports/ossie/` holds the generated files for the whole standard. All of them pass the upstream validator; `docs/ossie-spike.md` records what it checks and what it misses.
 
@@ -183,9 +183,13 @@ metrics:
     ai_context:
       synonyms: ["net dollar retention", "NDR"]
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#net-revenue-retention-nrr"
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"nrr","gasp_version":"1","form":"O","unit":"percent"}'
+        data:
+          gasp_id: nrr
+          gasp_version: "1"
+          form: O
+          unit: percent
 ```
 
 Formulas that use `cohort` or `lag`, or that need the reporting period inside a filter, compile to a plain aggregate over a staged dataset (`gasp_account_cohorts` here) that every Ossie engine can run today. An Ossie dataset's `source` may be a query, so the staged table's SQL travels inside the model. `OSSIE_SQL_2026` is the only dialect whose semantics Ossie defines, so direct metrics are emitted in it. `Dataset.source` is a single string with no dialect, so a staged dataset's `source` holds the Postgres query and its GASP extension carries the Snowflake, BigQuery and Databricks versions. The reference model's `coverage.json` records which metrics are direct and which are staged, with the reason for each. The staged set is the test set for proposal P2.
@@ -228,7 +232,7 @@ Generated from rules GASP already has:
 
 ## The GASP extension, designed to shrink
 
-What Ossie cannot yet hold travels in `custom_extensions` under `vendor_name: GASP`, governed by a published JSON Schema. Every key has an exit: an upstream proposal that would move it into core, or an explicit decision that it is GASP-specific and stays. The size of this table is the measure of how native GASP is.
+What Ossie cannot yet hold travels in `nonportable_extensions` under `vendor_name: GASP`, governed by a published JSON Schema. Every key has an exit: an upstream proposal that would move it into core, or an explicit decision that it is GASP-specific and stays. The size of this table is the measure of how native GASP is.
 
 **Schema:** published 2026-11-03 at `https://gaspwiki.com/schemas/gasp-ossie-extension-v1.json` from `standard/gasp-ossie-extension-v1.json`, versioned independently of the mapping. It defines the parsed payload per placement (model, dataset, metric, mapping) with no additional properties, and `checkExport` (`gasp-wiki-mcp/src/ossie/check.ts`) validates every GASP payload against it, so a key the schema does not list fails the cross-document checks.
 
@@ -276,7 +280,7 @@ Ossie metrics are single aggregate SQL expressions. That suits ARR or win rate. 
 | P1 | Metric relationships: typed edges between metrics (drives, reduces, predicts, component of) | Ontology WG, via GitHub Discussions | `metric_edges[]` | The GASP graph's metric edges, with `infer_drivers` and `explain_path` as the consuming use case |
 | P2 | Period-over-period and cohort metrics | Metric Language WG's work on advanced metric logic and windowing | Staged datasets | Every staged GASP formula is a conformance test with a canonical answer, executed in the GASP test suite |
 | P3 | Concept-level metrics: a metric defined against ontology concepts, resolved to SQL through any model's ontology mapping | Ontology and Metric Language WGs jointly | Metric compiler and the canonical-formula extension | 286 warehouse-agnostic formulas in a tested grammar; the clearest case for why a domain standard needs this |
-| P4 | Catalog resolution of `ontology_ref` by name and version plus converter support for standalone mapping documents | Ontology WG | Embedded-mapping fallback | The 0.2.0.dev0 mapping document already references the ontology by name and `iri`; the missing piece is tooling that resolves it |
+| P4 | Catalog resolution of `ontology_ref` by name and version plus converter support for standalone mapping documents | Ontology WG | Embedded-mapping fallback | The mapping document already references the ontology by name and `iri`; the missing piece is tooling that resolves it |
 
 P3 is the largest. It would let a standard like GASP live entirely inside Ossie. Because it benefits any future vertical (healthcare, retail, fintech), it is an easier sell than a SaaS-only change. The GASP formula grammar is a working prototype of what P3 would need to express.
 

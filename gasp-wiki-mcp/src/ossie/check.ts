@@ -151,9 +151,9 @@ function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidat
         p.push(`Model: field "${ds.name}.${f.name}" has no ${OSSIE_DIALECT} expression`);
       }
       if (supersededDiffers(f.expression)) p.push(`Model: field "${ds.name}.${f.name}" has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
-      checkExt(f.custom_extensions, `field "${ds.name}.${f.name}"`, p);
+      checkExt(f.nonportable_extensions, `field "${ds.name}.${f.name}"`, p);
     }
-    checkExt(ds.custom_extensions, `dataset "${ds.name}"`, p, v && { doc: "Model", validate: v.Dataset });
+    checkExt(ds.nonportable_extensions, `dataset "${ds.name}"`, p, v && { doc: "Model", validate: v.Dataset });
   }
   const fieldsOf = (n: string) => new Set((datasets.get(n)?.fields ?? []).map((f) => f.name));
   for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
@@ -173,11 +173,11 @@ function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidat
       for (const c of r.from_columns) if (!fieldsOf(r.from).has(c)) p.push(`Model: relationship "${r.name}" from_columns names "${c}", which is not a field of dataset "${r.from}"`);
       for (const c of r.to_columns) if (!fieldsOf(r.to).has(c)) p.push(`Model: relationship "${r.name}" to_columns names "${c}", which is not a field of dataset "${r.to}"`);
     }
-    checkExt(r.custom_extensions, `relationship "${r.name}"`, p);
+    checkExt(r.nonportable_extensions, `relationship "${r.name}"`, p);
   }
 
   for (const m of model.metrics ?? []) checkMetric(m, datasets, fieldsOf, p, v);
-  checkExt(model.custom_extensions, "model", p, v && { doc: "Model", validate: v.Model });
+  checkExt(model.nonportable_extensions, "model", p, v && { doc: "Model", validate: v.Model });
 }
 
 /**
@@ -222,13 +222,14 @@ function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fields
         }
       }
     }
-    checkExt(m.custom_extensions, `metric "${m.name}"`, p, v && { doc: "Model", validate: v.Metric });
+    checkExt(m.nonportable_extensions, `metric "${m.name}"`, p, v && { doc: "Model", validate: v.Metric });
   }
 }
 
 /**
- * Every extension's data must be JSON: a JSON string (the pinned form) or an
- * object (apache/ossie #522). A GASP payload at a placement the extension
+ * Every extension's data must be an object (a document loaded through
+ * `parseDocument` has its older JSON string form migrated; a JSON string
+ * holding an object is still read here). A GASP payload at a placement the extension
  * schema defines (model, dataset, metric, mapping) must also match that
  * placement's definition; other vendors' payloads are theirs.
  */
@@ -241,12 +242,12 @@ function checkExt(
   for (const e of exts ?? []) {
     const data = extensionData(e);
     if (data === undefined) {
-      p.push(`${schema?.doc ?? "Model"}: custom_extensions data of ${who} (vendor ${e.vendor_name}) is not valid JSON`);
+      p.push(`${schema?.doc ?? "Model"}: nonportable_extensions data of ${who} (vendor ${e.vendor_name}) is not an object`);
       continue;
     }
     if (!schema || e.vendor_name !== GASP_VENDOR) continue;
     if (!schema.validate(data)) {
-      for (const err of schema.validate.errors ?? []) p.push(`${schema.doc}: custom_extensions of ${who} (${GASP_VENDOR}): ${formatSchemaError(err)}`);
+      for (const err of schema.validate.errors ?? []) p.push(`${schema.doc}: nonportable_extensions of ${who} (${GASP_VENDOR}): ${formatSchemaError(err)}`);
     }
   }
 }
@@ -347,7 +348,7 @@ function checkMapping(docs: { ontology: OssieOntology; model: OssieSemanticModel
     (cm.object_mappings ?? []).forEach((om, i) => checkObject(om, cm.concept, `concept "${cm.concept}" object mapping ${i + 1}`));
     (cm.link_mappings ?? []).forEach((lm, i) => checkLink(lm, cm.concept, 1, `concept "${cm.concept}" link mapping ${i + 1}`));
   }
-  checkExt(mapping.custom_extensions, "mapping", p, v && { doc: "Mapping", validate: v.Mapping });
+  checkExt(mapping.nonportable_extensions, "mapping", p, v && { doc: "Mapping", validate: v.Mapping });
 }
 
 export function checkExport(docs: { ontology: OssieOntology; model: OssieSemanticModel; mapping: OssieMapping }, opts: CheckOptions = {}): string[] {

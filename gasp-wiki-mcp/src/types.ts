@@ -357,7 +357,7 @@ export interface StandardData {
   adapterSchema?: Record<string, unknown>;
   /**
    * The GASP Ossie extension JSON Schema (draft 2020-12), from standard/gasp-ossie-extension-v1.json:
-   * the parsed `data` of each GASP custom_extensions entry per placement. checkExport applies it.
+   * the `data` of each GASP nonportable_extensions entry per placement. checkExport applies it.
    * Optional so data fetched from an older site build still loads.
    */
   extensionSchema?: Record<string, unknown>;

@@ -25,7 +25,7 @@ import { checkExport } from "./check.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
 import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
-import { GASP_VENDOR, OSSIE_VERSION, expressionText, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, normaliseExtensions } from "./types.js";
+import { GASP_VENDOR, OSSIE_VERSION, expressionText, gaspExtension, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, migrateDocument } from "./types.js";
 
 /** An identifier, not a location: it stays on gaspwiki.com (where it was first published) so mappings already written keep matching; the file itself is served on koinedata.com and gaspwiki.com redirects there. */
 export const GASP_ONTOLOGY_IRI = "https://gaspwiki.com/downloads/ossie/gasp.ontology.yaml";
@@ -39,14 +39,15 @@ export const isOssieModel = (doc: unknown): doc is OssieSemanticModel =>
   typeof doc === "object" && doc !== null && Array.isArray((doc as { datasets?: unknown }).datasets);
 
 /**
- * JSON first, then YAML (a YAML document is what the Ossie files are). Any
- * `custom_extensions[].data` given as an object (the apache/ossie #522 form)
- * is rewritten to the JSON string the pinned schema defines, so the schema
- * layer and every reader see one shape.
+ * JSON first, then YAML (a YAML document is what the Ossie files are). A
+ * document saved before the move to Ossie 0.3.0.dev0 (the `custom_extensions`
+ * key, `data` as a JSON string, version 0.2.0.dev0) is migrated to the current
+ * shape on the way in, so the schema layer and every reader see one shape and
+ * a tool that hands a document back hands back a current one.
  */
 export function parseDocument(text: string): { doc?: Record<string, unknown>; error?: string } {
   const object = (v: unknown) => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
-  const parsed = (v: unknown) => { const doc = object(v); if (doc) normaliseExtensions(doc); return doc; };
+  const parsed = (v: unknown) => { const doc = object(v); if (doc) migrateDocument(doc); return doc; };
   try {
     const doc = parsed(JSON.parse(text));
     return doc ? { doc } : { error: "The document is not an object." };
@@ -136,7 +137,7 @@ export function adapterToOssie(adapter: Adapter, data: StandardData): OssieForm 
     datasets: dsIds,
     include: (ds, f) => Boolean(names[ds]?.[f]),
     expr: (ds, f) => `${ds}.${names[ds][f]}`,
-    custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify(extension) }],
+    nonportable_extensions: [gaspExtension(extension)],
   });
   return { model, mapping, gaps, refs };
 }
@@ -206,7 +207,7 @@ export function resolveMapping(mapping: OssieMapping, model: OssieSemanticModel 
     (cm.link_mappings ?? []).forEach((lm, i) => walk(lm, 1, `concept "${cm.concept}" link mapping ${i + 1}`));
   }
 
-  const meta = readGaspExtension<{ adapter_version?: string; organization?: string; warehouse?: string; metricOwners?: Adapter["metricOwners"] }>(mapping.custom_extensions) ?? {};
+  const meta = readGaspExtension<{ adapter_version?: string; organization?: string; warehouse?: string; metricOwners?: Adapter["metricOwners"] }>(mapping.nonportable_extensions) ?? {};
   const adapter: Adapter = {
     version: "1.1",
     organization: meta.organization ?? mapping.semantic_model_ref?.name?.replace(/ semantic model$/i, "") ?? undefined,

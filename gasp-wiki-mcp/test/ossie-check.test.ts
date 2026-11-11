@@ -51,7 +51,7 @@ describe("checkExport", () => {
     ["duplicate metric", (d) => { d.model.metrics!.push({ ...d.model.metrics![0] }); }, /metric name ".+" is declared more than once/],
     ["relationship arity mismatch", (d) => { d.model.relationships![0].to_columns = []; }, /from_columns but 0 to_columns/],
     ["relationship names unknown dataset", (d) => { d.model.relationships![0].to = "ghost"; }, /to names unknown dataset "ghost"/],
-    ["extension data is not JSON", (d) => { d.model.datasets[3].custom_extensions![0].data = "{not json"; }, /not valid JSON/],
+    ["extension data is not an object", (d) => { d.model.datasets[3].nonportable_extensions![0].data = "{not json" as never; }, /is not an object/],
     ["duplicate concept", (d) => { d.ontology.ontology.push({ ...concept(d, "Mrr") }); }, /concept name "Mrr" is declared more than once/],
     ["unknown extends", (d) => { concept(d, "Mrr").extends = ["Nowhere"]; }, /extends unknown concept "Nowhere"/],
     ["value type not ending in a built-in", (d) => { concept(d, "Mrr").extends = ["MrrChange"]; concept(d, "MrrChange").extends = ["Mrr"]; }, /value type "Mrr" does not extend/],

@@ -9,7 +9,7 @@
 # hand (matches: "acme_nrr=NRR"), divides by ending MRR with no cohort;
 # logo_churn has no exact GASP name and goes to review; arr_from_contracts
 # reads a field the mapping lacks.
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: acme_saas_metrics
 metrics:
   - name: new_mrr

@@ -26,8 +26,8 @@ const gaspDatasets = ontology.datasets!;
 const byName = new Map(model.datasets.map((d) => [d.name, d]));
 const metricByName = new Map((model.metrics ?? []).map((m) => [m.name, m]));
 const expr = (name: string) => metricByName.get(name)?.expression.sql;
-const ext = (d: { custom_extensions?: Array<{ vendor_name: string; data: string }> }) =>
-  JSON.parse(d.custom_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data);
+const ext = (d: { nonportable_extensions?: Array<{ vendor_name: string; data: Record<string, any> }> }) => // eslint-disable-line @typescript-eslint/no-explicit-any
+  d.nonportable_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data;
 
 // Every formula entry expression: main formula (or a notComputable entry), each form, each variant.
 const entries: Array<{ key: string; id: string; variant?: string }> = [];

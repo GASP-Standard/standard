@@ -1,4 +1,4 @@
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: GASP reference model
 description: >
   Spike subset of the GASP SaaS reference model: the CEL datasets Net Revenue
@@ -99,9 +99,9 @@ datasets:
   - name: mrr_end
     expression: { sql: mrr_end }
     datatype: Decimal
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: GASP
-    data: '{"staged": true, "source_datasets": ["subscription"], "window": "12 month"}'
+    data: {"staged": true, "source_datasets": ["subscription"], "window": "12 month"}
 relationships:
 - name: subscription_customer
   from: subscription
@@ -127,9 +127,9 @@ metrics:
   ai_context:
     synonyms: ["upsell MRR"]
     instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#expansion-mrr"
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: GASP
-    data: '{"gasp_id":"expansion_mrr","gasp_version":"1","unit":"currency","formula":"sum(field.mrr_change where field.event_type = ''expansion'')"}'
+    data: {"gasp_id":"expansion_mrr","gasp_version":"1","unit":"currency","formula":"sum(field.mrr_change where field.event_type = 'expansion')"}
 - name: gasp_nrr_o
   description: Net Revenue Retention, Operating form, GASP canonical definition
   datatype: Decimal
@@ -138,9 +138,9 @@ metrics:
   ai_context:
     synonyms: ["net dollar retention", "NDR", "NRR-O"]
     instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#net-revenue-retention-nrr. Operating form counts same_product and usage_realisation expansion only."
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: GASP
-    data: '{"gasp_id":"nrr","gasp_version":"1","form":"O","unit":"percent","staged_from":"gasp_account_cohorts"}'
+    data: {"gasp_id":"nrr","gasp_version":"1","form":"O","unit":"percent","staged_from":"gasp_account_cohorts"}
 - name: gasp_nrr_m
   description: Net Revenue Retention, Market form, GASP canonical definition
   datatype: Decimal
@@ -149,6 +149,6 @@ metrics:
   ai_context:
     synonyms: ["net dollar retention", "NDR", "NRR-M"]
     instructions: "Canonical definition: https://koinedata.com/v1/metrics/core#net-revenue-retention-nrr. Market form counts every expansion classification plus reactivation of cohort customers."
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: GASP
-    data: '{"gasp_id":"nrr","gasp_version":"1","form":"M","unit":"percent","staged_from":"gasp_account_cohorts"}'
+    data: {"gasp_id":"nrr","gasp_version":"1","form":"M","unit":"percent","staged_from":"gasp_account_cohorts"}

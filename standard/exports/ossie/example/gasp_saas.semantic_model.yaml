@@ -1,5 +1,5 @@
 # Generated from the GASP Standard (https://koinedata.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: GASP SaaS core
 description: "The Core metrics of the GASP Standard (Generally Accepted SaaS Principles) as an Apache Ossie semantic model: 39 metrics over 6 datasets, cut from the full reference model at https://koinedata.com/downloads/ossie/. Each metric carries its canonical page and its GASP formula."
 datasets:
@@ -84,9 +84,11 @@ datasets:
           sql: subscription_id
         description: Subscription identifier
         datatype: String
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"kind":"event","cel":"Revenue_Event"}'
+        data:
+          kind: event
+          cel: Revenue_Event
   - name: cost_event
     source: gasp.cost_event
     description: "Cost event. Kind: event. CEL class: Cost_Event."
@@ -158,9 +160,11 @@ datasets:
           sql: project_id
         description: Services project identifier; null on costs not attributable to a project
         datatype: String
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"kind":"event","cel":"Cost_Event"}'
+        data:
+          kind: event
+          cel: Cost_Event
   - name: customer
     source: gasp.customer
     description: "Customer. Kind: snapshot."
@@ -242,9 +246,11 @@ datasets:
           sql: upgrade_eligible
         description: Customer is on a plan with an upgrade path
         datatype: Boolean
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"kind\":\"snapshot\",\"activeWhen\":\"field.customer_status = 'active'\"}"
+        data:
+          kind: snapshot
+          activeWhen: field.customer_status = 'active'
   - name: subscription
     source: gasp.subscription
     description: "Subscription. Kind: snapshot."
@@ -346,9 +352,11 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of active, cancelled, expired, paused
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"kind\":\"snapshot\",\"activeWhen\":\"field.subscription_status = 'active'\"}"
+        data:
+          kind: snapshot
+          activeWhen: field.subscription_status = 'active'
   - name: survey_response
     source: gasp.survey_response
     description: "Survey response. Kind: event."
@@ -424,9 +432,10 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of customer, onboarding, project, partner, employee, prospect
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"kind":"event"}'
+        data:
+          kind: event
   - name: financials
     source: gasp.financials
     description: "Income statement and cash flow. Kind: fact."
@@ -477,9 +486,10 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of subscription, services, usage, other
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"kind":"fact"}'
+        data:
+          kind: fact
   - name: gasp_staged_gasp_arr_o
     source: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= ((p.period_end + INTERVAL '1 day') - INTERVAL '12 month') AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_arr_o: one row per reporting period holding the metric value, computed by the GASP compiled query (needs cohort, window)."
@@ -503,9 +513,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: ARR (Annual Recurring Revenue), Operating form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_arr_o\",\"reason\":\"cohort\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= DATEADD(month, -12, DATEADD(day, 1, p.period_end)) AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 12 MONTH) AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= DATEADD(MONTH, -12, DATEADD(DAY, 1, p.period_end)) AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_arr_o
+          reason: cohort
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= DATEADD(month, -12, DATEADD(day, 1, p.period_end)) AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 12 MONTH) AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= DATEADD(MONTH, -12, DATEADD(DAY, 1, p.period_end)) AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_mrr_growth_rate
     source: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = (((p.period_end + INTERVAL '1 day') - INTERVAL '1 month') - INTERVAL '1 day') AND subscription_status = 'active'))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = (((p.period_end + INTERVAL '1 day') - INTERVAL '1 month') - INTERVAL '1 day') AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_mrr_growth_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs lag)."
@@ -529,9 +547,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: MRR Growth Rate for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_mrr_growth_rate\",\"reason\":\"lag\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(month, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active'))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(month, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 MONTH), INTERVAL 1 DAY) AND subscription_status = 'active'))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 MONTH), INTERVAL 1 DAY) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(MONTH, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active'))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(MONTH, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_mrr_growth_rate
+          reason: lag
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(month, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active'))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(month, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 MONTH), INTERVAL 1 DAY) AND subscription_status = 'active'))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 MONTH), INTERVAL 1 DAY) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(MONTH, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active'))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(MONTH, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_carry_mrr
     source: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_carry_mrr: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -555,9 +581,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Carry MRR for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_carry_mrr\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_carry_mrr
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction'))))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_nrr
     source: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_nrr: one row per reporting period holding the metric value, computed by the GASP compiled query (needs cohort, at period_start)."
@@ -581,9 +615,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Net Revenue Retention (NRR) for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_nrr\",\"reason\":\"cohort\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_nrr
+          reason: cohort
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + ((SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_nrr_o
     source: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_nrr_o: one row per reporting period holding the metric value, computed by the GASP compiled query (needs cohort, at period_start)."
@@ -607,9 +649,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Net Revenue Retention (NRR), Operating form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_nrr_o\",\"reason\":\"cohort\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_nrr_o
+          reason: cohort
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_nrr_m
     source: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_nrr_m: one row per reporting period holding the metric value, computed by the GASP compiled query (needs cohort, at period_start)."
@@ -633,9 +683,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Net Revenue Retention (NRR), Market form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_nrr_m\",\"reason\":\"cohort\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_nrr_m
+          reason: cohort
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) + (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_grr
     source: SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_grr: one row per reporting period holding the metric value, computed by the GASP compiled query (needs cohort, at period_start)."
@@ -659,9 +717,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Gross Revenue Retention (GRR) for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_grr\",\"reason\":\"cohort\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_grr
+          reason: cohort
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) - ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_logo_churn_rate
     source: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_logo_churn_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -685,9 +751,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Logo Churn Rate (Customer Churn) for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_logo_churn_rate\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_logo_churn_rate
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active')), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_revenue_churn_rate
     source: SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_revenue_churn_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -711,9 +785,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Revenue Churn Rate for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_revenue_churn_rate\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_revenue_churn_rate
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_ltv
     source: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE PRECISION) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_ltv: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -737,9 +819,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: LTV (Customer Lifetime Value) for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_ltv\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_ltv
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_ltv_o
     source: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE PRECISION) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_ltv_o: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -763,9 +853,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: LTV (Customer Lifetime Value), Operating form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_ltv_o\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_ltv_o
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_ltv_m
     source: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE PRECISION) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_ltv_m: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -789,9 +887,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: LTV (Customer Lifetime Value), Market form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_ltv_m\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_ltv_m
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_ltv_cac_ratio
     source: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE PRECISION) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE PRECISION) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_ltv_cac_ratio: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -815,9 +921,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: LTV:CAC Ratio for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_ltv_cac_ratio\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS FLOAT64) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_ltv_cac_ratio
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS FLOAT64) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_ltv_cac_ratio_o
     source: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE PRECISION) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE PRECISION) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_ltv_cac_ratio_o: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -841,9 +955,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: LTV:CAC Ratio, Operating form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_ltv_cac_ratio_o\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS FLOAT64) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_ltv_cac_ratio_o
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS FLOAT64) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST((((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding'))) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST(((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') + (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function IN ('implementation', 'onboarding'))) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_ltv_cac_ratio_m
     source: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE PRECISION) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE PRECISION) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE PRECISION) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_ltv_cac_ratio_m: one row per reporting period holding the metric value, computed by the GASP compiled query (needs at period_start)."
@@ -867,9 +989,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: LTV:CAC Ratio, Market form for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_ltv_cac_ratio_m\",\"reason\":\"at period_start\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS FLOAT64) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_ltv_cac_ratio_m
+          reason: at period_start
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS FLOAT64) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS FLOAT64) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS FLOAT64) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((CAST((((CAST(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0))) * ((CAST(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) - (SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'infrastructure')) AS DOUBLE) / NULLIF((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end), 0)))) AS DOUBLE) / NULLIF(((CAST((((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn'))) + ((-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction')))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active')), 0))), 0))) AS DOUBLE) / NULLIF(((CAST((SELECT COALESCE(SUM(cost), 0) FROM gasp.cost_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND cost_function = 'gtm') AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'new')), 0))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_rule_of_40
     source: SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = (((p.period_end + INTERVAL '1 day') - INTERVAL '1 year') - INTERVAL '1 day') AND subscription_status = 'active')) * 12))) AS DOUBLE PRECISION) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = (((p.period_end + INTERVAL '1 day') - INTERVAL '1 year') - INTERVAL '1 day') AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_rule_of_40: one row per reporting period holding the metric value, computed by the GASP compiled query (needs lag)."
@@ -893,9 +1023,17 @@ datasets:
           sql: value
         datatype: Decimal
         description: Rule of 40 for the period
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"staged\":true,\"for\":\"gasp_rule_of_40\",\"reason\":\"lag\",\"source_dialect\":\"POSTGRES\",\"sources\":{\"SNOWFLAKE\":\"SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(year, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')) * 12))) AS DOUBLE) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(year, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p\",\"BIGQUERY\":\"SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 YEAR), INTERVAL 1 DAY) AND subscription_status = 'active')) * 12))) AS FLOAT64) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 YEAR), INTERVAL 1 DAY) AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p\",\"DATABRICKS\":\"SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(YEAR, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')) * 12))) AS DOUBLE) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(YEAR, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p\"}}"
+        data:
+          staged: true
+          for: gasp_rule_of_40
+          reason: lag
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(year, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')) * 12))) AS DOUBLE) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(year, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 YEAR), INTERVAL 1 DAY) AND subscription_status = 'active')) * 12))) AS FLOAT64) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 YEAR), INTERVAL 1 DAY) AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, (((CAST((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) - ((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(YEAR, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')) * 12))) AS DOUBLE) / NULLIF(((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(YEAR, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')) * 12)), 0)) + ((CAST((SELECT COALESCE(SUM(ebitda), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))))) AS value FROM gasp.period_spine p
 relationships:
   - name: revenue_event_customer_id
     from: revenue_event
@@ -952,9 +1090,13 @@ metrics:
       synonyms:
         - MRR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/mrr-monthly-recurring-revenue. Reads the subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.mrr where field.subscription_status = 'active') at period_end\"}"
+        data:
+          gasp_id: mrr
+          gasp_version: "1"
+          unit: currency
+          formula: sum(field.mrr where field.subscription_status = 'active') at period_end
   - name: gasp_arr
     expression:
       sql: ((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) * 12)
@@ -964,9 +1106,13 @@ metrics:
       synonyms:
         - ARR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/arr-annual-recurring-revenue. Reads the subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"arr","gasp_version":"1","unit":"currency","formula":"metric.mrr * 12"}'
+        data:
+          gasp_id: arr
+          gasp_version: "1"
+          unit: currency
+          formula: metric.mrr * 12
   - name: gasp_arr_o
     expression:
       sql: SUM(gasp_staged_gasp_arr_o.value)
@@ -976,9 +1122,15 @@ metrics:
       synonyms:
         - ARR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/arr-annual-recurring-revenue. Staged (cohort): gasp_staged_gasp_arr_o holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"arr\",\"gasp_version\":\"1\",\"form\":\"O\",\"unit\":\"currency\",\"formula\":\"(metric.mrr - window(sum(field.mrr_change where field.expansion_classification in ('pricing_adjustment', 'recontracting')), 12 month)) * 12 over cohort(field.customer_id, period_end)\",\"staged\":true}"
+        data:
+          gasp_id: arr
+          gasp_version: "1"
+          form: O
+          unit: currency
+          formula: (metric.mrr - window(sum(field.mrr_change where field.expansion_classification in ('pricing_adjustment', 'recontracting')), 12 month)) * 12 over cohort(field.customer_id, period_end)
+          staged: true
   - name: gasp_arr_m
     expression:
       sql: ((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) * 12)
@@ -988,9 +1140,14 @@ metrics:
       synonyms:
         - ARR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/arr-annual-recurring-revenue. Reads the subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"arr","gasp_version":"1","form":"M","unit":"currency","formula":"metric.mrr * 12"}'
+        data:
+          gasp_id: arr
+          gasp_version: "1"
+          form: M
+          unit: currency
+          formula: metric.mrr * 12
   - name: gasp_arpa
     expression:
       sql: (CAST((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) AS DECIMAL) / NULLIF((COUNT(DISTINCT customer.customer_id) FILTER (WHERE customer.customer_status = 'active')), 0))
@@ -1000,9 +1157,13 @@ metrics:
       synonyms:
         - ARPA
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/arpa-average-revenue-per-account. Reads the customer and subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"arpa","gasp_version":"1","unit":"currency","formula":"metric.mrr / metric.total_customers"}'
+        data:
+          gasp_id: arpa
+          gasp_version: "1"
+          unit: currency
+          formula: metric.mrr / metric.total_customers
   - name: gasp_total_customers
     expression:
       sql: COUNT(DISTINCT customer.customer_id) FILTER (WHERE customer.customer_status = 'active')
@@ -1010,9 +1171,13 @@ metrics:
     datatype: Integer
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/total-customers. Reads the customer snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"total_customers\",\"gasp_version\":\"1\",\"unit\":\"count\",\"formula\":\"count_distinct(field.customer_id where field.customer_status = 'active') at period_end\"}"
+        data:
+          gasp_id: total_customers
+          gasp_version: "1"
+          unit: count
+          formula: count_distinct(field.customer_id where field.customer_status = 'active') at period_end
   - name: gasp_new_customers
     expression:
       sql: COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')
@@ -1020,9 +1185,13 @@ metrics:
     datatype: Integer
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/new-customers."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"new_customers\",\"gasp_version\":\"1\",\"unit\":\"count\",\"formula\":\"count_distinct(field.customer_id where field.event_type = 'new')\"}"
+        data:
+          gasp_id: new_customers
+          gasp_version: "1"
+          unit: count
+          formula: count_distinct(field.customer_id where field.event_type = 'new')
   - name: gasp_churned_customers
     expression:
       sql: COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'churn')
@@ -1030,9 +1199,13 @@ metrics:
     datatype: Integer
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/churned-customers."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"churned_customers\",\"gasp_version\":\"1\",\"unit\":\"count\",\"formula\":\"count_distinct(field.customer_id where field.event_type = 'churn')\"}"
+        data:
+          gasp_id: churned_customers
+          gasp_version: "1"
+          unit: count
+          formula: count_distinct(field.customer_id where field.event_type = 'churn')
   - name: gasp_mrr_growth_rate
     expression:
       sql: SUM(gasp_staged_gasp_mrr_growth_rate.value)
@@ -1042,9 +1215,14 @@ metrics:
       synonyms:
         - MRR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/mrr-growth-rate. Staged (lag): gasp_staged_gasp_mrr_growth_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"mrr_growth_rate","gasp_version":"1","unit":"percent","formula":"(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)","staged":true}'
+        data:
+          gasp_id: mrr_growth_rate
+          gasp_version: "1"
+          unit: percent
+          formula: (metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)
+          staged: true
   - name: gasp_new_mrr
     expression:
       sql: COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'new'), 0)
@@ -1052,9 +1230,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/new-mrr."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"new_mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.mrr_change where field.event_type = 'new')\"}"
+        data:
+          gasp_id: new_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: sum(field.mrr_change where field.event_type = 'new')
   - name: gasp_expansion_mrr
     expression:
       sql: COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'expansion'), 0)
@@ -1062,9 +1244,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/expansion-mrr."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"expansion_mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.mrr_change where field.event_type = 'expansion')\"}"
+        data:
+          gasp_id: expansion_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: sum(field.mrr_change where field.event_type = 'expansion')
   - name: gasp_churned_mrr
     expression:
       sql: (-COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'churn'), 0))
@@ -1072,9 +1258,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/churned-mrr."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"churned_mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"-sum(field.mrr_change where field.event_type = 'churn')\"}"
+        data:
+          gasp_id: churned_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: -sum(field.mrr_change where field.event_type = 'churn')
   - name: gasp_contraction_mrr
     expression:
       sql: (-COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'contraction'), 0))
@@ -1082,9 +1272,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/contraction-mrr."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"contraction_mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"-sum(field.mrr_change where field.event_type = 'contraction')\"}"
+        data:
+          gasp_id: contraction_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: -sum(field.mrr_change where field.event_type = 'contraction')
   - name: gasp_reactivation_mrr
     expression:
       sql: COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'reactivation'), 0)
@@ -1092,9 +1286,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/reactivation-mrr."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"reactivation_mrr\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.mrr_change where field.event_type = 'reactivation')\"}"
+        data:
+          gasp_id: reactivation_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: sum(field.mrr_change where field.event_type = 'reactivation')
   - name: gasp_carry_mrr
     expression:
       sql: SUM(gasp_staged_gasp_carry_mrr.value)
@@ -1102,9 +1300,14 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/carry-mrr. Staged (at period_start): gasp_staged_gasp_carry_mrr holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"carry_mrr","gasp_version":"1","unit":"currency","formula":"metric.mrr at period_start - metric.churned_mrr - metric.contraction_mrr","staged":true}'
+        data:
+          gasp_id: carry_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: metric.mrr at period_start - metric.churned_mrr - metric.contraction_mrr
+          staged: true
   - name: gasp_net_new_mrr
     expression:
       sql: (((((COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'new'), 0)) + (COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'expansion'), 0))) + (COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'reactivation'), 0))) - ((-COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'churn'), 0)))) - ((-COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'contraction'), 0))))
@@ -1112,9 +1315,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/net-new-mrr."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"net_new_mrr","gasp_version":"1","unit":"currency","formula":"metric.new_mrr + metric.expansion_mrr + metric.reactivation_mrr - metric.churned_mrr - metric.contraction_mrr"}'
+        data:
+          gasp_id: net_new_mrr
+          gasp_version: "1"
+          unit: currency
+          formula: metric.new_mrr + metric.expansion_mrr + metric.reactivation_mrr - metric.churned_mrr - metric.contraction_mrr
   - name: gasp_nrr
     expression:
       sql: SUM(gasp_staged_gasp_nrr.value)
@@ -1125,9 +1332,14 @@ metrics:
         - NRR
         - NDR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/net-revenue-retention-nrr. Staged (cohort): gasp_staged_gasp_nrr holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"nrr","gasp_version":"1","unit":"percent","formula":"(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)","staged":true}'
+        data:
+          gasp_id: nrr
+          gasp_version: "1"
+          unit: percent
+          formula: (metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)
+          staged: true
   - name: gasp_nrr_o
     expression:
       sql: SUM(gasp_staged_gasp_nrr_o.value)
@@ -1138,9 +1350,15 @@ metrics:
         - NRR
         - NDR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/net-revenue-retention-nrr. Staged (cohort): gasp_staged_gasp_nrr_o holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"nrr\",\"gasp_version\":\"1\",\"form\":\"O\",\"unit\":\"percent\",\"formula\":\"(metric.mrr at period_start + sum(field.mrr_change where field.event_type = 'expansion' and field.expansion_classification in ('same_product', 'usage_realisation')) - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)\",\"staged\":true}"
+        data:
+          gasp_id: nrr
+          gasp_version: "1"
+          form: O
+          unit: percent
+          formula: (metric.mrr at period_start + sum(field.mrr_change where field.event_type = 'expansion' and field.expansion_classification in ('same_product', 'usage_realisation')) - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)
+          staged: true
   - name: gasp_nrr_m
     expression:
       sql: SUM(gasp_staged_gasp_nrr_m.value)
@@ -1151,9 +1369,15 @@ metrics:
         - NRR
         - NDR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/net-revenue-retention-nrr. Staged (cohort): gasp_staged_gasp_nrr_m holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"nrr\",\"gasp_version\":\"1\",\"form\":\"M\",\"unit\":\"percent\",\"formula\":\"(metric.mrr at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'reactivation') and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)\",\"staged\":true}"
+        data:
+          gasp_id: nrr
+          gasp_version: "1"
+          form: M
+          unit: percent
+          formula: (metric.mrr at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'reactivation') and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)
+          staged: true
   - name: gasp_grr
     expression:
       sql: SUM(gasp_staged_gasp_grr.value)
@@ -1163,9 +1387,14 @@ metrics:
       synonyms:
         - GRR
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/gross-revenue-retention-grr. Staged (cohort): gasp_staged_gasp_grr holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"grr","gasp_version":"1","unit":"percent","formula":"(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)","staged":true}'
+        data:
+          gasp_id: grr
+          gasp_version: "1"
+          unit: percent
+          formula: (metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)
+          staged: true
   - name: gasp_logo_churn_rate
     expression:
       sql: SUM(gasp_staged_gasp_logo_churn_rate.value)
@@ -1173,9 +1402,14 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/logo-churn-rate-customer-churn. Staged (at period_start): gasp_staged_gasp_logo_churn_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"logo_churn_rate","gasp_version":"1","unit":"percent","formula":"metric.churned_customers / metric.total_customers at period_start","staged":true}'
+        data:
+          gasp_id: logo_churn_rate
+          gasp_version: "1"
+          unit: percent
+          formula: metric.churned_customers / metric.total_customers at period_start
+          staged: true
   - name: gasp_revenue_churn_rate
     expression:
       sql: SUM(gasp_staged_gasp_revenue_churn_rate.value)
@@ -1183,9 +1417,14 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/revenue-churn-rate. Staged (at period_start): gasp_staged_gasp_revenue_churn_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"revenue_churn_rate","gasp_version":"1","unit":"percent","formula":"(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start","staged":true}'
+        data:
+          gasp_id: revenue_churn_rate
+          gasp_version: "1"
+          unit: percent
+          formula: (metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start
+          staged: true
   - name: gasp_nps
     expression:
       sql: ((CAST((COUNT(survey_response.nps_score) FILTER (WHERE (survey_response.survey_type = 'customer' AND survey_response.nps_score >= 9)) - COUNT(survey_response.nps_score) FILTER (WHERE (survey_response.survey_type = 'customer' AND survey_response.nps_score <= 6))) AS DECIMAL) / NULLIF(COUNT(survey_response.nps_score) FILTER (WHERE survey_response.survey_type = 'customer'), 0)) * 100)
@@ -1195,9 +1434,13 @@ metrics:
       synonyms:
         - NPS
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/nps-net-promoter-score."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"nps\",\"gasp_version\":\"1\",\"unit\":\"score\",\"formula\":\"(count(field.nps_score where field.survey_type = 'customer' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'customer' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'customer') * 100\"}"
+        data:
+          gasp_id: nps
+          gasp_version: "1"
+          unit: score
+          formula: (count(field.nps_score where field.survey_type = 'customer' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'customer' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'customer') * 100
   - name: gasp_cac
     expression:
       sql: (CAST(COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))
@@ -1207,9 +1450,13 @@ metrics:
       synonyms:
         - CAC
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/cac-customer-acquisition-cost."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"cac\",\"gasp_version\":\"1\",\"unit\":\"currency\",\"formula\":\"sum(field.cost where field.cost_function = 'gtm') / metric.new_customers\"}"
+        data:
+          gasp_id: cac
+          gasp_version: "1"
+          unit: currency
+          formula: sum(field.cost where field.cost_function = 'gtm') / metric.new_customers
   - name: gasp_cac_o
     expression:
       sql: (CAST((COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) + COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function IN ('implementation', 'onboarding')), 0)) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))
@@ -1219,9 +1466,14 @@ metrics:
       synonyms:
         - CAC
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/cac-customer-acquisition-cost."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"cac\",\"gasp_version\":\"1\",\"form\":\"O\",\"unit\":\"currency\",\"formula\":\"(sum(field.cost where field.cost_function = 'gtm') + sum(field.cost where field.cost_function in ('implementation', 'onboarding'))) / metric.new_customers\"}"
+        data:
+          gasp_id: cac
+          gasp_version: "1"
+          form: O
+          unit: currency
+          formula: (sum(field.cost where field.cost_function = 'gtm') + sum(field.cost where field.cost_function in ('implementation', 'onboarding'))) / metric.new_customers
   - name: gasp_cac_m
     expression:
       sql: (CAST(COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))
@@ -1231,9 +1483,14 @@ metrics:
       synonyms:
         - CAC
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/cac-customer-acquisition-cost."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"cac\",\"gasp_version\":\"1\",\"form\":\"M\",\"unit\":\"currency\",\"formula\":\"sum(field.cost where field.cost_function = 'gtm') / metric.new_customers\"}"
+        data:
+          gasp_id: cac
+          gasp_version: "1"
+          form: M
+          unit: currency
+          formula: sum(field.cost where field.cost_function = 'gtm') / metric.new_customers
   - name: gasp_ltv
     expression:
       sql: SUM(gasp_staged_gasp_ltv.value)
@@ -1245,9 +1502,14 @@ metrics:
         - CLV
         - CLTV
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/ltv-customer-lifetime-value. Staged (at period_start): gasp_staged_gasp_ltv holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"ltv","gasp_version":"1","unit":"currency","formula":"metric.arpa * metric.gross_margin / metric.revenue_churn_rate","staged":true}'
+        data:
+          gasp_id: ltv
+          gasp_version: "1"
+          unit: currency
+          formula: metric.arpa * metric.gross_margin / metric.revenue_churn_rate
+          staged: true
   - name: gasp_ltv_o
     expression:
       sql: SUM(gasp_staged_gasp_ltv_o.value)
@@ -1259,9 +1521,15 @@ metrics:
         - CLV
         - CLTV
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/ltv-customer-lifetime-value. Staged (at period_start): gasp_staged_gasp_ltv_o holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"ltv","gasp_version":"1","form":"O","unit":"currency","formula":"metric.arpa * metric.gross_margin.O / metric.revenue_churn_rate","staged":true}'
+        data:
+          gasp_id: ltv
+          gasp_version: "1"
+          form: O
+          unit: currency
+          formula: metric.arpa * metric.gross_margin.O / metric.revenue_churn_rate
+          staged: true
   - name: gasp_ltv_m
     expression:
       sql: SUM(gasp_staged_gasp_ltv_m.value)
@@ -1273,9 +1541,15 @@ metrics:
         - CLV
         - CLTV
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/ltv-customer-lifetime-value. Staged (at period_start): gasp_staged_gasp_ltv_m holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"ltv","gasp_version":"1","form":"M","unit":"currency","formula":"metric.arpa * metric.gross_margin / metric.revenue_churn_rate","staged":true}'
+        data:
+          gasp_id: ltv
+          gasp_version: "1"
+          form: M
+          unit: currency
+          formula: metric.arpa * metric.gross_margin / metric.revenue_churn_rate
+          staged: true
   - name: gasp_ltv_cac_ratio
     expression:
       sql: SUM(gasp_staged_gasp_ltv_cac_ratio.value)
@@ -1283,9 +1557,14 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/ltvcac-ratio. Staged (at period_start): gasp_staged_gasp_ltv_cac_ratio holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"ltv_cac_ratio","gasp_version":"1","unit":"ratio","formula":"metric.ltv / metric.cac","staged":true}'
+        data:
+          gasp_id: ltv_cac_ratio
+          gasp_version: "1"
+          unit: ratio
+          formula: metric.ltv / metric.cac
+          staged: true
   - name: gasp_ltv_cac_ratio_o
     expression:
       sql: SUM(gasp_staged_gasp_ltv_cac_ratio_o.value)
@@ -1293,9 +1572,15 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/ltvcac-ratio. Staged (at period_start): gasp_staged_gasp_ltv_cac_ratio_o holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"ltv_cac_ratio","gasp_version":"1","form":"O","unit":"ratio","formula":"metric.ltv.O / metric.cac.O","staged":true}'
+        data:
+          gasp_id: ltv_cac_ratio
+          gasp_version: "1"
+          form: O
+          unit: ratio
+          formula: metric.ltv.O / metric.cac.O
+          staged: true
   - name: gasp_ltv_cac_ratio_m
     expression:
       sql: SUM(gasp_staged_gasp_ltv_cac_ratio_m.value)
@@ -1303,9 +1588,15 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/ltvcac-ratio. Staged (at period_start): gasp_staged_gasp_ltv_cac_ratio_m holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"ltv_cac_ratio","gasp_version":"1","form":"M","unit":"ratio","formula":"metric.ltv.M / metric.cac.M","staged":true}'
+        data:
+          gasp_id: ltv_cac_ratio
+          gasp_version: "1"
+          form: M
+          unit: ratio
+          formula: metric.ltv.M / metric.cac.M
+          staged: true
   - name: gasp_cac_payback
     expression:
       sql: (CAST(((CAST(COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))) AS DECIMAL) / NULLIF((((CAST((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) AS DECIMAL) / NULLIF((COUNT(DISTINCT customer.customer_id) FILTER (WHERE customer.customer_status = 'active')), 0))) * ((CAST((COALESCE(SUM(financials.revenue), 0) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'infrastructure'), 0)) AS DECIMAL) / NULLIF(COALESCE(SUM(financials.revenue), 0), 0)))), 0))
@@ -1315,9 +1606,13 @@ metrics:
       synonyms:
         - CAC
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/cac-payback-period. Reads the customer and subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"cac_payback","gasp_version":"1","unit":"months","formula":"metric.cac / (metric.arpa * metric.gross_margin)"}'
+        data:
+          gasp_id: cac_payback
+          gasp_version: "1"
+          unit: months
+          formula: metric.cac / (metric.arpa * metric.gross_margin)
   - name: gasp_cac_payback_o
     expression:
       sql: (CAST(((CAST((COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) + COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function IN ('implementation', 'onboarding')), 0)) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))) AS DECIMAL) / NULLIF((((CAST((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) AS DECIMAL) / NULLIF((COUNT(DISTINCT customer.customer_id) FILTER (WHERE customer.customer_status = 'active')), 0))) * ((CAST(((COALESCE(SUM(financials.revenue), 0) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'infrastructure'), 0)) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding')), 0)) AS DECIMAL) / NULLIF(COALESCE(SUM(financials.revenue), 0), 0)))), 0))
@@ -1327,9 +1622,14 @@ metrics:
       synonyms:
         - CAC
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/cac-payback-period. Reads the customer and subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"cac_payback","gasp_version":"1","form":"O","unit":"months","formula":"metric.cac.O / (metric.arpa * metric.gross_margin.O)"}'
+        data:
+          gasp_id: cac_payback
+          gasp_version: "1"
+          form: O
+          unit: months
+          formula: metric.cac.O / (metric.arpa * metric.gross_margin.O)
   - name: gasp_cac_payback_m
     expression:
       sql: (CAST(((CAST(COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'gtm'), 0) AS DECIMAL) / NULLIF((COUNT(DISTINCT revenue_event.customer_id) FILTER (WHERE revenue_event.event_type = 'new')), 0))) AS DECIMAL) / NULLIF((((CAST((COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)) AS DECIMAL) / NULLIF((COUNT(DISTINCT customer.customer_id) FILTER (WHERE customer.customer_status = 'active')), 0))) * ((CAST((COALESCE(SUM(financials.revenue), 0) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'infrastructure'), 0)) AS DECIMAL) / NULLIF(COALESCE(SUM(financials.revenue), 0), 0)))), 0))
@@ -1339,9 +1639,14 @@ metrics:
       synonyms:
         - CAC
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/cac-payback-period. Reads the customer and subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"cac_payback","gasp_version":"1","form":"M","unit":"months","formula":"metric.cac.M / (metric.arpa * metric.gross_margin.M)"}'
+        data:
+          gasp_id: cac_payback
+          gasp_version: "1"
+          form: M
+          unit: months
+          formula: metric.cac.M / (metric.arpa * metric.gross_margin.M)
   - name: gasp_gross_margin
     expression:
       sql: (CAST((COALESCE(SUM(financials.revenue), 0) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'infrastructure'), 0)) AS DECIMAL) / NULLIF(COALESCE(SUM(financials.revenue), 0), 0))
@@ -1349,9 +1654,13 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/gross-margin."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"gross_margin\",\"gasp_version\":\"1\",\"unit\":\"percent\",\"formula\":\"(sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure')) / sum(field.revenue)\"}"
+        data:
+          gasp_id: gross_margin
+          gasp_version: "1"
+          unit: percent
+          formula: (sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure')) / sum(field.revenue)
   - name: gasp_gross_margin_o
     expression:
       sql: (CAST(((COALESCE(SUM(financials.revenue), 0) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'infrastructure'), 0)) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function IN ('support', 'success_engineering', 'implementation', 'onboarding')), 0)) AS DECIMAL) / NULLIF(COALESCE(SUM(financials.revenue), 0), 0))
@@ -1359,9 +1668,14 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/gross-margin."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"gross_margin\",\"gasp_version\":\"1\",\"form\":\"O\",\"unit\":\"percent\",\"formula\":\"(sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure') - sum(field.cost where field.cost_function in ('support', 'success_engineering', 'implementation', 'onboarding'))) / sum(field.revenue)\"}"
+        data:
+          gasp_id: gross_margin
+          gasp_version: "1"
+          form: O
+          unit: percent
+          formula: (sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure') - sum(field.cost where field.cost_function in ('support', 'success_engineering', 'implementation', 'onboarding'))) / sum(field.revenue)
   - name: gasp_gross_margin_m
     expression:
       sql: (CAST((COALESCE(SUM(financials.revenue), 0) - COALESCE(SUM(cost_event.cost) FILTER (WHERE cost_event.cost_function = 'infrastructure'), 0)) AS DECIMAL) / NULLIF(COALESCE(SUM(financials.revenue), 0), 0))
@@ -1369,9 +1683,14 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/gross-margin."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: "{\"gasp_id\":\"gross_margin\",\"gasp_version\":\"1\",\"form\":\"M\",\"unit\":\"percent\",\"formula\":\"(sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure')) / sum(field.revenue)\"}"
+        data:
+          gasp_id: gross_margin
+          gasp_version: "1"
+          form: M
+          unit: percent
+          formula: (sum(field.revenue) - sum(field.cost where field.cost_function = 'infrastructure')) / sum(field.revenue)
   - name: gasp_rule_of_40
     expression:
       sql: SUM(gasp_staged_gasp_rule_of_40.value)
@@ -1379,6 +1698,11 @@ metrics:
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://koinedata.com/v1/metrics/core/rule-of-40. Staged (lag): gasp_staged_gasp_rule_of_40 holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    custom_extensions:
+    nonportable_extensions:
       - vendor_name: GASP
-        data: '{"gasp_id":"rule_of_40","gasp_version":"1","unit":"percent","formula":"(metric.arr - lag(metric.arr, 1 year)) / lag(metric.arr, 1 year) + metric.ebitda_margin","staged":true}'
+        data:
+          gasp_id: rule_of_40
+          gasp_version: "1"
+          unit: percent
+          formula: (metric.arr - lag(metric.arr, 1 year)) / lag(metric.arr, 1 year) + metric.ebitda_margin
+          staged: true

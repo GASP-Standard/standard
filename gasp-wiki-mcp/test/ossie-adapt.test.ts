@@ -41,7 +41,7 @@ describe("Mapping format: the bundled Ossie schemas", () => {
   });
 
   it("report a shape error with its path", () => {
-    const errors = ossieSchemaErrors({ version: "0.2.0.dev0", name: "x", concept_mappings: [{ nope: 1 }] }, "mapping", data)!;
+    const errors = ossieSchemaErrors({ version: "0.3.0.dev0", name: "x", concept_mappings: [{ nope: 1 }] }, "mapping", data)!;
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.join("\n")).toMatch(/ontology_ref|semantic_model_ref|concept/);
   });
@@ -68,7 +68,7 @@ describe("Mapping format: a v1 adapter converts to Ossie documents", () => {
     expect(ossieSchemaErrors(form.model, "model", data)).toEqual([]);
     expect(checkExport({ ontology: exportOntology(data), model: form.model, mapping: form.mapping })).toEqual([]);
     expect(form.mapping.ontology_ref.name).toBe("GASP");
-    expect(form.mapping.custom_extensions?.[0].vendor_name).toBe("GASP");
+    expect(form.mapping.nonportable_extensions?.[0].vendor_name).toBe("GASP");
   });
 
   it("round-trips to an adapter with the same coverage", () => {

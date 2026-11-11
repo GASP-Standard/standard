@@ -20,7 +20,7 @@ import { breakdownOf, emitMetric, formulaSource, type EmitContext } from "./metr
 import { metricName, ossieDataType, physicalSource } from "./names.js";
 import { profileExpression } from "./portability.js";
 import {
-  GASP_VENDOR, OSSIE_VERSION, portable,
+  GASP_VENDOR, OSSIE_VERSION, gaspExtension, portable,
   type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField,
   type OssieMetric, type OssieRelationship, type OssieSemanticModel,
 } from "./types.js";
@@ -57,7 +57,7 @@ export const REFERENCE_TARGET: ModelTarget = {
 };
 
 const sql = portable;
-const gasp = (data: Record<string, unknown>): OssieExtension[] => [{ vendor_name: GASP_VENDOR, data: JSON.stringify(data) }];
+const gasp = (data: Record<string, unknown>): OssieExtension[] => [gaspExtension(data)];
 
 export const stagedDatasetName = (metric: string): string => `gasp_staged_${metric}`;
 
@@ -83,7 +83,7 @@ function datasetOf(id: string, d: OntologyDataset, fields: OntologyField[]): Oss
       datatype: ossieDataType(f.type),
       ...(f.type === "enum" && f.values?.length ? { ai_context: { instructions: `One of ${f.values.join(", ")}` } } : {}),
     })),
-    custom_extensions: gasp({ kind: d.kind, ...(d.cel ? { cel: d.cel } : {}), ...(d.activeWhen ? { activeWhen: d.activeWhen } : {}) }),
+    nonportable_extensions: gasp({ kind: d.kind, ...(d.cel ? { cel: d.cel } : {}), ...(d.activeWhen ? { activeWhen: d.activeWhen } : {}) }),
   };
 }
 
@@ -250,7 +250,7 @@ export function buildMetrics(data: StandardData, target: ModelTarget, only?: (fo
           ],
           // Ossie's dataset `source` is one string with no dialect property, so the extension names the
           // registered dialect `source` is written in and carries the other dialects' sources (docs/ossie-spike.md).
-          custom_extensions: gasp({
+          nonportable_extensions: gasp({
             staged: true, for: name, reason: emission.reason,
             source_dialect: OSSIE_DIALECT_OF[primary],
             ...(others.length ? { sources: Object.fromEntries(others.map((d) => [OSSIE_DIALECT_OF[d], stagedSource(compileMetric(id, { ...cctx, dialect: d }, e.variant).sql, target)])) } : {}),
@@ -266,7 +266,7 @@ export function buildMetrics(data: StandardData, target: ModelTarget, only?: (fo
         description: `${label}${qualifier}. ${m?.definition ?? f.notes ?? ""}`.trim(),
         datatype: f.unit === "count" ? "Integer" : "Decimal",
         ai_context: { ...(m?.aliases?.length ? { synonyms: m.aliases } : {}), instructions: instructions.filter(Boolean).join(" ") },
-        custom_extensions: gasp({
+        nonportable_extensions: gasp({
           gasp_id: id,
           gasp_version: "1",
           ...(e.form ? { form: e.form } : {}),

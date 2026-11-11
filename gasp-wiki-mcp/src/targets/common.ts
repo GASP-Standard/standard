@@ -101,7 +101,7 @@ export interface TargetModel {
 const IDENTIFIER = /^[A-Za-z_][\w$]*(\.[A-Za-z_][\w$]*)*$/;
 const TIME_TYPES = new Set<OssieDataType>(["Date", "DateTime", "DateTimeTz"]);
 const NUMERIC_TYPES = new Set<OssieDataType>(["Integer", "Decimal", "Float"]);
-const ext = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.custom_extensions) ?? {};
+const ext = (x: { nonportable_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.nonportable_extensions) ?? {};
 const FORM_LABEL: Record<string, string> = { O: "Operating form", M: "Market form" };
 
 /** True when a column expression is a bare (optionally dotted) identifier, so a writer can qualify it. */

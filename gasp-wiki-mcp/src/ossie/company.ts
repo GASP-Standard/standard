@@ -20,7 +20,7 @@ import { expressionText, ossieSchemaErrors, resolveCompany, type Company, type M
 import { checkCompiledMetrics } from "./check.js";
 import { buildMetrics, PERIOD_SPINE, type ModelTarget } from "./model.js";
 import { ossieYaml } from "./index.js";
-import { GASP_VENDOR, OSSIE_DIALECT, portable, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel, readGaspExtension } from "./types.js";
+import { GASP_VENDOR, OSSIE_DIALECT, portable, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel, gaspExtension, readGaspExtension } from "./types.js";
 
 /** The dataset that declares the period spine the staged sources read. */
 export const SPINE_DATASET = "gasp_period_spine";
@@ -49,7 +49,7 @@ export interface CompiledModel {
 }
 
 const IDENTIFIER = /^[A-Za-z_][\w$]*(\.[A-Za-z_][\w$]*)*$/;
-const ext = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.custom_extensions) ?? {};
+const ext = (x: { nonportable_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.nonportable_extensions) ?? {};
 /** A metric an earlier compile wrote: it carries the GASP extension or the gasp_ prefix. */
 export const isGaspMetric = (m: OssieMetric): boolean => ext(m).gasp_id !== undefined || m.name.startsWith("gasp_");
 const isGaspDataset = (d: OssieDataset): boolean => ext(d).staged === true || d.name.startsWith("gasp_staged_") || d.name === SPINE_DATASET;
@@ -99,7 +99,7 @@ const spineDataset = (spine: string): OssieDataset => ({
     { name: "period_start", expression: portable("period_start"), dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
     { name: "period_end", expression: portable("period_end"), datatype: "Date", description: "Last day of the reporting period" },
   ],
-  custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ period_spine: true }) }],
+  nonportable_extensions: [gaspExtension({ period_spine: true })],
 });
 
 /** Compile the GASP metrics the company's mapping covers into its model. */
@@ -115,16 +115,13 @@ export function compileModel(company: Company, data: StandardData, opts: Compile
   const base = company.model;
   const datasets = [...base.datasets.filter((d) => !isGaspDataset(d)), ...(staged.length ? [spineDataset(spine)] : []), ...staged];
   const kept = (base.metrics ?? []).filter((m) => !isGaspMetric(m));
-  const compiled: OssieExtension = {
-    vendor_name: GASP_VENDOR,
-    data: JSON.stringify({ compiled: { gasp_version: "1", dialect: OSSIE_DIALECT_OF[chosen.dialect], period_spine: spine, metrics: metrics.length, staged: staged.length } }),
-  };
+  const compiled: OssieExtension = gaspExtension({ compiled: { gasp_version: "1", dialect: OSSIE_DIALECT_OF[chosen.dialect], period_spine: spine, metrics: metrics.length, staged: staged.length } });
   const model: OssieSemanticModel = {
     ...base,
     datasets,
     ...(base.relationships ? { relationships: base.relationships } : {}),
     metrics: [...kept, ...metrics],
-    custom_extensions: [...(base.custom_extensions ?? []).filter((e) => e.vendor_name !== GASP_VENDOR), compiled],
+    nonportable_extensions: [...(base.nonportable_extensions ?? []).filter((e) => e.vendor_name !== GASP_VENDOR), compiled],
   };
   const names = new Set([...metrics.map((m) => m.name)]);
   const problems = [...(ossieSchemaErrors(model, "model", data) ?? []).map((e) => `Ossie schema: ${e}`), ...checkCompiledMetrics(model, names, { extensionSchema: data.extensionSchema })];

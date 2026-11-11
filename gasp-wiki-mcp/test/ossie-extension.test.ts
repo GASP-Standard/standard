@@ -1,14 +1,15 @@
 /**
  * The GASP Ossie extension schema (standard/gasp-ossie-extension-v1.json):
  * it compiles, travels in the bundle under its served URL, and every GASP
- * custom_extensions payload each writer emits matches its placement's
+ * nonportable_extensions payload each writer emits matches its placement's
  * definition: the reference export, the Acme adapter converted, the fixture
  * and Acme adapters compiled, the Acme DDL profiled, proposed and decided,
  * and that decided pair compiled. checkExport names the placement and the key
  * of a planted bad payload and leaves other vendors' payloads alone. A document
- * carrying every payload as an object (apache/ossie #522), under the key
- * `nonportable_extensions` the same proposal renames to, or both, reads the
- * same as the pinned form through validate_mapping, compile_model and the checks.
+ * saved before the move to Ossie 0.3.0.dev0 (the `custom_extensions` key, each
+ * payload a JSON string, version 0.2.0.dev0, or any one of the three) reads
+ * the same as the current form through validate_mapping, compile_model and the
+ * checks, and comes back from a tool in the current form.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -23,7 +24,7 @@ import { exportOssie, ossieYaml } from "../src/ossie/index.js";
 import { exportOntology } from "../src/ossie/ontology.js";
 import { parseStatistics, profileSchema } from "../src/ossie/profile.js";
 import { proposeMapping } from "../src/ossie/propose.js";
-import { GASP_VENDOR, RENAMED_EXTENSIONS_KEY, extensionData, normaliseExtensions, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
+import { GASP_VENDOR, LEGACY_EXTENSIONS_KEY, LEGACY_OSSIE_VERSION, OSSIE_VERSION, extensionData, gaspExtension, migrateDocument, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
 import { compileModelFromText } from "../src/ossie/company.js";
 import { validateMapping } from "../src/ossie/adapt.js";
 import { parse as parseYaml } from "yaml";
@@ -52,17 +53,17 @@ function payloadErrors(model: OssieSemanticModel, mapping?: OssieMapping): { cou
       if (e.vendor_name !== GASP_VENDOR) continue;
       count++;
       const v = validator(p);
-      if (!v(JSON.parse(e.data))) errors.push(`${who}: ${JSON.stringify(v.errors)}`);
+      if (!v(e.data)) errors.push(`${who}: ${JSON.stringify(v.errors)}`);
     }
   };
-  check(model.custom_extensions, "Model", "model");
+  check(model.nonportable_extensions, "Model", "model");
   for (const d of model.datasets) {
-    check(d.custom_extensions, "Dataset", `dataset ${d.name}`);
-    for (const f of d.fields ?? []) expect(f.custom_extensions?.some((e) => e.vendor_name === GASP_VENDOR) ?? false).toBe(false);
+    check(d.nonportable_extensions, "Dataset", `dataset ${d.name}`);
+    for (const f of d.fields ?? []) expect(f.nonportable_extensions?.some((e) => e.vendor_name === GASP_VENDOR) ?? false).toBe(false);
   }
-  for (const r of model.relationships ?? []) expect(r.custom_extensions?.some((e) => e.vendor_name === GASP_VENDOR) ?? false).toBe(false);
-  for (const m of model.metrics ?? []) check(m.custom_extensions, "Metric", `metric ${m.name}`);
-  if (mapping) check(mapping.custom_extensions, "Mapping", "mapping");
+  for (const r of model.relationships ?? []) expect(r.nonportable_extensions?.some((e) => e.vendor_name === GASP_VENDOR) ?? false).toBe(false);
+  for (const m of model.metrics ?? []) check(m.nonportable_extensions, "Metric", `metric ${m.name}`);
+  if (mapping) check(mapping.nonportable_extensions, "Mapping", "mapping");
   return { count, errors };
 }
 
@@ -76,7 +77,7 @@ const compiled = (c: Company, o = {}): CompiledModel => {
   if ("error" in r) throw new Error(r.error);
   return r;
 };
-const extOf = (x: { custom_extensions?: OssieExtension[] }) => JSON.parse(x.custom_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data) as Record<string, unknown>;
+const extOf = (x: { nonportable_extensions?: OssieExtension[] }) => x.nonportable_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data;
 
 const acmeProposal = () => {
   const stats = parseStatistics(JSON.stringify([{ table: "billing.mrr_movements", column: "movement_type", rows: 1200, nulls: 0, distinct: 4, values: ["new", "upgrade", "cancel", "flex"] }]));
@@ -135,7 +136,7 @@ describe("GASP Ossie extension schema", () => {
       const p = payloadErrors(r.model, form.mapping);
       expect(p.errors).toEqual([]);
       expect(extOf(r.model).compiled).toBeDefined();
-      expect(r.model.datasets.some((d) => d.custom_extensions && extOf(d).period_spine === true)).toBe(true);
+      expect(r.model.datasets.some((d) => d.nonportable_extensions && extOf(d).period_spine === true)).toBe(true);
     }
   });
 
@@ -165,137 +166,168 @@ describe("GASP Ossie extension schema", () => {
     const exp = exportOssie(data);
     const model: OssieSemanticModel = structuredClone(exp.model);
     const ds = model.datasets[0];
-    ds.custom_extensions = [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ ...extOf(ds), colour: "blue" }) }];
+    ds.nonportable_extensions = [gaspExtension({ ...extOf(ds), colour: "blue" })];
     const m = model.metrics![0];
-    m.custom_extensions = [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ ...extOf(m), gasp_version: 1 }) }];
-    model.datasets[1].custom_extensions = [...(model.datasets[1].custom_extensions ?? []), { vendor_name: "Acme", data: JSON.stringify({ anything: [1, 2], goes: true }) }];
-    const mapping: OssieMapping = { ...exp.mapping, custom_extensions: [{ vendor_name: GASP_VENDOR, data: JSON.stringify({ organization: 7 }) }] };
+    m.nonportable_extensions = [gaspExtension({ ...extOf(m), gasp_version: 1 })];
+    model.datasets[1].nonportable_extensions = [...(model.datasets[1].nonportable_extensions ?? []), { vendor_name: "Acme", data: { anything: [1, 2], goes: true } }];
+    const mapping: OssieMapping = { ...exp.mapping, nonportable_extensions: [gaspExtension({ organization: 7 })] };
 
     const problems = checkExport({ ontology: exp.ontology, model, mapping }, opts);
-    expect(problems).toContain(`Model: custom_extensions of dataset "${ds.name}" (GASP): \`/\` must NOT have additional properties: \`colour\``);
-    expect(problems.some((p) => p.startsWith(`Model: custom_extensions of metric "${m.name}" (GASP): \`/gasp_version\``))).toBe(true);
-    expect(problems).toContain("Mapping: custom_extensions of mapping (GASP): `/organization` must be string");
+    expect(problems).toContain(`Model: nonportable_extensions of dataset "${ds.name}" (GASP): \`/\` must NOT have additional properties: \`colour\``);
+    expect(problems.some((p) => p.startsWith(`Model: nonportable_extensions of metric "${m.name}" (GASP): \`/gasp_version\``))).toBe(true);
+    expect(problems).toContain("Mapping: nonportable_extensions of mapping (GASP): `/organization` must be string");
     expect(problems.filter((p) => p.includes(model.datasets[1].name))).toEqual([]);
     expect(problems).toHaveLength(3);
-    // without the schema only the JSON check runs
+    // without the schema only the object check runs
     expect(checkExport({ ontology: exp.ontology, model, mapping })).toEqual([]);
     expect(checkCompiledMetrics(model, new Set([m.name]), opts)).toEqual([expect.stringContaining(`metric "${m.name}" (GASP): \`/gasp_version\``)]);
   });
 });
 
-describe("custom_extensions data in the object form (apache/ossie #522)", () => {
-  /** The document with every extension payload as an object instead of the pinned JSON string. */
-  const objectForm = <T>(doc: T): T => {
+describe("documents saved before the move to Ossie 0.3.0.dev0", () => {
+  type Walk = (o: Record<string, unknown>) => void;
+  /** A copy of the document with `each` applied to every object in it, outside the extension payloads. */
+  const rewritten = <T>(doc: T, each: Walk): T => {
     const copy = structuredClone(doc);
-    const walk = (v: unknown): void => {
-      if (Array.isArray(v)) { v.forEach(walk); return; }
-      if (typeof v !== "object" || v === null) return;
-      for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
-        if (k === "custom_extensions" && Array.isArray(x)) {
-          for (const e of x as Array<{ data: unknown }>) if (typeof e.data === "string") e.data = JSON.parse(e.data);
-        } else walk(x);
-      }
-    };
-    walk(copy);
-    return copy;
-  };
-  const countObjects = (doc: unknown): number => normaliseExtensions(structuredClone(doc));
-  /** The document with every `custom_extensions` key renamed to `nonportable_extensions`, the other half of the #522 migration. */
-  const renamedForm = <T>(doc: T): T => {
-    const copy = structuredClone(doc);
-    const walk = (v: unknown): void => {
-      if (Array.isArray(v)) { v.forEach(walk); return; }
-      if (typeof v !== "object" || v === null) return;
+    const walk = (v: unknown, inData = false): void => {
+      if (Array.isArray(v)) { v.forEach((x) => walk(x, inData)); return; }
+      if (typeof v !== "object" || v === null || inData) return;
       const o = v as Record<string, unknown>;
-      if (Array.isArray(o.custom_extensions)) { o[RENAMED_EXTENSIONS_KEY] = o.custom_extensions; delete o.custom_extensions; }
-      Object.values(o).forEach(walk);
+      for (const [k, x] of Object.entries(o)) walk(x, k === "data" && typeof o.vendor_name === "string");
+      each(o);
     };
     walk(copy);
     return copy;
   };
-  const countKeys = (doc: unknown): number => JSON.stringify(doc).split(`"${RENAMED_EXTENSIONS_KEY}"`).length - 1;
+  /** Every extension payload as the JSON string the earlier schema defined. */
+  const stringForm = <T>(doc: T): T => rewritten(doc, (o) => {
+    if (typeof o.vendor_name === "string" && typeof o.data === "object") o.data = JSON.stringify(o.data);
+  });
+  /** Every `nonportable_extensions` key under the name it had before apache/ossie #522. */
+  const renamedForm = <T>(doc: T): T => rewritten(doc, (o) => {
+    if (Array.isArray(o.nonportable_extensions)) { o[LEGACY_EXTENSIONS_KEY] = o.nonportable_extensions; delete o.nonportable_extensions; }
+  });
+  /** The document as 1.20 and 1.21 wrote it: the old key, string payloads and the old version. */
+  const legacyForm = <T>(doc: T): T => ({ ...renamedForm(stringForm(doc)), version: LEGACY_OSSIE_VERSION });
+  const countKeys = (doc: unknown, key: string): number => JSON.stringify(doc).split(`"${key}":`).length - 1;
+  const countStrings = (doc: unknown): number => { let n = 0; rewritten(doc, (o) => { if (typeof o.vendor_name === "string" && typeof o.data === "string") n++; }); return n; };
 
   const form = adapterToOssie(JSON.parse(acmeAdapterText) as Adapter, data);
   const text = { mapping: ossieYaml(form.mapping), model: ossieYaml(form.model) };
-  const objectText = { mapping: ossieYaml(objectForm(form.mapping)), model: ossieYaml(objectForm(form.model)) };
-  const renamedText = { mapping: ossieYaml(renamedForm(objectForm(form.mapping))), model: ossieYaml(renamedForm(objectForm(form.model))) };
+  const legacy = { mapping: ossieYaml(legacyForm(form.mapping)), model: ossieYaml(legacyForm(form.model)) };
+  const variants: Array<[string, { mapping: string; model: string }]> = [
+    ["the old key, string payloads and the old version", legacy],
+    ["string payloads alone", { mapping: ossieYaml(stringForm(form.mapping)), model: ossieYaml(stringForm(form.model)) }],
+    ["the old key alone", { mapping: ossieYaml(renamedForm(form.mapping)), model: ossieYaml(renamedForm(form.model)) }],
+    ["the old version alone", { mapping: ossieYaml({ ...form.mapping, version: LEGACY_OSSIE_VERSION }), model: ossieYaml({ ...form.model, version: LEGACY_OSSIE_VERSION }) }],
+  ];
 
-  it("the object form is a different document with the payloads as YAML maps", () => {
-    expect(objectText.mapping).not.toEqual(text.mapping);
-    expect(countObjects(parseYaml(text.mapping))).toBe(0);
-    expect(countObjects(parseYaml(objectText.mapping))).toBeGreaterThan(0);
-    expect(countObjects(parseYaml(objectText.model)) + countObjects(parseYaml(objectText.mapping))).toBe(countObjects(objectForm(form.model)) + countObjects(objectForm(form.mapping)));
+  it("GASP writes the current form: the new key, object payloads and version 0.3.0.dev0", () => {
+    expect(OSSIE_VERSION).toBe("0.3.0.dev0");
+    const exp = exportOssie(data);
+    for (const d of [form.mapping, form.model, exp.ontology, exp.model, exp.mapping]) {
+      const t = ossieYaml(d);
+      expect(t).not.toContain(`${LEGACY_EXTENSIONS_KEY}:`);
+      expect(t).toContain(`version: ${OSSIE_VERSION}`);
+      expect(countStrings(d)).toBe(0);
+    }
+    expect(text.mapping).toContain("nonportable_extensions:"); // the synthesised Acme model carries none
+    expect(countKeys(exp.model, "nonportable_extensions")).toBeGreaterThan(exp.model.datasets.length);
   });
 
-  it("extensionData reads a JSON string or an object and nothing else", () => {
+  it("the legacy form is a different document", () => {
+    expect(legacy.mapping).toContain(`${LEGACY_EXTENSIONS_KEY}:`);
+    expect(legacy.mapping).not.toContain("nonportable_extensions:");
+    expect(legacy.mapping).toContain(`version: ${LEGACY_OSSIE_VERSION}`);
+    const model = exportOssie(data).model;
+    expect(countStrings(legacyForm(model))).toBe(countKeys(model, "vendor_name"));
+    expect(countKeys(legacyForm(model), LEGACY_EXTENSIONS_KEY)).toBe(countKeys(model, "nonportable_extensions"));
+  });
+
+  it("extensionData reads an object or a JSON string holding one and nothing else", () => {
     expect(extensionData({ data: '{"a": 1}' })).toEqual({ a: 1 });
     expect(extensionData({ data: { a: 1 } })).toEqual({ a: 1 });
     expect(extensionData({ data: "{not json" })).toBeUndefined();
+    expect(extensionData({ data: "[1]" })).toBeUndefined();
     expect(extensionData({ data: [1] })).toBeUndefined();
     expect(extensionData({ data: 7 })).toBeUndefined();
     expect(extensionData(undefined)).toBeUndefined();
   });
 
-  it("normaliseExtensions rewrites the objects to the pinned string form in place and counts them", () => {
-    const doc = objectForm(form.mapping);
-    const before = JSON.stringify(doc);
-    const n = normaliseExtensions(doc);
-    expect(n).toBeGreaterThan(0);
-    expect(JSON.stringify(doc)).not.toEqual(before);
-    expect(doc).toEqual(form.mapping);
-    expect(normaliseExtensions(doc)).toBe(0);
-  });
-
-  it("normaliseExtensions folds nonportable_extensions back to the pinned key, after any pinned entries", () => {
-    const doc = renamedForm(objectForm(form.mapping));
-    const keys = countKeys(doc);
-    expect(keys).toBeGreaterThan(0);
-    expect(countKeys(form.mapping)).toBe(0);
-    expect(normaliseExtensions(doc)).toBe(keys + countObjects(objectForm(form.mapping)));
-    expect(countKeys(doc)).toBe(0);
-    expect(doc).toEqual(form.mapping);
-    expect(normaliseExtensions(doc)).toBe(0);
-    const both = { custom_extensions: [{ vendor_name: "ACME", data: "{}" }], [RENAMED_EXTENSIONS_KEY]: [{ vendor_name: GASP_VENDOR, data: { a: 1 } }] } as Record<string, unknown>;
-    expect(normaliseExtensions(both)).toBe(2);
-    expect(both).toEqual({ custom_extensions: [{ vendor_name: "ACME", data: "{}" }, { vendor_name: GASP_VENDOR, data: '{"a":1}' }] });
-  });
-
-  it("validate_mapping and compile_model read the renamed key with object payloads as the pinned form", () => {
-    expect(renamedText.mapping).toContain(`${RENAMED_EXTENSIONS_KEY}:`);
-    expect(renamedText.mapping).not.toContain("custom_extensions:");
-    expect(validateMapping(renamedText.mapping, renamedText.model, data)).toEqual(validateMapping(text.mapping, text.model, data));
-    expect(compileModelFromText(renamedText.mapping, renamedText.model, data, { document: true })).toEqual(compileModelFromText(text.mapping, text.model, data, { document: true }));
-    const c = company(renamedText.mapping, renamedText.model);
-    expect(countKeys(c.model)).toBe(0);
-    expect(countObjects(c.model)).toBe(0);
-  });
-
-  it("validate_mapping gives the same report for both forms", () => {
-    const a = validateMapping(text.mapping, text.model, data);
-    const b = validateMapping(objectText.mapping, objectText.model, data);
-    expect(a).toContain("Valid against apache/ossie ontology/mapping.json.");
-    expect(b).toEqual(a);
-  });
-
-  it("compile_model gives the same model for both forms", () => {
-    const a = compileModelFromText(text.mapping, text.model, data, { document: true });
-    const b = compileModelFromText(objectText.mapping, objectText.model, data, { document: true });
-    expect(a).toContain("gasp_");
-    expect(b).toEqual(a);
-    const c = company(objectText.mapping, objectText.model);
-    expect(countObjects(c.model)).toBe(0); // the parsed document carries the pinned form
-    expect(compiled(c).model).toEqual(compiled(company(text.mapping, text.model)).model);
-  });
-
-  it("the checks read both forms in memory and name a bad object payload by placement", () => {
+  it("migrateDocument rewrites a legacy document to the current one in place and counts the rewrites", () => {
     const exp = exportOssie(data);
-    const docs = { ontology: exp.ontology, model: objectForm(exp.model), mapping: objectForm(exp.mapping) };
-    expect(countObjects(docs.model)).toBeGreaterThan(exp.model.datasets.length);
+    for (const current of [form.mapping, form.model, exp.model, exp.mapping]) {
+      const doc = legacyForm(current);
+      const keys = countKeys(doc, LEGACY_EXTENSIONS_KEY);
+      const strings = countStrings(doc);
+      if (current === form.mapping || current === exp.model) { // the other two carry no extension, only the old version
+        expect(keys).toBeGreaterThan(0);
+        expect(strings).toBeGreaterThan(0);
+      }
+      expect(migrateDocument(doc)).toBe(1 + keys + strings);
+      expect(doc).toEqual(current);
+      expect(migrateDocument(doc)).toBe(0);
+      const same = structuredClone(current);
+      expect(migrateDocument(same)).toBe(0);
+      expect(same).toEqual(current);
+    }
+  });
+
+  it("migrateDocument keeps current entries first, leaves a vendor's own keys alone and a bad string for the check to name", () => {
+    const both = { [LEGACY_EXTENSIONS_KEY]: [{ vendor_name: "ACME", data: "{}" }], nonportable_extensions: [{ vendor_name: GASP_VENDOR, data: { a: 1 } }] } as Record<string, unknown>;
+    expect(migrateDocument(both)).toBe(2);
+    expect(both).toEqual({ nonportable_extensions: [{ vendor_name: GASP_VENDOR, data: { a: 1 } }, { vendor_name: "ACME", data: {} }] });
+
+    const inner = { version: "0.2.0.dev0", [LEGACY_EXTENSIONS_KEY]: [{ vendor_name: "ACME", data: { version: "0.2.0.dev0", [LEGACY_EXTENSIONS_KEY]: [{ vendor_name: "X", data: "{}" }] } }] };
+    expect(migrateDocument(inner)).toBe(2);
+    expect(inner).toEqual({ version: OSSIE_VERSION, nonportable_extensions: [{ vendor_name: "ACME", data: { version: "0.2.0.dev0", [LEGACY_EXTENSIONS_KEY]: [{ vendor_name: "X", data: "{}" }] } }] });
+
+    const bad = { datasets: [{ name: "d", nonportable_extensions: [{ vendor_name: GASP_VENDOR, data: "{not json" }, { vendor_name: GASP_VENDOR, data: "[1]" }] }] };
+    expect(migrateDocument(bad)).toBe(0);
+    expect(bad.datasets[0].nonportable_extensions.map((e) => e.data)).toEqual(["{not json", "[1]"]);
+
+    const other = { version: "1.0.0", name: "x" };
+    expect(migrateDocument(other)).toBe(0);
+    expect(other.version).toBe("1.0.0");
+  });
+
+  for (const [name, t] of variants) {
+    it(`validate_mapping and compile_model read ${name} as the current form`, () => {
+      const report = validateMapping(text.mapping, text.model, data);
+      expect(report).toContain("Valid against apache/ossie ontology/mapping.json.");
+      expect(validateMapping(t.mapping, t.model, data)).toEqual(report);
+      const document = compileModelFromText(text.mapping, text.model, data, { document: true });
+      expect(document).toContain("gasp_");
+      expect(compileModelFromText(t.mapping, t.model, data, { document: true })).toEqual(document);
+      const c = company(t.mapping, t.model);
+      expect(compiled(c).model).toEqual(compiled(company(text.mapping, text.model)).model);
+    });
+  }
+
+  it("a tool that loads a legacy document hands back a current one", () => {
+    const c = company(legacy.mapping, legacy.model);
+    expect(c.model.version).toBe(OSSIE_VERSION);
+    expect(countKeys(c.model, LEGACY_EXTENSIONS_KEY)).toBe(0);
+    expect(countStrings(c.model)).toBe(0);
+    const document = compileModelFromText(legacy.mapping, legacy.model, data, { document: true });
+    expect(document).toContain(`version: ${OSSIE_VERSION}`);
+    expect(document).toContain("nonportable_extensions:");
+    expect(document).not.toContain(LEGACY_EXTENSIONS_KEY);
+    expect(document).not.toContain(LEGACY_OSSIE_VERSION);
+  });
+
+  it("the checks read string payloads in memory and name a payload that is not an object", () => {
+    const exp = exportOssie(data);
+    const docs = { ontology: exp.ontology, model: stringForm(exp.model), mapping: stringForm(exp.mapping) };
+    expect(countStrings(docs.model)).toBeGreaterThan(exp.model.datasets.length);
     expect(checkExport(docs, opts)).toEqual([]);
     const ds = docs.model.datasets[0];
-    (ds.custom_extensions![0] as { data: unknown }).data = { ...(extensionData(ds.custom_extensions![0]) as Record<string, unknown>), colour: "blue" };
-    expect(checkExport(docs, opts)).toEqual([`Model: custom_extensions of dataset "${ds.name}" (GASP): \`/\` must NOT have additional properties: \`colour\``]);
-    (ds.custom_extensions![0] as { data: unknown }).data = 7;
-    expect(checkExport(docs, opts)).toEqual([`Model: custom_extensions data of dataset "${ds.name}" (vendor GASP) is not valid JSON`]);
+    const entry = ds.nonportable_extensions![0] as { data: unknown };
+    entry.data = JSON.stringify({ ...extensionData(entry), colour: "blue" });
+    expect(checkExport(docs, opts)).toEqual([`Model: nonportable_extensions of dataset "${ds.name}" (GASP): \`/\` must NOT have additional properties: \`colour\``]);
+    entry.data = 7;
+    expect(checkExport(docs, opts)).toEqual([`Model: nonportable_extensions data of dataset "${ds.name}" (vendor GASP) is not an object`]);
+    entry.data = "{not json";
+    expect(checkExport(docs, opts)).toEqual([`Model: nonportable_extensions data of dataset "${ds.name}" (vendor GASP) is not an object`]);
   });
 });

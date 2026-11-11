@@ -1,4 +1,4 @@
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: gasp_reference_mapping
 description: Maps the GASP ontology onto the GASP reference model (spike subset)
 ontology_ref:

@@ -633,7 +633,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
       ...(key ? { primary_key: key.value } : {}),
       description: `${t.table}: ${kind.value === "reference" ? "a reference table" : `a ${kind.value} table`}${time ? ` placed in time by ${time.value}` : ""}; profiled from the schema${t.stats.size ? " and statistics" : ""}.`,
       fields,
-      custom_extensions: writeGaspExtension(undefined, { profile: { kind: kind.value, confidence: { kind: kind.confidence, ...(key ? { key: key.confidence } : {}), ...(time ? { time: time.confidence } : {}) }, evidence: { kind: kind.evidence, ...(key ? { key: key.evidence } : {}), ...(time ? { time: time.evidence } : {}) }, questions, ...(enums.length ? { values: Object.fromEntries(enums.map((e) => [e.column, e.values])) } : {}) } }),
+      nonportable_extensions: writeGaspExtension(undefined, { profile: { kind: kind.value, confidence: { kind: kind.confidence, ...(key ? { key: key.confidence } : {}), ...(time ? { time: time.confidence } : {}) }, evidence: { kind: kind.evidence, ...(key ? { key: key.evidence } : {}), ...(time ? { time: time.evidence } : {}) }, questions, ...(enums.length ? { values: Object.fromEntries(enums.map((e) => [e.column, e.values])) } : {}) } }),
     });
   }
 
@@ -682,7 +682,7 @@ export function profileSchema(schema: ParsedSchema, stats: ColumnStats[], data: 
     description: `${organization}'s warehouse profiled from its schema${stats.length ? " and column statistics" : ""} by the GASP profiler: ${datasets.length} datasets, ${modelRelationships.length} relationships, ${questions.length} open questions.`,
     datasets: modelDatasets,
     ...(modelRelationships.length ? { relationships: modelRelationships } : {}),
-    custom_extensions: writeGaspExtension(undefined, { profiled: { input: schema.format, statistics: stats.length > 0, questions: questions.length } }),
+    nonportable_extensions: writeGaspExtension(undefined, { profiled: { input: schema.format, statistics: stats.length > 0, questions: questions.length } }),
   };
   const errors = ossieSchemaErrors(model, "model", data);
   if (errors?.length) problems.push(...errors.map((e) => `model: ${e}`));

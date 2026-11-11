@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gaspwiki.com/schemas/gasp-ossie-extension-v1.json",
   "title": "GASP Ossie Extension",
-  "description": "Describes the GASP payloads in Apache Ossie documents. Every Ossie document GASP writes carries custom_extensions entries with vendor_name GASP whose data is a JSON string; this schema describes that string parsed as JSON, one definition per placement: the semantic model, a dataset, a metric and the mapping. GASP writes no extension on fields or relationships. Each key here is a gap in the Ossie specification today, so a key retired by an upstream merge leaves this schema. Versioned independently of the Ossie specification.",
+  "description": "Describes the GASP payloads in Apache Ossie documents. Every Ossie document GASP writes carries nonportable_extensions entries with vendor_name GASP whose data is an object; this schema describes that object, one definition per placement: the semantic model, a dataset, a metric and the mapping. GASP writes no extension on fields or relationships. Each key here is a gap in the Ossie specification today, so a key retired by an upstream merge leaves this schema. Versioned independently of the Ossie specification.",
   "anyOf": [
     { "$ref": "#/$defs/ModelExtension" },
     { "$ref": "#/$defs/DatasetExtension" },

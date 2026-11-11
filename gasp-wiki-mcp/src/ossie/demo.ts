@@ -86,7 +86,7 @@ export function stagedQuery(source: string, period: Period = DEMO_PERIOD): strin
 
 const STAGED_READ = /^SUM\((gasp_staged_[a-z0-9_]+)\.value\)$/;
 
-const extension = (x: { custom_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.custom_extensions) ?? {};
+const extension = (x: { nonportable_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.nonportable_extensions) ?? {};
 
 /** One demo query per metric of the model, in model order. */
 export function demoMetrics(model: OssieSemanticModel, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): DemoMetric[] {

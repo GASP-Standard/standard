@@ -32,7 +32,7 @@ const data = loadStandard();
 const flexValues = JSON.stringify([{ table: "billing.mrr_movements", column: "movement_type", rows: 1200, nulls: 0, distinct: 4, values: ["new", "upgrade", "cancel", "flex"] }]);
 const recode = "CASE WHEN {{value}} = 'upgrade' THEN 'expansion' WHEN {{value}} = 'flex' THEN 'expansion' WHEN {{value}} = 'cancel' THEN 'churn' ELSE {{value}} END";
 
-const ext = (doc: { custom_extensions?: Array<{ vendor_name: string; data: string }> }) => JSON.parse(doc.custom_extensions!.find((e) => e.vendor_name === "GASP")!.data) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+const ext = (doc: { nonportable_extensions?: Array<{ vendor_name: string; data: Record<string, unknown> }> }) => doc.nonportable_extensions!.find((e) => e.vendor_name === "GASP")!.data as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 describe("Decide: the Acme proposal", () => {
   let proposal: ProposalResult;

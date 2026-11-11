@@ -40,7 +40,7 @@ export interface MappingSpec {
   include?: (ds: string, fieldId: string) => boolean;
   /** The model-side expression for a GASP field on a dataset (default `<ds>.<fieldId>`) */
   expr?: (ds: string, fieldId: string) => string;
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 /** Why a dataset or a group of its fields was left out of a mapping. */
@@ -104,7 +104,7 @@ export function mappingOver(data: StandardData, spec: MappingSpec): { mapping: O
       ontology_ref: { name: "GASP", iri: spec.ontologyIri },
       semantic_model_ref: { name: spec.modelName, iri: spec.modelIri },
       concept_mappings,
-      ...(spec.custom_extensions?.length ? { custom_extensions: spec.custom_extensions } : {}),
+      ...(spec.nonportable_extensions?.length ? { nonportable_extensions: spec.nonportable_extensions } : {}),
     },
     gaps,
   };

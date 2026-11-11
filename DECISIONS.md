@@ -5,6 +5,26 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-11] GASP writes Apache Ossie 0.3.0.dev0 and still reads the documents it wrote before
+**Decision:** Every Ossie document GASP writes (the export, the example, the conformance cases and the documents the pipeline tools return) declares `0.3.0.dev0` and carries its payloads under `nonportable_extensions` with `data` as an object. `custom_extensions` is gone from the writers. The readers keep it: `migrateDocument` in `gasp-wiki-mcp/src/ossie/types.ts` rewrites a parsed document that declares `0.2.0.dev0`, uses the old key or holds `data` as a JSON string into the current shape before any check runs, so a tool given an old document works on it and hands back a current one. The YAML writer (`ossieYaml`) quotes every string a YAML 1.1 loader would read as another type. The validator is re-vendored at `ec1d089`. The owner asked for the move on 2026-11-11.
+
+**Context:** apache/ossie #522 merged on 2026-11-11 (`08d2ad3`) as a hard break: the upstream schemas reject `custom_extensions`, take `data` as an object and treat a date, a timestamp or a non-finite float under it as an error. #691 (2026-11-09) made `0.3.0.dev0` the only version the schemas accept. The 2026-11-04 record chose to read both forms and write the pinned one until that merge. Mappings and models written by the releases up to 1.20.0 are in users' hands in the old form. A Workspace store will hold whatever was saved to it. The upstream validator loads YAML 1.1 through PyYAML while GASP writes with a YAML 1.2 library, so with `data` now structured an unquoted `yes`, `010` or `2026-01-01` in a company's document would change type on the way in.
+
+**Alternatives considered:**
+- Drop the old key from the readers too: the least code. Every mapping or model saved before today then fails `validate_mapping` on a key name until someone edits it by hand.
+- Keep writing the old form behind an option: upstream main rejects it, so the option would produce documents no other tool accepts.
+- Quote every string in the YAML: safe under any loader and a diff on every line of every exported file. The `yaml-1.1` compatibility mode quotes only the strings that need it. The 17 exported files come out byte for byte the same with it.
+
+**Consequences:**
+- A file exported before today fails the upstream validator at main. `npm run derive` and `npm run conformance` regenerate the committed ones; a company's own document moves by passing through any tool.
+- `standard/gasp-ossie-extension-v1.json` stays version 1: the payload shapes are unchanged, only the entry that carries them.
+- `save_workspace` stores the migrated document, so the store holds one form.
+- `migrateDocument` is the only code that names the old key and the old version. Removing the legacy read later is that function, its call in `parseDocument` and the second group in `test/ossie-extension.test.ts`.
+- `test/ossie-extension.test.ts` holds the legacy cases (the same report, compiled model and checks as the current form) and `test/ossie-yaml.test.ts` reads every exported file under YAML 1.1, YAML 1.2 and PyYAML when `uv` is on PATH.
+- The upstream branches follow: `examples-gasp-saas` carries the regenerated example and `vendors-gasp` has main merged in, both local until the owner pushes.
+
+---
+
 ## [2026-11-10] Four formulas corrected to the population their definitions name
 **Decision:** 90-Day Turnover, Average Services Deal Size, Days to Renewal and Auto-Renewal Rate change formula within `v1`. In each the prose definition was right and the canonical formula read a wider population: every early leaver in the company's history, every services opportunity whatever its stage, every subscription including cancelled ones and past term ends, every contract ending including the lapsed. The formulas now carry the missing filters (`CHANGELOG.md` Unreleased has the old and new behaviour of each). The owner approved the change on 2026-11-10.
 

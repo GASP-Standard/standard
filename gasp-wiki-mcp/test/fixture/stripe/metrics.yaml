@@ -8,7 +8,7 @@
 # the four movements Stripe's Billing dashboard shows and leaves reactivation
 # out, so it differs from GASP's Net New MRR in a month a customer returns;
 # paying_customers has no exact GASP name and goes to review.
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: stripe_example_metrics
 metrics:
   - name: mrr

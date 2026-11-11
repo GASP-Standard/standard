@@ -1,73 +1,80 @@
 /**
  * Apache Ossie (incubating) document shapes, as far as the GASP exporters use
  * them. Mirrors core-spec/ossie-schema.json, ontology/ontology.json and
- * ontology/mapping.json at apache/ossie 99c21c2 (2026-11-02). Every shape is
+ * ontology/mapping.json at apache/ossie ec1d089 (2026-11-11). Every shape is
  * `additionalProperties: false` upstream, so add nothing that is not here.
  */
 
-export const OSSIE_VERSION = "0.2.0.dev0";
+export const OSSIE_VERSION = "0.3.0.dev0";
+/** The development version 0.3.0.dev0 replaced (apache/ossie #691); `migrateDocument` reads a document declaring it. */
+export const LEGACY_OSSIE_VERSION = "0.2.0.dev0";
 /** The only dialect whose semantics Ossie defines (core-spec/expression_language.md). */
 export const OSSIE_DIALECT = "OSSIE_SQL_2026";
 export const GASP_VENDOR = "GASP";
 
 /**
- * A custom extension entry. `data` is the form the `OSSIE_VERSION` pin defines
- * (a JSON string); apache/ossie #522 proposes an object and, with the guardrails
- * agreed on dev@ on 2026-11-05, renames the key `custom_extensions` to
- * `nonportable_extensions` in the same migration. GASP writes the pinned form
- * under the pinned key and reads either form (`extensionData`) under either key;
- * `normaliseExtensions` rewrites a parsed document into the pinned shape so every
- * check downstream sees one key and one form.
+ * A non-portable extension entry: a vendor name and a `data` object whose keys
+ * are the vendor's own (apache/ossie #522, merged 2026-11-11). GASP writes this
+ * form under `nonportable_extensions`. Documents written before the merge carry
+ * the key `custom_extensions` with `data` as a JSON string; `migrateDocument`
+ * rewrites a parsed document into the current shape, so every check downstream
+ * sees one key and one form, and `extensionData` reads either.
  */
 export interface OssieExtension {
   vendor_name: string;
-  data: string;
+  data: Record<string, unknown>;
 }
 
-/** The payload of an extension entry in either form: a JSON string decoded, an object as is; undefined when neither. */
-export function extensionData(e: { data?: unknown } | undefined): unknown {
-  const d = e?.data;
+/** The payload of an extension entry in either form: an object as is, a JSON string decoded; undefined when neither gives an object. */
+export function extensionData(e: { data?: unknown } | undefined): Record<string, unknown> | undefined {
+  let d = e?.data;
   if (typeof d === "string") {
-    try { return JSON.parse(d) as unknown; } catch { return undefined; }
+    try { d = JSON.parse(d) as unknown; } catch { return undefined; }
   }
-  return typeof d === "object" && d !== null && !Array.isArray(d) ? d : undefined;
+  return typeof d === "object" && d !== null && !Array.isArray(d) ? (d as Record<string, unknown>) : undefined;
 }
 
-/** A document's GASP extension, parsed; undefined when absent or unreadable. */
+/** A document's GASP extension; undefined when absent or unreadable. */
 export function readGaspExtension<T = Record<string, unknown>>(exts: OssieExtension[] | undefined): T | undefined {
   return extensionData(exts?.find((x) => x.vendor_name === GASP_VENDOR)) as T | undefined;
 }
 
-/** The key apache/ossie #522 renames `custom_extensions` to; `normaliseExtensions` folds it back to the pinned key. */
-export const RENAMED_EXTENSIONS_KEY = "nonportable_extensions";
+/** The key `nonportable_extensions` replaced; `migrateDocument` folds it into the current key. */
+export const LEGACY_EXTENSIONS_KEY = "custom_extensions";
+const EXTENSIONS_KEY = "nonportable_extensions";
 
 /**
- * A parsed document rewritten to the pinned shape in place, anywhere in the
- * document: every `nonportable_extensions` array becomes `custom_extensions`
- * (appended after any entries already under the pinned key) and every
- * extension `data` given as an object becomes the JSON string the pin
- * defines. Returns the number of rewrites (keys folded plus payloads
- * stringified). A string `data` is left as it is, valid JSON or not.
+ * A parsed document rewritten to the current shape in place: a root `version`
+ * of 0.2.0.dev0 becomes `OSSIE_VERSION`, every `custom_extensions` array,
+ * anywhere in the document, becomes `nonportable_extensions` (after any entries
+ * already under that key) and every extension `data` given as a JSON string
+ * that holds an object becomes that object. Returns the number of rewrites.
+ * A string that is not a JSON object is left for the schema check to name, and
+ * nothing under an extension's `data` is walked, since those keys are the
+ * vendor's own.
  */
-export function normaliseExtensions(doc: unknown): number {
+export function migrateDocument(doc: unknown): number {
   let n = 0;
+  if (typeof doc === "object" && doc !== null && (doc as { version?: unknown }).version === LEGACY_OSSIE_VERSION) {
+    (doc as { version: unknown }).version = OSSIE_VERSION;
+    n++;
+  }
   const walk = (v: unknown): void => {
     if (Array.isArray(v)) { for (const x of v) walk(x); return; }
     if (typeof v !== "object" || v === null) return;
     const o = v as Record<string, unknown>;
-    if (Array.isArray(o[RENAMED_EXTENSIONS_KEY])) {
-      const renamed = o[RENAMED_EXTENSIONS_KEY] as unknown[];
-      o.custom_extensions = Array.isArray(o.custom_extensions) ? [...(o.custom_extensions as unknown[]), ...renamed] : renamed;
-      delete o[RENAMED_EXTENSIONS_KEY];
+    if (Array.isArray(o[LEGACY_EXTENSIONS_KEY])) {
+      const legacy = o[LEGACY_EXTENSIONS_KEY] as unknown[];
+      o[EXTENSIONS_KEY] = Array.isArray(o[EXTENSIONS_KEY]) ? [...(o[EXTENSIONS_KEY] as unknown[]), ...legacy] : legacy;
+      delete o[LEGACY_EXTENSIONS_KEY];
       n++;
     }
     for (const [k, x] of Object.entries(o)) {
-      if (k === "custom_extensions" && Array.isArray(x)) {
+      if (k === EXTENSIONS_KEY && Array.isArray(x)) {
         for (const e of x) {
-          if (typeof e === "object" && e !== null && typeof (e as { data?: unknown }).data === "object" && (e as { data?: unknown }).data !== null) {
-            (e as { data: unknown }).data = JSON.stringify((e as { data: unknown }).data);
-            n++;
-          }
+          if (typeof e !== "object" || e === null || typeof (e as { data?: unknown }).data !== "string") continue;
+          const data = extensionData(e as { data?: unknown });
+          if (data) { (e as { data: unknown }).data = data; n++; }
         }
       } else walk(x);
     }
@@ -76,9 +83,18 @@ export function normaliseExtensions(doc: unknown): number {
   return n;
 }
 
+/**
+ * A GASP extension entry holding `value` as plain JSON: a copy, so the document
+ * shares nothing with the caller, with undefined members dropped as a JSON
+ * writer drops them. Upstream requires `data` to be representable as JSON.
+ */
+export function gaspExtension(value: Record<string, unknown>): OssieExtension {
+  return { vendor_name: GASP_VENDOR, data: JSON.parse(JSON.stringify(value)) as Record<string, unknown> };
+}
+
 /** The extensions with the GASP one set to `value`, first; other vendors kept. */
-export function writeGaspExtension(exts: OssieExtension[] | undefined, value: unknown): OssieExtension[] {
-  return [{ vendor_name: GASP_VENDOR, data: JSON.stringify(value) }, ...(exts ?? []).filter((x) => x.vendor_name !== GASP_VENDOR)];
+export function writeGaspExtension(exts: OssieExtension[] | undefined, value: Record<string, unknown>): OssieExtension[] {
+  return [gaspExtension(value), ...(exts ?? []).filter((x) => x.vendor_name !== GASP_VENDOR)];
 }
 
 export type OssieDataType = "String" | "Integer" | "Decimal" | "Float" | "Boolean" | "Date" | "Time" | "DateTime" | "DateTimeTz" | "Opaque";
@@ -132,7 +148,7 @@ export interface OssieField {
   description?: string;
   datatype?: OssieDataType;
   ai_context?: OssieAIContext | string;
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 export interface OssieDataset {
@@ -144,7 +160,7 @@ export interface OssieDataset {
   description?: string;
   ai_context?: OssieAIContext | string;
   fields?: OssieField[];
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 export interface OssieRelationship {
@@ -154,7 +170,7 @@ export interface OssieRelationship {
   from_columns: string[];
   to_columns: string[];
   ai_context?: OssieAIContext | string;
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 export interface OssieMetric {
@@ -163,7 +179,7 @@ export interface OssieMetric {
   description?: string;
   datatype?: OssieDataType;
   ai_context?: OssieAIContext | string;
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 export interface OssieSemanticModel {
@@ -174,7 +190,7 @@ export interface OssieSemanticModel {
   datasets: OssieDataset[];
   relationships?: OssieRelationship[];
   metrics?: OssieMetric[];
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 // ── ontology (ontology/ontology.json) ────────────────────────────────────────
@@ -260,7 +276,7 @@ export interface OssieMapping {
   ontology_ref: OssieDocumentRef;
   semantic_model_ref: OssieDocumentRef;
   concept_mappings: OssieConceptMapping[];
-  custom_extensions?: OssieExtension[];
+  nonportable_extensions?: OssieExtension[];
 }
 
 // ── export result ────────────────────────────────────────────────────────────

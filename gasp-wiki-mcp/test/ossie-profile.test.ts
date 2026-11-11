@@ -210,7 +210,7 @@ describe("Profile: the Acme DDL", () => {
   it("gives a model that passes the bundled schema and carries the profile in the GASP extension", () => {
     expect(ossieSchemaErrors(r.model, "model", data)).toEqual([]);
     expect(r.model.name).toBe("Acme SaaS semantic model");
-    const ext = JSON.parse(r.model.datasets.find((x) => x.name === "customers")!.custom_extensions![0].data) as { profile: { kind: string; confidence: Record<string, string> } };
+    const ext = r.model.datasets.find((x) => x.name === "customers")!.nonportable_extensions![0].data as unknown as { profile: { kind: string; confidence: Record<string, string> } };
     expect(ext.profile).toMatchObject({ kind: "snapshot", confidence: { kind: "high", key: "medium", time: "high" } });
   });
 
