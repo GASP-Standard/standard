@@ -151,7 +151,7 @@ function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidat
         p.push(`Model: field "${ds.name}.${f.name}" has no ${OSSIE_DIALECT} expression`);
       }
       if (supersededDiffers(f.expression)) p.push(`Model: field "${ds.name}.${f.name}" has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
-      checkExt(f.nonportable_extensions, `field "${ds.name}.${f.name}"`, p);
+      checkExt(f.nonportable_extensions, `field "${ds.name}.${f.name}"`, p, v && { doc: "Model", undefinedOn: "field" });
     }
     checkExt(ds.nonportable_extensions, `dataset "${ds.name}"`, p, v && { doc: "Model", validate: v.Dataset });
   }
@@ -173,7 +173,7 @@ function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidat
       for (const c of r.from_columns) if (!fieldsOf(r.from).has(c)) p.push(`Model: relationship "${r.name}" from_columns names "${c}", which is not a field of dataset "${r.from}"`);
       for (const c of r.to_columns) if (!fieldsOf(r.to).has(c)) p.push(`Model: relationship "${r.name}" to_columns names "${c}", which is not a field of dataset "${r.to}"`);
     }
-    checkExt(r.nonportable_extensions, `relationship "${r.name}"`, p);
+    checkExt(r.nonportable_extensions, `relationship "${r.name}"`, p, v && { doc: "Model", undefinedOn: "relationship" });
   }
 
   for (const m of model.metrics ?? []) checkMetric(m, datasets, fieldsOf, p, v);
@@ -231,13 +231,16 @@ function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fields
  * `parseDocument` has its older JSON string form migrated; a JSON string
  * holding an object is still read here). A GASP payload at a placement the extension
  * schema defines (model, dataset, metric, mapping) must also match that
- * placement's definition; other vendors' payloads are theirs.
+ * placement's definition, and a GASP payload on a field or a relationship is
+ * reported, since the schema defines none there; other vendors' payloads are
+ * theirs. The Python vendor validator (gasp-ossie-validator/) reports the same
+ * findings through the upstream validator's --vendor hook.
  */
 function checkExt(
   exts: Array<{ vendor_name: string; data: unknown }> | undefined,
   who: string,
   p: string[],
-  schema?: { doc: "Model" | "Mapping"; validate: ValidateFunction },
+  schema?: { doc: "Model" | "Mapping"; validate: ValidateFunction } | { doc: "Model"; undefinedOn: "field" | "relationship" },
 ): void {
   for (const e of exts ?? []) {
     const data = extensionData(e);
@@ -246,6 +249,10 @@ function checkExt(
       continue;
     }
     if (!schema || e.vendor_name !== GASP_VENDOR) continue;
+    if ("undefinedOn" in schema) {
+      p.push(`${schema.doc}: nonportable_extensions of ${who} (${GASP_VENDOR}): GASP defines no extension on a ${schema.undefinedOn}; its payloads sit on the semantic model, a dataset, a metric or the mapping`);
+      continue;
+    }
     if (!schema.validate(data)) {
       for (const err of schema.validate.errors ?? []) p.push(`${schema.doc}: nonportable_extensions of ${who} (${GASP_VENDOR}): ${formatSchemaError(err)}`);
     }

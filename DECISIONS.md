@@ -5,6 +5,27 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-13] GASP's Ossie vendor validator is a Python package beside the vendored validator, reading a derived copy of the extension schema
+**Decision:** The checker for the upstream vendor hook (apache/ossie #697, `validate.py --vendor GASP`) lives in `gasp-wiki-mcp/gasp-ossie-validator/`: a Python package that registers `gasp_ossie_validator:check` under the entry point group `ossie.vendor_validators` as `GASP`. It validates each payload against `ModelExtension`, `DatasetExtension`, `MetricExtension` or `MappingExtension` by the kind of site the upstream validator names. The schema it reads is a copy of `standard/gasp-ossie-extension-v1.json` inside the package, written by `npm run derive` and held current by `derive:check`. A GASP payload on a field or a relationship is a finding in both the Python checker and `checkExport`. The package is unpublished and outside the npm tarball. The vendored validator moved to upstream `5eb0523` the same day, the first pin that carries the hook.
+
+**Context:** #697 merged on 2026-11-12. The upstream validator checks that an extension's `data` is an object and hands the contents to whichever checker is installed for the vendor name; the hook loads Python entry points, so the checker has to be Python. GASP already validates the same payloads in TypeScript (`check.ts`, with ajv) for `validate_mapping` and `compile_model`, against the same schema. The upstream release pull requests for 0.3.0-incubating open over the weekend of 2026-11-14.
+
+**Alternatives considered:**
+- Read the schema from `standard/` at build time with a hatch `force-include`: one copy on disk and a package that builds only inside this repository. A derived copy builds from its own directory, so it can go to PyPI unchanged.
+- Fetch the schema from its published URL at run time: the validator then needs the network and checks against whatever is served, not what the commit holds.
+- Wait for 0.3.0-incubating before moving the pin: the hook would stay untested here through the release window. Every export passed at `5eb0523` and the schema version is unchanged, so the move cost nothing.
+- Stay silent on fields and relationships: an extension GASP never defined would pass as valid GASP.
+
+**Consequences:**
+- Two implementations check one schema. `test/ossie-vendor.test.ts` plants bad payloads at five sites and requires one `[Vendor GASP]` line per `checkExport` finding with the same text, so they cannot drift apart unnoticed.
+- `npm run derive` has one more output and `test/derived.test.ts` covers it; a schema edit without a derive fails the suite.
+- `validateUpstream` takes several files per run and `{ vendor: true }`. The vendor tests need `uv`, as the other validator tests do, and skip without it.
+- Tools now report a `vendor_name: GASP` entry on a field or a relationship. GASP writes none, so no document it produced changes status.
+- Publishing to PyPI is the owner's decision. Until then the package installs from its directory (`uv run --with ../gasp-ossie-validator`).
+- When the pin moves to the 0.3.0-incubating release the refresh steps in `ossie-validator/README.md` apply as before.
+
+---
+
 ## [2026-11-11] GASP writes Apache Ossie 0.3.0.dev0 and still reads the documents it wrote before
 **Decision:** Every Ossie document GASP writes (the export, the example, the conformance cases and the documents the pipeline tools return) declares `0.3.0.dev0` and carries its payloads under `nonportable_extensions` with `data` as an object. `custom_extensions` is gone from the writers. The readers keep it: `migrateDocument` in `gasp-wiki-mcp/src/ossie/types.ts` rewrites a parsed document that declares `0.2.0.dev0`, uses the old key or holds `data` as a JSON string into the current shape before any check runs, so a tool given an old document works on it and hands back a current one. The YAML writer (`ossieYaml`) quotes every string a YAML 1.1 loader would read as another type. The validator is re-vendored at `ec1d089`. The owner asked for the move on 2026-11-11.
 

@@ -1,13 +1,20 @@
 /**
  * Runs the vendored upstream Ossie validator (ossie-validator/validation/validate.py)
- * with `uv run`. The script declares its own dependencies (PEP 723).
+ * with `uv run`. The script declares its own dependencies (PEP 723). With
+ * `vendor: true` the run adds GASP's vendor validator (gasp-ossie-validator/,
+ * installed from its directory with `--with`) and `--vendor GASP`, so every GASP
+ * payload in the file is checked against the GASP extension schema by its site.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { GASP_VENDOR } from "./types.js";
 
 // src/ossie and build/ossie both sit two levels below the package root.
-const VALIDATOR_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "ossie-validator");
+const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const VALIDATOR_DIR = resolve(PACKAGE_DIR, "ossie-validator");
+/** GASP's vendor validator for the upstream `--vendor` hook: a Python package, outside the npm tarball. */
+export const VENDOR_VALIDATOR_DIR = resolve(PACKAGE_DIR, "gasp-ossie-validator");
 
 export type OssieKind = "model" | "ontology" | "mapping";
 
@@ -26,8 +33,9 @@ export function uvAvailable(): boolean {
 }
 
 export async function validateUpstream(
-  file: string,
-  kind: "model" | "ontology" | "mapping"
+  file: string | string[],
+  kind: OssieKind,
+  opts: { vendor?: boolean } = {}
 ): Promise<{ ok: boolean; output: string; skipped?: string }> {
   if (!uvAvailable()) {
     return {
@@ -36,7 +44,9 @@ export async function validateUpstream(
       skipped: "uv is not on PATH, so the upstream Ossie validator was not run. Install uv (https://docs.astral.sh/uv/) to enable it.",
     };
   }
-  const args = ["run", "validation/validate.py", ...SCHEMA_ARG[kind], "--", resolve(file)];
+  const files = (Array.isArray(file) ? file : [file]).map((f) => resolve(f));
+  const vendor = opts.vendor ? { run: ["--with", VENDOR_VALIDATOR_DIR], script: ["--vendor", GASP_VENDOR] } : { run: [], script: [] };
+  const args = ["run", ...vendor.run, "validation/validate.py", ...SCHEMA_ARG[kind], ...vendor.script, "--", ...files];
   return new Promise((done) => {
     let output = "";
     const child = spawn("uv", args, { cwd: VALIDATOR_DIR, shell: false });

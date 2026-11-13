@@ -54,6 +54,6 @@ The standard, its exports and the relationship graph are free under CC BY 4.0 an
 
 ## Relationship to Apache Ossie
 
-GASP publishes its ontology, reference semantic model and mapping as Apache Ossie (incubating) files, generated into `standard/exports/ossie/` and checked against the upstream validator, which is vendored in `gasp-wiki-mcp/ossie-validator/` at a pinned commit. Proposals GASP would like to make upstream are written up in `docs/ossie-interop-spec.md`. Any that are made go through the Ossie project's own process.
+GASP publishes its ontology, reference semantic model and mapping as Apache Ossie (incubating) files, generated into `standard/exports/ossie/` and checked against the upstream validator, which is vendored in `gasp-wiki-mcp/ossie-validator/` at a pinned commit. The payloads GASP adds to those files under `vendor_name: GASP` are checked by its vendor validator in `gasp-wiki-mcp/gasp-ossie-validator/`, which the upstream validator calls with `--vendor GASP`. Proposals GASP would like to make upstream are written up in `docs/ossie-interop-spec.md`. Any that are made go through the Ossie project's own process.
 
 GASP is not an Apache Software Foundation project and is not governed by the ASF. It works with Apache Ossie (incubating) and contributes to it as an outside user of the format.

@@ -12,6 +12,8 @@
  *   standard/exports/ossie/gasp.mapping.yaml        Ossie mapping of the ontology onto the model
  *   standard/exports/ossie/coverage.json            how each formula was exported (direct with its portability rung, staged, not computable)
  *   standard/exports/ossie/example/                 the Core cut for apache/ossie examples/: gasp_saas ontology, model and mapping, README.md
+ *   gasp-wiki-mcp/gasp-ossie-validator/src/gasp_ossie_validator/gasp-ossie-extension-v1.json
+ *                                                   copy of standard/gasp-ossie-extension-v1.json for the Python vendor validator
  *
  * The website build (gasp-wiki-frontend/scripts/generate-content.ts) copies
  * standard/exports/ to public/downloads/ and standard/gasp-adapter-schema.json
@@ -47,7 +49,10 @@ export const DERIVED_FILES = {
   exampleModel: join(exportsDir, "ossie", "example", `${EXAMPLE_BASENAME}.semantic_model.yaml`),
   exampleMapping: join(exportsDir, "ossie", "example", `${EXAMPLE_BASENAME}.mapping.yaml`),
   exampleReadme: join(exportsDir, "ossie", "example", "README.md"),
+  vendorSchema: join(root, "gasp-wiki-mcp", "gasp-ossie-validator", "src", "gasp_ossie_validator", "gasp-ossie-extension-v1.json"),
 };
+/** The published GASP extension schema; the Python vendor validator (gasp-ossie-validator/) ships a copy. */
+export const EXTENSION_SCHEMA_SOURCE = join(root, "standard", "gasp-ossie-extension-v1.json");
 /** The canonical adapter schema, the only copy in the standard; the website serves it at /schemas/gasp-adapter-v1.json. */
 export const SCHEMA_SOURCE = join(root, "standard", "gasp-adapter-schema.json");
 
@@ -249,6 +254,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
     ossieCoverage: JSON.stringify(coverage, null, 2) + "\n",
     exampleOntology: ossieYaml(example.ontology), exampleModel: ossieYaml(example.model), exampleMapping: ossieYaml(example.mapping),
     exampleReadme: exampleReadme(example, data),
+    vendorSchema: readFileSync(EXTENSION_SCHEMA_SOURCE, "utf-8"),
   };
 }
 

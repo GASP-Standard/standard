@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaspwiki.com/schemas/gasp-ossie-extension-v1.json",
+  "title": "GASP Ossie Extension",
+  "description": "Describes the GASP payloads in Apache Ossie documents. Every Ossie document GASP writes carries nonportable_extensions entries with vendor_name GASP whose data is an object; this schema describes that object, one definition per placement: the semantic model, a dataset, a metric and the mapping. GASP writes no extension on fields or relationships. Each key here is a gap in the Ossie specification today, so a key retired by an upstream merge leaves this schema. Versioned independently of the Ossie specification.",
+  "anyOf": [
+    { "$ref": "#/$defs/ModelExtension" },
+    { "$ref": "#/$defs/DatasetExtension" },
+    { "$ref": "#/$defs/MetricExtension" },
+    { "$ref": "#/$defs/MappingExtension" }
+  ],
+  "$defs": {
+    "ModelExtension": {
+      "type": "object",
+      "description": "On the semantic model document: how the model was made. profile_schema writes profiled; compile_model writes compiled and drops the profiled record it replaces.",
+      "properties": {
+        "profiled": {
+          "type": "object",
+          "description": "The model was written by the schema profiler (profile_schema).",
+          "required": ["input", "statistics", "questions"],
+          "properties": {
+            "input": { "enum": ["columns-json", "tables-json", "columns-csv", "ddl"], "description": "The schema format the profiler read: information_schema rows as JSON or CSV, a tables list or CREATE TABLE statements" },
+            "statistics": { "type": "boolean", "description": "Whether per-column statistics were given" },
+            "questions": { "type": "integer", "minimum": 0, "description": "How many questions the profiler could not settle" }
+          },
+          "additionalProperties": false
+        },
+        "compiled": {
+          "type": "object",
+          "description": "The GASP metrics were compiled into the model (compile_model).",
+          "required": ["gasp_version", "dialect", "period_spine", "metrics", "staged"],
+          "properties": {
+            "gasp_version": { "const": "1", "description": "The GASP extension version" },
+            "dialect": { "$ref": "#/$defs/OssieDialect", "description": "The dialect the compiled metrics and staged sources are written in" },
+            "period_spine": { "type": "string", "description": "The table of reporting periods the staged datasets read" },
+            "metrics": { "type": "integer", "minimum": 0, "description": "How many GASP metrics were compiled in" },
+            "staged": { "type": "integer", "minimum": 0, "description": "How many staged datasets were written" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DatasetExtension": {
+      "type": "object",
+      "description": "On a dataset. A reference dataset carries kind with cel and activeWhen where the ontology declares them; a staged dataset carries staged, for, reason and source_dialect; the period spine carries period_spine; a profiled dataset carries profile. record_decision adds profile to whatever a dataset already carries.",
+      "properties": {
+        "kind": { "enum": ["event", "snapshot", "fact"], "description": "The GASP dataset kind (ontology.json datasets)" },
+        "cel": { "enum": ["Revenue_Event", "Cost_Event", "Contract_Event", "Amendment_Event", "Lifecycle_State_Change", "Credit_Event"], "description": "The CEL event class the dataset holds" },
+        "activeWhen": { "type": "string", "description": "Grammar condition selecting live rows, used for cohort membership" },
+        "staged": { "const": true, "description": "The dataset is a staged per-period dataset holding one metric's value" },
+        "for": { "type": "string", "description": "The metric the staged dataset holds" },
+        "reason": { "$ref": "#/$defs/StagedReason" },
+        "source_dialect": { "$ref": "#/$defs/OssieDialect", "description": "The dialect the dataset's source query is written in (Ossie's source has no dialect property)" },
+        "sources": {
+          "type": "object",
+          "description": "The source query in each other dialect",
+          "propertyNames": { "$ref": "#/$defs/OssieDialect" },
+          "additionalProperties": { "type": "string" }
+        },
+        "period_spine": { "const": true, "description": "The dataset is the table of reporting periods the staged datasets read" },
+        "profile": { "$ref": "#/$defs/DatasetProfile" }
+      },
+      "dependentRequired": {
+        "staged": ["for", "reason", "source_dialect"],
+        "for": ["staged"],
+        "reason": ["staged"],
+        "source_dialect": ["staged"],
+        "sources": ["staged"],
+        "cel": ["kind"],
+        "activeWhen": ["kind"]
+      },
+      "additionalProperties": false
+    },
+    "MetricExtension": {
+      "type": "object",
+      "description": "On a metric GASP compiled: the canonical metric it implements.",
+      "required": ["gasp_id", "gasp_version", "unit", "formula"],
+      "properties": {
+        "gasp_id": { "type": "string", "description": "The GASP formula id (formulas.json)" },
+        "gasp_version": { "const": "1", "description": "The GASP extension version" },
+        "form": { "enum": ["O", "M"], "description": "The dual-lens form: Operating or Market" },
+        "variant": { "type": "string", "description": "The named variant of the formula" },
+        "unit": { "enum": ["currency", "percent", "ratio", "count", "days", "months", "hours", "minutes", "milliseconds", "score"], "description": "The unit of the value; ratios are unscaled" },
+        "formula": { "type": "string", "description": "The canonical formula in the GASP grammar" },
+        "gasp_breakdown": { "type": "string", "description": "The breakdown dimension, as a field or dataset.field" },
+        "staged": { "const": true, "description": "The metric reads a staged dataset" }
+      },
+      "additionalProperties": false
+    },
+    "MappingExtension": {
+      "type": "object",
+      "description": "On the mapping document. A mapping converted from a v1 adapter carries the adapter's metadata; propose_mapping writes organization and proposed; record_decision keeps what is there and adds metricOwners and decisions.",
+      "properties": {
+        "adapter_version": { "type": "string", "description": "The version of the v1 adapter the mapping was converted from" },
+        "organization": { "type": "string", "description": "The organization the mapping describes" },
+        "warehouse": { "type": "string", "description": "The warehouse platform" },
+        "metricOwners": {
+          "type": "array",
+          "description": "Who owns each metric definition, as in the adapter schema",
+          "items": { "$ref": "#/$defs/MetricOwner" }
+        },
+        "proposed": {
+          "type": "object",
+          "description": "What the mapping proposer paired and what it left to review",
+          "required": ["datasets", "fields", "transforms", "candidates", "unmatched"],
+          "properties": {
+            "datasets": { "type": "integer", "minimum": 0, "description": "Tables proposed to a GASP dataset" },
+            "fields": { "type": "integer", "minimum": 0, "description": "Field pairs in the mapping" },
+            "transforms": { "type": "integer", "minimum": 0, "description": "Field pairs read through a transform" },
+            "candidates": { "type": "array", "items": { "$ref": "#/$defs/Candidate" } },
+            "unmatched": { "type": "array", "items": { "$ref": "#/$defs/UnmatchedTable" } }
+          },
+          "additionalProperties": false
+        },
+        "decisions": {
+          "type": "array",
+          "description": "Every decision on file, one per subject",
+          "items": { "$ref": "#/$defs/DecisionRecord" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "OssieDialect": {
+      "enum": ["POSTGRES", "SNOWFLAKE", "BIGQUERY", "DATABRICKS"],
+      "description": "A registered Ossie dialect GASP compiles to"
+    },
+    "StagedReason": {
+      "enum": ["cohort", "lag", "window", "all_time", "distinct pair", "bucket", "total", "to_date", "at period_start", "period bound in filter", "period bound", "period_days"],
+      "description": "The construct the Ossie expression language cannot state, so the metric is staged"
+    },
+    "Confidence": { "enum": ["declared", "high", "medium", "low"] },
+    "DatasetProfile": {
+      "type": "object",
+      "description": "What the profiler inferred about the table, with confidence and evidence; record_decision marks a decided key, time field or kind declared",
+      "properties": {
+        "kind": { "enum": ["snapshot", "event", "fact", "reference"], "description": "The inferred or decided table kind" },
+        "confidence": {
+          "type": "object",
+          "properties": {
+            "kind": { "$ref": "#/$defs/Confidence" },
+            "key": { "$ref": "#/$defs/Confidence" },
+            "time": { "$ref": "#/$defs/Confidence" }
+          },
+          "additionalProperties": false
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "kind": { "type": "string" },
+            "key": { "type": "string" },
+            "time": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "questions": { "type": "array", "items": { "$ref": "#/$defs/Question" } },
+        "values": {
+          "type": "object",
+          "description": "Column → the enum values listed for it",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Question": {
+      "type": "object",
+      "description": "What the profiler could not settle from the names and statistics",
+      "required": ["dataset", "about", "question", "why"],
+      "properties": {
+        "dataset": { "type": "string" },
+        "about": { "enum": ["key", "time", "type"] },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "why": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "MetricOwner": {
+      "type": "object",
+      "required": ["metric", "team"],
+      "properties": {
+        "metric": { "type": "string" },
+        "team": { "type": "string" },
+        "contact": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Candidate": {
+      "type": "object",
+      "description": "A table or column pair the evidence supports without settling",
+      "required": ["table", "source", "dataset", "evidence", "settle"],
+      "properties": {
+        "table": { "type": "string" },
+        "source": { "type": "string" },
+        "column": { "type": "string" },
+        "dataset": { "type": "string" },
+        "field": { "type": "string" },
+        "evidence": { "type": "string" },
+        "settle": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "UnmatchedTable": {
+      "type": "object",
+      "description": "A table no GASP dataset matches, with the nearest one",
+      "required": ["table", "source"],
+      "properties": {
+        "table": { "type": "string" },
+        "source": { "type": "string" },
+        "best": {
+          "type": "object",
+          "required": ["dataset", "score"],
+          "properties": {
+            "dataset": { "type": "string" },
+            "score": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DecisionRecord": {
+      "type": "object",
+      "description": "A decision as recorded: who decided what, when, and what applying it did",
+      "required": ["about", "owner", "date", "effect"],
+      "properties": {
+        "about": { "enum": ["key", "time", "kind", "type", "table", "field", "owner", "topic"] },
+        "dataset": { "type": "string" },
+        "column": { "type": "string" },
+        "to": { "type": "string" },
+        "answer": { "anyOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] },
+        "accept": { "type": "boolean" },
+        "transform": { "type": "string" },
+        "metric": { "type": "string" },
+        "contact": { "type": "string" },
+        "topic": { "type": "string" },
+        "owner": { "type": "string" },
+        "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "note": { "type": "string" },
+        "effect": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
