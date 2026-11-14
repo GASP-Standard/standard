@@ -4,7 +4,7 @@ This file says who decides what goes into the GASP Standard, how those decisions
 
 ## Who maintains it
 
-GASP has one maintainer, Gareth O'Shea, who wrote it and maintains it as an individual. No company owns or sponsors it. He reviews every change, runs the releases of the `gasp-standard-mcp` npm package and publishes koinedata.com under the name Koine Data.
+GASP has one maintainer, Gareth O'Shea, who wrote it and maintains it as an individual. No company owns or sponsors it. He reviews every change, runs the releases of the `gasp-standard-mcp` npm package and publishes gaspwiki.com.
 
 This repository is a mirror, so nothing merges here directly. The working repository is private and holds the website source as well; a workflow copies `standard/`, `gasp-wiki-mcp/`, the decision documents and these files here on every change to its main branch.
 
@@ -20,7 +20,7 @@ Wording fixes, examples and tooling changes go straight to review without a deci
 
 The standard and the MCP package carry separate versions.
 
-**The standard** is versioned by its content path. Every page lives under `/v1/` on koinedata.com (moved from gaspwiki.com in November 2026; every gaspwiki.com URL redirects permanently to the same path). The metric and definition URLs under it are stable identifiers that agents, adapters and the Apache Ossie export all point at. The MCP package and the site also publish a content hash (`standard-version.json`) so a client can tell when the canon changed.
+**The standard** is versioned by its content path. Every page lives under `/v1/` on gaspwiki.com. The metric and definition URLs under it are stable identifiers that agents, adapters and the Apache Ossie export all point at. The MCP package and the site also publish a content hash (`standard-version.json`) so a client can tell when the canon changed.
 
 A breaking change to the canon is one that makes an existing implementation silently wrong or unable to resolve a reference:
 
@@ -50,7 +50,7 @@ If the maintainer stops responding for six months, contributors are encouraged t
 
 ## What is free and what is paid
 
-The standard, its exports and the relationship graph are free under CC BY 4.0 and the `gasp-standard-mcp` package with all of its tools under Apache 2.0, and they will stay so; anyone may run the whole pipeline locally. The maintainer also sells two things built on top: GASP Workspace, a hosted per-company store of a company's mapping, decisions, check results and readiness history, used through the hosted MCP endpoint, where the tools that read the standard are free and the tools that implement it for a company need a signed-in Workspace; and GASP certification, a reviewed and dated readiness report. Neither changes a definition, a formula or a file in this repository, and no paid customer gets a say in the standard that a contributor does not.
+The standard, its exports and the relationship graph are free under CC BY 4.0 and the `gasp-standard-mcp` package with all of its tools under Apache 2.0, and they will stay so; anyone may run the whole pipeline locally. The maintainer also sells two things built on top, under the name Koine Data at https://koinedata.com: GASP Workspace, a hosted per-company store of a company's mapping, decisions, check results and readiness history, used through the hosted MCP endpoint, where the tools that read the standard are free and the tools that implement it for a company need a signed-in Workspace; and GASP certification, a reviewed and dated readiness report. Neither changes a definition, a formula or a file in this repository, and no paid customer gets a say in the standard that a contributor does not.
 
 ## Relationship to Apache Ossie
 

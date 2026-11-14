@@ -44,7 +44,7 @@ Contraction MRR and Reactivation MRR also move ARR; the diagram shows the three 
 
 ## Reading the Map
 
-The [interactive diagram](https://koinedata.com/v1/relationships) ([relationships.json](relationships.json)) and the MCP traversal tools read the same graph. Its edges come in three groups:
+The [interactive diagram](https://gaspwiki.com/v1/relationships) ([relationships.json](relationships.json)) and the MCP traversal tools read the same graph. Its edges come in three groups:
 
 - **Component** edges say A is an input to B's formula. They are generated from the canonical formulas rather than drawn by hand, so they always match them.
 - **Drives**, **reduces** and **predicts** edges are curated. A drives B when A rising pushes B up. A reduces B when A rising pushes B down, which lets a lower-is-better metric such as First Response Time, or a cost, point at what it affects. A predicts B when A moves first and forecasts where B goes.

@@ -2,7 +2,7 @@
 
 /**
  * The GASP Standard MCP server over Streamable HTTP, for a hosted endpoint
- * such as https://mcp.koinedata.com/mcp that Claude connects to as a remote
+ * such as https://mcp.gaspwiki.com/mcp that Claude connects to as a remote
  * server. Stateless: every request gets its own transport and server over the
  * data loaded once, so any number of instances can sit behind one hostname.
  * No authentication unless GASP Workspace is configured: the standard is
@@ -26,7 +26,7 @@
  * Every tool call is written to stderr as one JSON line, `{"event":"tool",
  * "tool":"lookup_metric","ms":12,"ok":true,"client":"claude-ai/1.0"}`, so the
  * host's log stream counts calls per tool. Arguments and results are never
- * logged, which is what the privacy policy at koinedata.com/privacy promises.
+ * logged, which is what the privacy policy at gaspwiki.com/privacy promises.
  *
  * GASP Workspace, on only when `WORKSPACE_DATABASE_URL` and `WORKSPACE_ISSUER`
  * are both set (`workspaceFromEnv`). The server is then an OAuth resource
@@ -217,7 +217,7 @@ export function startHttpServer(options: HttpOptions = {}): Server {
     }
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
       res.writeHead(200, { "Content-Type": "application/json", ...CORS });
-      res.end(JSON.stringify({ name: "gasp-standard", version: PKG_VERSION, tools: toolCount(!!ws), endpoint: path, documentation: "https://koinedata.com/v1/tools" }));
+      res.end(JSON.stringify({ name: "gasp-standard", version: PKG_VERSION, tools: toolCount(!!ws), endpoint: path, documentation: "https://gaspwiki.com/v1/tools" }));
       return;
     }
     res.writeHead(404, { "Content-Type": "text/plain" });

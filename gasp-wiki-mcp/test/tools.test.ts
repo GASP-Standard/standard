@@ -56,7 +56,7 @@ describe("resolveMetric", () => {
       for (const m of r.candidates) {
         expect(text).toContain(`(${m.department})`);
         expect(text).toContain(`\`${metricFormulaId(data, m)}\``);
-        expect(text).toMatch(new RegExp(`https://koinedata\\.com/v1/metrics/[a-z-]+/${m.slug}`));
+        expect(text).toMatch(new RegExp(`https://gaspwiki\\.com/v1/metrics/[a-z-]+/${m.slug}`));
       }
     }
   });
@@ -540,7 +540,7 @@ describe("suggestions and search", () => {
     expect(fuzzy[0].name).toBe("Net Revenue Retention (NRR)");
     expect(search(data, "chrun", 5).some((r) => /Churn/.test(r.name))).toBe(true);
     expect(search(data, "churn", 5).some((r) => r.didYouMean)).toBe(false);
-    for (const r of [...fuzzy, ...search(data, "churn", 5)]) expect(r.url).toMatch(/^https:\/\/koinedata\.com\//);
+    for (const r of [...fuzzy, ...search(data, "churn", 5)]) expect(r.url).toMatch(/^https:\/\/gaspwiki\.com\//);
   });
 });
 
@@ -562,7 +562,7 @@ describe("graph tool replies", () => {
     const rel = getRelationships(data, "nrr");
     const all = [...rel.upstream, ...rel.downstream].map((r) => r.node);
     expect(all.length).toBeGreaterThan(0);
-    for (const n of all) expect(nodeUrl(n).startsWith("https://koinedata.com/v1/"), n.id).toBe(true);
+    for (const n of all) expect(nodeUrl(n).startsWith("https://gaspwiki.com/v1/"), n.id).toBe(true);
     expect(nodeUrl(rel.node!)).toBe(metricUrl(data.metrics.find((m) => m.slug === rel.node!.slug && m.department === rel.node!.department)!));
   });
 
@@ -595,13 +595,13 @@ describe("validate_adapter dataset check", () => {
 describe("data requirement entry", () => {
   it("shows the dataset each field is read from and the staged flag", () => {
     for (const dr of data.dataRequirements.slice(0, 40)) {
-      const md = formatDataRequirement(dr, "https://koinedata.com/v1/metrics/core/x");
+      const md = formatDataRequirement(dr, "https://gaspwiki.com/v1/metrics/core/x");
       for (const p of dr.placeholders) {
         const [f, ds] = p.split("@");
         expect(md, p).toContain(`| \`${f}\` | ${ds} |`);
       }
       expect(md).toContain(`- **Staged:** ${dr.staged ? "yes" : "no"}`);
-      expect(md).toContain("- **URL:** https://koinedata.com/v1/metrics/core/x");
+      expect(md).toContain("- **URL:** https://gaspwiki.com/v1/metrics/core/x");
     }
   });
 });

@@ -1,7 +1,28 @@
 # GASP Standard: Decisions
 
-Architecture decision records for the GASP Standard project (koinedata.com site, formerly gaspwiki.com, +
+Architecture decision records for the GASP Standard project (the gaspwiki.com site, the koinedata.com commercial site and the
 gasp-wiki-mcp server). Append new entries at the top.
+
+---
+
+## [2026-11-14] The standard returns to gaspwiki.com; koinedata.com becomes the commercial site
+**Decision:** The GASP Standard lives on gaspwiki.com again: the site, every canonical URL the MCP tools emit, the remote data and version fetch, the package `homepage`, the registry `websiteUrl` and the free hosted endpoint the docs name (`https://mcp.gaspwiki.com/mcp`). koinedata.com is a separate site for the commercial services from Koine Data: GASP Workspace, GASP certification and the design partner programme. This supersedes the 2026-11-09 record below, which moved everything to koinedata.com.
+
+**Two voices:** gaspwiki.com is a reference, written in a neutral voice and maintained by Gareth O'Shea, with no company named as owner or publisher (footer, JSON-LD Organization, privacy and accessibility pages). koinedata.com is a company's site, written as "we" and "your", with Koine Data as the named owner. The products keep their names, GASP Workspace and GASP certification, written "by Koine Data" on first reference.
+
+**The commercial site:** `koinedata-site/`, a second Astro project in the private monorepo (Astro 4 and Tailwind, static, light theme, no React), starting from the GASP design tokens with its own wordmark. The Workspace page moved there as its homepage, beside a privacy page and a 404. It deploys as its own Cloudflare Pages project (root directory `koinedata-site`) and is never mirrored, since `mirror.yml` lists the public directories by name. It imports the benchmark comparison component and its figures from the standard's site, so both state the same run.
+
+**Cross-references:** the standard's site names the offer in three places, each a link to `https://koinedata.com`: one labelled block on the homepage, one external link in the navigation and one footer line. The "Domain split" tests in `site-quality.test.ts` fail when Koine Data or koinedata.com appears in any other source file of the standard's site, when a link goes deeper than the root or when the publisher credit returns. The commercial site links to the standard through `standard()` in `koinedata-site/src/lib/site.ts`; `koinedata-site/test/site.test.ts` checks the links, the redirects and the copy.
+
+**Redirects:** gaspwiki.com `/workspace` answers 301 to `https://koinedata.com/`. koinedata.com answers 301 for every path the standard held (`/v1/*`, `/downloads/*`, `/schemas/*`, `/api/*`, `/commands/*`, the quiz, the accessibility page and the llms files) to the same path on gaspwiki.com with `?ref=koinedata` appended. The query string is deliberate. Browsers that visited gaspwiki.com between 2026-11-09 and 2026-11-14 hold a cached permanent redirect from `gaspwiki.com/x` to `koinedata.com/x`; sent back to the bare path they would bounce between the two domains, while `gaspwiki.com/x?ref=koinedata` is an address no cache has seen. Canonical tags carry no query, so a search engine sees one URL per page. The redirect rule on the gaspwiki.com zone that sent everything to koinedata.com is the owner's to delete on the day of the flip.
+
+**Workspace addresses stay on koinedata.com:** the tools' sign-in message and the protected-resource metadata's `resource_documentation` name `https://koinedata.com/workspace`, which answers 302 to the homepage until the report pages of Workspace step 3 live under it. The `WORKSPACE_RESOURCE` default is `https://mcp.koinedata.com/mcp`. npm 1.20.0 was published before the 2026-11-09 move, so against the published package no URL of the standard changes; only these Workspace addresses do. The Workspace is off by default.
+
+**Open for Workspace go-live:** the hosted app answers on both `mcp.koinedata.com` and `mcp.gaspwiki.com`, the address in the Claude directory listing. With sign-in on, a protected tool called through `mcp.gaspwiki.com` gets a 401 whose metadata names the resource `https://mcp.koinedata.com/mcp`. A client that checks the resource against the URL it connected to (RFC 9728) refuses it. To settle before the variables are set (`docs/workspace-next-steps.md`, step 4): serve the metadata per request host, or have the free endpoint tell the caller to connect to `mcp.koinedata.com` for the Workspace tools.
+
+**Identifiers stay:** as in the 2026-11-09 record. The two schema `$id`s and `GASP_ONTOLOGY_IRI` never left gaspwiki.com. `hello@gaspwiki.com` stays the standard's contact. The commercial site uses it until a koinedata.com mailbox exists (`CONTACT_EMAIL` in `koinedata-site/src/lib/site.ts`, the one place it is written).
+
+**Context:** The owner reversed the direction of the 2026-11-09 move on 2026-11-13 and approved the plan on 2026-11-14. A standard that asks other vendors and Apache Ossie to adopt it reads as neutral when no company's offer shares its domain and its footer. The commercial offer needs a company's voice and a named owner. One site could not hold both. A second repository was weighed and set aside: the commercial pages share the design tokens and the benchmark figures with the standard's site and the private monorepo already keeps them out of the mirror. A path on gaspwiki.com was set aside because it keeps both voices on one domain.
 
 ---
 
@@ -84,6 +105,8 @@ gasp-wiki-mcp server). Append new entries at the top.
 ---
 
 ## [2026-11-09] koinedata.com becomes the primary domain; gaspwiki.com redirects
+**Superseded 2026-11-14** (record at the top) for the site, the URLs the tools emit and the publisher credit: the standard is back on gaspwiki.com and koinedata.com is the commercial site. "Identifiers stay" below still holds.
+
 **Decision:** The site, the canonical URLs the MCP tools emit and the hosted MCP endpoint move to koinedata.com, the corporate home of Koine Data, the team that publishes and uses GASP. The GASP Standard keeps its name, its npm package and its registry name; Koine Data is named as the publisher (JSON-LD Organization, footer). gaspwiki.com and www.gaspwiki.com answer with a 301 to the same path on koinedata.com, except `/schemas/*`, which keeps serving so a validator fetching a schema by its id never meets a redirect. The hosted MCP server answers on both `mcp.koinedata.com` and `mcp.gaspwiki.com`, with koinedata the advertised URL and the Workspace's OAuth resource default. `aicf.gaspwiki.com` and the email addresses (`hello@`, `noreply@`) stay on gaspwiki.com until they move on their own.
 
 **Identifiers stay:** the two schema `$id`s (`https://gaspwiki.com/schemas/gasp-adapter-v1.json`, `.../gasp-ossie-extension-v1.json`) and `GASP_ONTOLOGY_IRI` are identifiers, not locations, as JSON Schema treats `$id`; every adapter and exported Ossie document names them, so changing them is a breaking change under `GOVERNANCE.md`. They move only with a v2 schema. Texts already posted upstream and the history documents keep their gaspwiki.com links, which the redirect resolves.
