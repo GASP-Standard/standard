@@ -5,6 +5,17 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-15] The koinedata.com homepage is written for an executive
+**Decision:** The commercial homepage opens with the problem and the benchmark figure ("AI agents that get your numbers right"), shows the comparison directly under the hero, then states three outcomes (one set of numbers, a named owner for each, it runs where your data lives), certification in one paragraph and the design partner places. It runs to about 400 words, the chart's labels included, where the first version ran to about 1,050. It names no MCP tool and no pipeline term (readiness level, semantic model, drift, dialect). The four-step "How it works" section, the six benefit tiles and the paragraph on which tools are free came off the page; one line, "For your data team: how it works, tool by tool", links to the tools page on gaspwiki.com and one closing line says the standard stays free. The call to action is "Talk to us" throughout. Prices stay off the page.
+
+**The chart:** `shared/benchmark/BenchmarkComparison.astro` takes `plain`, which labels the columns "Without a definition" and "With the GASP definition" and counts "answers correct". The standard's pages keep the original labels. The hero's figures are computed from the same run, as a range across the models.
+
+**Guards:** `koinedata-site/test/site.test.ts` fails when the homepage source carries a tool name or one of the pipeline terms and when the built page reaches 450 words.
+
+**Context:** The owner asked for the page to be simplified for executives. The first version was the Workspace page moved from the standard's site, written for the data and AI platform lead who would install it. The person who decides to buy reads the hero and one screen more. The strongest argument, that the same models went from 60% and 70% right to 100% with a definition, sat in the fourth section under twelve boxes of detail. A CEO or CFO is assumed to read first and pass the page to a data lead, who has the link to the detail.
+
+---
+
 ## [2026-11-14] The standard returns to gaspwiki.com; koinedata.com becomes the commercial site
 **Decision:** The GASP Standard lives on gaspwiki.com again: the site, every canonical URL the MCP tools emit, the remote data and version fetch, the package `homepage`, the registry `websiteUrl` and the free hosted endpoint the docs name (`https://mcp.gaspwiki.com/mcp`). koinedata.com is a separate site for the commercial services from Koine Data: GASP Workspace, GASP certification and the design partner programme. This supersedes the 2026-11-09 record below, which moved everything to koinedata.com.
 
