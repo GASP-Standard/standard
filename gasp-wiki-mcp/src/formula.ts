@@ -2,7 +2,7 @@
  * GASP formula grammar: a small, warehouse-agnostic expression language for
  * canonical metric definitions (standard/formulas.json).
  *
- *   formula   := expr ("over" "cohort" "(" field "," point ")")?
+ *   formula   := expr ("over" "cohort" "(" field "," point ("where" expr)? ")")?
  *   expr      := or
  *   or        := and ("or" and)*
  *   and       := not ("and" not)*
@@ -58,8 +58,11 @@
  * including those reached through metric references, must read a dataset that
  * carries the field. `total()` outside a breakdown is a compile error.
  * `over cohort(key, point)` restricts every aggregate, including those inside
- * referenced metrics, to entities present at that point. `lag` and `cohort`
- * mark metrics that need a staged dataset to run as a single Ossie aggregate.
+ * referenced metrics, to entities present at that point. A `where` narrows the
+ * cohort to the entities that met a condition then, read from the key's own
+ * dataset (Commit Accuracy follows the deals in commit when the period opened).
+ * `lag` and `cohort` mark metrics that need a staged dataset to run as a single
+ * Ossie aggregate.
  */
 
 export type Point = "period_start" | "period_end";
@@ -97,7 +100,8 @@ export type Node =
 
 export interface Formula {
   expr: Node;
-  cohort?: { key: string; point: Point };
+  /** `where` narrows the cohort to the keys meeting a condition at the point; its fields sit on the key's dataset */
+  cohort?: { key: string; point: Point; where?: Node };
 }
 
 export class FormulaError extends Error {
@@ -330,8 +334,10 @@ export function parseFormula(src: string): Formula {
     if (!key.v.startsWith("field.")) throw new FormulaError("cohort() key must be a field", key.pos);
     expectOp(",");
     const pt = point();
+    let where: Node | undefined;
+    if (isKw("where")) { next(); where = expr(); }
     expectOp(")");
-    cohort = { key: key.v.slice(6), point: pt };
+    cohort = { key: key.v.slice(6), point: pt, ...(where ? { where } : {}) };
   }
   if (peek().t !== "eof") throw new FormulaError(`Unexpected '${peek().v}'`, peek().pos);
   return { expr: body, cohort };
@@ -431,6 +437,7 @@ export function analyzeFormula(f: Formula): FormulaAnalysis {
     }
   };
   walk(f.expr, false, "base", null);
+  if (f.cohort?.where) walk(f.cohort.where, false, "base", null);
 
   return {
     metricRefs: [...metrics].sort(),
@@ -539,6 +546,11 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
 
   if (isBool(f.expr)) errors.push("Formula must produce a number, not a condition");
   walk(f.expr, false);
+  if (f.cohort?.where) {
+    if (!isBool(f.cohort.where)) errors.push("cohort() where-clause must be a condition");
+    if (hasAggregate(f.cohort.where)) errors.push("cohort() where-clause cannot hold an aggregate");
+    walk(f.cohort.where, true);
+  }
   if (ctx.enums) {
     const checkLit = (fieldNode: Node, lit: Node) => {
       if (fieldNode.kind !== "field" || lit.kind !== "string") return;
@@ -557,6 +569,7 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
       }
     };
     scan(f.expr);
+    if (f.cohort?.where) scan(f.cohort.where);
   }
   if (ctx.datasets) {
     const fieldsOf = (n: Node, out: string[] = []): string[] => {
@@ -588,6 +601,12 @@ export function validateFormula(f: Formula, ctx: ValidationContext): string[] {
     };
     scanAgg(f.expr);
     if (f.cohort && ctx.datasets[f.cohort.key] === undefined) errors.push(`Cohort key field.${f.cohort.key} has no dataset`);
+    if (f.cohort?.where) {
+      // The condition is read beside the key, so every field in it shares a dataset with the key.
+      const ids = [...new Set([f.cohort.key, ...fieldsOf(f.cohort.where)])].filter((id) => ctx.datasets![id]);
+      const shared = ids.map((id) => new Set(ctx.datasets![id])).reduce((a, b) => new Set([...a].filter((x) => b.has(x))));
+      if (shared.size === 0) errors.push(`Cohort condition reads fields from a dataset without the key: ${ids.join(", ")}`);
+    }
   }
   if (f.cohort && !ctx.fields.has(f.cohort.key)) errors.push(`Unknown cohort key 'field.${f.cohort.key}'`);
   return [...new Set(errors)];

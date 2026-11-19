@@ -742,8 +742,9 @@
       "unit": "percent"
     },
     "commit_accuracy": {
-      "formula": "count_distinct(field.opportunity_id where field.forecast_category = 'commit' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.opportunity_id where field.forecast_category = 'commit')",
-      "unit": "percent"
+      "formula": "count_distinct(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.opportunity_id) at period_start over cohort(field.opportunity_id, period_start where field.forecast_category = 'commit')",
+      "unit": "percent",
+      "notes": "The cohort is the deals in the commit forecast category on the first day of the period, read from that day's opportunity snapshot. The numerator counts those of them won with a close date in the period. A deal that enters commit later in the period is outside the cohort and a committed deal that slips, is lost or stays open counts against the rate."
     },
     "stage_conversion_rates": {
       "formula": "count_distinct(field.opportunity_id where field.advanced_to_next_stage = true) / count_distinct(field.opportunity_id)",
@@ -1345,12 +1346,12 @@
       "notes": "Months is canonical."
     },
     "day_90_turnover": {
-      "formula": "count_distinct(field.employee_id where in_period(field.hire_date) and field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where in_period(field.hire_date))",
+      "formula": "count_distinct(field.employee_id where period_start - field.hire_date <= 90 and period_end - field.hire_date >= 90 and field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where period_start - field.hire_date <= 90 and period_end - field.hire_date >= 90)",
       "unit": "percent",
       "breakdowns": {
         "by_hire_source": "field.hire_source"
       },
-      "notes": "Cohort is new hires in the period, read from the period-end snapshot, so a hire who leaves within 90 days but after period end is not counted. by_hire_source returns one row per hiring source, which shows the channels that bring hires who leave inside 90 days."
+      "notes": "Cohort is the hires whose 90th day falls in the period (hire date plus 90 days between period start and period end), read from the period-end snapshot. Every hire in it has had the full 90 days, so the rate is final when first reported, and each hire is counted in exactly one period. by_hire_source returns one row per hiring source, which shows the channels that bring hires who leave inside 90 days."
     },
     "enps": {
       "formula": "(count(field.nps_score where field.survey_type = 'employee' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'employee' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'employee') * 100",

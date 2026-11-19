@@ -323,6 +323,12 @@ describe("get_formula form filters", () => {
       .toBe("cost_function not in (gtm, onboarding, support)");
     expect(text("NRR")).toContain("**Main formula filters:**");
   });
+
+  it("lists the enum filter a cohort condition applies", () => {
+    const filters = enumFilters(data.formulas!.commit_accuracy.formula!, ctx);
+    expect(formatFilters(filters)).toContain("forecast_category = commit");
+    expect(formatFilters(filters)).toContain("opportunity_stage = closed_won");
+  });
 });
 
 describe("generate_query named breakdown", () => {

@@ -5,7 +5,7 @@
  * form, so forms that read the same fields (LTV-O and LTV-M) show where they
  * differ.
  */
-import { parseFormula, type Node, type Form } from "./formula.js";
+import { parseFormula, type Formula, type Node, type Form } from "./formula.js";
 import type { MetricFormula, OntologyField } from "./types.js";
 
 export interface FilterContext {
@@ -37,7 +37,7 @@ export function enumFilters(src: string, ctx: FilterContext): EnumFilter[] {
     seen.add(key);
     const f = ctx.formulas[id];
     const s = form ? f?.forms?.[form] : f?.formula;
-    if (s) visit(parseFormula(s).expr);
+    if (s) formula(parseFormula(s));
   };
   const visit = (n: Node): void => {
     switch (n.kind) {
@@ -57,7 +57,9 @@ export function enumFilters(src: string, ctx: FilterContext): EnumFilter[] {
       default: return;
     }
   };
-  visit(parseFormula(src).expr);
+  // A cohort condition filters the population every aggregate reads, so its comparisons count too.
+  const formula = (f: Formula) => { visit(f.expr); if (f.cohort?.where) visit(f.cohort.where); };
+  formula(parseFormula(src));
   return [...acc.entries()].sort(([a], [b]) => a.localeCompare(b))
     .map(([field, e]) => ({ field, include: [...e.include].sort(), exclude: [...e.exclude].sort() }));
 }

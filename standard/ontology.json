@@ -5314,7 +5314,7 @@
     "arr_per_csm": "ARR",
     "pipeline_hygiene_score": "Pipeline Hygiene",
     "forecast_accuracy": "Forecast Accuracy",
-    "commit_accuracy": "Forecast Accuracy",
+    "commit_accuracy": "Commit Accuracy",
     "stage_conversion_rates": "Pipeline Hygiene",
     "quote_volume": "Quote-to-Cash",
     "quote_to_order_rate": "Quote-to-Cash",
@@ -5891,6 +5891,12 @@
       "grain": "Monthly aggregate",
       "frequency": "Monthly",
       "aggregation": "aggregate",
+      "period": "month"
+    },
+    "Commit Accuracy": {
+      "grain": "Deal cohort at period start",
+      "frequency": "Monthly",
+      "aggregation": "cohort",
       "period": "month"
     },
     "Pipeline Hygiene": {

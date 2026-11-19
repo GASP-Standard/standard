@@ -54,7 +54,7 @@
  * (an open top bucket is `>= lo`). The expression's fields must all live on
  * the dataset of every grouped aggregate.
  */
-import { parseFormula, hasAggregate, hasMetric, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
+import { parseFormula, analyzeFormula, hasAggregate, hasMetric, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
 import { DIALECT, type Dialect, type DialectName } from "./dialect.js";
 import type { BreakdownSpec, MetricFormula, OntologyDataset, OntologyField } from "./types.js";
 
@@ -105,7 +105,7 @@ interface Scope {
   /** No period filter at all (all_time()) */
   allTime?: boolean;
   shift: Array<{ n: number; unit: LagUnit }>;
-  cohort?: { key: string; point: Point };
+  cohort?: Formula["cohort"];
   /** The dataset of the enclosing aggregate; tags every field placeholder */
   dataset?: string;
   /** metric ids on the current path, to catch cycles */
@@ -480,7 +480,14 @@ class Compiler {
       const kmeta = this.ctx.datasets[keyDs];
       const ks: Scope = { ...scope, dataset: keyDs };
       const active = kmeta.activeWhen ? ` AND ${this.expr(parseFormula(kmeta.activeWhen).expr, ks)}` : "";
-      where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.onDay(this.ph(kmeta.date, keyDs), this.bound(scope.cohort.point, { ...scope, shift: [] }), this.type(kmeta.date) === "timestamp")}${active})`);
+      // The cohort's own condition is read on the key's dataset at the cohort point (the deals in commit then).
+      const cond = scope.cohort.where;
+      if (cond) {
+        const off = analyzeFormula({ expr: cond }).fieldRefs.filter((id) => !(this.ctx.fields[id]?.datasets ?? []).includes(keyDs));
+        if (off.length) throw new CompileError(`Cohort condition reads ${off.map((id) => `field.${id}`).join(", ")}, which the '${keyDs}' dataset does not carry`);
+      }
+      const narrowed = cond ? ` AND ${this.expr(cond, ks)}` : "";
+      where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.onDay(this.ph(kmeta.date, keyDs), this.bound(scope.cohort.point, { ...scope, shift: [] }), this.type(kmeta.date) === "timestamp")}${active}${narrowed})`);
     }
     if (tuple) {
       // Distinct tuples: COUNT(DISTINCT a) ignores nulls, so a tuple with a null part is not counted either.

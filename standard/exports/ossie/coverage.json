@@ -6,11 +6,11 @@
     "notComputable": 15
   },
   "stagedReasons": {
-    "cohort": 11,
+    "cohort": 12,
     "lag": 6,
     "at period_start": 34,
     "total": 6,
-    "period bound in filter": 94,
+    "period bound in filter": 93,
     "to_date": 4,
     "period_days": 2,
     "bucket": 1,
@@ -1477,7 +1477,7 @@
       "kind": "staged",
       "ossieName": "gasp_commit_accuracy",
       "stagedDataset": "gasp_staged_gasp_commit_accuracy",
-      "reason": "period bound in filter"
+      "reason": "cohort"
     },
     "stage_conversion_rates": {
       "kind": "direct",

@@ -359,7 +359,7 @@ function unrunnable(expr: string, ns: Namespace): string | undefined {
 // ── explaining a difference ──────────────────────────────────────────────────
 
 const STAGED_WHY: Record<string, string> = {
-  cohort: "canonical is a cohort metric: it fixes the population at period start (the customers active then) and reads their opening values from the snapshot, which one expression over the period's rows cannot state",
+  cohort: "canonical is a cohort metric: it fixes the population at period start (the customers active then, or the deals meeting the cohort's condition) and reads their opening values from the snapshot, which one expression over the period's rows cannot state",
   lag: "canonical reads the previous period's value (lag), so it needs two periods of rows",
   "at period_start": "canonical reads an opening value at period start beside the period's rows",
   window: "canonical reads a trailing window of rows ending at period end, not the period's rows",

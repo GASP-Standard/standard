@@ -39,6 +39,8 @@ describe("parseFormula", () => {
   it("parses lag and cohort clauses", () => {
     const f = parseFormula("(metric.arr - lag(metric.arr, 1 year)) / lag(metric.arr, 1 year) over cohort(field.account_id, period_start)");
     expect(f.cohort).toEqual({ key: "account_id", point: "period_start" });
+    const narrowed = parseFormula("count_distinct(field.account_id) at period_start over cohort(field.account_id, period_start where field.status = 'active')");
+    expect(narrowed.cohort).toMatchObject({ key: "account_id", point: "period_start", where: { kind: "compare", left: { kind: "field", id: "status" } } });
     expect(analyzeFormula(f).staged).toBe(true);
   });
 
@@ -117,6 +119,18 @@ describe("validateFormula", () => {
     expect(errorsOf("sum(field.mrr where field.status)")).toContain("sum() where-clause must be a condition");
   });
 
+  it("checks a cohort condition: a condition, no aggregate, known fields", () => {
+    const over = (cond: string) => errorsOf(`sum(field.mrr) over cohort(field.account_id, period_start where ${cond})`);
+    expect(over("field.status = 'active'")).toEqual([]);
+    expect(over("field.status")).toContain("cohort() where-clause must be a condition");
+    expect(over("sum(field.mrr) > 0")).toContain("cohort() where-clause cannot hold an aggregate");
+    expect(over("field.nope = 'x'")).toContain("Unknown field 'field.nope'");
+    const datasets = { mrr: ["subscription"], account_id: ["subscription", "customer"], status: ["subscription"], nps_score: ["survey"] };
+    const withDatasets = (cond: string) => validateFormula(parseFormula(`sum(field.mrr) over cohort(field.account_id, period_start where ${cond})`), { ...ctx, datasets });
+    expect(withDatasets("field.status = 'active'")).toEqual([]);
+    expect(withDatasets("field.nps_score > 8")).toContain("Cohort condition reads fields from a dataset without the key: account_id, nps_score");
+  });
+
   it("rejects a formula that yields a condition", () => {
     expect(errorsOf("sum(field.mrr) > 0")).toContain("Formula must produce a number, not a condition");
   });
@@ -142,6 +156,8 @@ describe("analyzeFormula", () => {
   });
 
   it("flags a ref read only at period_start or under lag as a baseline input", () => {
+    const narrowed = analyzeFormula(parseFormula("sum(field.mrr) over cohort(field.account_id, period_start where field.status = 'active')"));
+    expect(narrowed.fieldRefs).toEqual(["account_id", "mrr", "status"]);
     const nrr = analyzeFormula(parseFormula("(metric.mrr at period_start + metric.expansion_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.account_id, period_start)"));
     expect(nrr.metricBaseline).toEqual({ mrr: true, expansion_mrr: false, churned_mrr: false });
     expect(analyzeFormula(parseFormula("metric.mrr / metric.arr")).metricBaseline).toEqual({ mrr: false, arr: false });
@@ -221,6 +237,21 @@ describe("distinct pairs, total() and breakdowns", () => {
       "SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT {{customer_id@ticket}}, {{agent_id@ticket}} FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} < ({{_period_end}} + INTERVAL '1 day') AND {{customer_id@ticket}} IS NOT NULL AND {{agent_id@ticket}} IS NOT NULL) _pairs) AS t",
     );
     expect(errorsOf("count_distinct(field.mrr, field.status where field.status = 'active')")).toEqual([]);
+  });
+
+  it("compiles a cohort condition into the cohort's own subquery, read on the cohort's day", () => {
+    const f = { ...fields, plan_tier: { id: "plan_tier", type: "enum", datasets: ["customer"], values: ["free", "paid"] } };
+    const ctx = (formula: string) => ({ fields: f, datasets, formulas: { t: { formula, unit: "percent" } } });
+    const c = compileMetric("t", ctx("count(field.ticket_id) / count_distinct(field.customer_id) at period_start over cohort(field.customer_id, period_start where field.plan_tier = 'paid')"));
+    const members = "IN (SELECT {{customer_id@customer}} FROM {{_table:customer}} WHERE {{snapshot_date@customer}} = {{_period_start}} AND {{plan_tier@customer}} = 'paid')";
+    expect(c.staged).toBe(true);
+    expect(c.sql.split(members)).toHaveLength(3); // once per aggregate
+    expect(c.sql).toContain(`FROM {{_table:ticket}} WHERE {{created_at@ticket}} >= {{_period_start}} AND {{created_at@ticket}} < ({{_period_end}} + INTERVAL '1 day') AND {{customer_id@ticket}} ${members}`);
+    expect(c.sql).toContain(`FROM {{_table:customer}} WHERE {{snapshot_date@customer}} = {{_period_start}} AND {{customer_id@customer}} ${members}`);
+    expect(c.placeholders).toContain("plan_tier@customer");
+    // agent_id sits on the ticket dataset, which is not the one keyed by customer_id.
+    expect(() => compileMetric("t", ctx("count(field.ticket_id) over cohort(field.customer_id, period_start where field.agent_id = 'a1')")))
+      .toThrow("Cohort condition reads field.agent_id, which the 'customer' dataset does not carry");
   });
 
   it("parses total() and validates its placement", () => {

@@ -7,7 +7,8 @@ import { TABLES, columnName } from "../src/synthetic.js";
 import type { QueryTemplate } from "../src/types.js";
 import { adapter, fixtureDb, bind, scalar, runTemplate } from "./fixture-db.js";
 
-// Regression tests for four formula corrections (2026-11-10). Each metric's
+// Regression tests for the formula corrections of 2026-11-10 (four) and
+// 2026-11-19 (90-Day Turnover again and Commit Accuracy). Each metric's
 // compiled template is checked against a value computed in plain SQL over the
 // fixture, and the formula it replaced is compiled and run on the same rows to
 // show it gives a different answer. Rows the synthetic data lacks are planted in
@@ -45,24 +46,77 @@ const value = (sql: string) => scalar(db, sql);
 
 beforeAll(async () => {
   db = await fixtureDb();
-  // A June hire who leaves 18 days later: the one early leaver of the June cohort.
-  await plant("employee", `employee_id = 'e24' AND ${c("employee", "snapshot_date")} = '2026-06-30'`,
-    `employee_id = 'e99', ${c("employee", "hire_date")} = '2026-06-02', termination_date = '2026-06-20', ${c("employee", "employee_status")} = 'terminated'`);
+  // e99 is hired on 20 March and leaves 30 days later, on 19 April: still employed in the
+  // March month-end snapshot, terminated in June's. Their 90th day is 18 June.
+  const e21 = (day: string) => `employee_id = 'e21' AND ${c("employee", "snapshot_date")} = '${day}'`;
+  await plant("employee", e21("2026-03-31"), `employee_id = 'e99', ${c("employee", "hire_date")} = '2026-03-20'`);
+  await plant("employee", e21("2026-06-30"),
+    `employee_id = 'e99', ${c("employee", "hire_date")} = '2026-03-20', termination_date = '2026-04-19', ${c("employee", "employee_status")} = 'terminated'`);
 }, 120_000);
 
 afterAll(async () => { await db?.close(); });
 
 describe("formula corrections", () => {
-  it("90-Day Turnover counts early leavers among the period's hires only", async () => {
+  it("90-Day Turnover counts each hire in the period their 90th day falls in", async () => {
     const E = t("employee"), snap = c("employee", "snapshot_date"), hire = c("employee", "hire_date");
-    const cohort = `FROM ${E} WHERE ${snap} = '2026-06-30' AND ${hire} BETWEEN '2026-06-01' AND '2026-06-30'`;
-    const hires = await value(`SELECT COUNT(DISTINCT employee_id) ${cohort}`);
+    // June's cohort: hired from 3 March to 1 April, so day 90 falls in June. e21 stayed, e99 left on day 30.
+    const cohort = `FROM ${E} WHERE ${snap} = '2026-06-30' AND ${hire} + 90 BETWEEN DATE '2026-06-01' AND DATE '2026-06-30'`;
+    const ids = await db.query<{ employee_id: string }>(`SELECT DISTINCT employee_id ${cohort} ORDER BY 1`);
+    expect(ids.rows.map((r) => r.employee_id)).toEqual(["e21", "e99"]);
     const early = await value(`SELECT COUNT(DISTINCT employee_id) ${cohort} AND termination_date - ${hire} <= 90`);
-    expect([hires, early]).toEqual([2, 1]);
-    expect(await run("day_90_turnover", "2026-06-01", "2026-06-30")).toBeCloseTo(early! / hires!, 10);
-    // The old numerator also counted e19 (hired in January, left in April).
-    const old = "count_distinct(field.employee_id where field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)";
-    expect(await runFormula("day_90_turnover", old, "2026-06-01", "2026-06-30")).toBeCloseTo(1, 10);
+    expect(early).toBe(1);
+    expect(await run("day_90_turnover", "2026-06-01", "2026-06-30")).toBeCloseTo(0.5, 10);
+    // March, the month e99 was hired in, holds the hires of December: none, so no rate.
+    expect(await run("day_90_turnover", "2026-03-01", "2026-03-31")).toBeNull();
+    // The formula of 2026-11-10 counted a hire in the month they were hired. In March e99 had not
+    // left yet, and no later month's cohort holds them, so the departure was never reported.
+    const hireMonth = "count_distinct(field.employee_id where in_period(field.hire_date) and field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where in_period(field.hire_date))";
+    expect(await runFormula("day_90_turnover", hireMonth, "2026-03-01", "2026-03-31")).toBe(0); // e21 and e99 hired, neither gone yet
+    expect(await runFormula("day_90_turnover", hireMonth, "2026-04-01", "2026-04-30")).toBe(0); // April's hire, e22, stayed
+    expect(await runFormula("day_90_turnover", hireMonth, "2026-06-01", "2026-06-30")).toBe(0);
+    // The formula before that counted every early leaver in the company's history (e19 and e99)
+    // over the month's one hire.
+    const allTime = "count_distinct(field.employee_id where field.termination_date is not null and field.termination_date - field.hire_date <= 90) / count_distinct(field.employee_id where field.hire_date >= period_start and field.hire_date <= period_end)";
+    expect(await runFormula("day_90_turnover", allTime, "2026-06-01", "2026-06-30")).toBeCloseTo(2, 10);
+  });
+
+  it("90-Day Turnover counts every hire in exactly one month", async () => {
+    const E = t("employee"), snap = c("employee", "snapshot_date"), hire = c("employee", "hire_date");
+    const months = [["2026-01-01", "2026-01-31"], ["2026-02-01", "2026-02-28"], ["2026-03-01", "2026-03-31"], ["2026-04-01", "2026-04-30"], ["2026-05-01", "2026-05-31"], ["2026-06-01", "2026-06-30"]];
+    const denominator = "count_distinct(field.employee_id where period_start - field.hire_date <= 90 and period_end - field.hire_date >= 90)";
+    let counted = 0;
+    for (const [start, end] of months) counted += (await runFormula("day_90_turnover", denominator, start, end)) ?? 0;
+    // Everyone whose 90th day falls in the half year, read once from the last snapshot.
+    const expected = await value(`SELECT COUNT(DISTINCT employee_id) FROM ${E} WHERE ${snap} = '2026-06-30' AND ${hire} + 90 BETWEEN DATE '2026-01-01' AND DATE '2026-06-30'`);
+    expect(expected).toBe(5); // e18, e19, e20, e21, e99
+    expect(counted).toBe(expected);
+  });
+
+  it("Commit Accuracy follows the deals in commit when the period opened", async () => {
+    const O = t("opportunity"), snap = c("opportunity", "snapshot_date"), close = c("opportunity", "close_date");
+    const ids = async (sql: string) => (await db.query<{ opportunity_id: string }>(`SELECT DISTINCT opportunity_id FROM ${O} WHERE ${sql} ORDER BY 1`)).rows.map((r) => r.opportunity_id);
+    // On 1 April o05 and o12 are in commit. o05 is won on the 21st and o12 lost on the 14th.
+    // o19 enters commit on the 4th and is won on the 28th: a win, and outside the opening commit.
+    const opening = await ids(`${snap} = '2026-04-01' AND forecast_category = 'commit'`);
+    const won = await ids(`${snap} = '2026-04-30' AND opportunity_stage = 'closed_won' AND ${close} BETWEEN '2026-04-01' AND '2026-04-30'`);
+    expect(opening).toEqual(["o05", "o12"]);
+    expect(won).toEqual(["o05", "o19"]);
+    expect(await ids(`opportunity_id = 'o19' AND ${snap} = '2026-04-04' AND forecast_category = 'commit'`)).toEqual(["o19"]);
+    expect(await run("commit_accuracy", "2026-04-01", "2026-04-30")).toBeCloseTo(0.5, 10);
+    // The old formula read one month-end snapshot. A won deal's category is 'closed' there, so the
+    // numerator was empty, and the denominator was the deals in commit at month end (o06 and o13),
+    // the commit for the month after.
+    const old = "count_distinct(field.opportunity_id where field.forecast_category = 'commit' and field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count_distinct(field.opportunity_id where field.forecast_category = 'commit')";
+    expect(await ids(`${snap} = '2026-04-30' AND forecast_category = 'commit'`)).toEqual(["o06", "o13"]);
+    expect(await runFormula("commit_accuracy", old, "2026-04-01", "2026-04-30")).toBe(0);
+    // The quarter opens with the same two deals in commit and o05 is still the one win among them.
+    expect(await run("commit_accuracy", "2026-04-01", "2026-06-30")).toBeCloseTo(0.5, 10);
+
+    // o98 is in commit on 1 April and slips: still open at month end with a close date in May.
+    const o12 = (day: string) => `opportunity_id = 'o12' AND ${snap} = '${day}'`;
+    await plant("opportunity", o12("2026-04-01"), `opportunity_id = 'o98'`);
+    await plant("opportunity", o12("2026-04-01"), `opportunity_id = 'o98', ${snap} = '2026-04-30', ${close} = '2026-05-20'`);
+    expect(await run("commit_accuracy", "2026-04-01", "2026-04-30")).toBeCloseTo(1 / 3, 10);
   });
 
   it("Average Services Deal Size reads services deals won in the period", async () => {

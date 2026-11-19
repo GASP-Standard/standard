@@ -57,6 +57,8 @@ Forecast Accuracy = 1 - |Forecasted - Actual| / Actual
 Commit Accuracy = Deals closed from commit / Deals in commit × 100
 ```
 
+Deals in commit are the deals in the commit forecast category on the first day of the period. Deals closed from commit are those of them won with a close date in the period. A deal that enters commit later in the period is left out, and a committed deal that slips, is lost or stays open counts against the rate.
+
 **Target:** >80%
 
 ---

@@ -148,7 +148,7 @@ Averaged over active employees at period end and reported in months.
 90-Day Turnover = Departures within 90 days / New hires × 100
 ```
 
-New hires are the people hired in the period, and departures are those of them who left within 90 days of their hire date. The count reads the period-end snapshot, so a hire who leaves within 90 days but after period end is not counted.
+New hires are the people whose 90th day after their hire date falls in the period, and departures are those of them who left within 90 days of their hire date. Each hire is counted once, in the period their first 90 days end, so every hire has had the full 90 days and the rate is final when it is first reported. The rate for June covers the people hired from 3 March to 1 April.
 
 90-Day Turnover is reported per hiring source.
 

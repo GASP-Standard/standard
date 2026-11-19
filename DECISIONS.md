@@ -5,6 +5,29 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-19] Commit Accuracy follows the opening commit; 90-Day Turnover counts a hire at day 90
+**Decision:** Two formulas change within `v1`, on the owner's word (2026-11-19). They are the two the 2026-11-10 record left open.
+- **Commit Accuracy** follows the deals in the `commit` forecast category on the first day of the period, read from that day's opportunity snapshot, and counts those won with a close date in the period. The grammar gains what this needs, a condition on a cohort: `over cohort(field.opportunity_id, period_start where field.forecast_category = 'commit')`.
+- **90-Day Turnover** counts each hire once, in the period their 90th day falls in (hire date plus 90 days between period start and period end). The grammar is unchanged.
+
+**Context:** The old Commit Accuracy read both sides from the period-end snapshot. Its numerator needed a won deal still in `commit`, and a closed deal carries `closed`; its denominator was the deals in commit at period end, which is the commit for the period after. On the fixture's April it returned 0 where two deals opened the month in commit and one of them was won. The 90-Day Turnover of 2026-11-10 counted a hire in the month they were hired, from a period-end snapshot that cannot see a later departure, and no later period held that hire: someone hired on 20 March who left on 19 April was never reported.
+
+How the industry models each shape was checked first. Salesforce keeps the forecast category on each `OpportunityHistory` row, a snapshot model, and has no column for the opening commit; sales glossaries define commit accuracy as the committed deals won over the deals committed at the start of the period. PwC Saratoga defines 90-day turnover as new employees who left within three months of hire over new hires and leaves open which period reports a hire.
+
+**Alternatives considered:**
+- A new field holding the forecast category at period start (the backlog's earlier recommendation, withdrawn): no CRM stores it, and one column cannot hold both a month's opening and a quarter's.
+- Commit Accuracy as `notComputable`: the daily opportunity snapshot already holds everything the definition needs.
+- 90-Day Turnover on the hire-month cohort, read 90 days after the period closes: the rate for a period would be reported a quarter late or restated as departures arrive, and it needs a snapshot from after the period, which no formula reads.
+
+**Consequences:**
+- Each number moves for a company that computed the old form. Ids, slugs and URLs are unchanged; `GOVERNANCE.md` lists the case and `CHANGELOG.md` has the old and new formulas.
+- A cohort condition is read from the dataset the cohort key identifies, on the cohort's day. It holds no aggregate and every field in it must sit on that dataset; `validateFormula` and the compiler refuse anything else and `get_formula` lists its enum filters.
+- Commit Accuracy needs the opportunity snapshot of the period's first day. A warehouse that keeps month-end snapshots only has an empty cohort and gets no value. Its staged reason in the Ossie export moves from period bound in filter to cohort (12 cohort entries, 93 period bound in filter; direct and staged totals unchanged) and its temporal semantic is the new `Commit Accuracy`, a deal cohort at period start.
+- 90-Day Turnover stays a direct expression and is final when first reported. A period's rate describes the hires of about three months earlier: June covers the people hired from 3 March to 1 April.
+- `test/formula-fixes.test.ts` runs both on the fixture beside the formulas they replace: Commit Accuracy for April gives 0.5 against the old 0, and a planted hire who leaves on day 30 gives June a rate of 0.5 where the old formula never counted them. `test/formula.test.ts` covers the cohort condition.
+
+---
+
 ## [2026-11-15] The koinedata.com homepage is written for an executive
 **Decision:** The commercial homepage opens with the problem and the benchmark figure ("AI agents that get your numbers right"), shows the comparison directly under the hero, then states three outcomes (one set of numbers, a named owner for each, it runs where your data lives), certification in one paragraph and the design partner places. It runs to about 400 words, the chart's labels included, where the first version ran to about 1,050. It names no MCP tool and no pipeline term (readiness level, semantic model, drift, dialect). The four-step "How it works" section, the six benefit tiles and the paragraph on which tools are free came off the page; one line, "For your data team: how it works, tool by tool", links to the tools page on gaspwiki.com and one closing line says the standard stays free. The call to action is "Talk to us" throughout. Prices stay off the page.
 
