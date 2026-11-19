@@ -1,0 +1,61 @@
+name: Publish gasp-ossie-validator to PyPI
+
+# Builds GASP's vendor validator for Apache Ossie (gasp-wiki-mcp/gasp-ossie-validator/)
+# and publishes it to PyPI through trusted publishing: PyPI accepts the upload because
+# it comes from this workflow in this repository, so no token is stored anywhere.
+#
+# Run it by hand after the version in the package's pyproject.toml moves. PyPI refuses
+# a version it already holds, so a second run on the same version fails and changes nothing.
+#
+# PyPI side, once: a trusted publisher on the project gasp-ossie-validator with owner
+# GASP-Standard, repository standard, workflow publish-ossie-validator.yml and environment pypi.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and check the package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build the sdist and the wheel
+        run: uv build gasp-wiki-mcp/gasp-ossie-validator --out-dir dist
+      - name: Check the metadata
+        run: uvx twine check --strict dist/*
+      # The upstream validator, vendored in ossie-validator/, with the wheel just built:
+      # naming a vendor with no installed checker is an error, so a pass shows the entry
+      # point and the schema copy both travel in the wheel.
+      - name: The built wheel checks the published GASP files
+        working-directory: gasp-wiki-mcp/ossie-validator
+        run: |
+          set -euo pipefail
+          wheel="$(ls "$GITHUB_WORKSPACE"/dist/*.whl)"
+          exports="$GITHUB_WORKSPACE/standard/exports/ossie"
+          uv run --with "$wheel" validation/validate.py --vendor GASP "$exports/gasp.semantic_model.yaml"
+          uv run --with "$wheel" validation/validate.py --vendor GASP --schema ontology/mapping.json "$exports/gasp.mapping.yaml"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/gasp-ossie-validator/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

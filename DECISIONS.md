@@ -5,6 +5,30 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-19] The conformance set grades snapshot readings; the vendor validator goes to PyPI by trusted publishing
+**Decision:** Two additions on the owner's word (2026-11-19), both following the semi-additive thread on dev@ossie.apache.org and apache/ossie #765.
+- **Snapshot cases.** The conformance set gains a second group beside the eleven construct cases: three direct snapshot metrics read on the last snapshot date of the period (June MRR, second-quarter MRR, Total Customers for June) and one staged opening case (Logo Churn Rate over the four weeks from 2026-02-09). A case may list `readings`: the value a named mistake returns, or the value another reading in use returns. The generator computes every one on the fixture. A result is graded right (the expected rows), alternative (a listed reading other tools take and GASP does not), wrong (anything else, with the mistake named when the value is a listed one) or failed (no value).
+- **PyPI.** `gasp-ossie-validator` is released from the public mirror by a workflow run by hand, `publish-ossie-validator.yml`, through PyPI trusted publishing. This settles the point the 2026-11-13 record left with the owner.
+
+**Context:** The thread (2026-11-19) gave six figures from the fixture and offered cases with the wrong values listed by the mistake that produces them, graded as right, wrong or failed. Jean-Baptiste Onofré's reply asked for them as fixtures and said both opening readings are in use: the snapshot dated on the first day of the period and the close of the period before. With `GASP` in the vendor catalog since #765, `validate.py --vendor GASP` is a documented run that needed the GASP repository on disk.
+
+**Alternatives considered:**
+- A third grade only for failure, with the prior close counted as wrong: JB's reply names it as a reading tools take, so a harness that returns it has not made a mistake. It is reported by name and kept apart from both right and wrong.
+- The prior close as a reading on the existing opening case (c03): on a calendar month of the fixture the customers active on the last day before the period and on its first day are the same twelve, so the two readings return one value and the case separates nothing. The new case starts on the day a customer starts, 13 against 14.
+- Typed wrong values: a number in a file goes stale when the fixture moves. The runner computes each reading, then refuses one that equals the expected value or another reading of the same case.
+- A PyPI API token in a repository secret: a long-lived credential to store and rotate. With a trusted publisher PyPI takes the upload because it comes from that workflow in that repository, and no token exists.
+- Publishing on every push or on a tag: the mirror receives pushes from a bot and tags nothing. A run by hand after a version bump is the whole release process and PyPI refuses a version it already holds.
+
+**Consequences:**
+- The set is 15 cases in 63 files (about 1 MB; it was 45 files). The `customer` and `subscription` slices carry every date of June, which the summing readings need, and the bounds of the four-week period. `data/period_spine.sql` has a row per period.
+- `manifest.json` gains `grading` and, per case, `kind`, `group`, `period` and `readings`; a case with readings has a `readings.sql` that returns them. `test/ossie-conformance.test.ts` pins the posted figures and reruns every reference query and reading from the published files alone.
+- The dev@ post gave 525 as "the same count" over June's rows. The published expression counts distinct customers, which gives 19 over those rows; 525 is the active rows counted without `DISTINCT`. The case lists both, each under its own name.
+- The example demo is unchanged, so apache/ossie #773 needs no refresh.
+- The package gains its own `LICENSE`, `.gitignore`, author and classifiers, and its README names the install from the index. `test/ossie-vendor.test.ts` builds it and checks what the wheel and the sdist carry. The mirror's token must be allowed to write workflow files, which it has done since the test workflow first went over.
+- The first release waits for two steps of the owner's: the pending publisher on pypi.org and one run of the workflow. Later releases are a version bump and a run.
+
+---
+
 ## [2026-11-19] Commit Accuracy follows the opening commit; 90-Day Turnover counts a hire at day 90
 **Decision:** Two formulas change within `v1`, on the owner's word (2026-11-19). They are the two the 2026-11-10 record left open.
 - **Commit Accuracy** follows the deals in the `commit` forecast category on the first day of the period, read from that day's opportunity snapshot, and counts those won with a close date in the period. The grammar gains what this needs, a condition on a cohort: `over cohort(field.opportunity_id, period_start where field.forecast_category = 'commit')`.
@@ -76,7 +100,7 @@ How the industry models each shape was checked first. Salesforce keeps the forec
 - `npm run derive` has one more output and `test/derived.test.ts` covers it; a schema edit without a derive fails the suite.
 - `validateUpstream` takes several files per run and `{ vendor: true }`. The vendor tests need `uv`, as the other validator tests do, and skip without it.
 - Tools now report a `vendor_name: GASP` entry on a field or a relationship. GASP writes none, so no document it produced changes status.
-- Publishing to PyPI is the owner's decision. Until then the package installs from its directory (`uv run --with ../gasp-ossie-validator`).
+- Publishing to PyPI is the owner's decision. Until then the package installs from its directory (`uv run --with ../gasp-ossie-validator`). Decided on 2026-11-19: see the record of that date.
 - When the pin moves to the 0.3.0-incubating release the refresh steps in `ossie-validator/README.md` apply as before.
 
 ---

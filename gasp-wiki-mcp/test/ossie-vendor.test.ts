@@ -99,6 +99,44 @@ describe("GASP's Ossie vendor validator", () => {
     expect(relationship).toEqual(["GASP defines no extension on a relationship; its payloads sit on the semantic model, a dataset, a metric or the mapping"]);
   }, 120_000);
 
+  it.skipIf(!uvAvailable())("builds to a wheel and an sdist that carry the schema, the entry point and the licence", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gasp-vendor-dist-"));
+    try {
+      const build = spawnSync("uv", ["build", VENDOR_VALIDATOR_DIR, "--out-dir", dir], { encoding: "utf-8" });
+      expect(build.status, build.stderr).toBe(0);
+      const built = readdirSync(dir);
+      const wheel = built.find((f) => f.endsWith(".whl"))!;
+      const sdist = built.find((f) => f.endsWith(".tar.gz"))!;
+      const version = readFileSync(join(VENDOR_VALIDATOR_DIR, "pyproject.toml"), "utf-8").match(/^version = "([^"]+)"/m)![1];
+      expect(wheel).toBe(`gasp_ossie_validator-${version}-py3-none-any.whl`);
+      // Read both archives with the standard library: names, and the three files the release stands on.
+      const script = [
+        "import json, sys, tarfile, zipfile",
+        "w = zipfile.ZipFile(sys.argv[1])",
+        "text = lambda end: w.read(next(n for n in w.namelist() if n.endswith(end))).decode()",
+        "print(json.dumps({'wheel': w.namelist(), 'sdist': tarfile.open(sys.argv[2]).getnames(), 'schema': text('gasp-ossie-extension-v1.json'), 'entry': text('entry_points.txt'), 'metadata': text('METADATA')}))",
+      ].join("\n");
+      const r = spawnSync("uv", ["run", "--no-project", "python", "-c", script, join(dir, wheel), join(dir, sdist)], { encoding: "utf-8" });
+      expect(r.status, r.stderr).toBe(0);
+      const got = JSON.parse(r.stdout) as { wheel: string[]; sdist: string[]; schema: string; entry: string; metadata: string };
+      expect(got.schema).toBe(readFileSync(EXTENSION_SCHEMA_SOURCE, "utf-8"));
+      expect(got.entry).toContain(`[ossie.vendor_validators]\n${GASP_VENDOR} = gasp_ossie_validator:check`);
+      expect(got.wheel).toContain(`gasp_ossie_validator-${version}.dist-info/licenses/LICENSE`);
+      expect(got.metadata).toContain("License-Expression: Apache-2.0");
+      expect(got.metadata).toContain("Requires-Dist: jsonschema>=");
+      // The README is the PyPI page: it names the install from the index.
+      expect(got.metadata).toContain("uv run --with gasp-ossie-validator validation/validate.py --vendor GASP");
+      // The sdist is the package's own files and its own ignore file, whichever repository it is built in.
+      const root = `gasp_ossie_validator-${version}`;
+      expect(got.sdist.filter((n) => n !== root).map((n) => n.slice(root.length + 1)).sort()).toEqual(
+        [".gitignore", "LICENSE", "PKG-INFO", "README.md", "pyproject.toml", "src/gasp_ossie_validator/__init__.py", "src/gasp_ossie_validator/gasp-ossie-extension-v1.json"].sort()
+      );
+      expect(readFileSync(join(VENDOR_VALIDATOR_DIR, "LICENSE"), "utf-8")).toBe(readFileSync(join(VENDOR_VALIDATOR_DIR, "..", "LICENSE"), "utf-8"));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 180_000);
+
   it.skipIf(!uvAvailable())("passes every Ossie file GASP publishes", async () => {
     const cases = join(DERIVED_FILES.ossieModel, "..", "conformance", "cases");
     const caseModels = readdirSync(cases).map((c) => join(cases, c, "model.ossie.yaml")).filter((f) => existsSync(f));

@@ -14,12 +14,18 @@ Every Ossie document GASP writes carries `nonportable_extensions` entries with `
 
 ## Run
 
-The validator is `validation/validate.py` in a clone of apache/ossie at or after commit `b47f6ea` (2026-11-12, #697). From a clone of [GASP-Standard/standard](https://github.com/GASP-Standard/standard), the vendored copy in `gasp-wiki-mcp/ossie-validator/` works the same way:
+The validator is `validation/validate.py` in a clone of [apache/ossie](https://github.com/apache/ossie) at or after commit `b47f6ea` (2026-11-12, #697). `--with` installs this package from PyPI for the run:
+
+```bash
+uv run --with gasp-ossie-validator validation/validate.py --vendor GASP path/to/semantic_model.yaml
+uv run --with gasp-ossie-validator validation/validate.py --vendor GASP --schema ontology/mapping.json path/to/mapping.yaml
+```
+
+A clone of [GASP-Standard/standard](https://github.com/GASP-Standard/standard) holds a pinned copy of the validator in `gasp-wiki-mcp/ossie-validator/` and this package beside it, so the same run works there from the source:
 
 ```bash
 cd gasp-wiki-mcp/ossie-validator
 uv run --with ../gasp-ossie-validator validation/validate.py --vendor GASP path/to/semantic_model.yaml
-uv run --with ../gasp-ossie-validator validation/validate.py --vendor GASP --schema ontology/mapping.json path/to/mapping.yaml
 ```
 
 A finding is an error, named by vendor and site:
@@ -36,7 +42,7 @@ The vendor checks run on a document that passed the Ossie schema and the validat
 
 The schema inside the package is a copy of `standard/gasp-ossie-extension-v1.json`, written by `npm run derive` in `gasp-wiki-mcp`; `npm run derive:check` fails when the two differ. `gasp-wiki-mcp/test/ossie-vendor.test.ts` runs every GASP export through the vendored validator with `--vendor GASP` and checks that planted bad payloads are named at their sites.
 
-The package is unpublished: install it from this directory. It sits outside the `gasp-standard-mcp` npm tarball.
+Releases go to [PyPI](https://pypi.org/project/gasp-ossie-validator/) from the workflow `publish-ossie-validator.yml` in GASP-Standard/standard, through trusted publishing, so no token is stored. The workflow builds the package, runs the built wheel over the published GASP files and uploads it. The package sits outside the `gasp-standard-mcp` npm tarball.
 
 ## Licence
 

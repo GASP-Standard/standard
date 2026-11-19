@@ -57,12 +57,12 @@ export interface Physical {
 const DATASET_REF = /\b([a-z_][a-z0-9_]*)\.[a-z_][a-z0-9_]*\b/g;
 
 /**
- * A direct expression as a scalar query: each aggregate call evaluated over its
- * dataset's rows for the period. The expression's dataset names are GASP
+ * An expression as a scalar query: each aggregate call evaluated over the rows
+ * of its dataset that `where` selects. The expression's dataset names are GASP
  * dataset ids (the reference model, or a model synthesised from a v1 adapter);
- * `physical` names the table and date column behind each.
+ * `physical` names the table behind each.
  */
-export function directQuery(expression: string, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD, physical?: Physical): string {
+export function aggregateQuery(expression: string, datasets: Record<string, OntologyDataset>, where: (dataset: string) => string, physical?: Physical): string {
   let out = "";
   let at = 0;
   for (const span of aggregateSpans(expression)) {
@@ -72,11 +72,19 @@ export function directQuery(expression: string, datasets: Record<string, Ontolog
     const ds = refs[0];
     // The call qualifies its columns by dataset name, so a physical table is aliased to it.
     const table = physical ? `${physical.table(ds)} AS ${ds}` : `gasp.${ds}`;
-    out += `${expression.slice(at, span.start)}(SELECT ${call} FROM ${table} WHERE ${periodFilter(datasets[ds], fields, period, physical?.date(ds))})`;
+    out += `${expression.slice(at, span.start)}(SELECT ${call} FROM ${table} WHERE ${where(ds)})`;
     at = span.end;
   }
   out += expression.slice(at);
   return `(${out})`;
+}
+
+/**
+ * A direct expression as a scalar query: each aggregate call evaluated over its
+ * dataset's rows for the period, as `periodFilter` selects them.
+ */
+export function directQuery(expression: string, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD, physical?: Physical): string {
+  return aggregateQuery(expression, datasets, (ds) => periodFilter(datasets[ds], fields, period, physical?.date(ds)), physical);
 }
 
 /** A staged metric as a scalar query: its staged dataset's row for the period. */

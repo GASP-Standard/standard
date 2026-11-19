@@ -4,6 +4,10 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+### Added
+- The Ossie conformance set grows from 11 cases to 15 and now grades a result. Four new cases cover which rows of a snapshot dataset a reporting period reads: June MRR, second-quarter MRR and Total Customers for June as direct expressions read on the last snapshot date, and Logo Churn Rate over four weeks that begin on the day a customer starts. A case may list readings, each a value the generator computes on the fixture: the value a named mistake returns (MRR summed over June's 30 dates gives 695,900 against 24,200; three month ends added give 64,800; customers counted over every date give 19 distinct or 525 rows against 18) or the value another reading in use returns (the opening count taken at the prior close gives 1/13 against 1/14). `manifest.json` carries the grading rule, right, alternative, wrong or failed, and per case its `kind`, `group`, `period` and `readings`; a case with readings has a `readings.sql`. Win Rate and the six-month Logo Churn Rate case gain one wrong reading each.
+- `gasp-ossie-validator`, the checker behind `validate.py --vendor GASP`, is prepared for PyPI: its own licence file, author and classifiers, a README that names the install from the index (`uv run --with gasp-ossie-validator validation/validate.py --vendor GASP <file>` from a clone of apache/ossie) and a release workflow in the public repository that builds it, runs the built wheel over the published GASP files and uploads it through trusted publishing.
+
 ## [1.21.0] - 2026-11-19
 
 ### Added

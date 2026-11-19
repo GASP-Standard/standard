@@ -3,7 +3,14 @@
  * portable expression language cannot state yet (the staged reasons in
  * metrics.ts), each a complete Ossie semantic model, a standard SQL query over
  * its staged dataset, the expected result on the GASP fixture and the fixture
- * rows it reads.
+ * rows it reads. conformance-snapshot.ts adds the cases for a direct expression
+ * over a snapshot dataset, which the language states and a query can still
+ * misread.
+ *
+ * A case may list readings: the values a query returns when it makes a named
+ * mistake (grade `wrong`) or takes a reading other tools use and GASP does not
+ * (grade `alternative`). With them a result is graded as right, alternative,
+ * wrong or failed (`GRADING`).
  *
  * The shapes follow the two upstream compliance suites: a case directory holds
  * `model.ossie.yaml` (as compliance/portability's one-model-per-rung fixtures),
@@ -23,20 +30,74 @@ import { formulaSource, type StagedReason } from "./metrics.js";
 import type { OssieDataset, OssieExport, OssieMetric, OssieSemanticModel } from "./types.js";
 import { OSSIE_VERSION } from "./types.js";
 
-/** Reporting period every case is evaluated for: the fixture window, so every movement in the stories lands in it. */
+export interface ConformancePeriod { start: string; end: string }
+
+/** Reporting period every staged case is evaluated for: the fixture window, so every movement in the stories lands in it. */
 export const CONFORMANCE_PERIOD = { start: "2026-01-01", end: "2026-06-30" } as const;
+
+/** `wrong` is a mistake; `alternative` is a reading in use elsewhere that GASP does not take. */
+export type Grade = "wrong" | "alternative";
+
+/** A value other than the expected one that a query returns for a case, and how it gets there. */
+export interface Reading {
+  grade: Grade;
+  /** The name a grader reports. */
+  name: string;
+  /** What the query did. */
+  description: string;
+  /** A scalar query in parentheses over the tables in data/ (Postgres dialect). */
+  query: string;
+}
+
+/** The four grades of a result, as the README and the manifest state them. */
+export const GRADING = {
+  right: "The rows of expected.sql.",
+  alternative: "A value listed with grade alternative: a reading other tools take and GASP does not. Report it by name.",
+  wrong: "Any other value. When it equals a value listed with grade wrong, the mistake is the one named there.",
+  failed: "No value: the implementation rejects the model or the query, or the query errors.",
+} as const;
+
+/** A reading of a staged case: the case's staged source with every `find` replaced. */
+export interface StagedReading { grade: Grade; name: string; description: string; find: string; replace: string }
+
+/** One staged case: the entry, why it is staged and, off the default period, the period and a label for the id. */
+export interface StagedCaseSpec {
+  reason: StagedReason;
+  entry: string;
+  construct: string;
+  readings?: StagedReading[];
+  period?: ConformancePeriod;
+  label?: string;
+  group?: ConformanceCase["group"];
+}
 
 /**
  * One coverage entry per staged reason, in the order metrics.ts ranks the
  * reasons. Chosen for small datasets and for metrics the executed test suite
  * already pins, so every expected value is checked twice.
  */
-export const CONFORMANCE_CASES: ReadonlyArray<{ reason: StagedReason; entry: string; construct: string }> = [
+export const CONFORMANCE_CASES: ReadonlyArray<StagedCaseSpec> = [
   { reason: "cohort", entry: "nrr", construct: "a cohort fixed at the opening of the period and followed through its events (Net Revenue Retention)" },
   { reason: "lag", entry: "mrr_growth_rate", construct: "the same aggregate one period earlier (period-over-period growth)" },
-  { reason: "at period_start", entry: "logo_churn_rate", construct: "a snapshot read at the opening of the period beside events inside it" },
+  {
+    reason: "at period_start", entry: "logo_churn_rate", construct: "a snapshot read at the opening of the period beside events inside it",
+    readings: [
+      {
+        grade: "wrong", name: "closing_value", find: "snapshot_date = p.period_start", replace: "snapshot_date = p.period_end",
+        description: "the customers active on the last day of the period as the denominator, where the formula reads the first day",
+      },
+    ],
+  },
   { reason: "total", entry: "ticket_distribution_by_type", construct: "a share of the ungrouped total inside a breakdown" },
-  { reason: "period bound in filter", entry: "win_rate", construct: "the reporting period bound to a field other than the dataset's time field (opportunities by close date on a snapshot)" },
+  {
+    reason: "period bound in filter", entry: "win_rate", construct: "the reporting period bound to a field other than the dataset's time field (opportunities by close date on a snapshot)",
+    readings: [
+      {
+        grade: "wrong", name: "period_on_snapshot_date_only", find: " AND (close_date >= p.period_start AND close_date <= p.period_end)", replace: "",
+        description: "the opportunities as they stand at the period end with no bound on the close date, so the period reaches the dataset's time field alone and every deal ever closed is counted",
+      },
+    ],
+  },
   { reason: "to_date", entry: "ticket_backlog", construct: "an aggregate cumulative from the start of history to the period end" },
   { reason: "period_days", entry: "uptime", construct: "the number of days in the reporting period as a value" },
   { reason: "bucket", entry: "aging_buckets", construct: "a dimension defined by ranges over a per-row expression" },
@@ -45,11 +106,20 @@ export const CONFORMANCE_CASES: ReadonlyArray<{ reason: StagedReason; entry: str
   { reason: "all_time", entry: "user_retention_day_n", construct: "an unbounded range beside a bounded one (users who signed up in the period, active any time after)" },
 ];
 
+/** The reason of a snapshot case, which no staged reason covers: the expression is direct. */
+export const SNAPSHOT_REASON = "snapshot";
+
 export interface ConformanceCase {
   /** Directory name: a two-digit rank, the reason and the metric. */
   id: string;
-  reason: StagedReason;
+  /** `staged`: the metric reads a staged dataset. `direct`: an OSSIE_SQL_2026 expression over a snapshot dataset. */
+  kind: "staged" | "direct";
+  /** `construct`: the one case of a staged reason. `snapshot`: a case on which rows of a snapshot dataset a period reads. */
+  group: "construct" | "snapshot";
+  reason: StagedReason | typeof SNAPSHOT_REASON;
   construct: string;
+  /** The reporting period the case is evaluated for. */
+  period: ConformancePeriod;
   /** Coverage key (`formula id` or `formula id:variant`). */
   entry: string;
   /** The GASP formula id and the variant or form, if any. */
@@ -58,25 +128,40 @@ export interface ConformanceCase {
   /** GASP grammar text of the entry expression. */
   formula: string;
   unit?: string;
-  /** Ossie metric name and the staged dataset that carries it. */
+  /** Ossie metric name and, on a staged case, the staged dataset that carries it. */
   metric: string;
-  stagedDataset: string;
-  /** GASP datasets the staged source reads, in the order they appear in the model. */
+  stagedDataset?: string;
+  /** GASP datasets the case reads, in the order they appear in the model. */
   datasets: string[];
   /** Result columns other than the value: a breakdown's key and label columns. */
   dimensions: string[];
   canonicalUrl?: string;
   model: OssieSemanticModel;
+  /** The reference query as one statement, without its header or semicolon. */
+  sql: string;
+  /** The other values a query returns for the case, by name. */
+  readings: Reading[];
+  /** Snapshot rows on every date of this range are kept in the data, since a reading sums across them. */
+  daily?: ConformancePeriod;
 }
+
+/** The canonical page a metric's `ai_context.instructions` names. */
+export function canonicalUrlOf(metric: OssieMetric): string | undefined {
+  const instructions = typeof metric.ai_context === "object" && metric.ai_context ? String(metric.ai_context.instructions ?? "") : "";
+  return /Canonical definition: (\S+?)\.?(?:\s|$)/.exec(instructions)?.[1];
+}
+
+/** A staged source's row for a period as a scalar query. */
+const stagedScalar = (source: string, period: ConformancePeriod): string => `(SELECT value FROM (${source}) AS s WHERE period_start = DATE '${period.start}')`;
 
 /** A GASP dataset referenced in a staged source as `gasp.<dataset>`. */
 const datasetRefs = (source: string): string[] => [...new Set([...source.matchAll(/\bgasp\.([a-z_][a-z0-9_]*)/g)].map((m) => m[1]))].filter((d) => d !== "period_spine");
 
-export function buildConformanceCases(data: StandardData, exp: OssieExport): ConformanceCase[] {
+export function buildConformanceCases(data: StandardData, exp: OssieExport, specs: ReadonlyArray<StagedCaseSpec> = CONFORMANCE_CASES, offset = 0): ConformanceCase[] {
   const byName = new Map<string, OssieDataset>(exp.model.datasets.map((d) => [d.name, d]));
   const metrics = new Map<string, OssieMetric>((exp.model.metrics ?? []).map((m) => [m.name, m]));
   const formulas = data.formulas ?? {};
-  return CONFORMANCE_CASES.map(({ reason, entry, construct }, i) => {
+  return specs.map(({ reason, entry, construct, readings: listed, period = CONFORMANCE_PERIOD, label, group = "construct" }, i) => {
     const c = exp.coverage[entry];
     if (!c || c.kind !== "staged") throw new Error(`Conformance case ${entry} is not a staged entry (${c?.kind ?? "missing"})`);
     if (c.reason !== reason) throw new Error(`Conformance case ${entry} is staged for "${c.reason}", not "${reason}"`);
@@ -89,34 +174,64 @@ export function buildConformanceCases(data: StandardData, exp: OssieExport): Con
     if (!formula) throw new Error(`Conformance case ${entry} has no formula text`);
     const datasets = exp.model.datasets.map((d) => d.name).filter((n) => datasetRefs(staged.source).includes(n));
     const dimensions = (staged.fields ?? []).map((x) => x.name).filter((n) => !["period_start", "period_end", "value"].includes(n));
-    const instructions = typeof metric.ai_context === "object" && metric.ai_context ? String(metric.ai_context.instructions ?? "") : "";
-    const canonicalUrl = /Canonical definition: (\S+?)\.?(?:\s|$)/.exec(instructions)?.[1];
-    const id = `c${String(i + 1).padStart(2, "0")}_${reason.replace(/\W+/g, "_")}_${formulaId}${variant ? `_${variant}` : ""}`;
+    const canonicalUrl = canonicalUrlOf(metric);
+    const id = `c${String(offset + i + 1).padStart(2, "0")}_${reason.replace(/\W+/g, "_")}_${formulaId}${variant ? `_${variant}` : ""}${label ? `_${label}` : ""}`;
     const model: OssieSemanticModel = {
       version: OSSIE_VERSION,
       name: `gasp_conformance_${id}`,
       description: `GASP conformance case ${id}: ${construct}. The metric ${metric.name} is staged because its formula needs "${reason}", which OSSIE_SQL_2026 cannot state; its staged dataset carries the compiled SQL. Formula: ${formula}`,
-      ai_context: { instructions: `Evaluate ${metric.name} for the period ${CONFORMANCE_PERIOD.start} to ${CONFORMANCE_PERIOD.end} (one row of gasp.period_spine) over the tables in ../../data/ and compare with expected.sql.` },
+      ai_context: { instructions: `Evaluate ${metric.name} for the period ${period.start} to ${period.end} (one row of gasp.period_spine) over the tables in ../../data/ and compare with expected.sql.` },
       datasets: [...datasets.map((n) => byName.get(n)!), staged],
       metrics: [metric],
     };
-    return { id, reason, construct, entry, formulaId, variant, formula, unit: f?.unit, metric: metric.name, stagedDataset: staged.name, datasets, dimensions, canonicalUrl, model };
+    const order = dimensions.length ? `\nORDER BY ${dimensions.join(", ")}` : "";
+    const sql = `SELECT ${[...dimensions, "value"].join(", ")}\nFROM (${staged.source}) AS s\nWHERE period_start = DATE '${period.start}'${order}`;
+    if (listed?.length && dimensions.length) throw new Error(`Conformance case ${entry} lists readings, which need a single value, and has the dimensions ${dimensions.join(", ")}`);
+    const readings: Reading[] = (listed ?? []).map((r) => {
+      if (!staged.source.includes(r.find)) throw new Error(`Conformance case ${entry}: the reading ${r.name} rewrites "${r.find}", which the compiled source no longer holds`);
+      return { grade: r.grade, name: r.name, description: r.description, query: stagedScalar(staged.source.split(r.find).join(r.replace), period) };
+    });
+    return { id, kind: "staged" as const, group, reason, construct, period, entry, formulaId, variant, formula, unit: f?.unit, metric: metric.name, stagedDataset: staged.name, datasets, dimensions, canonicalUrl, model, sql, readings };
   });
 }
 
-/** The standard SQL query an implementation answers: the staged dataset's row for the period. */
+/** The standard SQL query an implementation answers: the staged dataset's row for the period, or the direct expression read on the period's last snapshot date. */
 export function referenceSql(c: ConformanceCase): string {
-  const cols = [...c.dimensions, "value"].join(", ");
-  const order = c.dimensions.length ? `\nORDER BY ${c.dimensions.join(", ")}` : "";
-  return [
+  const head = [
     `-- GASP conformance case ${c.id}: ${c.construct}.`,
-    `-- Metric ${c.metric} (GASP formula: ${c.formula}) for the period ${CONFORMANCE_PERIOD.start} to ${CONFORMANCE_PERIOD.end}.`,
+    `-- Metric ${c.metric} (GASP formula: ${c.formula}) for the period ${c.period.start} to ${c.period.end}.`,
+  ];
+  const how = c.kind === "staged" ? [
     `-- The subquery is the source of the staged dataset ${c.stagedDataset} in model.ossie.yaml,`,
     `-- compiled by GASP from the formula (Postgres dialect; the GASP extension on the dataset carries`,
     `-- Snowflake, BigQuery and Databricks). It reads the tables in ../../data/, including gasp.period_spine.`,
-    `SELECT ${cols}`,
-    `FROM (${c.model.datasets[c.model.datasets.length - 1].source}) AS s`,
-    `WHERE period_start = DATE '${CONFORMANCE_PERIOD.start}'${order};`,
+  ] : [
+    `-- The metric is a direct OSSIE_SQL_2026 expression in model.ossie.yaml. Each aggregate is evaluated over its`,
+    `-- dataset's rows on the last snapshot date of the period, the one reading GASP takes. Nothing in the expression`,
+    `-- says so, and readings.sql holds what the other readings return. It reads the tables in ../../data/.`,
+  ];
+  return [...head, ...how, `${c.sql};`, ""].join("\n");
+}
+
+/** A graded value for display: an integer as it is, another number to twelve significant digits. */
+export const displayValue = (v: number | null): string => (v === null ? "NULL" : String(Number(v.toPrecision(12))));
+
+/** readings.sql: one row per named reading of the case, with the value each returns on the data. */
+export function readingsSql(c: ConformanceCase, values: Record<string, number | null>): string {
+  const members = c.readings.map((r) => [
+    `  -- ${r.name}: ${r.description}. Returns ${displayValue(values[r.name] ?? null)}.`,
+    `  SELECT '${r.grade}' AS grade, '${r.name}' AS reading, CAST(${r.query} AS DOUBLE PRECISION) AS value`,
+  ].join("\n"));
+  return [
+    `-- The other readings of case ${c.id}: what a query returns for ${c.metric} when it reads the data another way.`,
+    "-- Grade wrong is a mistake. Grade alternative is a reading other tools take and GASP does not.",
+    "-- A result that differs from expected.sql is graded against these rows (see Grading in ../../README.md).",
+    "-- Postgres dialect, over the tables in ../../data/.",
+    "SELECT grade, reading, value",
+    "FROM (",
+    members.join("\n  UNION ALL\n"),
+    ") AS readings",
+    "ORDER BY reading;",
     "",
   ].join("\n");
 }
@@ -171,13 +286,16 @@ export function dataSql(dataset: string, meta: OntologyDataset, fields: Ontology
   return lines.join("\n") + "\n";
 }
 
-/** data/period_spine.sql: the one reporting period every case evaluates. */
-export function periodSpineSql(): string {
+/** data/period_spine.sql: the reporting periods the staged sources compute for, the first half of 2026 unless given. */
+export function periodSpineSql(periods: ReadonlyArray<ConformancePeriod> = [CONFORMANCE_PERIOD]): string {
+  const rows = periods.map((p) => `(DATE '${p.start}', DATE '${p.end}')`);
   return [
-    "-- The reporting periods the staged sources compute for: one row per period. Every case uses the first half of 2026.",
+    periods.length === 1
+      ? "-- The reporting periods the staged sources compute for: one row per period. Every case uses the first half of 2026."
+      : "-- The reporting periods the staged sources compute for: one row per period. A case reads the row for its own period.",
     "CREATE SCHEMA gasp;",
     "CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE);",
-    `INSERT INTO gasp.period_spine (period_start, period_end) VALUES (DATE '${CONFORMANCE_PERIOD.start}', DATE '${CONFORMANCE_PERIOD.end}');`,
+    `INSERT INTO gasp.period_spine (period_start, period_end) VALUES ${rows.join(", ")};`,
     "",
   ].join("\n");
 }
@@ -185,57 +303,99 @@ export function periodSpineSql(): string {
 export interface ConformanceManifest {
   description: string;
   period: typeof CONFORMANCE_PERIOD;
+  grading: typeof GRADING;
   data: Record<string, { rows: number; slice: string }>;
   cases: Array<{
-    id: string; reason: StagedReason; construct: string; metric: string; gasp_id: string; variant?: string; formula: string; unit?: string;
-    datasets: string[]; columns: string[]; expected: Array<Record<string, unknown>>; canonical?: string;
+    id: string; kind: ConformanceCase["kind"]; group: ConformanceCase["group"]; reason: ConformanceCase["reason"]; construct: string; metric: string; gasp_id: string; variant?: string; formula: string; unit?: string;
+    period: ConformancePeriod; datasets: string[]; columns: string[]; expected: Array<Record<string, unknown>>;
+    readings?: Array<{ grade: Grade; name: string; description: string; value: number | null }>; canonical?: string;
   }>;
 }
 
-export function manifest(cases: ConformanceCase[], expected: Record<string, Array<Record<string, unknown>>>, data: ConformanceManifest["data"]): ConformanceManifest {
+/** Each case's reading values by reading name, as the runner computed them. */
+export type ReadingValues = Record<string, Record<string, number | null>>;
+
+export function manifest(cases: ConformanceCase[], expected: Record<string, Array<Record<string, unknown>>>, readings: ReadingValues, data: ConformanceManifest["data"]): ConformanceManifest {
   return {
-    description: "GASP conformance set for Apache Ossie: one case per construct OSSIE_SQL_2026 cannot state (the staged reasons in the GASP export), each with a complete model, a standard SQL reference query, the expected result on the GASP fixture and the rows it reads. Written by npm run conformance in gasp-wiki-mcp.",
+    description: "GASP conformance set for Apache Ossie: one case per construct OSSIE_SQL_2026 cannot state (the staged reasons in the GASP export) and the cases for a direct expression over a snapshot dataset, each with a complete model, a standard SQL reference query, the expected result on the GASP fixture and the rows it reads. A case with readings also lists the values a query returns under each named mistake or alternative reading. Written by npm run conformance in gasp-wiki-mcp.",
     period: CONFORMANCE_PERIOD,
+    grading: GRADING,
     data,
     cases: cases.map((c) => ({
-      id: c.id, reason: c.reason, construct: c.construct, metric: c.metric, gasp_id: c.formulaId, ...(c.variant ? { variant: c.variant } : {}),
-      formula: c.formula, ...(c.unit ? { unit: c.unit } : {}), datasets: c.datasets, columns: [...c.dimensions, "value"], expected: expected[c.id] ?? [],
+      id: c.id, kind: c.kind, group: c.group, reason: c.reason, construct: c.construct, metric: c.metric, gasp_id: c.formulaId, ...(c.variant ? { variant: c.variant } : {}),
+      formula: c.formula, ...(c.unit ? { unit: c.unit } : {}), period: { start: c.period.start, end: c.period.end }, datasets: c.datasets, columns: [...c.dimensions, "value"], expected: expected[c.id] ?? [],
+      ...(c.readings.length ? { readings: c.readings.map((r) => ({ grade: r.grade, name: r.name, description: r.description, value: readings[c.id]?.[r.name] ?? null })) } : {}),
       ...(c.canonicalUrl ? { canonical: c.canonicalUrl } : {}),
     })),
   };
 }
 
-export function readme(cases: ConformanceCase[], data: ConformanceManifest["data"]): string {
-  const rows = cases.map((c) => `| \`${c.id}\` | ${c.reason} | ${c.construct} | \`${c.formula.replace(/\|/g, "\\|")}\` |`);
+export function readme(cases: ConformanceCase[], data: ConformanceManifest["data"], expected: Record<string, Array<Record<string, unknown>>>, readings: ReadingValues): string {
+  const constructs = cases.filter((c) => c.group === "construct");
+  const snapshots = cases.filter((c) => c.group === "snapshot");
+  const direct = snapshots.filter((c) => c.kind === "direct");
+  const opening = snapshots.filter((c) => c.kind === "staged");
+  const periods = cases.filter((c) => c.kind === "staged").map((c) => `${c.period.start} to ${c.period.end}`).filter((p, i, all) => all.indexOf(p) === i);
+  const count = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const rows = cases.map((c) => `| \`${c.id}\` | ${c.reason} | ${c.period.start} to ${c.period.end} | ${c.construct} | \`${c.formula.replace(/\|/g, "\\|")}\` |`);
   const tables = Object.entries(data).map(([d, x]) => `| \`${d}\` | ${x.rows} | ${x.slice} |`);
+  const value = (v: unknown): string => displayValue(v === null || v === undefined ? null : Number(v));
+  const graded = cases.filter((c) => c.readings.length).flatMap((c) => [
+    `| \`${c.id}\` | right | | ${value(expected[c.id]?.[0]?.value)} | ${c.construct} |`,
+    ...c.readings.map((r) => `| | ${r.grade} | \`${r.name}\` | ${value(readings[c.id]?.[r.name])} | ${r.description} |`),
+  ]);
   return `# GASP conformance set for Apache Ossie
 
 Generated from the GASP Standard by \`npm run conformance\` in \`gasp-wiki-mcp\`. Do not edit; edit \`/standard/\` or the fixture and re-run.
 
-One case per construct the portable expression language (\`OSSIE_SQL_2026\`) cannot state yet. The GASP export stages ${cases.length} kinds of formula through a per-period dataset whose source is compiled SQL (\`coverage.json\` beside the Ossie files lists every staged entry and its reason); this directory holds one worked case for each reason, with an executed answer, so a proposal that adds the construct to the language can be tested against it.
+This directory holds two groups of case.
+
+${count(constructs.length, "case")} cover the constructs the portable expression language (\`OSSIE_SQL_2026\`) cannot state yet. The GASP export stages ${constructs.length} kinds of formula through a per-period dataset whose source is compiled SQL (\`coverage.json\` beside the Ossie files lists every staged entry and its reason); there is one worked case for each reason, with an executed answer, so a proposal that adds the construct to the language can be tested against it.
+
+${count(snapshots.length, "case")} cover which rows of a snapshot dataset a reporting period reads. A snapshot dataset holds one row per entity per \`snapshot_date\`. ${direct.length} of them take a direct expression whose GASP formula ends \`at period_end\`, which the Ossie expression has no place to say. The expression validates and runs, and a query that sums it across dates returns a number with no error. ${opening.length} ${opening.length === 1 ? "takes" : "take"} the opening value of a period that begins on the day a customer starts, where the snapshot dated on the first day and the last snapshot before it differ. On the calendar months of the fixture those two agree. Each of these cases carries the expected value and the value every other listed reading returns (Grading, below).
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
-| \`data/period_spine.sql\` | The schema and the one reporting period (${CONFORMANCE_PERIOD.start} to ${CONFORMANCE_PERIOD.end}) |
+| \`data/period_spine.sql\` | The schema and the reporting periods the staged sources compute for (${periods.join("; ")}) |
 | \`data/<dataset>.sql\` | One GASP dataset as \`CREATE TABLE\` + \`INSERT\`, columns named by GASP field id, rows from the GASP test fixture |
-| \`cases/<case>/model.ossie.yaml\` | A complete Ossie semantic model: the datasets the case reads, the staged dataset and the metric |
-| \`cases/<case>/reference.postgres.sql\` | The staged dataset's source for the period, as a query over \`data/\` (Postgres dialect) |
+| \`cases/<case>/model.ossie.yaml\` | A complete Ossie semantic model: the datasets the case reads, the staged dataset where the case has one and the metric |
+| \`cases/<case>/reference.postgres.sql\` | The staged dataset's source for the period, or the direct expression read on the period's last snapshot date, as a query over \`data/\` (Postgres dialect) |
 | \`cases/<case>/expected.sql\` | The expected result as a \`VALUES\` list in standard SQL, in the shape of \`compliance/query\` upstream |
-| \`manifest.json\` | Every case with its reason, formula, datasets, columns and expected rows |
+| \`cases/<case>/readings.sql\` | On the cases listed under Grading: one row per named mistake or alternative reading with the value it returns (Postgres dialect) |
+| \`manifest.json\` | Every case with its reason, formula, period, datasets, columns, expected rows and readings |
 
-A case passes when an implementation loads \`data/period_spine.sql\` and the \`data/<dataset>.sql\` files the case names, loads \`model.ossie.yaml\`, evaluates the metric for the period and returns the rows of \`expected.sql\` (columns by position, exact numerics equal, approximate numerics within a relative 1e-9). \`reference.postgres.sql\` is the non-normative derivation: run it on Postgres over the same data and it returns \`expected.sql\`. The test suite does exactly that on PGlite for every case.
+A case passes when an implementation loads \`data/period_spine.sql\` and the \`data/<dataset>.sql\` files the case names, loads \`model.ossie.yaml\`, evaluates the metric for the case's period and returns the rows of \`expected.sql\` (columns by position, exact numerics equal, approximate numerics within a relative 1e-9). \`reference.postgres.sql\` is the non-normative derivation: run it on Postgres over the same data and it returns \`expected.sql\`. The test suite does exactly that on PGlite for every case.
 
 ## Cases
 
-| Case | Reason | Construct | GASP formula |
-| --- | --- | --- | --- |
+| Case | Reason | Period | Construct | GASP formula |
+| --- | --- | --- | --- | --- |
 ${rows.join("\n")}
 
+## Grading
+
+A result has one of four grades.
+
+| Grade | Result |
+| --- | --- |
+| right | ${GRADING.right.replace("expected.sql", "\`expected.sql\`")} |
+| alternative | ${GRADING.alternative.replace("grade alternative", "grade \`alternative\`")} |
+| wrong | ${GRADING.wrong.replace("grade wrong", "grade \`wrong\`")} |
+| failed | ${GRADING.failed} |
+
+Failed is kept apart from wrong because every wrong value listed here comes from a query that runs without an error or a warning. An implementation that refuses a query it cannot evaluate over a snapshot has returned no wrong number.
+
+${graded.length ? `The values below were computed by running each reading on the data, as \`readings.sql\` in the case directory does. A wrong value that is not listed is still wrong.
+
+| Case | Grade | Reading | Value | What the query did |
+| --- | --- | --- | --- | --- |
+${graded.join("\n")}
+` : ""}
 ## Data
 
-The rows come from the deterministic GASP fixture (\`gasp-wiki-mcp/test/fixture/generate.ts\`, seed 20260101, about twenty customers over 2026-01-01 to 2026-06-30 with snapshot history from 2025-06-01). A snapshot dataset is sliced to month-end rows where that reproduces the full result; every slice was verified against the full fixture when it was written.
+The rows come from the deterministic GASP fixture (\`gasp-wiki-mcp/test/fixture/generate.ts\`, seed 20260101, about twenty customers over 2026-01-01 to 2026-06-30 with snapshot history from 2025-06-01). A snapshot dataset is sliced to month-end rows where that reproduces the full result, plus the bounds of a period off the calendar month and every date of a period a listed reading sums across; every slice was verified against the full fixture when it was written, the expected rows and the reading values alike.
 
 | Dataset | Rows | Slice |
 | --- | --- | --- |

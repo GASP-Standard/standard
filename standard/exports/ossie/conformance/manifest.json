@@ -1,13 +1,19 @@
 {
-  "description": "GASP conformance set for Apache Ossie: one case per construct OSSIE_SQL_2026 cannot state (the staged reasons in the GASP export), each with a complete model, a standard SQL reference query, the expected result on the GASP fixture and the rows it reads. Written by npm run conformance in gasp-wiki-mcp.",
+  "description": "GASP conformance set for Apache Ossie: one case per construct OSSIE_SQL_2026 cannot state (the staged reasons in the GASP export) and the cases for a direct expression over a snapshot dataset, each with a complete model, a standard SQL reference query, the expected result on the GASP fixture and the rows it reads. A case with readings also lists the values a query returns under each named mistake or alternative reading. Written by npm run conformance in gasp-wiki-mcp.",
   "period": {
     "start": "2026-01-01",
     "end": "2026-06-30"
   },
+  "grading": {
+    "right": "The rows of expected.sql.",
+    "alternative": "A value listed with grade alternative: a reading other tools take and GASP does not. Report it by name.",
+    "wrong": "Any other value. When it equals a value listed with grade wrong, the mistake is the one named there.",
+    "failed": "No value: the implementation rejects the model or the query, or the query errors."
+  },
   "data": {
     "customer": {
-      "rows": 365,
-      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+      "rows": 999,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months; on 2026-02-08, 2026-02-09, 2026-03-08, which a case off the calendar month reads; on every date from 2026-06-01 to 2026-06-30, which a listed reading sums across"
     },
     "invoice": {
       "rows": 328,
@@ -30,8 +36,8 @@
       "slice": "rows dated from 2025-12-01"
     },
     "subscription": {
-      "rows": 341,
-      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months"
+      "rows": 914,
+      "slice": "snapshot rows on month starts, month ends and the period bounds shifted back by one, three, six and twelve months; on every date from 2026-06-01 to 2026-06-30, which a listed reading sums across"
     },
     "ticket": {
       "rows": 31,
@@ -45,12 +51,18 @@
   "cases": [
     {
       "id": "c01_cohort_nrr",
+      "kind": "staged",
+      "group": "construct",
       "reason": "cohort",
       "construct": "a cohort fixed at the opening of the period and followed through its events (Net Revenue Retention)",
       "metric": "gasp_nrr",
       "gasp_id": "nrr",
       "formula": "(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "revenue_event",
         "customer",
@@ -68,12 +80,18 @@
     },
     {
       "id": "c02_lag_mrr_growth_rate",
+      "kind": "staged",
+      "group": "construct",
       "reason": "lag",
       "construct": "the same aggregate one period earlier (period-over-period growth)",
       "metric": "gasp_mrr_growth_rate",
       "gasp_id": "mrr_growth_rate",
       "formula": "(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "subscription"
       ],
@@ -89,12 +107,18 @@
     },
     {
       "id": "c03_at_period_start_logo_churn_rate",
+      "kind": "staged",
+      "group": "construct",
       "reason": "at period_start",
       "construct": "a snapshot read at the opening of the period beside events inside it",
       "metric": "gasp_logo_churn_rate",
       "gasp_id": "logo_churn_rate",
       "formula": "metric.churned_customers / metric.total_customers at period_start",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "revenue_event",
         "customer"
@@ -107,16 +131,30 @@
           "value": 0.25
         }
       ],
+      "readings": [
+        {
+          "grade": "wrong",
+          "name": "closing_value",
+          "description": "the customers active on the last day of the period as the denominator, where the formula reads the first day",
+          "value": 0.16666666666666666
+        }
+      ],
       "canonical": "https://gaspwiki.com/v1/metrics/core/logo-churn-rate-customer-churn"
     },
     {
       "id": "c04_total_ticket_distribution_by_type",
+      "kind": "staged",
+      "group": "construct",
       "reason": "total",
       "construct": "a share of the ungrouped total inside a breakdown",
       "metric": "gasp_ticket_distribution_by_type",
       "gasp_id": "ticket_distribution_by_type",
       "formula": "count_distinct(field.ticket_id) / total(metric.ticket_volume)",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "ticket"
       ],
@@ -154,12 +192,18 @@
     },
     {
       "id": "c05_period_bound_in_filter_win_rate",
+      "kind": "staged",
+      "group": "construct",
       "reason": "period bound in filter",
       "construct": "the reporting period bound to a field other than the dataset's time field (opportunities by close date on a snapshot)",
       "metric": "gasp_win_rate",
       "gasp_id": "win_rate",
       "formula": "count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in ('closed_won', 'closed_lost') and in_period(field.close_date))",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "opportunity"
       ],
@@ -171,16 +215,30 @@
           "value": 0.5
         }
       ],
+      "readings": [
+        {
+          "grade": "wrong",
+          "name": "period_on_snapshot_date_only",
+          "description": "the opportunities as they stand at the period end with no bound on the close date, so the period reaches the dataset's time field alone and every deal ever closed is counted",
+          "value": 0.5263157894736842
+        }
+      ],
       "canonical": "https://gaspwiki.com/v1/metrics/sales/win-rate"
     },
     {
       "id": "c06_to_date_ticket_backlog",
+      "kind": "staged",
+      "group": "construct",
       "reason": "to_date",
       "construct": "an aggregate cumulative from the start of history to the period end",
       "metric": "gasp_ticket_backlog",
       "gasp_id": "ticket_backlog",
       "formula": "count_distinct(field.ticket_id where field.ticket_status in ('open', 'pending')) at period_end",
       "unit": "count",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "ticket"
       ],
@@ -196,12 +254,18 @@
     },
     {
       "id": "c07_period_days_uptime",
+      "kind": "staged",
+      "group": "construct",
       "reason": "period_days",
       "construct": "the number of days in the reporting period as a value",
       "metric": "gasp_uptime",
       "gasp_id": "uptime",
       "formula": "1 - sum(field.downtime_minutes) / (period_days * 1440)",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "service_metrics"
       ],
@@ -217,12 +281,18 @@
     },
     {
       "id": "c08_bucket_aging_buckets",
+      "kind": "staged",
+      "group": "construct",
       "reason": "bucket",
       "construct": "a dimension defined by ranges over a per-row expression",
       "metric": "gasp_aging_buckets",
       "gasp_id": "aging_buckets",
       "formula": "sum(field.outstanding_amount) / total(sum(field.outstanding_amount))",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "invoice"
       ],
@@ -252,12 +322,18 @@
     },
     {
       "id": "c09_window_dau_mau",
+      "kind": "staged",
+      "group": "construct",
       "reason": "window",
       "construct": "trailing windows of different lengths ending at the period end (one day over thirty)",
       "metric": "gasp_dau_mau",
       "gasp_id": "dau_mau",
       "formula": "metric.daily_active_users_dau / metric.monthly_active_users_mau",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "product_event"
       ],
@@ -273,12 +349,18 @@
     },
     {
       "id": "c10_distinct_pair_breadth_of_adoption",
+      "kind": "staged",
+      "group": "construct",
       "reason": "distinct pair",
       "construct": "a count of distinct tuples (account and feature pairs)",
       "metric": "gasp_breadth_of_adoption",
       "gasp_id": "breadth_of_adoption",
       "formula": "count_distinct(field.customer_id, field.feature_id) / metric.active_accounts",
       "unit": "ratio",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "product_event"
       ],
@@ -294,12 +376,18 @@
     },
     {
       "id": "c11_all_time_user_retention_day_n",
+      "kind": "staged",
+      "group": "construct",
       "reason": "all_time",
       "construct": "an unbounded range beside a bounded one (users who signed up in the period, active any time after)",
       "metric": "gasp_user_retention_day_n",
       "gasp_id": "user_retention_day_n",
       "formula": "all_time(count_distinct(field.user_id where field.product_event_type = 'qualifying' and in_period(field.signup_date) and (field.event_date - field.signup_date) = 30)) / count_distinct(field.user_id where in_period(field.signup_date))",
       "unit": "percent",
+      "period": {
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      },
       "datasets": [
         "user",
         "product_event"
@@ -313,6 +401,171 @@
         }
       ],
       "canonical": "https://gaspwiki.com/v1/metrics/product/user-retention-day-n"
+    },
+    {
+      "id": "c12_snapshot_mrr_month",
+      "kind": "direct",
+      "group": "snapshot",
+      "reason": "snapshot",
+      "construct": "a sum over a snapshot dataset for a month, read on the last snapshot date of the month",
+      "metric": "gasp_mrr",
+      "gasp_id": "mrr",
+      "formula": "sum(field.mrr where field.subscription_status = 'active') at period_end",
+      "unit": "currency",
+      "period": {
+        "start": "2026-06-01",
+        "end": "2026-06-30"
+      },
+      "datasets": [
+        "subscription"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 24200
+        }
+      ],
+      "readings": [
+        {
+          "grade": "wrong",
+          "name": "summed_over_every_date",
+          "description": "the sum taken over every snapshot date in the period, so each subscription is added once per day",
+          "value": 695900
+        },
+        {
+          "grade": "wrong",
+          "name": "opening_value",
+          "description": "the sum on the first snapshot date of the period, where the formula reads the last",
+          "value": 21800
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/mrr-monthly-recurring-revenue"
+    },
+    {
+      "id": "c13_snapshot_mrr_quarter",
+      "kind": "direct",
+      "group": "snapshot",
+      "reason": "snapshot",
+      "construct": "a sum over a snapshot dataset for a quarter, read on the last snapshot date of the quarter",
+      "metric": "gasp_mrr",
+      "gasp_id": "mrr",
+      "formula": "sum(field.mrr where field.subscription_status = 'active') at period_end",
+      "unit": "currency",
+      "period": {
+        "start": "2026-04-01",
+        "end": "2026-06-30"
+      },
+      "datasets": [
+        "subscription"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 24200
+        }
+      ],
+      "readings": [
+        {
+          "grade": "wrong",
+          "name": "month_ends_summed",
+          "description": "the closing value of each month in the period added together, where the formula reads the closing value of the last",
+          "value": 64800
+        },
+        {
+          "grade": "wrong",
+          "name": "opening_value",
+          "description": "the sum on the first snapshot date of the period, where the formula reads the last",
+          "value": 18400
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/mrr-monthly-recurring-revenue"
+    },
+    {
+      "id": "c14_snapshot_total_customers_month",
+      "kind": "direct",
+      "group": "snapshot",
+      "reason": "snapshot",
+      "construct": "a distinct count over a snapshot dataset for a month, read on the last snapshot date of the month",
+      "metric": "gasp_total_customers",
+      "gasp_id": "total_customers",
+      "formula": "count_distinct(field.customer_id where field.customer_status = 'active') at period_end",
+      "unit": "count",
+      "period": {
+        "start": "2026-06-01",
+        "end": "2026-06-30"
+      },
+      "datasets": [
+        "customer"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 18
+        }
+      ],
+      "readings": [
+        {
+          "grade": "wrong",
+          "name": "distinct_over_every_date",
+          "description": "the distinct count taken over every snapshot date in the period, so a customer active on any day of it is counted, one who left before the last day included",
+          "value": 19
+        },
+        {
+          "grade": "wrong",
+          "name": "rows_over_every_date",
+          "description": "the active rows on every snapshot date in the period counted without DISTINCT, which gives customer days",
+          "value": 525
+        },
+        {
+          "grade": "wrong",
+          "name": "opening_value",
+          "description": "the count on the first snapshot date of the period, where the formula reads the last",
+          "value": 16
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/total-customers"
+    },
+    {
+      "id": "c15_at_period_start_logo_churn_rate_four_weeks",
+      "kind": "staged",
+      "group": "snapshot",
+      "reason": "at period_start",
+      "construct": "the opening value of a period that begins on the day a customer starts, read from the snapshot dated on the first day of the period",
+      "metric": "gasp_logo_churn_rate",
+      "gasp_id": "logo_churn_rate",
+      "formula": "metric.churned_customers / metric.total_customers at period_start",
+      "unit": "percent",
+      "period": {
+        "start": "2026-02-09",
+        "end": "2026-03-08"
+      },
+      "datasets": [
+        "revenue_event",
+        "customer"
+      ],
+      "columns": [
+        "value"
+      ],
+      "expected": [
+        {
+          "value": 0.07142857142857142
+        }
+      ],
+      "readings": [
+        {
+          "grade": "alternative",
+          "name": "prior_period_close",
+          "description": "the opening value read from the last snapshot date before the period (the prior period's close), which leaves out the customer who starts on the first day",
+          "value": 0.07692307692307693
+        }
+      ],
+      "canonical": "https://gaspwiki.com/v1/metrics/core/logo-churn-rate-customer-churn"
     }
   ]
 }
