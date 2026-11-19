@@ -25,7 +25,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 - The dev@ post gave 525 as "the same count" over June's rows. The published expression counts distinct customers, which gives 19 over those rows; 525 is the active rows counted without `DISTINCT`. The case lists both, each under its own name.
 - The example demo is unchanged, so apache/ossie #773 needs no refresh.
 - The package gains its own `LICENSE`, `.gitignore`, author and classifiers, and its README names the install from the index. `test/ossie-vendor.test.ts` builds it and checks what the wheel and the sdist carry. The mirror's token must be allowed to write workflow files, which it has done since the test workflow first went over.
-- The first release waits for two steps of the owner's: the pending publisher on pypi.org and one run of the workflow. Later releases are a version bump and a run.
+- The first release took two steps of the owner's, the pending publisher on pypi.org and one run of the workflow, and 0.1.0 went up on 2026-11-19. Later releases are a version bump and a run.
 
 ---
 
