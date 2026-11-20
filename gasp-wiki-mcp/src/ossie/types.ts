@@ -1,7 +1,7 @@
 /**
  * Apache Ossie (incubating) document shapes, as far as the GASP exporters use
  * them. Mirrors core-spec/ossie-schema.json, ontology/ontology.json and
- * ontology/mapping.json at apache/ossie 5eb0523 (2026-11-13). Every shape is
+ * ontology/mapping.json at apache/ossie 344259a (2026-11-19). Every shape is
  * `additionalProperties: false` upstream, so add nothing that is not here.
  */
 
@@ -48,7 +48,10 @@ const EXTENSIONS_KEY = "nonportable_extensions";
  * of 0.2.0.dev0 becomes `OSSIE_VERSION`, every `custom_extensions` array,
  * anywhere in the document, becomes `nonportable_extensions` (after any entries
  * already under that key) and every extension `data` given as a JSON string
- * that holds an object becomes that object. Returns the number of rewrites.
+ * that holds an object becomes that object. A `primary_key` that names a field
+ * twice keeps the first of each: `adapterToOssie` wrote one for a dataset whose
+ * key is its date until 2026-11-19, and upstream rejects it since apache/ossie
+ * #705. Returns the number of rewrites.
  * A string that is not a JSON object is left for the schema check to name, and
  * nothing under an extension's `data` is walked, since those keys are the
  * vendor's own.
@@ -67,6 +70,11 @@ export function migrateDocument(doc: unknown): number {
       const legacy = o[LEGACY_EXTENSIONS_KEY] as unknown[];
       o[EXTENSIONS_KEY] = Array.isArray(o[EXTENSIONS_KEY]) ? [...(o[EXTENSIONS_KEY] as unknown[]), ...legacy] : legacy;
       delete o[LEGACY_EXTENSIONS_KEY];
+      n++;
+    }
+    const key = o.primary_key;
+    if (Array.isArray(key) && key.every((k) => typeof k === "string") && new Set(key).size < key.length) {
+      o.primary_key = [...new Set(key)];
       n++;
     }
     for (const [k, x] of Object.entries(o)) {
@@ -282,7 +290,7 @@ export interface OssieMapping {
 // ── export result ────────────────────────────────────────────────────────────
 
 export type MetricCoverage =
-  | { kind: "direct"; ossieName: string; rung: "M0" | "M2" | "M3"; constructs: string[] }
+  | { kind: "direct"; ossieName: string; rung: "M0" | "M2" | "M3" | "M4" | "M5" | "M6" | "M7" | "M8"; constructs: string[] }
   | { kind: "staged"; ossieName: string; stagedDataset: string; reason: string }
   | { kind: "notComputable"; reason: string }
   /** Compiling into a company's model: the entry reads `field@dataset` pairs the mapping lacks (never in the reference export) */

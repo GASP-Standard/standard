@@ -2,7 +2,7 @@
 
 The upstream validator for Apache Ossie documents, copied unchanged so GASP exports can be checked offline and reproducibly.
 
-- Source: https://github.com/apache/ossie at commit `5eb0523` (2026-11-13), schema version `0.3.0.dev0`
+- Source: https://github.com/apache/ossie at commit `344259a` (2026-11-19), schema version `0.3.0.dev0`
 - Licence: Apache License 2.0 (`LICENSE`, `NOTICE` copied from the upstream root)
 - Vendored files, same relative paths as upstream so the script finds its schemas:
   - `validation/validate.py`
@@ -29,7 +29,7 @@ Exit status is non-zero when a file fails. From TypeScript use `validateUpstream
 
 Since apache/ossie #697 the script takes `--vendor NAME` and hands the `data` object of every `nonportable_extensions` entry with that `vendor_name` to the checker installed under the entry point group `ossie.vendor_validators`. GASP's checker is the Python package in `../gasp-ossie-validator/`, which validates each payload against the GASP extension schema by the site it sits on; `--with` installs it for the run. Naming a vendor with no installed checker is an error.
 
-The upstream validator checks document shape, unique names, the ontology's internal references, SQL syntax, the model's own references (a metric or relationship naming a dataset or field the model lacks) and the mapping against the ontology and model its `iri`s point at. At this pin the schemas require `version: 0.3.0.dev0` and `nonportable_extensions` with `data` as an object (apache/ossie #691 and #522; a date, a timestamp or a non-finite float under `data` is a schema error, and the file is read as YAML 1.1, so `ossieYaml` quotes every string that loader would read as something else), and the validator warns when a metric's dialect entries disagree on the datasets they read or its SQL is impure (#634). The mapping's iris are relative, so validate it from a directory holding all three files. `src/ossie/check.ts` (`checkExport`) runs GASP's cross-reference checks beside it (see the table in `docs/ossie-spike.md` for what each one catches).
+The upstream validator checks document shape, unique names, the ontology's internal references, SQL syntax, the model's own references (a metric or relationship naming a dataset or field the model lacks) and the mapping against the ontology and model its `iri`s point at. At this pin the schemas require `version: 0.3.0.dev0` and `nonportable_extensions` with `data` as an object (apache/ossie #691 and #522; a date, a timestamp or a non-finite float under `data` is a schema error, and the file is read as YAML 1.1, so `ossieYaml` quotes every string that loader would read as something else), and the validator warns when a metric's dialect entries disagree on the datasets they read or its SQL is impure (#634). A `primary_key`, a `unique_keys` entry or an ontology list that names the same thing twice is a schema error (#705), a SQL statement used as an expression is an error (#647) and the core checks run on a semantic model embedded in a mapping (#760). The mapping's iris are relative, so validate it from a directory holding all three files. `src/ossie/check.ts` (`checkExport`) runs GASP's cross-reference checks beside it (see the table in `docs/ossie-spike.md` for what each one catches).
 
 ## Refresh
 

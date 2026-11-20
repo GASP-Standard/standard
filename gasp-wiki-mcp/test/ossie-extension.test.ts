@@ -304,6 +304,19 @@ describe("documents saved before the move to Ossie 0.3.0.dev0", () => {
     });
   }
 
+  it("a model whose key names its date twice, as adapterToOssie wrote it until 2026-11-19, loads with the field once", () => {
+    const current = adapterToOssie(fixtureAdapter as Adapter, data);
+    const old = structuredClone(current.model);
+    const twice = old.datasets.filter((d) => ["financials", "forecast", "balance_sheet"].includes(d.name));
+    expect(twice).toHaveLength(3);
+    for (const d of twice) d.primary_key = [d.primary_key![0], d.primary_key![0]];
+    const mapping = ossieYaml(current.mapping);
+    expect(compiled(company(mapping, ossieYaml(old))).problems).toEqual([]);
+    expect(validateMapping(mapping, ossieYaml(old), data)).toEqual(validateMapping(mapping, ossieYaml(current.model), data));
+    expect(migrateDocument(old)).toBe(3);
+    expect(old).toEqual(current.model);
+  });
+
   it("a tool that loads a legacy document hands back a current one", () => {
     const c = company(legacy.mapping, legacy.model);
     expect(c.model.version).toBe(OSSIE_VERSION);

@@ -23,6 +23,7 @@ import { checkAdapter, columnOf, formatSchemaError, formatValidationReport, newA
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
 import { mappingOver, type MappingGap } from "./mapping.js";
+import { primaryKey } from "./model.js";
 import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
 import { GASP_VENDOR, OSSIE_VERSION, expressionText, gaspExtension, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, migrateDocument } from "./types.js";
@@ -112,11 +113,11 @@ export function adapterToOssie(adapter: Adapter, data: StandardData): OssieForm 
         ...(f.description ? { description: f.description } : {}),
       });
     }
-    const keyParts = [meta.key, ...(meta.kind === "snapshot" || meta.kind === "fact" ? [meta.date] : [])].filter((k) => names[ds][k]);
+    const key = primaryKey(meta);
     return {
       name: ds,
       source: r.tables[ds] ?? ds,
-      ...(keyParts.length === (meta.kind === "snapshot" || meta.kind === "fact" ? 2 : 1) ? { primary_key: keyParts.map((k) => names[ds][k]) } : {}),
+      ...(key.every((k) => names[ds][k]) ? { primary_key: key.map((k) => names[ds][k]) } : {}),
       description: `${meta.label} (GASP dataset ${ds})${r.tables[ds] ? "" : "; no warehouse table named yet"}`,
       ...(fields.length ? { fields } : {}),
     };

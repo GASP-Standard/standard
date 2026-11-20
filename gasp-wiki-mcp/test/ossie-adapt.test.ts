@@ -19,6 +19,7 @@ import { exportOntology } from "../src/ossie/ontology.js";
 import { ossieYaml } from "../src/ossie/index.js";
 import { uvAvailable, validateUpstream } from "../src/ossie/validate.js";
 import type { OssieMapping, OssieSemanticModel } from "../src/ossie/types.js";
+import { adapter as fixtureAdapter } from "./fixture-db.js";
 import { acmeAdapter } from "./ossie-helpers.js";
 
 const data = loadStandard();
@@ -60,6 +61,17 @@ describe("Mapping format: a v1 adapter converts to Ossie documents", () => {
     const field = sub.fields!.find((f) => f.name === (mrr.transform ? "mrr" : col))!;
     expect(field).toBeDefined();
     expect(field.expression.sql).toBe(mrr.transform ? mrr.transform.replace(/\{\{value\}\}/g, col) : col);
+  });
+
+  it("names each key field once: a dataset keyed by its own date gets that date alone", () => {
+    // Until 2026-11-19 these three got [date, date], which upstream rejects since apache/ossie #705.
+    const fixture = adapterToOssie(fixtureAdapter as Adapter, data).model;
+    const keyOf = (name: string) => fixture.datasets.find((d) => d.name === name)!.primary_key;
+    expect(keyOf("financials")).toEqual(["period_start"]);
+    expect(keyOf("forecast")).toEqual(["period_start"]);
+    expect(keyOf("balance_sheet")).toEqual(["snapshot_date"]);
+    for (const d of [...fixture.datasets, ...form.model.datasets]) expect(new Set(d.primary_key).size, d.name).toBe(d.primary_key?.length ?? 0);
+    expect(ossieSchemaErrors(fixture, "model", data)).toEqual([]);
   });
 
   it("maps the GASP ontology onto it so every document checks out, with no gaps", () => {

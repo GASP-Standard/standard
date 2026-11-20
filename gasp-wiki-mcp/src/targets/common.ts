@@ -163,7 +163,7 @@ function derivedRelationships(r: CompiledModel, data: StandardData): TargetRelat
 
 function tableOf(d: OssieDataset, r: CompiledModel, enumOf: Map<string, string[]>, kindOf: Map<string, TargetTable["kind"]>): TargetTable {
   const e = ext(d);
-  const primaryKey = [...new Set(d.primary_key ?? [])];
+  const primaryKey = d.primary_key ?? [];
   const marked = (d.fields ?? []).filter((f) => f.dimension?.is_time === true).map((f) => f.name);
   const timeField = marked.find((x) => primaryKey.includes(x)) ?? marked[0];
   const fields: TargetField[] = (d.fields ?? []).map((f) => {

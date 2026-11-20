@@ -368,7 +368,7 @@ describe("dbt target", () => {
         const primary = (s.entities ?? []).filter((e) => e.type === "primary");
         expect(primary, s.name).toHaveLength(1);
         expect(primary[0].expr, s.name).toMatch(/^[a-z_][a-z0-9_]*$/);
-        if (new Set(d.primary_key).size > 1) {
+        if (d.primary_key!.length > 1) {
           expect(primary[0].expr, s.name).toBe(SURROGATE_KEY);
           expect(r.files[`${DBT_DIR}/${s.model.replace(/^ref\('(.+)'\)$/, "$1")}.sql`], s.name).toContain(`AS ${SURROGATE_KEY}`);
         }
@@ -444,7 +444,7 @@ describe("dbt target", () => {
         const [row] = (await db.query<{ n: number; k: number; nulls: number }>(`SELECT COUNT(*)::int AS n, COUNT(DISTINCT ${SURROGATE_KEY})::int AS k, COUNT(*) FILTER (WHERE ${SURROGATE_KEY} IS NULL)::int AS nulls FROM ${view}`)).rows;
         expect(row.n, s.name).toBe(await scalar(db, `SELECT COUNT(*) FROM ${TABLES[s.name]}`));
         expect(row.nulls, s.name).toBe(0);
-        const pk = [...new Set(model.model.datasets.find((d) => d.name === s.name)!.primary_key!)];
+        const pk = model.model.datasets.find((d) => d.name === s.name)!.primary_key!;
         expect(row.k, s.name).toBe(await scalar(db, `SELECT COUNT(*) FROM (SELECT DISTINCT ${pk.join(", ")} FROM ${view}) x`));
       }
     }, 120_000);
@@ -457,7 +457,7 @@ describe("dbt target", () => {
       for (const d of staged) {
         const file = r.files[`${DBT_DIR}/${d.name}.sql`];
         const columns = (d.fields ?? []).map((f) => f.name).join(", ");
-        if (new Set(d.primary_key).size > 1) {
+        if (d.primary_key!.length > 1) {
           // A breakdown: the compiled source inside, the surrogate around it, one key per period and group.
           wrapped++;
           expect(file, d.name).toContain(`FROM (\n${d.source.trim()}\n) AS staged`);

@@ -5,6 +5,27 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-19] The portability profile reads the full ladder; a key that repeats a field is repaired on load
+**Decision:** Two rules that came with moving the vendored Ossie validator from `5eb0523` to upstream `344259a`.
+- **Rungs.** Each direct entry is tagged with the highest rung of upstream's ladder, M0 to M8, whose construct it uses: a window is M7 with an `ORDER BY` and M8 without one, a date scalar M6, arithmetic over aggregates M5, fields of two datasets M4, a filtered aggregate M3. The `constructs` list stays as it was and names everything the expression uses, lower rungs included.
+- **Keys.** `adapterToOssie` takes each key from `primaryKey` in `model.ts`, the function the reference export uses. `migrateDocument` drops a field a `primary_key` names twice, keeping the first.
+
+**Context:** Upstream published M4 to M6 in #631 and M7 and M8 after it, so the profile's "held rungs" were no longer held. Upstream #705 added `uniqueItems` to `primary_key`. The synthesised model for a v1 adapter wrote `[date, date]` for the three datasets keyed by their own date (`financials`, `forecast`, `balance_sheet`), which the old schema accepted and the new one refuses. Two suites failed at the new pin on exactly that.
+
+**Alternatives considered:**
+- M5 only where two aggregates meet, with a scaled single aggregate such as ARR left on M3: upstream describes M5 as a metric built from others and carried with their expressions inlined. ARR is `metric.mrr * 12` in the formula and reaches the export inlined, which is that form. One rule for all arithmetic over aggregates is also the one the `constructs` list already counted.
+- A rung per construct, with no order: a converter is graded rung by rung and the question an adopter asks is how much of GASP survives a converter that passes up to a given rung. The highest rung answers it and `constructs` keeps the detail for a converter that passes M5 and fails M4.
+- New constructs for the two window rungs: no direct entry uses one, so the summary would gain two keys that are always 0. The rungs M7 and M8 carry the zero already.
+- Refusing a saved model with the repeated key: the model came from a GASP tool, the repair is exact and the tools already migrate older shapes on load.
+
+**Consequences:**
+- `coverage.json` changes for 130 entries (113 now on M5, 17 on M6) and gains five keys under `portability.rungs`. No other exported file changes and the construct counts are the same.
+- M4 holds no entry and cannot: each GASP aggregate reads one dataset, so an expression across two datasets combines an aggregate from each. The 35 cross-dataset entries are counted under `constructs`. A test pins M4, M7 and M8 at 0.
+- The M3 note about the `CASE WHEN` fixture is gone from the page and the summary, since M3 now carries the `FILTER` form too.
+- A company model saved before the fix loads and validates; `compile_model` hands it back with each key field once.
+
+---
+
 ## [2026-11-19] The conformance set grades snapshot readings; the vendor validator goes to PyPI by trusted publishing
 **Decision:** Two additions on the owner's word (2026-11-19), both following the semi-additive thread on dev@ossie.apache.org and apache/ossie #765.
 - **Snapshot cases.** The conformance set gains a second group beside the eleven construct cases: three direct snapshot metrics read on the last snapshot date of the period (June MRR, second-quarter MRR, Total Customers for June) and one staged opening case (Logo Churn Rate over the four weeks from 2026-02-09). A case may list `readings`: the value a named mistake returns, or the value another reading in use returns. The generator computes every one on the fixture. A result is graded right (the expected rows), alternative (a listed reading other tools take and GASP does not), wrong (anything else, with the mistake named when the value is a listed one) or failed (no value).
