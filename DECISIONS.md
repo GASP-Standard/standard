@@ -5,6 +5,24 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-20] The grammar test generates upstream's parser on each run
+**Decision:** GASP's expressions are parsed with the upstream ANTLR grammar the way upstream's own tests do it. `OssieExpression.g4` and its two fixture files are vendored unchanged beside the validator. `test/ossie-grammar.py` generates the Python parser with the ANTLR 4.13.2 tool under Java, with the jar fetched from Maven Central on first use and checked against the SHA-256 upstream pins. It runs under `uv` with the matching runtime. Nothing generated is committed. The test skips without `uv` or Java and both test workflows install Java.
+
+**Context:** The validator parses expressions with sqlglot, which accepts far more than the expression language states. The grammar is the stricter reading and the one a second implementation is likely to build on, so an expression it rejects is a portability risk the validator cannot show. The owner chose between this and a committed JavaScript parser on 2026-11-20.
+
+**Alternatives considered:**
+- A generated JavaScript parser committed with an `antlr4` dev dependency: runs with no Java, but it is about 4,900 lines of generated code to review at each re-pin and a parser that can fall behind the grammar it claims to be. Generating on each run cannot drift.
+- Parsing only the metric expressions: the acceptance asked for the direct metrics, yet the same grammar reads field expressions and mapping references in under four seconds for all of them, and the one finding came from the mapping.
+- Quoting the reference into the `order` dataset (`"ORDER".order_id` passes the validator and the grammar): it changes the published mapping for a word upstream is already making usable as a name in #719. The specification's own example writes `order.sales` bare.
+
+**Consequences:**
+- The suite needs Java 11 or later for this one file. A machine without it skips five tests; CI does not.
+- The first run on a machine downloads a 2 MB jar. The hash check fails the test on a jar that differs.
+- `order` references are a pinned exception. The test fails when the grammar starts to accept them, so the exception cannot outlive #719.
+- A re-pin copies eight files and checks whether upstream moved its ANTLR version.
+
+---
+
 ## [2026-11-19] The portability profile reads the full ladder; a key that repeats a field is repaired on load
 **Decision:** Two rules that came with moving the vendored Ossie validator from `5eb0523` to upstream `344259a`.
 - **Rungs.** Each direct entry is tagged with the highest rung of upstream's ladder, M0 to M8, whose construct it uses: a window is M7 with an `ORDER BY` and M8 without one, a date scalar M6, arithmetic over aggregates M5, fields of two datasets M4, a filtered aggregate M3. The `constructs` list stays as it was and names everything the expression uses, lower rungs included.

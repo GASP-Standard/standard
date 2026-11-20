@@ -21,6 +21,11 @@ jobs:
           cache-dependency-path: gasp-wiki-mcp/package-lock.json
       # The upstream Apache Ossie validator (ossie-validator/) runs under uv.
       - uses: astral-sh/setup-uv@v5
+      # The upstream expression grammar (ossie-validator/core-spec/grammar/) is generated with the ANTLR tool, which needs Java; without it the grammar tests skip.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
       - run: npm ci
       - run: npm run build
       # Writes build/standard-data.json and standard-version.json, which two bundle tests read.
