@@ -43,13 +43,29 @@
     },
     "DatasetExtension": {
       "type": "object",
-      "description": "On a dataset. A reference dataset carries kind with cel and activeWhen where the ontology declares them; a staged dataset carries staged, for, reason and source_dialect; the period spine carries period_spine; a profiled dataset carries profile. record_decision adds profile to whatever a dataset already carries.",
+      "description": "On a dataset. A reference dataset carries kind with cel and activeWhen where the ontology declares them; a staged dataset carries staged, for, reason and source_dialect, and a cohort table cohort as well; the period spine carries period_spine; a profiled dataset carries profile. record_decision adds profile to whatever a dataset already carries.",
       "properties": {
         "kind": { "enum": ["event", "snapshot", "fact"], "description": "The GASP dataset kind (ontology.json datasets)" },
         "cel": { "enum": ["Revenue_Event", "Cost_Event", "Contract_Event", "Amendment_Event", "Lifecycle_State_Change", "Credit_Event"], "description": "The CEL event class the dataset holds" },
         "activeWhen": { "type": "string", "description": "Grammar condition selecting live rows, used for cohort membership" },
-        "staged": { "const": true, "description": "The dataset is a staged per-period dataset holding one metric's value" },
-        "for": { "type": "string", "description": "The metric the staged dataset holds" },
+        "staged": { "const": true, "description": "The dataset is staged: its source is GASP compiled SQL over the period spine. It holds one metric's value per period, or with cohort one row per cohort member per period" },
+        "for": {
+          "description": "The metric the staged dataset holds, or the metrics that read a cohort table",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+          ]
+        },
+        "cohort": {
+          "type": "object",
+          "description": "The dataset is a cohort table: one row per member per reporting period, holding additive amounts that the metrics in for sum",
+          "required": ["key", "point"],
+          "properties": {
+            "key": { "type": "string", "description": "The field that identifies a member, part of the dataset's primary key" },
+            "point": { "enum": ["period_start", "period_end"], "description": "The day of the period on which membership is fixed" }
+          },
+          "additionalProperties": false
+        },
         "reason": { "$ref": "#/$defs/StagedReason" },
         "source_dialect": { "$ref": "#/$defs/OssieDialect", "description": "The dialect the dataset's source query is written in (Ossie's source has no dialect property)" },
         "sources": {
@@ -67,6 +83,7 @@
         "reason": ["staged"],
         "source_dialect": ["staged"],
         "sources": ["staged"],
+        "cohort": ["staged"],
         "cel": ["kind"],
         "activeWhen": ["kind"]
       },

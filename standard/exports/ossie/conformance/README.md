@@ -4,7 +4,7 @@ Generated from the GASP Standard by `npm run conformance` in `gasp-wiki-mcp`. Do
 
 This directory holds two groups of case.
 
-11 cases cover the constructs the portable expression language (`OSSIE_SQL_2026`) cannot state yet. The GASP export stages 11 kinds of formula through a per-period dataset whose source is compiled SQL (`coverage.json` beside the Ossie files lists every staged entry and its reason); there is one worked case for each reason, with an executed answer, so a proposal that adds the construct to the language can be tested against it.
+11 cases cover the constructs the portable expression language (`OSSIE_SQL_2026`) cannot state yet. The GASP export stages 11 kinds of formula through a dataset whose source is compiled SQL, one row per period holding the value or, for the retention metrics over a cohort of customers, one row per customer per period that the expression sums (`coverage.json` beside the Ossie files lists every staged entry and its reason); there is one worked case for each reason, with an executed answer, so a proposal that adds the construct to the language can be tested against it.
 
 4 cases cover which rows of a snapshot dataset a reporting period reads. A snapshot dataset holds one row per entity per `snapshot_date`. 3 of them take a direct expression whose GASP formula ends `at period_end`, which the Ossie expression has no place to say. The expression validates and runs, and a query that sums it across dates returns a number with no error. 1 takes the opening value of a period that begins on the day a customer starts, where the snapshot dated on the first day and the last snapshot before it differ. On the calendar months of the fixture those two agree. Each of these cases carries the expected value and the value every other listed reading returns (Grading, below).
 
@@ -15,7 +15,7 @@ This directory holds two groups of case.
 | `data/period_spine.sql` | The schema and the reporting periods the staged sources compute for (2026-01-01 to 2026-06-30; 2026-02-09 to 2026-03-08) |
 | `data/<dataset>.sql` | One GASP dataset as `CREATE TABLE` + `INSERT`, columns named by GASP field id, rows from the GASP test fixture |
 | `cases/<case>/model.ossie.yaml` | A complete Ossie semantic model: the datasets the case reads, the staged dataset where the case has one and the metric |
-| `cases/<case>/reference.postgres.sql` | The staged dataset's source for the period, or the direct expression read on the period's last snapshot date, as a query over `data/` (Postgres dialect) |
+| `cases/<case>/reference.postgres.sql` | The staged dataset's source read for the period, or the direct expression read on the period's last snapshot date, as a query over `data/` (Postgres dialect) |
 | `cases/<case>/expected.sql` | The expected result as a `VALUES` list in standard SQL, in the shape of `compliance/query` upstream |
 | `cases/<case>/readings.sql` | On the cases listed under Grading: one row per named mistake or alternative reading with the value it returns (Postgres dialect) |
 | `manifest.json` | Every case with its reason, formula, period, datasets, columns, expected rows and readings |

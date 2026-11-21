@@ -246,7 +246,7 @@ export function computeDerived(data: StandardData, current: Record<keyof typeof 
   // ── Apache Ossie export ───────────────────────────────────────────────────
   const ossie = exportOssie(data);
   const example = exportExample(data, ossie);
-  const coverage = { description: "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.", ...summarise(ossie.coverage), portability: summarisePortability(ossie.coverage), metrics: ossie.coverage };
+  const coverage = { description: "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a dataset carrying the compiled SQL: one row per period, or the cohort table's one row per customer per period, marked cohortTable) or notComputable. Written by npm run derive.", ...summarise(ossie.coverage), portability: summarisePortability(ossie.coverage), metrics: ossie.coverage };
 
   return {
     ontology, relationships, cypher, template: JSON.stringify(template, null, 2) + "\n",

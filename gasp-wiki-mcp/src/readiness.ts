@@ -143,7 +143,10 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
 
   // L4: the compiled metrics in the given model, what compile_model would write, and the drift of the company's own metrics.
   const compiledIn = given.metrics?.filter(isGaspMetric) ?? [];
-  const compiled = compiledIn.length ? { metrics: compiledIn.length, staged: given.datasets.filter((d) => d.name.startsWith("gasp_staged_")).length, dialect: ext.compiled?.dialect ?? "unknown" } : undefined;
+  // A staged metric reads a staged dataset: its own, or the cohort table several metrics share.
+  const stagedNames = new Set(given.datasets.filter((d) => readGaspExtension(d.nonportable_extensions)?.staged === true).map((d) => d.name));
+  const readsStaged = (m: OssieMetric): boolean => [...(expressionText(m) ?? "").matchAll(/\b([A-Za-z_]\w*)\./g)].some((x) => stagedNames.has(x[1]));
+  const compiled = compiledIn.length ? { metrics: compiledIn.length, staged: compiledIn.filter(readsStaged).length, dialect: ext.compiled?.dialect ?? "unknown" } : undefined;
   const would = compileModel(company, data, { dialect: chosen.dialect, spine: opts.spine });
   const wouldCompile = "error" in would ? { direct: 0, staged: 0, unmapped: 0 } : { direct: would.counts.direct, staged: would.counts.staged, unmapped: would.counts.unmapped };
   if ("error" in would) problems.push(would.error);

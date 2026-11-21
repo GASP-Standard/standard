@@ -7,10 +7,10 @@ The Core department of the GASP Standard (Generally Accepted SaaS Principles) as
 | File | Contents |
 | --- | --- |
 | `gasp_saas.ontology.yaml` | 6 entity types (one per dataset), their relationships and 46 value types with enum constraints |
-| `gasp_saas.semantic_model.yaml` | 6 datasets (revenue_event, cost_event, customer, subscription, survey_response, financials), 5 relationships, 16 staged datasets and 39 metrics |
+| `gasp_saas.semantic_model.yaml` | 6 datasets (revenue_event, cost_event, customer, subscription, survey_response, financials), 5 relationships, 13 staged datasets and 39 metrics |
 | `gasp_saas.mapping.yaml` | The ontology mapped onto the model, by name and relative IRI |
 
-Every metric is an `OSSIE_SQL_2026` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a per-period dataset whose source is the compiled SQL (see `../coverage.json` for the reason per entry and `../conformance/` for one executed case per reason). Physical sources are `gasp.<dataset>` with columns named by GASP field id; an adopter's mapping replaces both.
+Every metric is an `OSSIE_SQL_2026` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see `../coverage.json` for the reason per entry and `../conformance/` for one executed case per reason). Physical sources are `gasp.<dataset>` with columns named by GASP field id; an adopter's mapping replaces both.
 
 ## Metrics
 
@@ -59,7 +59,7 @@ Every metric is an `OSSIE_SQL_2026` expression where the language can state it; 
 
 ## Running it
 
-`demo/` runs the model on a standard SQL engine. `demo/data.sql` creates the 6 tables under `gasp.<dataset>` with the fixture rows the metrics need, plus `gasp.period_spine` holding the reporting period (2026-01-01 to 2026-06-30); `demo/metrics.sql` returns one row per metric, each direct metric as its expression with every aggregate evaluated over its dataset's rows for the period and each staged metric as its staged dataset's row; `demo/expected.sql` is the result as a VALUES list. On DuckDB, the engine the upstream query compliance suite uses:
+`demo/` runs the model on a standard SQL engine. `demo/data.sql` creates the 6 tables under `gasp.<dataset>` with the fixture rows the metrics need, plus `gasp.period_spine` holding the reporting period (2026-01-01 to 2026-06-30); `demo/metrics.sql` returns one row per metric, each direct metric as its expression with every aggregate evaluated over its dataset's rows for the period and each staged metric over its staged dataset for the period; `demo/expected.sql` is the result as a VALUES list. On DuckDB, the engine the upstream query compliance suite uses:
 
 ```bash
 cat demo/data.sql demo/metrics.sql | duckdb

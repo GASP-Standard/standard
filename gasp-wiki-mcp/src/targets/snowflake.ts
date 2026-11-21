@@ -12,13 +12,15 @@
  * A base table is always a table or a view, never a query: every staged
  * dataset (and any company dataset whose source is a query) becomes a view in
  * `staged_views.sql`, whose body is the compiled Snowflake source, and the
- * YAML names the view. The same file declares the period spine table the
+ * YAML names the view. A cohort table is one such view, one row per member
+ * per period, and its metrics are expressions over its columns like any direct
+ * metric. The same file declares the period spine table the
  * staged views read. Metric expressions come from the target model in the
  * Snowflake dialect, so a filtered aggregate is a CASE inside the aggregate.
  */
 import { stringify } from "yaml";
 import type { OssieDataType } from "../ossie/types.js";
-import type { TargetField, TargetModel, TargetTable } from "./common.js";
+import { stagedComment, type TargetField, type TargetModel, type TargetTable } from "./common.js";
 
 export interface SnowflakeOptions {
   /** Prepended to a two-part source (a Cortex Analyst base table needs database.schema.table) */
@@ -81,7 +83,7 @@ export function writeSnowflake(tm: TargetModel, opts: SnowflakeOptions = {}): { 
     } else {
       base = baseTableOf([viewName(t)], database, schema);
       const sql = t.source.sqlByDialect?.snowflake ?? t.source.sql;
-      views.push(`-- ${t.staged ? `Staged dataset for ${t.staged.for} (${t.staged.reason}): one row per reporting period` : `${t.name}: the company's query source as a view`}\nCREATE OR REPLACE VIEW ${dotted(base)} AS\n${sql};`);
+      views.push(`-- ${t.staged ? stagedComment(t) : `${t.name}: the company's query source as a view`}\nCREATE OR REPLACE VIEW ${dotted(base)} AS\n${sql};`);
     }
     if (!base.database || !base.schema) missingDb.push(t.name);
     const by = (role: TargetField["role"] | Array<TargetField["role"]>) => t.fields.filter((f) => (Array.isArray(role) ? role : [role]).includes(f.role)).map(entry);

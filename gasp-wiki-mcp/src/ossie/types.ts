@@ -291,7 +291,8 @@ export interface OssieMapping {
 
 export type MetricCoverage =
   | { kind: "direct"; ossieName: string; rung: "M0" | "M2" | "M3" | "M4" | "M5" | "M6" | "M7" | "M8"; constructs: string[] }
-  | { kind: "staged"; ossieName: string; stagedDataset: string; reason: string }
+  /** `cohortTable`: the staged dataset is a cohort table shared with other entries and the metric is an expression over its columns, not `SUM(value)` */
+  | { kind: "staged"; ossieName: string; stagedDataset: string; reason: string; cohortTable?: true }
   | { kind: "notComputable"; reason: string }
   /** Compiling into a company's model: the entry reads `field@dataset` pairs the mapping lacks (never in the reference export) */
   | { kind: "unmapped"; ossieName: string; missing: string[] };

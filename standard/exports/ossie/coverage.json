@@ -1,5 +1,5 @@
 {
-  "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a per-period dataset carrying the compiled SQL) or notComputable. Written by npm run derive.",
+  "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a dataset carrying the compiled SQL: one row per period, or the cohort table's one row per customer per period, marked cohortTable) or notComputable. Written by npm run derive.",
   "counts": {
     "direct": 193,
     "staged": 170,
@@ -305,26 +305,30 @@
     "nrr": {
       "kind": "staged",
       "ossieName": "gasp_nrr",
-      "stagedDataset": "gasp_staged_gasp_nrr",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "nrr:O": {
       "kind": "staged",
       "ossieName": "gasp_nrr_o",
-      "stagedDataset": "gasp_staged_gasp_nrr_o",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "nrr:M": {
       "kind": "staged",
       "ossieName": "gasp_nrr_m",
-      "stagedDataset": "gasp_staged_gasp_nrr_m",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "nrr:adjusted": {
       "kind": "staged",
       "ossieName": "gasp_nrr_adjusted",
-      "stagedDataset": "gasp_staged_gasp_nrr_adjusted",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "nrr:by_segment": {
       "kind": "staged",
@@ -335,20 +339,23 @@
     "grr": {
       "kind": "staged",
       "ossieName": "gasp_grr",
-      "stagedDataset": "gasp_staged_gasp_grr",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "grr:per_customer": {
       "kind": "staged",
       "ossieName": "gasp_grr_per_customer",
-      "stagedDataset": "gasp_staged_gasp_grr_per_customer",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "grr:adjusted": {
       "kind": "staged",
       "ossieName": "gasp_grr_adjusted",
-      "stagedDataset": "gasp_staged_gasp_grr_adjusted",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "grr:by_segment": {
       "kind": "staged",

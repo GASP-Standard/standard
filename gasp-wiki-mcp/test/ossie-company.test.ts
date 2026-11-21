@@ -4,7 +4,9 @@
  * every metric's value on the fixture rows, over the fixture's own table and
  * column names; against the Acme adapter it compiles exactly the metrics the
  * mapping covers, in Acme's dialect, idempotently, from either input format,
- * and the result passes the upstream validator.
+ * and the result passes the upstream validator. The cohort table is compiled
+ * over the company's names like any staged source, with the columns the
+ * selected metrics sum.
  */
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,6 +17,7 @@ import { isMetricStub, loadStandard, metricFormulaId } from "../src/loader.js";
 import { checkAdapter, type Adapter } from "../src/tools.js";
 import { adapterToOssie, resolveCompany, type Company } from "../src/ossie/adapt.js";
 import { compileModel, compileModelFromText, formatCompileReport, selectFormulas, SPINE_DATASET, type CompiledModel } from "../src/ossie/company.js";
+import { ACCOUNT_COHORTS } from "../src/ossie/cohorts.js";
 import { directQuery } from "../src/ossie/demo.js";
 import { ossieYaml } from "../src/ossie/index.js";
 import { exportModel } from "../src/ossie/model.js";
@@ -62,15 +65,25 @@ describe("Company compile: the fixture adapter reproduces the reference export",
   it("writes the company's own names: the fixture's columns in direct expressions, its tables in staged sources", () => {
     const mrr = r.model.metrics!.find((m) => m.name === "gasp_mrr")!;
     expect(exprOf(mrr)).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.status = 'active'), 0)");
-    const nrr = r.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!;
-    expect(nrr.source).toContain("FROM gasp_subscriptions WHERE snapshot_day = p.period_start AND status = 'active'");
-    expect(nrr.source).toContain("FROM gasp_customers WHERE as_of_date = p.period_start AND lifecycle_status = 'active'");
-    expect(nrr.source).toMatch(/FROM gasp\.period_spine p$/);
-    expect(ext(nrr)).toMatchObject({ staged: true, for: "gasp_nrr", reason: "cohort", source_dialect: "POSTGRES" });
-    expect(ext(nrr).sources).toBeUndefined(); // one dialect, the company's
+    // The cohort table: each dataset's own column for the customer, the cohort from the fixture's customer snapshots.
+    const cohorts = r.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!;
+    expect(cohorts.source).toContain("FROM gasp_subscriptions WHERE snapshot_day = p.period_start AND status = 'active' AND customer_id = _c.customer_id");
+    expect(cohorts.source).toContain("FROM gasp_revenue_events WHERE booked_on >= p.period_start AND booked_on <= p.period_end AND event_type = 'expansion' AND account_ref = _c.customer_id");
+    expect(cohorts.source).toMatch(/FROM gasp\.period_spine p JOIN \(SELECT customer_id AS customer_id, as_of_date AS _day FROM gasp_customers WHERE lifecycle_status = 'active'\) _c ON _c\._day = p\.period_start$/);
+    expect(ext(cohorts)).toMatchObject({ staged: true, reason: "cohort", cohort: ACCOUNT_COHORTS.cohort, source_dialect: "POSTGRES" });
+    expect(ext(cohorts).for).toEqual(["gasp_nrr", "gasp_nrr_o", "gasp_nrr_m", "gasp_nrr_adjusted", "gasp_grr", "gasp_grr_per_customer", "gasp_grr_adjusted"]);
+    expect(ext(cohorts).sources).toBeUndefined(); // one dialect, the company's
+    // A cohort entry the table does not serve keeps its dataset of one row per period.
+    const arr = r.model.datasets.find((d) => d.name === "gasp_staged_gasp_arr_o")!;
+    expect(arr.source).toMatch(/FROM gasp\.period_spine p$/);
+    expect(ext(arr)).toMatchObject({ staged: true, for: "gasp_arr_o", reason: "cohort", source_dialect: "POSTGRES" });
+    expect(ext(arr).sources).toBeUndefined();
     // Every dataset the fixture maps is in the model, with the spine declared for the staged sources.
     expect(r.model.datasets.find((d) => d.name === SPINE_DATASET)!.source).toBe("gasp.period_spine");
-    expect(ext(r.model).compiled).toMatchObject({ dialect: "POSTGRES", period_spine: "gasp.period_spine", metrics: r.model.metrics!.length, staged: r.counts.staged });
+    // The model counts its staged datasets: the seven metrics on the cohort table share one.
+    const stagedDatasets = r.model.datasets.filter((d) => d.nonportable_extensions && ext(d).staged === true);
+    expect(stagedDatasets.length).toBe(r.counts.staged - ext(cohorts).for.length + 1);
+    expect(ext(r.model).compiled).toMatchObject({ dialect: "POSTGRES", period_spine: "gasp.period_spine", metrics: r.model.metrics!.length, staged: stagedDatasets.length });
   });
 
   describe("values match the reference export on the fixture rows, first half of 2026", () => {
@@ -166,7 +179,8 @@ describe("Company compile: the Acme adapter", () => {
 
   it("reads Acme's columns, transforms and tables", () => {
     expect(exprOf(r.model.metrics!.find((m) => m.name === "gasp_mrr")!)).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)");
-    const nrr = r.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!;
+    const nrr = r.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!;
+    expect(exprOf(r.model.metrics!.find((m) => m.name === "gasp_nrr")!)).toContain(`SUM(${ACCOUNT_COHORTS.name}.opening_mrr)`);
     expect(nrr.source).toContain("COALESCE(SUM((mrr_cents / 100)), 0) FROM billing.subscriptions WHERE snapshot_date = p.period_start");
     expect(nrr.source).toContain("FROM billing.mrr_movements WHERE event_date >= p.period_start");
     expect(nrr.source).toContain("(CASE WHEN movement_type = 'upgrade' THEN 'expansion'");
@@ -181,8 +195,9 @@ describe("Company compile: the Acme adapter", () => {
 
   it("takes a dialect, a period spine and a metric selection", () => {
     const bq = compiled(c, { dialect: "bigquery", spine: "analytics.periods" });
-    const nrr = bq.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!;
-    expect(nrr.source).toMatch(/FROM analytics\.periods p$/);
+    const nrr = bq.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!;
+    expect(nrr.source).toMatch(/FROM analytics\.periods p JOIN \(SELECT /);
+    expect(bq.model.datasets.find((d) => d.name === "gasp_staged_gasp_arr_o")!.source).toMatch(/FROM analytics\.periods p$/);
     for (const token of DIALECT.bigquery.forbidden) expect(nrr.source).not.toContain(token);
     expect(bq.model.datasets.find((d) => d.name === SPINE_DATASET)!.source).toBe("analytics.periods");
     expect(ext(nrr).source_dialect).toBe("BIGQUERY");
@@ -194,6 +209,11 @@ describe("Company compile: the Acme adapter", () => {
     expect(names).toContain("gasp_mrr");
     expect(names).toContain("gasp_nrr_o");
     for (const m of some.model.metrics!) expect(["mrr", "nrr"], m.name).toContain(ext(m).gasp_id);
+    // The cohort table holds the columns the selected metrics sum and names those metrics alone.
+    const cohorts = some.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!;
+    expect(ext(cohorts).for).toEqual(["gasp_nrr", "gasp_nrr_o", "gasp_nrr_m", "gasp_nrr_adjusted"]);
+    expect(cohorts.fields!.map((f) => f.name)).toEqual(["period_start", "period_end", "customer_id", "opening_mrr", "expansion_mrr", "expansion_mrr_o", "expansion_mrr_m", "contraction_mrr", "churned_mrr", "mrr_start", "permanent_change"]);
+    expect(cohorts.source).not.toMatch(/AS (retained_mrr|permanent_loss)\b/);
     expect(Object.keys(some.coverage).every((k) => /^(mrr|nrr)(:|$)/.test(k))).toBe(true);
     expect(selectFormulas(data, undefined, "core").only!.size).toBeGreaterThan(20);
     expect(selectFormulas(data, "nope", undefined).error).toMatch(/not a metric/);
@@ -220,7 +240,7 @@ describe("Company compile: the Acme adapter", () => {
     const bare = resolveCompany(ossieYaml(form.mapping), undefined, data);
     if ("error" in bare) throw new Error(bare.error);
     const rb = compiled(bare);
-    expect(rb.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!.source).toContain("COALESCE(SUM(mrr), 0) FROM subscription WHERE");
+    expect(rb.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!.source).toContain("COALESCE(SUM(mrr), 0) FROM subscription WHERE");
     expect(formatCompileReport(rb, data, { document: false })).toContain("without a semantic model");
   });
 
@@ -230,13 +250,13 @@ describe("Company compile: the Acme adapter", () => {
     const q = resolveCompany(ossieYaml(form.mapping), ossieYaml(model), data);
     if ("error" in q) throw new Error(q.error);
     const rq = compiled(q);
-    expect(rq.model.datasets.find((d) => d.name === "gasp_staged_gasp_nrr")!.source).toContain("FROM (SELECT * FROM billing.subscriptions WHERE deleted_at IS NULL) AS _subscription WHERE");
+    expect(rq.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!.source).toContain("FROM (SELECT * FROM billing.subscriptions WHERE deleted_at IS NULL) AS _subscription WHERE");
     expect(rq.problems).toEqual([]);
   });
 
   it("reports in sections and carries the model document", () => {
     const report = formatCompileReport(r, data);
-    for (const h of ["# Compiled GASP metrics: Acme SaaS", "**Mapping:** GASP adapter v1.1", "**Dialect:** snowflake (from the adapter's warehouse `snowflake`)", "**Period spine:** `gasp.period_spine`", "**Checks:** the compiled metrics pass", "## Staged", "- cohort:", "## Left out: unmapped (", "needs `", "## Model", "```yaml", `name: ${c.model.name}`, "gasp_staged_gasp_nrr"]) expect(report).toContain(h);
+    for (const h of ["# Compiled GASP metrics: Acme SaaS", "**Mapping:** GASP adapter v1.1", "**Dialect:** snowflake (from the adapter's warehouse `snowflake`)", "**Period spine:** `gasp.period_spine`", "**Checks:** the compiled metrics pass", "## Staged", "- cohort:", "## Left out: unmapped (", "needs `", "## Model", "```yaml", `name: ${c.model.name}`, "gasp_staged_gasp_arr_o", `staged through 24 datasets, one row per period each but the cohort table \`${ACCOUNT_COHORTS.name}\`, one row per customer per period`, "A metric over the cohort table sums that table's rows for the period."]) expect(report).toContain(h);
     expect(formatCompileReport(r, data, { document: false })).not.toContain("```yaml");
     const text = compileModelFromText(JSON.stringify(acme), undefined, data, { metrics: "MRR", document: false });
     expect(text).toContain("**Compiled:** 1 metric (1 direct, 0 staged");

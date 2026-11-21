@@ -20,6 +20,7 @@ import { DEMO_PERIOD } from "./demo.js";
 import { isMetricStub, metricFormulaId } from "../loader.js";
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
+import { cohortTableFor } from "./model.js";
 import { planOntology } from "./ontology.js";
 import {
   portableEntries,
@@ -68,13 +69,15 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
 
   // ── datasets: what the kept expressions and staged sources read ──
   const gaspDatasets = new Set(Object.keys(data.ontology!.datasets!));
-  const byName = new Map(exp.model.datasets.map((d) => [d.name, d]));
+  // A cohort table is cut to the columns the kept metrics read.
+  const cohortTable = cohortTableFor(data, metrics);
+  const byName = new Map(exp.model.datasets.map((d) => [d.name, d.name === cohortTable?.name ? cohortTable : d]));
   const read = new Set<string>();
   for (const m of metrics) for (const d of portableEntries(m.expression)) for (const ds of datasetRefs(d.expression, gaspDatasets)) read.add(ds);
   for (const name of stagedNames) {
     for (const m of byName.get(name)!.source.matchAll(/\bgasp\.([a-z_][a-z0-9_]*)/g)) if (gaspDatasets.has(m[1])) read.add(m[1]);
   }
-  const keptDatasets = exp.model.datasets.filter((d) => read.has(d.name) || stagedNames.has(d.name));
+  const keptDatasets = exp.model.datasets.filter((d) => read.has(d.name) || stagedNames.has(d.name)).map((d) => byName.get(d.name)!);
   const keptNames = new Set(keptDatasets.map((d) => d.name));
   const datasets = keptDatasets.map((d) => d.name).filter((n) => read.has(n));
 
@@ -180,7 +183,7 @@ The Core department of the GASP Standard (Generally Accepted SaaS Principles) as
 | \`${EXAMPLE_BASENAME}.semantic_model.yaml\` | ${ex.datasets.length} datasets (${ex.datasets.join(", ")}), ${ex.model.relationships?.length ?? 0} relationships, ${ex.model.datasets.length - ex.datasets.length} staged datasets and ${ex.model.metrics?.length ?? 0} metrics |
 | \`${EXAMPLE_BASENAME}.mapping.yaml\` | The ontology mapped onto the model, by name and relative IRI |
 
-Every metric is an \`OSSIE_SQL_2026\` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a per-period dataset whose source is the compiled SQL (see \`../coverage.json\` for the reason per entry and \`../conformance/\` for one executed case per reason). Physical sources are \`gasp.<dataset>\` with columns named by GASP field id; an adopter's mapping replaces both.
+Every metric is an \`OSSIE_SQL_2026\` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see \`../coverage.json\` for the reason per entry and \`../conformance/\` for one executed case per reason). Physical sources are \`gasp.<dataset>\` with columns named by GASP field id; an adopter's mapping replaces both.
 
 ## Metrics
 
@@ -190,7 +193,7 @@ ${rows.join("\n")}
 
 ## Running it
 
-\`demo/\` runs the model on a standard SQL engine. \`demo/data.sql\` creates the ${ex.datasets.length} tables under \`gasp.<dataset>\` with the fixture rows the metrics need, plus \`gasp.period_spine\` holding the reporting period (${DEMO_PERIOD.start} to ${DEMO_PERIOD.end}); \`demo/metrics.sql\` returns one row per metric, each direct metric as its expression with every aggregate evaluated over its dataset's rows for the period and each staged metric as its staged dataset's row; \`demo/expected.sql\` is the result as a VALUES list. On DuckDB, the engine the upstream query compliance suite uses:
+\`demo/\` runs the model on a standard SQL engine. \`demo/data.sql\` creates the ${ex.datasets.length} tables under \`gasp.<dataset>\` with the fixture rows the metrics need, plus \`gasp.period_spine\` holding the reporting period (${DEMO_PERIOD.start} to ${DEMO_PERIOD.end}); \`demo/metrics.sql\` returns one row per metric, each direct metric as its expression with every aggregate evaluated over its dataset's rows for the period and each staged metric over its staged dataset for the period; \`demo/expected.sql\` is the result as a VALUES list. On DuckDB, the engine the upstream query compliance suite uses:
 
 \`\`\`bash
 cat demo/data.sql demo/metrics.sql | duckdb

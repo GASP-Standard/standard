@@ -172,14 +172,14 @@ nrr = (metric.mrr at period_start + metric.expansion_mrr
       over cohort(field.customer_id, period_start)
 ```
 
-**Compiler output for NRR** (illustrative)
+**Compiler output for NRR** (the expression as the reference model writes it, the other fields abridged)
 
 ```yaml
 metrics:
   - name: gasp_nrr_o
     description: Net Revenue Retention (operating form), GASP canonical definition
     expression:
-      sql: SUM(gasp_account_cohorts.mrr_end) / SUM(gasp_account_cohorts.mrr_start)
+      sql: (CAST((((SUM(gasp_account_cohorts.opening_mrr) + SUM(gasp_account_cohorts.expansion_mrr_o)) - SUM(gasp_account_cohorts.contraction_mrr)) - SUM(gasp_account_cohorts.churned_mrr)) AS DECIMAL) / NULLIF(SUM(gasp_account_cohorts.opening_mrr), 0))
     ai_context:
       synonyms: ["net dollar retention", "NDR"]
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr"
@@ -192,7 +192,7 @@ metrics:
           unit: percent
 ```
 
-Formulas that use `cohort` or `lag`, or that need the reporting period inside a filter, compile to a plain aggregate over a staged dataset (`gasp_account_cohorts` here) that every Ossie engine can run today. An Ossie dataset's `source` may be a query, so the staged table's SQL travels inside the model. `OSSIE_SQL_2026` is the only dialect whose semantics Ossie defines, so direct metrics are emitted in it. `Dataset.source` is a single string with no dialect, so a staged dataset's `source` holds the Postgres query and its GASP extension carries the Snowflake, BigQuery and Databricks versions. The reference model's `coverage.json` records which metrics are direct and which are staged, with the reason for each. The staged set is the test set for proposal P2.
+Formulas that use `cohort` or `lag`, or that need the reporting period inside a filter, compile to a plain aggregate over a staged dataset that every Ossie engine can run today. Most staged datasets hold one row per period with the metric's value. NRR and GRR read `gasp_account_cohorts` (built 2026-11-20, `DECISIONS.md`), one row per customer per period with opening MRR and the period's movements as columns, so each is a sum over those columns and can be sliced by anything joined on the customer. An Ossie dataset's `source` may be a query, so the staged table's SQL travels inside the model. `OSSIE_SQL_2026` is the only dialect whose semantics Ossie defines, so direct metrics are emitted in it. `Dataset.source` is a single string with no dialect, so a staged dataset's `source` holds the Postgres query and its GASP extension carries the Snowflake, BigQuery and Databricks versions. The reference model's `coverage.json` records which metrics are direct and which are staged, with the reason for each. The staged set is the test set for proposal P2.
 
 ### Drift scoring
 
@@ -240,7 +240,7 @@ What Ossie cannot yet hold travels in `nonportable_extensions` under `vendor_nam
 | --- | --- | --- | --- |
 | Model | `profiled`, `compiled` | How the model was made: written by `profile_schema`, or GASP metrics compiled into it by `compile_model` | Stays; provenance |
 | Dataset | `kind`, `cel`, `activeWhen` | The GASP dataset kind, its CEL event class and the condition selecting live rows (cohort membership) | Stays; GASP-specific |
-| Dataset | `staged`, `for`, `reason`, `period_spine` | A staged per-period dataset holding one metric's value, the metric it holds and the construct Ossie cannot state; the table of reporting periods the staged datasets read | P2 (period-over-period and cohort metrics) |
+| Dataset | `staged`, `for`, `reason`, `cohort`, `period_spine` | A staged dataset, the metric or metrics it serves and the construct Ossie cannot state: one row per period holding one metric's value or, with `cohort` (its key and point), one row per entity per period that several metrics sum; the table of reporting periods the staged datasets read | P2 (period-over-period and cohort metrics) |
 | Dataset | `source_dialect`, `sources` | The dialect of a staged dataset's source query and the query in each other dialect, keyed by Ossie dialect name | A `dialects` form for `Dataset.source`, matching expressions (question for the Metric Language WG) |
 | Dataset | `profile` | What the profiler inferred about the table: kind, confidence, evidence, open questions and listed enum values | Stays; pipeline state |
 | Metric | `gasp_id`, `gasp_version`, `variant`, `unit` | The GASP formula id, the extension version, the named variant and the unit (ratios unscaled) | Stays; GASP-specific |

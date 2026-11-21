@@ -3,8 +3,10 @@
  * "Metric compiler"): every GASP metric whose fields the company's mapping
  * covers, written into their semantic model as a `gasp_` metric. A metric the
  * expression language can state is a direct expression over their datasets
- * and fields; the rest are staged through a per-period dataset whose source is
- * the compiled SQL over their tables, in their warehouse dialect.
+ * and fields; the rest are staged through a dataset whose source is the
+ * compiled SQL over their tables, in their warehouse dialect: one row per
+ * period holding the value, or the cohort table, one row per customer per
+ * period, which the retention metrics sum.
  *
  * The mapping comes in either format (adapt.ts): a v1 adapter compiles into
  * the model synthesised from its tables and columns, an Ossie mapping into the
@@ -178,7 +180,9 @@ export function formatCompileReport(r: CompiledModel, data: StandardData, opts: 
   p.push(`**Period spine:** \`${r.spine}\`, a table of (period_start, period_end) rows you provide, one per reporting period; the staged sources read it and the model declares it as \`${SPINE_DATASET}\`.`);
   const { direct, staged, unmapped, notComputable } = r.counts;
   const n = direct + staged;
-  p.push(`**Compiled:** ${n} metric${n === 1 ? "" : "s"} (${direct} direct, ${staged} staged through ${staged} per-period dataset${staged === 1 ? "" : "s"}). Left out: ${unmapped} unmapped, ${notComputable} not computable.`);
+  const tables = r.model.datasets.filter((d) => ext(d).staged === true);
+  const cohortTables = tables.filter((d) => ext(d).cohort).map((d) => d.name);
+  p.push(`**Compiled:** ${n} metric${n === 1 ? "" : "s"} (${direct} direct, ${staged} staged through ${tables.length} dataset${tables.length === 1 ? "" : "s"}${cohortTables.length ? `, one row per period each but the cohort table \`${cohortTables.join("`, `")}\`, one row per customer per period` : ", one row per period each"}). Left out: ${unmapped} unmapped, ${notComputable} not computable.`);
   p.push(r.problems.length ? `**Checks:** ${r.problems.length} problem${r.problems.length === 1 ? "" : "s"}:` : "**Checks:** the compiled metrics pass the bundled Ossie model schema and GASP's reference checks.");
   for (const x of r.problems) p.push(`- ${x}`);
   for (const x of c.problems) p.push(`- Mapping: ${x}`);
@@ -188,7 +192,7 @@ export function formatCompileReport(r: CompiledModel, data: StandardData, opts: 
   if (staged) {
     const reasons: Record<string, number> = {};
     for (const [, v] of by("staged")) if (v.kind === "staged") reasons[v.reason] = (reasons[v.reason] ?? 0) + 1;
-    p.push("## Staged", "Each needs a construct the expression language cannot state; its dataset's `source` is the compiled query over your tables.", ...Object.entries(reasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `- ${k}: ${n}`), "");
+    p.push("## Staged", "Each needs a construct the expression language cannot state; its dataset's `source` is the compiled query over your tables. A metric over the cohort table sums that table's rows for the period.", ...Object.entries(reasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `- ${k}: ${n}`), "");
   }
   const left = by("unmapped");
   if (left.length) {

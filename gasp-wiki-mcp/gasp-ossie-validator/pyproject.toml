@@ -1,6 +1,6 @@
 [project]
 name = "gasp-ossie-validator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Checks the GASP payloads in an Apache Ossie document against the GASP extension schema, as a vendor validator for validation/validate.py --vendor GASP"
 readme = "README.md"
 license = "Apache-2.0"

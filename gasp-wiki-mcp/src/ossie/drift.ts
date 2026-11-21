@@ -25,7 +25,7 @@ import { columnName, generateFixture, loadSynthetic, TABLES, type Fixture } from
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { expressionText, parseDocument, resolveCompany, type Company } from "./adapt.js";
 import { compileModel, isGaspMetric, type CompiledModel } from "./company.js";
-import { directQuery, stagedQuery, type Period } from "./demo.js";
+import { directQuery, stagedValueQuery, type Period } from "./demo.js";
 import { formulaSource } from "./metrics.js";
 import { aggregateSpans } from "./portability.js";
 import { portable, type MetricCoverage, type OssieMetric, type OssieSemanticModel } from "./types.js";
@@ -478,9 +478,8 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
           continue;
         }
         score.canonicalKind = cov.kind;
-        const canonical = cov.kind === "direct"
-          ? exprOf(ns.compiled.model.metrics!.find((x) => x.name === cov.ossieName)!)
-          : ns.compiled.model.datasets.find((d) => d.name === cov.stagedDataset)!.source;
+        const expression = exprOf(ns.compiled.model.metrics!.find((x) => x.name === cov.ossieName)!);
+        const canonical = cov.kind === "direct" ? expression : ns.compiled.model.datasets.find((d) => d.name === cov.stagedDataset)!.source;
         score.canonical = canonical;
         if (cov.kind === "staged") score.stagedReason = cov.reason;
         const why = unrunnable(yours, ns);
@@ -489,7 +488,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
         try {
           for (const period of periods) {
             const mine = await value(engine, `SELECT ${toPostgres(directQuery(yours, ns.meta, fields, period, physical))}`);
-            const theirs = await value(engine, `SELECT ${toPostgres(cov.kind === "direct" ? directQuery(canonical, ns.meta, fields, period, physical) : stagedQuery(canonical, period))}`);
+            const theirs = await value(engine, `SELECT ${toPostgres(cov.kind === "direct" ? directQuery(canonical, ns.meta, fields, period, physical) : stagedValueQuery(expression, cov.stagedDataset, canonical, period))}`);
             score.periods.push({ period, yours: mine, canonical: theirs });
           }
         } catch (e) {

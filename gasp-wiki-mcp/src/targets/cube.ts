@@ -15,7 +15,9 @@
  * member reference `{CUBE.<field>}` when the field is a computed expression;
  * another cube's columns become member references `{<cube>.<field>}`, which
  * Cube reaches through the joins. A staged metric is a `type: sum` measure over
- * `{CUBE}.value` on its staged cube.
+ * `{CUBE}.value` on its staged cube; one served by a cohort table is a
+ * `type: number` measure on that cube, its expression summing the cube's own
+ * columns.
  */
 import { stringify } from "yaml";
 import type { OssieDataType } from "../ossie/types.js";
@@ -90,7 +92,7 @@ export function writeCube(tm: TargetModel, opts: CubeOptions = {}): { files: Rec
     const meta = { gasp: { id: m.gaspId, url: m.url } };
     const description = m.description ?? m.label;
     const list = measures.get(home) ?? [];
-    if (m.staged) list.push({ name: m.name, sql: "{CUBE}.value", type: "sum", description, meta });
+    if (m.staged && !m.cohort) list.push({ name: m.name, sql: "{CUBE}.value", type: "sum", description, meta });
     else {
       list.push({ name: m.name, sql: measureSql(m, home, byName), type: "number", description, meta });
       if (m.datasets.length > 1) crossCube.push(`${m.name} (${m.datasets.slice(1).join(", ")})`);
@@ -140,10 +142,12 @@ export function writeCube(tm: TargetModel, opts: CubeOptions = {}): { files: Rec
   });
 
   const unreachable = tm.tables.filter((t) => !paths.has(t.name) && !t.staged && !t.spine).map((t) => t.name);
-  const stagedCount = tm.tables.filter((t) => t.staged).length;
+  const cohortTables = tm.tables.filter((t) => t.staged?.cohort);
+  const stagedCount = tm.tables.filter((t) => t.staged).length - cohortTables.length;
   notes.push(`The view ${viewName} starts at ${base} and reaches ${paths.size} cube${paths.size === 1 ? "" : "s"} along the joins.`);
   if (unreachable.length) notes.push(`Not reachable from ${base} along the joins, so left out of the view (query the cube directly): ${unreachable.join(", ")}.`);
   if (stagedCount) notes.push(`The ${stagedCount} staged cube${stagedCount === 1 ? " holds" : "s hold"} one row per reporting period and join nothing, so they sit outside the view; filter period_start to one period.`);
+  for (const t of cohortTables) notes.push(`${t.name} holds one row per ${t.staged!.cohort!.key} per reporting period, which its measures sum. It joins nothing and sits outside the view; filter period_start and period_end to one period.`);
   if (crossCube.length) notes.push(`APPROXIMATED: ${crossCube.length} measure${crossCube.length === 1 ? " reads" : "s read"} another cube through the join path; check each against GASP's value before relying on it: ${crossCube.join("; ")}.`);
   if (computed) notes.push(`${computed} dimension${computed === 1 ? " is a computed expression" : "s are computed expressions"} written as in your model, unqualified; qualify the columns with {CUBE}. if a joined table carries a column of the same name.`);
   if (opts.database?.trim()) notes.push(`database ${opts.database.trim()} is not needed: Cube's data source connection names the database, so sql_table keeps your source as written.`);

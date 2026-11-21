@@ -28,6 +28,13 @@
  * model marks it with `gasp_breakdown` so the consumer adds the dimension. One
  * that uses total() is staged ("total"): a share of total needs two populations.
  *
+ * A formula over a cohort is staged ("cohort"). Where the cohort is the one a
+ * cohort table holds (cohorts.ts) and every aggregate in the formula sits in a
+ * fragment the table has a column for, the emission also carries the formula as
+ * an expression over that table: each fragment a `SUM(<table>.<column>)`, the
+ * arithmetic around them unchanged. model.ts writes that expression and the one
+ * table in place of a staged dataset per metric.
+ *
  * The dataset an aggregate reads is chosen exactly as compile.ts chooses it:
  * the datasets every field in the aggregate shares, preferring one keyed by
  * one of those fields, else the first declared.
@@ -41,6 +48,7 @@
 import { DIALECT, type DialectName } from "../dialect.js";
 import { parseFormula, type Form, type Formula, type Node, type Point } from "../formula.js";
 import type { MetricFormula, OntologyDataset, OntologyField } from "../types.js";
+import { ACCOUNT_COHORTS, cohortColumn, sameCohort, type CohortTableSpec } from "./cohorts.js";
 
 export interface EmitContext {
   fields: Record<string, OntologyField>;
@@ -58,7 +66,13 @@ export type StagedReason = (typeof STAGED_REASONS)[number];
 
 export type Emission =
   | { kind: "direct"; expression: string; datasets: string[]; snapshots: string[] }
-  | { kind: "staged"; reason: StagedReason; reasons: StagedReason[] }
+  | {
+      kind: "staged";
+      reason: StagedReason;
+      reasons: StagedReason[];
+      /** Set when a cohort table serves the entry: the dataset, the expression over it and the columns it reads */
+      table?: { dataset: string; expression: string; columns: string[] };
+    }
   | { kind: "notComputable"; reason: string };
 
 interface Scope {
@@ -149,9 +163,32 @@ export function emitMetric(id: string, ctx: EmitContext, variant?: string): Emis
   if (bd?.buckets) e.reasons.add("bucket");
   if (e.reasons.size) {
     const reasons = STAGED_REASONS.filter((r) => e.reasons.has(r));
-    return { kind: "staged", reason: reasons[0], reasons };
+    const table = bd ? undefined : overCohortTable(ACCOUNT_COHORTS, id, src, ctx);
+    return { kind: "staged", reason: reasons[0], reasons, ...(table ? { table } : {}) };
   }
   return { kind: "direct", expression, datasets: [...e.datasets].sort(), snapshots: [...e.snapshots].sort() };
+}
+
+/**
+ * The formula as an expression over a cohort table, when the table serves it:
+ * the formula declares the table's cohort, every aggregate in it falls inside a
+ * fragment that is one of the table's columns and nothing else in it needs
+ * staging. A breakdown is the caller's to exclude: the table has one row per
+ * member, so it cannot group by a field of the rows a column sums.
+ */
+function overCohortTable(t: CohortTableSpec, id: string, src: string, ctx: EmitContext): { dataset: string; expression: string; columns: string[] } | undefined {
+  const f = parseFormula(src);
+  if (!sameCohort(t, f.cohort)) return undefined;
+  const e = new Emitter(ctx, t);
+  const expression = e.formula(f, { toDate: false, path: [id] });
+  if (e.unserved || !e.used.size || [...e.reasons].some((r) => r !== "cohort")) return undefined;
+  return { dataset: t.name, expression, columns: t.columns.map((c) => c.name).filter((c) => e.used.has(c)) };
+}
+
+/** A cohort table entry's expression in a warehouse dialect, or undefined when no cohort table serves the entry. */
+export function cohortExpressionFor(id: string, ctx: EmitContext, dialect: DialectName, variant?: string): string | undefined {
+  const e = emitMetric(id, { ...ctx, dialect }, variant);
+  return e.kind === "staged" ? e.table?.expression : undefined;
 }
 
 /** A direct entry's expression in a warehouse dialect, or undefined when the entry is staged or not computable. */
@@ -164,7 +201,11 @@ class Emitter {
   reasons = new Set<StagedReason>();
   datasets = new Set<string>();
   snapshots = new Set<string>();
-  constructor(private ctx: EmitContext) {}
+  /** Table mode: the columns read so far, and whether an aggregate fell outside every column */
+  used = new Set<string>();
+  unserved = false;
+  /** With `table`, a fragment that equals one of its columns is written as the sum of that column. */
+  constructor(private ctx: EmitContext, private table?: CohortTableSpec) {}
 
   formula(f: Formula, scope: Scope): string {
     if (f.cohort) this.reasons.add("cohort");
@@ -180,6 +221,14 @@ class Emitter {
   }
 
   private expr(n: Node, scope: Scope, inWhere = false): string {
+    // A column holds its fragment as declared, so it stands in only where nothing outside has moved the period.
+    if (this.table && !scope.dataset && !scope.point && !scope.toDate) {
+      const column = cohortColumn(this.table, n);
+      if (column) {
+        this.used.add(column);
+        return `SUM(${this.table.name}.${column})`;
+      }
+    }
     switch (n.kind) {
       case "number": return String(n.value);
       case "string": return `'${n.value.replace(/'/g, "''")}'`;
@@ -281,6 +330,7 @@ class Emitter {
   }
 
   private aggregate(n: Extract<Node, { kind: "agg" | "percentile" }>, scope: Scope): string {
+    if (this.table) this.unserved = true; // an aggregate no column holds
     const ds = this.datasetFor([...this.fieldsIn(n)]);
     const meta = this.ctx.datasets[ds];
     if (!meta) throw new Error(`Unknown dataset '${ds}'`);

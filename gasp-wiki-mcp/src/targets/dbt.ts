@@ -36,12 +36,14 @@
  * it to fill_nulls_with: 0 on its metric. A measure on a snapshot table carries
  * a non_additive_dimension on the snapshot date (window_choice: max), so it is
  * read as of the period end as GASP reads snapshots. A staged metric is a sum
- * over its staged model's value.
+ * over its staged model's value. A metric served by a cohort table is split
+ * like a direct one: each column it sums is a measure on the table's semantic
+ * model, which is keyed by the surrogate over period and member.
  */
 import { stringify } from "yaml";
 import type { DialectName } from "../dialect.js";
 import { DIALECT } from "../dialect.js";
-import { slugName, tablesIn, type TargetField, type TargetMetric, type TargetModel, type TargetTable } from "./common.js";
+import { slugName, stagedComment, tablesIn, type TargetField, type TargetMetric, type TargetModel, type TargetTable } from "./common.js";
 
 export const SURROGATE_KEY = "gasp_surrogate_key";
 export const DBT_DIR = "models/gasp";
@@ -213,8 +215,8 @@ export function writeDbt(tm: TargetModel): { files: Record<string, string>; note
     const file = `${DBT_DIR}/${modelName(t)}.sql`;
     if (t.staged) {
       const source = (t.source.kind === "query" ? t.source.sqlByDialect?.[dialect] ?? t.source.sql : "").trim();
-      const head = `-- Staged dataset for ${t.staged.for} (${t.staged.reason}): one row per reporting period${needsSurrogate(t) ? " and group" : ""}, compiled by GASP over your tables and the period spine.`;
-      // A breakdown keys its rows by period and group: the surrogate goes around the compiled source.
+      const head = `-- ${stagedComment(t)}${needsSurrogate(t) && !t.staged.cohort ? " and group" : ""}, compiled by GASP over your tables and the period spine.`;
+      // A breakdown keys its rows by period and group, a cohort table by period and member: the surrogate goes around the compiled source.
       files[file] = needsSurrogate(t)
         ? `${head}\nSELECT\n  staged.*,\n  ${surrogateSql(t.primaryKey.map((k) => `staged.${k}`), dialect)} AS ${SURROGATE_KEY}\nFROM (\n${source}\n) AS staged\n`
         : `${head}\n${source}\n`;
@@ -252,7 +254,8 @@ export function writeDbt(tm: TargetModel): { files: Record<string, string>; note
     const reads = tablesIn(a.expr, tableNames);
     if (reads.length !== 1) return undefined;
     const t = byName.get(reads[0])!;
-    if (t.staged || t.spine) return undefined;
+    // A cohort table's amounts are additive columns, so they are measures like a mapped table's; a staged value is not split.
+    if ((t.staged && !t.staged.cohort) || t.spine) return undefined;
     const expr = unqualify(a.expr, tableNames);
     const sig = JSON.stringify([t.name, a.agg, expr, a.percentile ?? null]);
     let name = measureBySig.get(sig);
@@ -275,7 +278,7 @@ export function writeDbt(tm: TargetModel): { files: Record<string, string>; note
   const config = (m: TargetMetric) => ({ meta: { gasp_id: m.gaspId, gasp_url: m.url } });
 
   for (const m of tm.metrics) {
-    if (m.staged) {
+    if (m.staged && !m.cohort) {
       const t = byName.get(m.staged);
       if (!t) { skipped.push(m.name); continue; }
       const name = `${m.name}__value`;

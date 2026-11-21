@@ -8,21 +8,26 @@
  * measures and staged queries give the canonical values on PGlite; the dbt
  * writer keys every composite-key table by a surrogate, and on PGlite its
  * models, its staged models and every metric rebuilt from its YAML give the
- * canonical values; the compile_target tool answers in each output shape.
+ * canonical values; the cohort table reaches each target as a table of its own
+ * whose metrics sum its rows to the value the per-period staging gives; the
+ * compile_target tool answers in each output shape.
  */
 import type { PGlite } from "@electric-sql/pglite";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { parse } from "yaml";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { compileMetric, type CompileContext } from "../src/compile.js";
 import { DIALECT, type DialectName } from "../src/dialect.js";
 import { loadStandard } from "../src/loader.js";
 import type { Adapter } from "../src/tools.js";
 import { resolveCompany, type Company } from "../src/ossie/adapt.js";
 import { compileModel, type CompiledModel } from "../src/ossie/company.js";
-import { directQuery } from "../src/ossie/demo.js";
+import { ACCOUNT_COHORTS } from "../src/ossie/cohorts.js";
+import { directQuery, stagedValueQuery } from "../src/ossie/demo.js";
 import { directExpressionFor, emitMetric, type EmitContext } from "../src/ossie/metrics.js";
-import { exportModel } from "../src/ossie/model.js";
+import { exportModel, stagedSource } from "../src/ossie/model.js";
+import { readGaspExtension, type OssieExtension } from "../src/ossie/types.js";
 import { compileTarget, compileTargetFromText, withDatabase, type TargetResult } from "../src/targets/index.js";
 import { aggregatesIn, DBT_DIR, SURROGATE_KEY } from "../src/targets/dbt.js";
 import type { TargetModel } from "../src/targets/common.js";
@@ -69,6 +74,17 @@ const close = (a: number | null, b: number | null, key: string) => {
   else expect(Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b)), `${key}: ${a} vs ${b}`).toBe(true);
 };
 const period = { start: "2026-01-01", end: "2026-06-30" };
+/** A staged dataset by its GASP extension: the per-period ones and the cohort table. */
+const isStaged = (d: { nonportable_extensions?: OssieExtension[] }) => readGaspExtension(d.nonportable_extensions)?.staged === true;
+const COHORTS = ACCOUNT_COHORTS.name;
+/** The entries the cohort table serves: Ossie metric name to coverage key. */
+const cohortEntries = new Map(Object.entries(reference.coverage).flatMap(([key, c]) => (c.kind === "staged" && c.cohortTable ? [[c.ossieName, key] as const] : [])));
+const cctx: CompileContext = { fields, datasets: gaspDatasets, formulas: data.formulas! };
+/** A served entry staged the general way over the reference tables, one row per period holding the value: what a target's sums over the cohort table must equal. */
+const generalQuery = (name: string): string => {
+  const [id, v] = split(cohortEntries.get(name)!);
+  return stagedValueQuery("SUM(general.value)", "general", stagedSource(compileMetric(id, cctx, v).sql), period);
+};
 
 describe("Dialect emitter", () => {
   it("leaves the OSSIE_SQL_2026 output unchanged when no dialect is set", () => {
@@ -153,8 +169,27 @@ describe("Snowflake target: the Acme adapter", () => {
       for (const token of DIALECT.snowflake.forbidden) expect(m.expr, m.name).not.toContain(token);
     }
     expect(metrics.find((m) => m.name === "gasp_mrr")!.expr).toBe("COALESCE(SUM(CASE WHEN subscription.subscription_status = 'active' THEN subscription.mrr END), 0)");
-    expect(metrics.find((m) => m.name === "gasp_nrr")!.expr).toBe("SUM(gasp_staged_gasp_nrr.value)");
-    expect(tables.find((t) => t.name === "gasp_staged_gasp_nrr")!.base_table).toEqual({ database: "ACME_DW", schema: "BILLING", table: "GASP_STAGED_GASP_NRR" });
+    expect(metrics.find((m) => m.name === "gasp_arr_o")!.expr).toBe("SUM(gasp_staged_gasp_arr_o.value)");
+    expect(tables.find((t) => t.name === "gasp_staged_gasp_arr_o")!.base_table).toEqual({ database: "ACME_DW", schema: "BILLING", table: "GASP_STAGED_GASP_ARR_O" });
+  });
+
+  it("writes the cohort table as a table of its own, its metrics plain sums over its facts", () => {
+    const t = tables.find((x) => x.name === COHORTS)!;
+    expect(t.base_table).toEqual({ database: "ACME_DW", schema: "BILLING", table: COHORTS.toUpperCase() });
+    expect(t.primary_key).toEqual({ columns: ["period_start", ACCOUNT_COHORTS.cohort.key] });
+    expect(t.time_dimensions!.map((f) => f.name)).toEqual(["period_start", "period_end"]);
+    expect(t.dimensions!.map((f) => f.name)).toEqual([ACCOUNT_COHORTS.cohort.key]);
+    const facts = new Set(t.facts!.map((f) => f.name));
+    const served = metrics.filter((m) => m.expr.includes(`${COHORTS}.`));
+    expect(served.map((m) => m.name).sort()).toEqual([...cohortEntries.keys()].sort());
+    const read = new Set<string>();
+    for (const m of served) {
+      // Sums of the table's facts with arithmetic, the double cast and the zero guard around them.
+      expect(m.expr.replace(new RegExp(`SUM\\(${COHORTS}\\.(\\w+)\\)`, "g"), (_, col: string) => { read.add(col); return "x"; }), m.name).toMatch(/^[x\s()+\-/,0]*(?:CAST|AS DOUBLE|NULLIF|[x\s()+\-/,0])*$/);
+    }
+    expect([...read].sort()).toEqual([...facts].sort());
+    expect(metrics.find((m) => m.name === "gasp_nrr")!.expr).toBe(`(CAST((((SUM(${COHORTS}.opening_mrr) + SUM(${COHORTS}.expansion_mrr)) - SUM(${COHORTS}.contraction_mrr)) - SUM(${COHORTS}.churned_mrr)) AS DOUBLE) / NULLIF(SUM(${COHORTS}.opening_mrr), 0))`);
+    expect(metrics.find((m) => m.name === "gasp_grr_per_customer")!.expr).toBe(`(CAST(SUM(${COHORTS}.retained_mrr) AS DOUBLE) / NULLIF(SUM(${COHORTS}.mrr_start), 0))`);
   });
 
   it("carries Acme's recode and cents division as field expressions", () => {
@@ -169,8 +204,9 @@ describe("Snowflake target: the Acme adapter", () => {
   it("writes one view per staged dataset, each the compiled Snowflake source", () => {
     const sql = r.files["staged_views.sql"];
     const views = new Map([...sql.matchAll(/CREATE OR REPLACE VIEW ([\w.]+) AS\n([\s\S]*?);\n(?=\n|$)/g)].map((m) => [m[1], m[2]]));
-    const staged = model.model.datasets.filter((d) => d.name.startsWith("gasp_staged_"));
+    const staged = model.model.datasets.filter(isStaged);
     expect(views.size).toBe(staged.length);
+    expect(views.has(`ACME_DW.BILLING.${COHORTS.toUpperCase()}`)).toBe(true);
     for (const d of staged) expect(views.get(`ACME_DW.BILLING.${d.name.toUpperCase()}`), d.name).toBe(d.source.replace(/\bbilling\./g, "ACME_DW.billing.").replace(/gasp\.period_spine/g, "ACME_DW.GASP.PERIOD_SPINE"));
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS ACME_DW.GASP.PERIOD_SPINE (period_start DATE, period_end DATE);");
     expect(r.notes.join(" ")).toMatch(/Cortex Analyst/);
@@ -188,7 +224,7 @@ describe("Snowflake target: the Acme adapter", () => {
     const three = compileModel(q.company, data, { dialect: "snowflake", spine: q.spine });
     if ("error" in three) throw new Error(three.error);
     const views = new Map([...sql.matchAll(/CREATE OR REPLACE VIEW ([\w.]+) AS\n([\s\S]*?);\n(?=\n|$)/g)].map((m) => [m[1], m[2]]));
-    const staged = three.model.datasets.filter((d) => d.name.startsWith("gasp_staged_"));
+    const staged = three.model.datasets.filter(isStaged);
     expect(views.size).toBe(staged.length);
     for (const d of staged) expect(views.get(`ACME_DW.BILLING.${d.name.toUpperCase()}`), d.name).toBe(d.source);
     // A given spine keeps three parts as written and gains the database at two.
@@ -224,9 +260,31 @@ describe("Cube target: the fixture adapter on PGlite", () => {
     expect([...cubes.keys()].sort()).toEqual(model.model.datasets.map((d) => d.name).sort());
     expect(viewFiles).toHaveLength(1);
     expect(cubes.get("subscription").sql_table).toBe("gasp_subscriptions");
-    const nrr = cubes.get("gasp_staged_gasp_nrr");
-    expect(nrr.measures).toEqual([expect.objectContaining({ name: "gasp_nrr", sql: "{CUBE}.value", type: "sum" })]);
+    const arr = cubes.get("gasp_staged_gasp_arr_o");
+    expect(arr.measures).toEqual([expect.objectContaining({ name: "gasp_arr_o", sql: "{CUBE}.value", type: "sum" })]);
     expect(cubes.get("subscription").measures.find((m: { name: string }) => m.name === "gasp_mrr").sql).toBe("COALESCE(SUM(CASE WHEN {CUBE}.status = 'active' THEN {CUBE}.mrr END), 0)");
+  });
+
+  it("writes the cohort table as one cube keyed by period and customer, its measures sums over its own columns", () => {
+    const cube = cubes.get(COHORTS);
+    expect(cube.sql).toBe(model.model.datasets.find((d) => d.name === COHORTS)!.source);
+    const dims = cube.dimensions as Array<{ name: string; sql: string; type: string; primary_key?: boolean }>;
+    expect(dims.filter((d) => d.primary_key).map((d) => d.name)).toEqual(["period_start", ACCOUNT_COHORTS.cohort.key]);
+    const measures = cube.measures as Array<{ name: string; sql: string; type: string }>;
+    expect(measures.map((m) => m.name).sort()).toEqual([...cohortEntries.keys()].sort());
+    const read = new Set<string>();
+    for (const m of measures) {
+      expect(m.type, m.name).toBe("number");
+      for (const [, col] of m.sql.matchAll(/SUM\(\{CUBE\}\.(\w+)\)/g)) read.add(col);
+      expect(m.sql.replace(/SUM\(\{CUBE\}\.\w+\)/g, "x"), m.name).not.toMatch(/\{|SUM|COALESCE/);
+    }
+    // Every amount column is read by a measure and each is a number dimension.
+    expect([...read].sort()).toEqual(dims.slice(3).map((d) => d.name).sort());
+    for (const d of dims.slice(3)) expect(d, d.name).toMatchObject({ sql: `{CUBE}.${d.name}`, type: "number" });
+    expect(measures.find((m) => m.name === "gasp_grr_per_customer")!.sql).toBe("(CAST(SUM({CUBE}.retained_mrr) AS DOUBLE PRECISION) / NULLIF(SUM({CUBE}.mrr_start), 0))");
+    const perPeriod = model.model.datasets.filter(isStaged).length - 1;
+    expect(r.notes.join(" ")).toContain(`The ${perPeriod} staged cubes hold one row per reporting period`);
+    expect(r.notes.join(" ")).toContain(`${COHORTS} holds one row per ${ACCOUNT_COHORTS.cohort.key} per reporting period`);
   });
 
   it("lists every cube reachable from the base along the joins, each with its path", () => {
@@ -260,7 +318,7 @@ describe("Cube target: the fixture adapter on PGlite", () => {
       const checked: string[] = [];
       for (const [home, cube] of cubes) {
         for (const m of (cube.measures ?? []) as Array<{ name: string; sql: string; type: string }>) {
-          if (m.type !== "number") continue;
+          if (m.type !== "number" || home === COHORTS) continue;
           const ossie = refMetric.get(m.name)!;
           if (reserved(ossie) || home === "user") continue;
           // {CUBE}.col is the home table's column; {other.col} the other table's, aliased by its dataset name.
@@ -280,10 +338,20 @@ describe("Cube target: the fixture adapter on PGlite", () => {
       expect(checked.length).toBeGreaterThan(150);
     }, 300_000);
 
+    it("every cohort table measure sums the cube's rows to the value the per-period staging gives", async () => {
+      const cube = cubes.get(COHORTS);
+      for (const m of cube.measures as Array<{ name: string; sql: string }>) {
+        const got = await scalar(db, `SELECT ${stagedValueQuery(m.sql.replace(/\{CUBE\}\./g, `${COHORTS}.`), COHORTS, cube.sql, period)}`);
+        const want = await scalar(db, `SELECT ${generalQuery(m.name)}`);
+        expect(want, m.name).not.toBeNull();
+        close(got, want, m.name);
+      }
+    }, 120_000);
+
     it("every staged cube's query runs and returns the staged source's rows", async () => {
       const rows = async (source: string) => (await db.query<Record<string, unknown>>(`SELECT * FROM (${source}) s`)).rows
         .map((row) => JSON.stringify(Object.values(row))).sort();
-      const staged = model.model.datasets.filter((d) => d.name.startsWith("gasp_staged_"));
+      const staged = model.model.datasets.filter(isStaged);
       expect(staged.length).toBeGreaterThan(100);
       for (const d of staged) {
         const cube = cubes.get(d.name);
@@ -391,9 +459,36 @@ describe("dbt target", () => {
       const measure = semantic.find((s) => s.name === "subscription")!.measures!.find((m) => m.name === mrr.type_params.measure!.name)!;
       expect(measure).toEqual({ name: "gasp_mrr__1", agg: "sum", expr: "CASE WHEN subscription_status = 'active' THEN mrr END", non_additive_dimension: { name: "snapshot_date", window_choice: "max" } });
       expect(metrics.find((m) => m.name === "gasp_arpa")!.type).toBe("ratio");
-      expect(metrics.find((m) => m.name === "gasp_nrr")!.type_params.measure!.name).toBe("gasp_nrr__value");
+      expect(metrics.find((m) => m.name === "gasp_arr_o")!.type_params.measure!.name).toBe("gasp_arr_o__value");
       expect(r.notes.join(" ")).toMatch(/composite key/);
       expect(r.notes.join(" ")).not.toMatch(/Left out/);
+    });
+
+    it("writes the cohort table as a model keyed by the surrogate, a sum measure per column and its metrics over them", () => {
+      const file = r.files[`${DBT_DIR}/${COHORTS}.sql`];
+      const d = model.model.datasets.find((x) => x.name === COHORTS)!;
+      expect(file).toContain(`FROM (\n${d.source.trim()}\n) AS staged`);
+      expect(file).toContain(`CAST(staged.period_start AS VARCHAR) || '_' || CAST(staged.${ACCOUNT_COHORTS.cohort.key} AS VARCHAR) AS ${SURROGATE_KEY}`);
+      const s = semantic.find((x) => x.name === COHORTS)!;
+      expect(s.model).toBe(`ref('${COHORTS}')`);
+      expect(s.entities).toEqual([{ name: COHORTS, type: "primary", expr: SURROGATE_KEY }]);
+      expect(s.defaults).toEqual({ agg_time_dimension: "period_start" });
+      // One measure per column summed, each column once, whichever metric reads it first.
+      const columns = d.fields!.slice(3).map((f) => f.name);
+      expect(s.measures!.map((m) => m.expr).sort()).toEqual([...columns].sort());
+      for (const m of s.measures!) expect(m, m.name).toEqual({ name: m.name, agg: "sum", expr: m.expr });
+      const nrr = metrics.find((m) => m.name === "gasp_nrr")!;
+      expect(nrr.type).toBe("derived");
+      expect(nrr.type_params.expr).toBe("(CAST((((gasp_nrr__1 + gasp_nrr__2) - gasp_nrr__3) - gasp_nrr__4) AS DOUBLE) / NULLIF(gasp_nrr__1, 0))");
+      expect(nrr.type_params.metrics!.map((m) => m.name)).toEqual(["gasp_nrr__1", "gasp_nrr__2", "gasp_nrr__3", "gasp_nrr__4"]);
+      const names = new Set(s.measures!.map((m) => m.name));
+      for (const name of cohortEntries.keys()) {
+        const m = metrics.find((x) => x.name === name)!;
+        expect(m, name).toBeDefined();
+        const inputs = m.type === "ratio" ? [m.type_params.numerator!, m.type_params.denominator!] : (m.type_params.metrics ?? []).map((x) => x.name);
+        expect(inputs.length, name).toBeGreaterThan(0);
+        for (const i of inputs) expect(names.has(metrics.find((x) => x.name === i)!.type_params.measure!.name), `${name} ${i}`).toBe(true);
+      }
     });
 
     it("writes snowflake, bigquery and databricks without FILTER or a forbidden token", () => {
@@ -437,7 +532,8 @@ describe("dbt target", () => {
     afterAll(async () => { await db?.close(); });
 
     it("every surrogate-key model keeps every source row with a key that is never null and distinct per key", async () => {
-      const keyed = semantic.filter((s) => s.entities?.[0]?.expr === SURROGATE_KEY && !s.name.startsWith("gasp_staged_"));
+      const stagedNames = new Set(model.model.datasets.filter(isStaged).map((d) => d.name));
+      const keyed = semantic.filter((s) => s.entities?.[0]?.expr === SURROGATE_KEY && !stagedNames.has(s.name));
       expect(keyed.length).toBeGreaterThan(25);
       for (const s of keyed) {
         const view = `dbt.gasp_${s.name}`;
@@ -451,8 +547,9 @@ describe("dbt target", () => {
 
     it("every staged model is its compiled source and returns the same rows", async () => {
       const rows = async (source: string) => (await db.query<Record<string, unknown>>(`SELECT * FROM (${source}) s`)).rows.map((row) => JSON.stringify(Object.values(row))).sort();
-      const staged = model.model.datasets.filter((d) => d.name.startsWith("gasp_staged_"));
+      const staged = model.model.datasets.filter(isStaged);
       expect(staged.length).toBeGreaterThan(100);
+      expect(staged.map((d) => d.name)).toContain(COHORTS);
       let wrapped = 0;
       for (const d of staged) {
         const file = r.files[`${DBT_DIR}/${d.name}.sql`];
@@ -469,6 +566,17 @@ describe("dbt target", () => {
       }
       expect(wrapped).toBeGreaterThan(0);
     }, 300_000);
+
+    it("every cohort table metric rebuilt from the YAML sums the model's rows to the value the per-period staging gives", async () => {
+      for (const name of cohortEntries.keys()) {
+        const sql = rebuild(name, r.model, semantic, metrics);
+        expect(sql, name).toContain(`SUM(${COHORTS}.`);
+        const got = await scalar(db, `SELECT ${stagedValueQuery(sql, COHORTS, `SELECT * FROM dbt.${COHORTS}`, period)}`);
+        const want = await scalar(db, `SELECT ${generalQuery(name)}`);
+        expect(want, name).not.toBeNull();
+        close(got, want, name);
+      }
+    }, 120_000);
 
     it("every direct metric rebuilt from the YAML gives the canonical value over the models", async () => {
       const physical = { table: (ds: string) => `dbt.gasp_${ds}`, date: (ds: string) => columnName(ds, gaspDatasets[ds].date) };

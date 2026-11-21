@@ -9,7 +9,8 @@
  * the query layer selects (snapshot rows on the period end, event and fact rows
  * dated in the period). A direct metric's expression is rewritten with each
  * aggregate call as a scalar subquery over its dataset; a staged metric reads
- * its staged dataset's row for the period. The expected values come from the
+ * its staged dataset's row for the period, or sums the cohort table's rows for
+ * the period as its expression says. The expected values come from the
  * GASP compiled SQL on the full test fixture, and the data scripts are the
  * fixture rows that reproduce them (scripts/ossie-conformance.ts writes both).
  */
@@ -87,28 +88,38 @@ export function directQuery(expression: string, datasets: Record<string, Ontolog
   return aggregateQuery(expression, datasets, (ds) => periodFilter(datasets[ds], fields, period, physical?.date(ds)), physical);
 }
 
+const extension = (x: { nonportable_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.nonportable_extensions) ?? {};
+
 /** A staged metric as a scalar query: its staged dataset's row for the period. */
 export function stagedQuery(source: string, period: Period = DEMO_PERIOD): string {
   return `(SELECT value FROM (${source}) AS s WHERE period_start = DATE '${period.start}')`;
 }
 
-const STAGED_READ = /^SUM\((gasp_staged_[a-z0-9_]+)\.value\)$/;
+/**
+ * A metric over a staged dataset as a scalar query. A per-period dataset holds
+ * the value in its one row for the period; over a cohort table the expression
+ * is evaluated on the table's rows for the period.
+ */
+export function stagedValueQuery(expression: string, dataset: string, source: string, period: Period = DEMO_PERIOD): string {
+  if (expression === `SUM(${dataset}.value)`) return stagedQuery(source, period);
+  return `(SELECT ${expression} FROM (${source}) AS ${dataset} WHERE period_start = DATE '${period.start}' AND period_end = DATE '${period.end}')`;
+}
 
-const extension = (x: { nonportable_extensions?: OssieExtension[] }): Record<string, unknown> => readGaspExtension(x.nonportable_extensions) ?? {};
+/** The staged dataset a metric's expression reads, if any. */
+export function stagedDatasetOf(expression: string, model: OssieSemanticModel): { name: string; source: string } | undefined {
+  const d = model.datasets.find((x) => extension(x).staged === true && new RegExp(`\\b${x.name}\\.`).test(expression));
+  return d ? { name: d.name, source: d.source } : undefined;
+}
 
 /** One demo query per metric of the model, in model order. */
 export function demoMetrics(model: OssieSemanticModel, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): DemoMetric[] {
-  const sources = new Map(model.datasets.map((d) => [d.name, d.source]));
   return (model.metrics ?? []).map((m) => {
     const expression = expressionText(m) ?? "";
     const ext = extension(m);
     const formula = String(ext.formula ?? "");
-    const staged = STAGED_READ.exec(expression);
-    if (staged) {
-      const source = sources.get(staged[1]);
-      if (!source) throw new Error(`${m.name} reads ${staged[1]}, which the model does not declare`);
-      return { name: m.name, description: m.description ?? "", formula, kind: "staged", query: stagedQuery(source, period) };
-    }
+    const staged = stagedDatasetOf(expression, model);
+    if (ext.staged === true && !staged) throw new Error(`${m.name} is staged and reads no staged dataset the model declares`);
+    if (staged) return { name: m.name, description: m.description ?? "", formula, kind: "staged", query: stagedValueQuery(expression, staged.name, staged.source, period) };
     return { name: m.name, description: m.description ?? "", formula, kind: "direct", query: directQuery(expression, datasets, fields, period) };
   });
 }
@@ -123,7 +134,8 @@ export function demoMetricsSql(metrics: DemoMetric[], period: Period = DEMO_PERI
     `-- Every metric of the GASP SaaS core example for the period ${period.start} to ${period.end}, over the tables in data.sql.`,
     "-- A direct metric is its OSSIE_SQL_2026 expression with each aggregate evaluated over its dataset's rows for the period",
     "-- (snapshot rows on the period end, event and fact rows dated in the period), as the query layer would. A staged",
-    "-- metric reads its staged dataset's row for the period; the subquery is that dataset's source in the model.",
+    "-- metric reads its staged dataset for the period: the one row that holds its value, or the rows of the cohort",
+    "-- table summed as its expression says. The subquery is that dataset's source in the model.",
     "-- Standard SQL; runs on DuckDB and Postgres. expected.sql holds the values this returns.",
     "SELECT metric, value",
     "FROM (",

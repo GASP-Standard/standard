@@ -90,8 +90,10 @@ const coverage = JSON.parse(readFileSync(join(published, "coverage.json"), "utf-
 
 /** A statement, a filter without its parentheses and a GASP grammar formula: none is an OSSIE_SQL_2026 expression. */
 const stagedSource = reference.datasets.find((d) => d.name.startsWith("gasp_staged_"))!.source;
+const cohortSource = reference.datasets.find((d) => d.name === "gasp_account_cohorts")!.source;
 const NOT_EXPRESSIONS = [
   stagedSource,
+  cohortSource,
   "SUM(subscription.mrr) FILTER WHERE subscription.subscription_status = 'active'",
   "sum(field.mrr where field.subscription_status = 'active')",
 ];

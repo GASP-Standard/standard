@@ -5,6 +5,30 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-20] NRR and GRR read one cohort table, a row per customer per period
+**Decision:** The Ossie export gains one staged dataset at a finer grain than a period: `gasp_account_cohorts`, with one row per customer per reporting period over the customers active on the period's first day. `ACCOUNT_COHORTS` in `gasp-wiki-mcp/src/ossie/cohorts.ts` declares each amount column as a formula in the GASP grammar (opening MRR, the expansion, contraction and churn movements, the permanent ones for the adjusted forms) and `compileCohortTable` compiles it per customer. An entry is served by the table when every aggregate of its formula under the same cohort is one of those columns, matched as a parsed fragment and never by name. Seven entries qualify: NRR with its O, M and adjusted entries and GRR with its per-customer and adjusted entries. Each is written as plain sums over the table's columns, so `SUM(gasp_account_cohorts.opening_mrr)` and its siblings replace seven per-period datasets. Coverage keeps them `staged` with reason `cohort` and adds `cohortTable: true`. `compile_model` and the three compile targets write the same table over a company's own names. This reverses the 2026-10-13 choice to keep every staged dataset at one row per period, which that record left open "once a consumer asks".
+
+**Context:** A per-period staged dataset holds one number, so a consumer can read NRR and do nothing else with it: no slice by plan, region or owner and no list of the customers behind a fall. The interop spec has sketched `gasp_account_cohorts` since its first draft, the upstream example pull request (apache/ossie #773) shows NRR as a query a reviewer cannot read as a model and the semi-additive thread on dev@ is asking what a dataset can say about its own grain. A table keyed by period and customer answers all three with constructs every Ossie engine runs today. The values are checked: each of the seven entries equals its per-period staging over ten periods on PGlite, in the reference model, through the fixture adapter's own names, as Cube measures and as dbt measures.
+
+**Alternatives considered:**
+- Keep per-period staging for every entry: nothing to build and nothing a consumer can slice. Rejected for the reasons above.
+- Build `gasp_mrr_movements` as well, as the backlog item named it: the six movement metrics (New, Expansion, Contraction, Churned and Reactivation MRR and Net New MRR) are direct expressions over `revenue_event` in the export already, so a staged table would restate a dataset the model has. Closed as met.
+- Serve the `by_segment` breakdowns of NRR and GRR from the table too: today each groups its aggregates by the segment on the rows it reads, the snapshot's at period start and the event's on the day. A table keyed by customer gives one segment per customer for the period, which moves revenue between segments for a customer who changed segment in the period. That changes a published number, so it is the owner's call and the two entries stay on per-period staging until it is made.
+- A separate table per metric at customer grain: seven tables repeating the same opening MRR. One table with the columns in use is smaller and lets a consumer compare the forms row by row.
+- Match served entries by formula id: a list to maintain. A formula edit could also leave an entry reading columns that no longer state it. Matching parsed fragments means an edited formula falls back to per-period staging by itself.
+
+**Consequences:**
+- 164 staged datasets serve 170 staged entries (163 per-period ones and the cohort table). `coverage.json` counts are unchanged: 193 direct, 170 staged, 15 not computable.
+- The extension schema `gasp-ossie-extension-v1.json` changes: a dataset's `for` is a metric name or a list of them and a staged dataset may carry `cohort` with its key and point. The model's `compiled.staged` counts staged datasets. `gasp-ossie-validator` 0.1.0 on PyPI holds the earlier schema, so `validate.py --vendor GASP` with the installed package fails the new reference model with two findings on `gasp_account_cohorts` (`cohort` is an additional property and `for` must be a string; run on 2026-11-20). The repository's own tests install the package from its directory and pass. 0.1.1 carries the new schema, released on the owner's word of 2026-11-21.
+- The table holds only the columns the selected metrics sum, so a model compiled for MRR and NRR alone has no GRR columns.
+- A period with no cohort has no rows and a sum over no rows is NULL, as the per-period dataset gave.
+- The rows are keyed by `period_start` and customer, so the period spine must hold one period per start date for the sums to be right. The reference queries filter one period, as every staged query does.
+- The source correlates scalar subqueries on the period and the customer. It runs on PGlite and DuckDB. The Snowflake, BigQuery and Databricks sources are generated by the dialect table and have not been run on a live warehouse.
+- The example under `standard/exports/ossie/example/` drops from 16 staged datasets to 13 and is ahead of the files in apache/ossie #773. The pull request is updated when its review moves, in one push.
+- The conformance case `c01_cohort_nrr` keeps its expected value and readings. Its model and reference query now read the cohort table.
+
+---
+
 ## [2026-11-20] The grammar test generates upstream's parser on each run
 **Decision:** GASP's expressions are parsed with the upstream ANTLR grammar the way upstream's own tests do it. `OssieExpression.g4` and its two fixture files are vendored unchanged beside the validator. `test/ossie-grammar.py` generates the Python parser with the ANTLR 4.13.2 tool under Java, with the jar fetched from Maven Central on first use and checked against the SHA-256 upstream pins. It runs under `uv` with the matching runtime. Nothing generated is committed. The test skips without `uv` or Java and both test workflows install Java.
 

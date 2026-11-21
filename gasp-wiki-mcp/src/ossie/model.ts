@@ -7,20 +7,24 @@
  *   metrics        one per formula entry expression (main, forms, variants, named breakdowns);
  *                  direct when the formula is a plain Ossie aggregate (metrics.ts),
  *                  else a staged per-period dataset built from the compiled SQL
+ *   cohort table   the retention metrics over the customers live at period start read one
+ *                  staged dataset between them, a row per customer per period (cohorts.ts),
+ *                  and are Ossie expressions over its columns
  *
  * The reference model's physical sources are `gasp.<dataset>` and its columns are
  * the canonical field ids; an adopter's mapping replaces both.
  */
-import { compileMetric } from "../compile.js";
+import { compileCohortTable, compileMetric, type CompileContext } from "../compile.js";
 import { OSSIE_DIALECT_OF, type DialectName } from "../dialect.js";
 import { metricFormulaId, isMetricStub } from "../loader.js";
 import { metricUrl } from "../urls.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
+import { ACCOUNT_COHORTS, type CohortTableSpec } from "./cohorts.js";
 import { breakdownOf, emitMetric, formulaSource, type EmitContext } from "./metrics.js";
 import { metricName, ossieDataType, physicalSource } from "./names.js";
 import { profileExpression } from "./portability.js";
 import {
-  GASP_VENDOR, OSSIE_VERSION, gaspExtension, portable,
+  GASP_VENDOR, OSSIE_VERSION, expressionText, gaspExtension, portable,
   type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField,
   type OssieMetric, type OssieRelationship, type OssieSemanticModel,
 } from "./types.js";
@@ -164,19 +168,94 @@ export function stagedSource(compiledSql: string, t: ModelTarget = REFERENCE_TAR
   return `SELECT p.period_start, p.period_end, (${fillReference(m[1], t)}) AS value FROM ${t.spine} p`;
 }
 
+/** `sql` without the parentheses that wrap the whole of it. */
+const bare = (sql: string): string => {
+  let s = sql;
+  for (;;) {
+    if (!s.startsWith("(")) return s;
+    let depth = 0;
+    let quoted = false;
+    let i = 0;
+    for (; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === "'") quoted = !quoted;
+      else if (!quoted && ch === "(") depth++;
+      else if (!quoted && ch === ")" && --depth === 0) break;
+    }
+    if (i !== s.length - 1) return s;
+    s = s.slice(1, -1);
+  }
+};
+
+/** The source of a cohort table with the given columns: the spine joined to the cohort's members on the cohort's day, one scalar per column. */
+export function cohortSource(spec: CohortTableSpec, columns: string[], ctx: CompileContext, t: ModelTarget = REFERENCE_TARGET): string {
+  const c = compileCohortTable(spec.cohort, spec.columns.filter((col) => columns.includes(col.name)).map((col) => ({ name: col.name, src: col.formula })), ctx);
+  const cols = c.columns.map((col) => `(${bare(fillReference(col.sql, t))}) AS ${col.name}`).join(", ");
+  return `SELECT p.period_start, p.period_end, _c.${c.key}, ${cols} FROM ${t.spine} p JOIN (${fillReference(c.members, t)}) _c ON ${fillReference(c.on, t)}`;
+}
+
+/** A cohort table as a staged dataset, holding the given columns for the metrics that read it. */
+function cohortDataset(spec: CohortTableSpec, columns: string[], metrics: string[], cctx: Omit<CompileContext, "dialect">, t: ModelTarget): OssieDataset {
+  const { key } = spec.cohort;
+  const kf = cctx.fields[key];
+  const { primary, others } = t.dialects;
+  const member = key.replace(/_id$/, "");
+  return {
+    name: spec.name,
+    source: cohortSource(spec, columns, { ...cctx, dialect: primary }, t),
+    description: `Staged cohort table: one row per ${member} per reporting period, the ${member}s live on the ${spec.cohort.point === "period_start" ? "first" : "last"} day of the period, holding the amounts the retention metrics sum (${metrics.join(", ")}). Computed by the GASP compiled query over the period spine.`,
+    primary_key: ["period_start", key],
+    fields: [
+      { name: "period_start", expression: sql("period_start"), dimension: { is_time: true }, datatype: "Date", description: "First day of the reporting period" },
+      { name: "period_end", expression: sql("period_end"), datatype: "Date", description: "Last day of the reporting period" },
+      { name: key, expression: sql(key), datatype: ossieDataType(kf?.type ?? "string"), description: kf?.description ?? key },
+      ...spec.columns.filter((c) => columns.includes(c.name)).map((c): OssieField => ({ name: c.name, expression: sql(c.name), datatype: "Decimal", description: c.description })),
+    ],
+    nonportable_extensions: gasp({
+      staged: true, for: metrics, reason: "cohort", cohort: { key, point: spec.cohort.point },
+      source_dialect: OSSIE_DIALECT_OF[primary],
+      ...(others.length ? { sources: Object.fromEntries(others.map((d) => [OSSIE_DIALECT_OF[d], cohortSource(spec, columns, { ...cctx, dialect: d }, t)])) } : {}),
+    }),
+  };
+}
+
+/** The fields, datasets and formulas the compiler reads. */
+function compileContextOf(data: StandardData): Omit<CompileContext, "dialect"> {
+  const ont = data.ontology;
+  if (!ont?.fields || !ont.datasets || !data.formulas) throw new Error("Standard data has no fields, datasets or formulas");
+  return { fields: Object.fromEntries(ont.fields.map((f) => [f.id, f])), datasets: ont.datasets, formulas: data.formulas };
+}
+
+/**
+ * The cohort table for a model that keeps some of the metrics: the columns
+ * those metrics read, with their names in `for`. Undefined when none reads it.
+ */
+export function cohortTableFor(data: StandardData, metrics: OssieMetric[], t: ModelTarget = REFERENCE_TARGET, spec: CohortTableSpec = ACCOUNT_COHORTS): OssieDataset | undefined {
+  const read = new RegExp(`\\b${spec.name}\\.([a-z_][a-z0-9_]*)`, "g");
+  const used = new Set<string>();
+  const names: string[] = [];
+  for (const m of metrics) {
+    const columns = [...(expressionText(m) ?? "").matchAll(read)].map((x) => x[1]);
+    if (!columns.length) continue;
+    names.push(m.name);
+    columns.forEach((c) => used.add(c));
+  }
+  if (!names.length) return undefined;
+  return cohortDataset(spec, spec.columns.map((c) => c.name).filter((c) => used.has(c)), names, compileContextOf(data), t);
+}
+
 const FORM_LABEL: Record<string, string> = { O: "Operating form", M: "Market form" };
 
 /**
  * Every formula entry (main formula, forms, variants, named breakdowns) as an
  * Ossie metric for the target: direct when metrics.ts can state it, else a
- * staged per-period dataset built from the compiled SQL. `only` restricts the
- * formula ids; the target's `missing` leaves out entries it cannot read.
+ * staged per-period dataset built from the compiled SQL. The entries a cohort
+ * table serves (metrics.ts) share that one dataset, written last with the
+ * columns they read. `only` restricts the formula ids; the target's `missing`
+ * leaves out entries it cannot read.
  */
 export function buildMetrics(data: StandardData, target: ModelTarget, only?: (formulaId: string) => boolean): { metrics: OssieMetric[]; staged: OssieDataset[]; coverage: Record<string, MetricCoverage> } {
-  const ont = data.ontology;
-  if (!ont?.fields || !ont.datasets || !data.formulas) throw new Error("Standard data has no fields, datasets or formulas");
-  const fieldList = ont.fields;
-  const cctx = { fields: Object.fromEntries(fieldList.map((f) => [f.id, f])), datasets: ont.datasets, formulas: data.formulas };
+  const cctx = compileContextOf(data);
   const ctx: EmitContext = { ...cctx, ref: target.ref };
 
   // Formula id → the metric record that owns it (stubs defer to another metric).
@@ -190,8 +269,12 @@ export function buildMetrics(data: StandardData, target: ModelTarget, only?: (fo
   const metrics: OssieMetric[] = [];
   const staged: OssieDataset[] = [];
   const coverage: Record<string, MetricCoverage> = {};
+  const cohort = { columns: new Set<string>(), metrics: [] as string[] };
+  // A cohort table column can read a pair the entry's own compiled SQL does not; an entry that cannot read one keeps its own dataset.
+  const readable = (columns: string[]): boolean =>
+    !target.missing || target.missing(compileCohortTable(ACCOUNT_COHORTS.cohort, ACCOUNT_COHORTS.columns.filter((c) => columns.includes(c.name)).map((c) => ({ name: c.name, src: c.formula })), { ...cctx, dialect: target.dialects.primary }).placeholders).length === 0;
 
-  for (const [id, f] of Object.entries(data.formulas)) {
+  for (const [id, f] of Object.entries(cctx.formulas)) {
     if (only && !only(id)) continue;
     const m = owner.get(id);
     const entries: Array<{ key: string; variant?: string; form?: string; named?: boolean }> = [];
@@ -232,6 +315,13 @@ export function buildMetrics(data: StandardData, target: ModelTarget, only?: (fo
         if (emission.snapshots.length) {
           instructions.push(`Reads the ${emission.snapshots.join(" and ")} snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts.`);
         }
+      } else if (emission.table && readable(emission.table.columns)) {
+        const { dataset, columns } = emission.table;
+        columns.forEach((c) => cohort.columns.add(c));
+        cohort.metrics.push(name);
+        expression = emission.table.expression;
+        coverage[e.key] = { kind: "staged", ossieName: name, stagedDataset: dataset, reason: emission.reason, cohortTable: true };
+        instructions.push(`Staged (${emission.reason}): ${dataset} holds one row per ${ACCOUNT_COHORTS.cohort.key} per reporting period, the customers live on its first day, so filter its period_start to one period; grouping by ${ACCOUNT_COHORTS.cohort.key} gives the value per customer. ${target.spine} is a table of (period_start, period_end) rows the adopter provides.`);
       } else {
         const dsName = stagedDatasetName(name);
         const bf = breakdown ? ctx.fields[breakdown] : undefined;
@@ -279,6 +369,7 @@ export function buildMetrics(data: StandardData, target: ModelTarget, only?: (fo
       });
     }
   }
+  if (cohort.metrics.length) staged.push(cohortDataset(ACCOUNT_COHORTS, ACCOUNT_COHORTS.columns.map((c) => c.name).filter((c) => cohort.columns.has(c)), cohort.metrics, cctx, target));
   return { metrics, staged, coverage };
 }
 

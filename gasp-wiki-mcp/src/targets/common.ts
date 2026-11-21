@@ -12,7 +12,8 @@
  *                  dimension or fact) the writers sort into their own sections
  *   metrics        every direct or staged GASP metric: a direct one re-emitted in
  *                  the target dialect (metrics.ts with `dialect` set, so a filter
- *                  is a CASE inside the aggregate), a staged one as SUM(<staged>.value)
+ *                  is a CASE inside the aggregate), a staged one as SUM(<staged>.value),
+ *                  or as its own expression over the cohort table when one serves it
  *   relationships  the model's own, plus the joins GASP declares between the
  *                  datasets the mapping covers (model.ts relationshipsOf), in the
  *                  company's dataset and field names
@@ -25,7 +26,7 @@ import { isMetricStub, metricFormulaId } from "../loader.js";
 import { metricUrl, SITE } from "../urls.js";
 import type { Metric, StandardData } from "../types.js";
 import { companyTarget, fieldSql, isGaspMetric, type CompiledModel } from "../ossie/company.js";
-import { directExpressionFor, type EmitContext } from "../ossie/metrics.js";
+import { cohortExpressionFor, directExpressionFor, type EmitContext } from "../ossie/metrics.js";
 import { relationshipsOf } from "../ossie/model.js";
 import { readGaspExtension, type OssieAIContext, type OssieDataType, type OssieDataset, type OssieExtension, type OssieRelationship } from "../ossie/types.js";
 
@@ -47,14 +48,14 @@ export type TargetSource =
   | { kind: "query"; sql: string; sqlByDialect?: Partial<Record<DialectName, string>> };
 
 export interface TargetTable {
-  /** The compiled model's dataset name: the GASP dataset id for a v1 adapter, a gasp_staged_ name for a staged dataset */
+  /** The compiled model's dataset name: the GASP dataset id for a v1 adapter, a gasp_staged_ name for a staged dataset, the cohort table's own name */
   name: string;
   source: TargetSource;
   primaryKey: string[];
   description?: string;
   fields: TargetField[];
-  /** Set on a staged dataset: the metric it holds and why it is staged */
-  staged?: { for: string; reason: string };
+  /** Set on a staged dataset: the metrics it serves and why it is staged; `cohort` on a cohort table, which holds one row per member per period */
+  staged?: { for: string[]; reason: string; cohort?: { key: string; point: string } };
   /** Set on the period spine dataset */
   spine?: boolean;
   /** The dataset's time field (the field marked is_time, a key field first) */
@@ -75,6 +76,8 @@ export interface TargetMetric {
   datasets: string[];
   /** The staged table a staged metric reads */
   staged?: string;
+  /** The staged table is a cohort table: `sql` is the metric's own expression over its columns, not SUM(<staged>.value) */
+  cohort?: true;
   description?: string;
   synonyms?: string[];
   /** The compiled model's coverage key: formula id plus `:O`, `:M` or `:variant` */
@@ -113,6 +116,14 @@ export function fieldRole(name: string, datatype: OssieDataType, isTime: boolean
   if (primaryKey.includes(name) || name.endsWith("_id")) return "key";
   if (NUMERIC_TYPES.has(datatype)) return "fact";
   return "dimension";
+}
+
+/** The comment over a staged view: what it holds and at which grain. */
+export function stagedComment(t: TargetTable): string {
+  const s = t.staged!;
+  return s.cohort
+    ? `Staged cohort table for ${s.for.join(", ")} (${s.reason}): one row per ${s.cohort.key} per reporting period`
+    : `Staged dataset for ${s.for.join(", ")} (${s.reason}): one row per reporting period`;
 }
 
 /** A dataset source as table parts, or a query. */
@@ -179,6 +190,7 @@ function tableOf(d: OssieDataset, r: CompiledModel, enumOf: Map<string, string[]
     };
   });
   let source = sourceOf(d.source);
+  const cohort = e.cohort as { key?: unknown; point?: unknown } | undefined;
   if (e.staged === true) {
     // The staged source is written in the compile dialect; any others ride in the extension.
     const byDialect: Partial<Record<DialectName, string>> = { [r.dialect]: d.source };
@@ -192,7 +204,7 @@ function tableOf(d: OssieDataset, r: CompiledModel, enumOf: Map<string, string[]
     primaryKey,
     ...(d.description ? { description: d.description } : {}),
     fields,
-    ...(e.staged === true ? { staged: { for: String(e.for ?? ""), reason: String(e.reason ?? "") } } : {}),
+    ...(e.staged === true ? { staged: { for: [e.for ?? []].flat().map(String), reason: String(e.reason ?? ""), ...(cohort ? { cohort: { key: String(cohort.key), point: String(cohort.point) } } : {}) } } : {}),
     ...(e.period_spine === true ? { spine: true } : {}),
     ...(timeField ? { timeField } : {}),
     ...(kindOf.get(d.name) ? { kind: kindOf.get(d.name) } : {}),
@@ -241,13 +253,18 @@ export function targetModel(r: CompiledModel, data: StandardData): TargetModel {
     const [id, variant] = key.split(":");
     let sql: string;
     let staged: string | undefined;
+    let cohort = false;
     if (cov.kind === "direct") {
       const x = directExpressionFor(id, ctx, r.dialect, variant);
       if (!x) throw new Error(`${key} compiled direct but does not emit directly in ${r.dialect}`);
       sql = x;
     } else if (cov.kind === "staged") {
       staged = cov.stagedDataset;
-      sql = `SUM(${staged}.value)`;
+      // A cohort table entry keeps its own expression, a sum per column, in the target dialect.
+      const x = cov.cohortTable ? cohortExpressionFor(id, ctx, r.dialect, variant) : undefined;
+      if (cov.cohortTable && !x) throw new Error(`${key} compiled over ${staged} but no cohort table serves it in ${r.dialect}`);
+      cohort = !!x;
+      sql = x ?? `SUM(${staged}.value)`;
     } else continue;
     const owner = label.get(id);
     const qualifier = variant ? ` (${FORM_LABEL[variant] ?? variant})` : "";
@@ -260,6 +277,7 @@ export function targetModel(r: CompiledModel, data: StandardData): TargetModel {
       sql,
       datasets: tablesIn(sql, tableNames),
       ...(staged ? { staged } : {}),
+      ...(cohort ? { cohort: true as const } : {}),
       ...(m.description ? { description: m.description } : {}),
       ...(ai?.synonyms?.length ? { synonyms: ai.synonyms } : {}),
       coverageKey: key,

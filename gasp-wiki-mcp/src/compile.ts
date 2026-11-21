@@ -106,6 +106,8 @@ interface Scope {
   allTime?: boolean;
   shift: Array<{ n: number; unit: LagUnit }>;
   cohort?: Formula["cohort"];
+  /** Set for a cohort table column: each aggregate reads one member's rows, its key equal to this SQL, instead of the whole cohort */
+  member?: string;
   /** The dataset of the enclosing aggregate; tags every field placeholder */
   dataset?: string;
   /** metric ids on the current path, to catch cycles */
@@ -154,6 +156,38 @@ export function compileMetric(id: string, ctx: CompileContext, variant?: string)
       ...(c.via ? { via: c.via } : {}),
     } } : {}),
   };
+}
+
+/** A cohort table compiled over the placeholders: one row per member per period when its parts are put together (ossie/model.ts). */
+export interface CompiledCohortTable {
+  key: string;
+  /** SELECT <key> AS <key>, <date> AS _day over the live rows of the key's dataset */
+  members: string;
+  /** Joins a member row `_c` to a period: its day is the cohort point */
+  on: string;
+  /** One scalar per column, correlated on `_c.<key>` and the period */
+  columns: Array<{ name: string; sql: string }>;
+  fields: string[];
+  placeholders: string[];
+  datasets: string[];
+}
+
+/**
+ * Compile a cohort table: the members of `cohort` by day and, per column, the
+ * grammar expression `src` read for one member. Each aggregate takes the
+ * period filter it would take in a metric and `<key> = _c.<key>` where a
+ * metric over the cohort takes `<key> IN (the cohort)`, so a sum of a column
+ * over a period's rows is the aggregate over that period's cohort.
+ */
+export function compileCohortTable(cohort: { key: string; point: Point }, columns: Array<{ name: string; src: string }>, ctx: CompileContext): CompiledCohortTable {
+  const c = new Compiler(ctx);
+  const { sql: members, on } = c.members(cohort);
+  const out = columns.map(({ name, src }) => {
+    const f = parseFormula(src);
+    if (f.cohort) throw new CompileError(`Cohort table column '${name}' declares a cohort of its own`);
+    return { name, sql: c.formula({ expr: f.expr, cohort }, { toDate: false, shift: [], path: [], member: `_c.${cohort.key}` }) };
+  });
+  return { key: cohort.key, members, on, columns: out, fields: [...c.fields].sort(), placeholders: [...c.placeholders].sort(), datasets: [...c.datasets].sort() };
 }
 
 const bareFields = (n: Node, out = new Set<string>()): Set<string> => {
@@ -472,10 +506,14 @@ class Compiler {
       const whens = bd!.buckets!.map((b) => `WHEN ${e} ${b.hi === null ? `>= ${b.lo}` : `BETWEEN ${b.lo} AND ${b.hi}`} THEN '${b.label}'`);
       where.push(`CASE ${whens.join(" ")} END = _d.${bd!.column}`);
     }
-    if (scope.cohort && (this.ctx.fields[scope.cohort.key]?.datasets ?? []).includes(ds)) {
+    if (scope.cohort && scope.member) {
+      // One member's rows. A dataset without the key would give every member the whole population.
       const key = scope.cohort.key;
-      const keyDs = Object.entries(this.ctx.datasets).find(([, d]) => d.key === key)?.[0];
-      if (!keyDs) throw new CompileError(`Cohort key '${key}' is not the key of any dataset`);
+      if (!(this.ctx.fields[key]?.datasets ?? []).includes(ds)) throw new CompileError(`Cohort table column: ${fn}() reads dataset '${ds}', which has no ${key} field`);
+      where.push(`${this.ph(key, ds)} = ${scope.member}`);
+    } else if (scope.cohort && (this.ctx.fields[scope.cohort.key]?.datasets ?? []).includes(ds)) {
+      const key = scope.cohort.key;
+      const keyDs = this.keyDataset(key);
       this.datasets.add(keyDs);
       const kmeta = this.ctx.datasets[keyDs];
       const ks: Scope = { ...scope, dataset: keyDs };
@@ -497,7 +535,29 @@ class Compiler {
     return `(SELECT ${agg} FROM {{_table:${ds}}}${where.length ? ` WHERE ${where.join(" AND ")}` : ""})`;
   }
 
-  /** The rows a breakdown iterates: bucket labels or enum values as literals, else the field's distinct values on one dataset. */
+  /** The dataset a cohort key identifies: the one keyed by it. */
+  private keyDataset(key: string): string {
+    const keyDs = Object.entries(this.ctx.datasets).find(([, d]) => d.key === key)?.[0];
+    if (!keyDs) throw new CompileError(`Cohort key '${key}' is not the key of any dataset`);
+    return keyDs;
+  }
+
+  /**
+   * A cohort's members by day, for a cohort table: the key and the date of every
+   * live row of the key's dataset, and the condition that joins a member row
+   * `_c` to the period whose cohort point is that day.
+   */
+  members(cohort: { key: string; point: Point }): { sql: string; on: string } {
+    const keyDs = this.keyDataset(cohort.key);
+    this.datasets.add(keyDs);
+    const kmeta = this.ctx.datasets[keyDs];
+    const active = kmeta.activeWhen ? ` WHERE ${this.expr(parseFormula(kmeta.activeWhen).expr, { toDate: false, shift: [], path: [], dataset: keyDs })}` : "";
+    return {
+      sql: `SELECT ${this.ph(cohort.key, keyDs)} AS ${cohort.key}, ${this.ph(kmeta.date, keyDs)} AS _day FROM {{_table:${keyDs}}}${active}`,
+      on: this.onDay("_c._day", this.bound(cohort.point, { toDate: false, shift: [], path: [] }), this.type(kmeta.date) === "timestamp"),
+    };
+  }
+
   /** `col` on or before the date `b`: `<= b` for a date column, `< b + 1 day` for a timestamp (the whole last day counts). */
   private upTo(col: string, b: string, ts: boolean): string {
     return ts ? `${col} < ${this.d.toTimestamp(this.d.plus(b, 1, "day"))}` : `${col} <= ${b}`;
@@ -514,6 +574,7 @@ class Compiler {
     this.via = via;
   }
 
+  /** The rows a breakdown iterates: bucket labels or enum values as literals, else the field's distinct values on one dataset. */
   domain(bd: ResolvedBreakdown): string {
     if (this.via) {
       // (key, label) rows of the dataset carrying the field, as of the period end when it is a snapshot.
