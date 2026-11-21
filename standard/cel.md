@@ -494,6 +494,8 @@ An optional field on `Revenue_Event` and `Amendment_Event` that captures the int
 | `temporary` | The change is expected to reverse within a defined period. The underlying subscription relationship has not structurally changed. | Customer purchases a 3-month add-on for a seasonal campaign. |
 | `scheduled_reversal` | This event reverses a prior `temporary` event. It should be paired with the original event for analysis. | The 3-month add-on expires and MRR returns to its prior level. |
 
+A subscription sold for a fixed term with no renewal clause, such as a six-month project, takes the same pair: its `new` event is `temporary` and the `churn` event on the day the term ends is a `scheduled_reversal`.
+
 ### Design Principles
 
 1. **No metric redefinition.** MRR, ARR and NRR calculations are unchanged. A `temporary` expansion still counts as expansion in the standard metrics. The field enables a second analytical lens, not a replacement.

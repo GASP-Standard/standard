@@ -35,6 +35,8 @@ MRR contribution = Annual Contract Value / 12
 
 Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue).
 
+**Fixed terms and temporary changes:** A subscription or an add-on with a set end date counts in MRR at its monthly value until the day its contract ends, whether the customer then steps down or leaves. The [Commercial Event Ledger](../cel.md#change-nature) marks its movements with `change_nature` (`temporary` when it starts, `scheduled_reversal` when it ends), so this revenue can be told apart and Adjusted NRR and Adjusted GRR leave it out.
+
 **Inputs:**
 - Active customer list
 - Subscription/contract value for each customer
@@ -77,7 +79,7 @@ Both are valid. The GASP Standard uses **MRR × 12** for consistency across busi
 ARR = MRR × 12
 ```
 
-**Include:** Same inclusions/exclusions as MRR, annualised.
+**Include:** Same inclusions/exclusions as MRR, annualised. A fixed-term subscription or a temporary add-on is annualised like any other MRR until its contract ends. ARR is a run rate, so an ending that is known in advance comes off on the day it happens. The `change_nature` tag on the ledger marks that revenue for anyone who filters on it.
 
 **Industry equivalents:** Committed ARR, CARR (Committed Annual Recurring Revenue), Baseline ARR and CMRR (Committed Monthly Recurring Revenue, annualised). GASP's ARR includes contractual commitments and leaves uncommitted usage out, which is what each of these names describes. Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
 

@@ -5,6 +5,25 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] A fixed-term project stays in MRR and ARR until its contract ends and `change_nature` is the filter
+**Decision:** The owner's call on 2026-11-21. A subscription or an add-on with a set end date (a three, six or nine month project, a seasonal add-on) counts in MRR, and so in ARR as MRR multiplied by twelve, until the day its contract ends. Its ending is Contraction MRR when the customer stays and Churned MRR with a churned customer when they leave, in the period it happens, in every standard figure: Revenue Churn Rate, Logo Churn Rate, Net Revenue Retention (NRR) and Gross Revenue Retention (GRR). No formula changes and no published number moves. The filter is the tag the ledger already carries, `change_nature`: `temporary` on the movement that brings the revenue in and `scheduled_reversal` on the one that ends it. `standard/cel.md` now says in words that a whole subscription sold for a fixed term takes the same pair as an add-on (its `new` event and the `churn` event that ends the term), which the Adjusted NRR definition already implied by naming churn events that are not permanent. `standard/metrics/core.md` states the rule under MRR and ARR.
+
+**Context:** The owner asked whether a project known to end counts in MRR and not in ARR. The research article "Nothing changed and churn improved" was being extended to cover downgrades and planned endings and needed the standard's answer.
+
+How the industry counts, read through a research pass's page extracts on 2026-11-21 and unquoted here because the pages were not checked by hand: on MRR the sources agree that a paid recurring term counts until it ends, however short. On ARR they split. The SaaS Metrics Standards Board defines ARR as MRR multiplied by twelve and takes nothing off for churn that is known but has yet to happen. The annual reports of Smartsheet and Progress Software annualise contracts shorter than a year. ChartMogul's strict definition, Zuora and Maxio leave contracts under twelve months out and Dynatrace leaves out month-to-month agreements. No source found exempts a scheduled expiry from churn or contraction on the day the term ends. The standard's ARR already matched the standards body and the filers that annualise, so the owner kept it and asked for the flag.
+
+**Alternatives considered:**
+- Leave fixed terms under twelve months out of ARR, as the stricter vendor definitions do: MRR and ARR would then count different subscriptions, ARR would stop being MRR multiplied by twelve and a published number would change for every company with a short contract.
+- Keep a planned ending out of the churn figures: no source does, and the standard figures would then depend on a judgement about which endings were expected.
+
+**Consequences:**
+- Nothing in `formulas.json` changes. The rule is now written where a reader of MRR, ARR or the ledger looks for it.
+- Adjusted NRR and Adjusted GRR are the two figures that leave tagged movements out today. ARR has no adjusted figure yet: a company can total the tagged movements still in force from its ledger, and the standard does not define that sum. Building it is the open step (`TODO.md`, next steps item 0). It needs a rule for a temporary movement that ends early or is made permanent, and it has to leave usage realisation pairs alone, since those are tagged `temporary` on the ledger and sit outside snapshot MRR.
+- The ARR section lists Committed ARR (CARR) and CMRR as industry equivalents because each counts contractual commitments without uncommitted usage. Where CARR is defined as ARR less known churn it differs from the standard's ARR on exactly this point. That line is checked against the published definitions in the same step.
+- The article's section "The ending everyone saw coming" states the rule and the `QUOTED` list carries the sentence it takes from `cel.md`.
+
+---
+
 ## [2026-11-21] Revenue Churn Rate and Expansion Rate follow the customers of the first day of the period
 **Decision:** Both become cohort formulas within `v1`. The owner set the rule on 2026-11-21: where the standard has a choice of this kind it takes current industry practice, as successful businesses and the accounting standards define it. Revenue Churn Rate is `(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)` and Expansion Rate is `metric.expansion_mrr / metric.mrr at period_start over cohort(field.customer_id, period_start)`. A movement counts when the customer was active on the first day of the period and Beginning MRR is the MRR those customers held on it. Their `by_segment` breakdowns take the rule recorded below for NRR and GRR: each customer counts in the segment the customer snapshot gives on that day.
 
