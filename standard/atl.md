@@ -52,7 +52,7 @@ Every `Revenue_Event`, `Cost_Event` and `Amendment_Event` receives exactly one l
 
 A customer adding seats to the product they already have is growing differently from a customer buying a new module; operators read the first as product pull and investors count both. This dimension records which kind of growth each event is.
 
-Applies to: `Revenue_Event` where `event_type` is `expansion`, `contraction` or `reactivation`, plus every `Amendment_Event` record. A price cut or a restructured contract that lowers MRR is a contraction tagged `pricing_adjustment` or `recontracting`. ARR-O reads those tags whatever the direction.
+Applies to: `Revenue_Event` where `event_type` is `expansion`, `contraction` or `reactivation`, plus every `Amendment_Event` record. A price cut, a discount or a restructured contract that lowers MRR is a contraction tagged `pricing_adjustment` or `recontracting`, whether or not the service changed. ARR-O reads those tags whatever the direction.
 
 ### Values
 

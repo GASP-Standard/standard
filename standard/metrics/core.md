@@ -203,7 +203,7 @@ New MRR is reported per customer segment.
 Expansion MRR = Sum of (MRR increase from existing customers this period)
 ```
 
-**Includes:** Upsells, cross-sells, add-ons, seat expansion, plan upgrades
+**Includes:** Upsells, cross-sells, add-ons, seat expansion, plan upgrades, price increases
 
 Expansion MRR is reported per customer segment.
 
@@ -234,20 +234,22 @@ Churned MRR is reported per customer segment.
 
 ### Contraction MRR
 
-**Definition:** MRR reduction from existing customers who downgraded but didn't churn.
+**Definition:** The reduction in MRR from existing customers who remain customers. Every decrease in committed recurring revenue counts, whether or not the service changed.
 
 **Formula:**
 ```
 Contraction MRR = Sum of (MRR decrease from existing customers who remain active)
 ```
 
-**Includes:** Plan downgrades, removed seats, dropped add-ons
+**Includes:** Plan downgrades, removed seats, dropped add-ons, a subscription cancelled by a customer who keeps another, price reductions, discounts applied to a running subscription and contract changes that lower the monthly value
+
+**A reduction with no change in service:** A customer paying $1,000 a month who moves to annual billing at a 10% discount pays $10,800 a year, which is $900 of MRR. The $100 is Contraction MRR, with the plan, the seats and the entitlements as they were. The [Commercial Event Ledger](../cel.md) records the reason: `expansion_classification` is `recontracting` for a restructured contract and `pricing_adjustment` for a price cut or a discount. A discount with an end date takes the [`change_nature`](../cel.md#change-nature) `temporary`, with a `scheduled_reversal` on the day it ends. A one-off credit or refund leaves MRR where it was and sits outside Contraction MRR, as does a move to annual billing at the same yearly price.
 
 Contraction MRR is reported per customer segment.
 
-**What it tells you:** Revenue pressure from customers reducing usage/commitment.
+**What it tells you:** How much recurring revenue the customers who stayed took away, by buying less or by paying less for the same service. The classification tag tells the two apart.
 
-**Sources:** [Drivetrain](https://www.drivetrain.ai/strategic-finance-glossary/mrr-in-saas), [SaaS Academy](https://www.saasacademy.com/blog/what-is-mrr)
+**Sources:** [Drivetrain](https://www.drivetrain.ai/strategic-finance-glossary/mrr-in-saas), [SaaS Academy](https://www.saasacademy.com/blog/what-is-mrr), [ChartMogul](https://help.chartmogul.com/hc/en-us/articles/4416682609426)
 
 ---
 
@@ -423,7 +425,7 @@ Churned Customers = Count of customers with a churn event in the period
 
 **Also known as:** Lost Logos, Logo Churn (count)
 
-**Not:** Customers who downgraded but kept at least one active subscription (contraction).
+**Not:** Customers whose MRR fell but who kept at least one active subscription (contraction).
 
 Churned Customers is reported per customer segment.
 

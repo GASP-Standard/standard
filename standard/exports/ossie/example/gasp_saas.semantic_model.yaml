@@ -1171,7 +1171,7 @@ metrics:
   - name: gasp_contraction_mrr
     expression:
       sql: (-COALESCE(SUM(revenue_event.mrr_change) FILTER (WHERE revenue_event.event_type = 'contraction'), 0))
-    description: Contraction MRR. MRR reduction from existing customers who downgraded but didn't churn.
+    description: Contraction MRR. The reduction in MRR from existing customers who remain customers. Every decrease in committed recurring revenue counts, whether or not the service changed.
     datatype: Decimal
     ai_context:
       instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/contraction-mrr."

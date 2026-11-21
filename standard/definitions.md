@@ -57,7 +57,7 @@ MRR added from newly acquired customers in the period.
 - **Used in:** Core, Sales
 
 ### Expansion MRR
-Additional MRR from existing customers (upgrades, add-ons, seat increases).
+Additional MRR from existing customers (upgrades, add-ons, seat increases, price increases).
 - **Canonical definition:** [Core Metrics](metrics/core.md#expansion-mrr)
 - **Used in:** Core, Customer Success
 
@@ -67,7 +67,7 @@ MRR lost from customers who cancelled.
 - **Used in:** Core, Customer Success
 
 ### Contraction MRR
-MRR reduction from existing customers who downgraded (but didn't churn).
+MRR reduction from existing customers who remain customers (downgrades, removed seats, price cuts, discounts).
 - **Canonical definition:** [Core Metrics](metrics/core.md#contraction-mrr)
 - **Used in:** Core, Customer Success
 

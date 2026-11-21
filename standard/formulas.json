@@ -89,7 +89,7 @@
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Contraction events carry a negative mrr_change; the metric reports a positive amount. by_segment returns one row per customer segment, so downgrades concentrated in one segment are visible."
+      "notes": "Contraction events carry a negative mrr_change; the metric reports a positive amount. by_segment returns one row per customer segment, so contraction concentrated in one segment is visible."
     },
     "reactivation_mrr": {
       "formula": "sum(field.mrr_change where field.event_type = 'reactivation')",

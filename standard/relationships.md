@@ -70,7 +70,7 @@ These decompositions show the levers; the canonical formulas are in [Core Metric
 
 **What decreases it:**
 - Churned MRR (lost customers)
-- Contraction MRR (downgrades)
+- Contraction MRR (downgrades, price cuts, discounts)
 
 **Formula:**
 ```

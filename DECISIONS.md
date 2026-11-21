@@ -5,6 +5,15 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] Contraction MRR is worded as every reduction in committed recurring revenue, with or without a change in service
+**Decision:** The owner's call on 2026-11-21. Contraction MRR was defined as "MRR reduction from existing customers who downgraded but didn't churn" and its list named plan downgrades, removed seats and dropped add-ons. The definition now reads "The reduction in MRR from existing customers who remain customers. Every decrease in committed recurring revenue counts, whether or not the service changed." The list adds a subscription cancelled by a customer who keeps another, price reductions, discounts applied to a running subscription and contract changes that lower the monthly value. The worked case is a customer on $1,000 a month who moves to annual billing at a 10% discount: $10,800 a year, $900 of MRR, $100 of Contraction MRR with the entitlements unchanged.
+
+**Context:** The wording was narrower than the standard's own mechanics. The formula sums every `contraction` event, the derivation rules in `cel.md` type any decrease that leaves the customer above zero as `contraction` and `atl.md` already tagged a price cut or a restructured contract as a contraction (`pricing_adjustment`, `recontracting`). A reader of the definition alone could take a discount for something else. No formula, field or published value changes.
+
+**What the standard now says:** The reason sits on the event: `recontracting` for a restructured contract, `pricing_adjustment` for a price cut or a discount, and `change_nature` `temporary` for a discount with an end date. A one-off credit or refund leaves MRR where it was and sits outside Contraction MRR, as does a move to annual billing at the same yearly price. Expansion MRR names price increases in its list, the mirror case. ChartMogul's help centre classifies a discount the same way (https://help.chartmogul.com/hc/en-us/articles/4416682609426).
+
+**Consequences:** The churn article quotes the new definition and gains the annual billing example. The glossary entry, the Churned Customers exclusion, the relationship pages and the TWIN Modifier label follow the wording.
+
 ## [2026-11-21] CARR gains two variants that take churn off early: net of known churn and net of forecast churn
 **Decision:** The owner's call on 2026-11-21, the second step of the CARR record below. CARR itself is unchanged. Two variants sit under it in `standard/formulas.json`:
 
