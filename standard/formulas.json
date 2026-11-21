@@ -124,7 +124,7 @@
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each snapshot and event counts in the segment it carries."
+      "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
     },
     "grr": {
       "formula": "(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
@@ -136,7 +136,7 @@
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each snapshot and event counts in the segment it carries."
+      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
     },
     "logo_churn_rate": {
       "formula": "metric.churned_customers / metric.total_customers at period_start",

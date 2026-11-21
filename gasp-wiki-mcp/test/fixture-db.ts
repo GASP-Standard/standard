@@ -33,6 +33,17 @@ export async function addOssieViews(db: PGlite): Promise<void> {
   }
 }
 
+/**
+ * Move a customer to another segment from a day on: their customer and
+ * subscription snapshots and their revenue events from that day carry it. The
+ * synthetic data keeps every customer in one segment, so a test of what a
+ * breakdown by segment does with a mover plants one.
+ */
+export async function moveSegment(db: PGlite, customer: string, from: string, segment: string): Promise<void> {
+  for (const [ds, date] of [["customer", "snapshot_date"], ["subscription", "snapshot_date"], ["revenue_event", "event_date"]] as const)
+    await db.exec(`UPDATE ${TABLES[ds]} SET ${columnName(ds, "segment")} = '${segment}' WHERE ${columnName(ds, "customer_id")} = '${customer}' AND ${columnName(ds, date)} >= DATE '${from}'`);
+}
+
 /** A metric's compiled template filled from the fixture adapter. */
 export function fill(data: StandardData, id: string) {
   const template = data.queryTemplates?.[id];

@@ -53,6 +53,14 @@
  *   AND CASE WHEN <expr> BETWEEN lo AND hi THEN '<label>' ... END = _d.<column>
  * (an open top bucket is `>= lo`). The expression's fields must all live on
  * the dataset of every grouped aggregate.
+ *
+ * Under `over cohort`, a breakdown by a field the cohort key's dataset carries
+ * groups the members, not the rows: each member counts in the value it holds
+ * on the cohort's day, for the whole period. The cohort subquery gains
+ * `AND {{<field>@<key dataset>}} = _d.<field>` and the aggregate's own rows are
+ * read whatever value they carry, so a customer who moves segment in a period
+ * stays in the segment it opened in (DECISIONS.md 2026-11-21). The domain is
+ * the field's distinct values on the key's dataset.
  */
 import { parseFormula, analyzeFormula, hasAggregate, hasMetric, type Formula, type Form, type Node, type Point, type LagUnit } from "./formula.js";
 import { DIALECT, type Dialect, type DialectName } from "./dialect.js";
@@ -161,7 +169,9 @@ export function compileMetric(id: string, ctx: CompileContext, variant?: string)
 /** A cohort table compiled over the placeholders: one row per member per period when its parts are put together (ossie/model.ts). */
 export interface CompiledCohortTable {
   key: string;
-  /** SELECT <key> AS <key>, <date> AS _day over the live rows of the key's dataset */
+  /** Fields of the key's dataset carried on each member row, as the member holds them on the cohort's day */
+  dimensions: string[];
+  /** SELECT <key> AS <key>, <date> AS _day and each dimension over the live rows of the key's dataset */
   members: string;
   /** Joins a member row `_c` to a period: its day is the cohort point */
   on: string;
@@ -177,17 +187,28 @@ export interface CompiledCohortTable {
  * grammar expression `src` read for one member. Each aggregate takes the
  * period filter it would take in a metric and `<key> = _c.<key>` where a
  * metric over the cohort takes `<key> IN (the cohort)`, so a sum of a column
- * over a period's rows is the aggregate over that period's cohort.
+ * over a period's rows is the aggregate over that period's cohort. A dimension
+ * is a field of the key's dataset read on the cohort's day, so grouping the
+ * rows by it gives what a breakdown of the metric by that field gives.
  */
-export function compileCohortTable(cohort: { key: string; point: Point }, columns: Array<{ name: string; src: string }>, ctx: CompileContext): CompiledCohortTable {
+export function compileCohortTable(cohort: { key: string; point: Point }, columns: Array<{ name: string; src: string }>, ctx: CompileContext, dimensions: string[] = []): CompiledCohortTable {
   const c = new Compiler(ctx);
-  const { sql: members, on } = c.members(cohort);
+  const { sql: members, on } = c.members(cohort, dimensions);
   const out = columns.map(({ name, src }) => {
     const f = parseFormula(src);
     if (f.cohort) throw new CompileError(`Cohort table column '${name}' declares a cohort of its own`);
     return { name, sql: c.formula({ expr: f.expr, cohort }, { toDate: false, shift: [], path: [], member: `_c.${cohort.key}` }) };
   });
-  return { key: cohort.key, members, on, columns: out, fields: [...c.fields].sort(), placeholders: [...c.placeholders].sort(), datasets: [...c.datasets].sort() };
+  return { key: cohort.key, dimensions, members, on, columns: out, fields: [...c.fields].sort(), placeholders: [...c.placeholders].sort(), datasets: [...c.datasets].sort() };
+}
+
+/**
+ * True when a breakdown by `field` of a formula over a cohort keyed by `key`
+ * groups the cohort's members: the dataset the key identifies carries the field.
+ */
+export function cohortGroupsBy(key: string, field: string, ctx: Pick<CompileContext, "fields" | "datasets">): boolean {
+  const keyDs = Object.entries(ctx.datasets).find(([, d]) => d.key === key)?.[0];
+  return !!keyDs && (ctx.fields[field]?.datasets ?? []).includes(keyDs);
 }
 
 const bareFields = (n: Node, out = new Set<string>()): Set<string> => {
@@ -275,6 +296,8 @@ class Compiler {
   staged = false;
   /** Set when a grouped aggregate reaches the breakdown field through a key: the dataset D carrying it and D's key */
   via?: { dataset: string; key: string };
+  /** Set when a breakdown groups a cohort's members: the key's dataset, which the domain reads */
+  memberDataset?: string;
   private d: Dialect;
   constructor(private ctx: CompileContext) {
     this.d = DIALECT[ctx.dialect ?? "postgres"];
@@ -400,6 +423,7 @@ class Compiler {
     inner.datasets.forEach((x) => this.datasets.add(x));
     inner.metricRefs.forEach((x) => this.metricRefs.add(x));
     if (inner.via) this.useVia(inner.via);
+    this.memberDataset ??= inner.memberDataset;
     this.staged ||= inner.staged;
     return `(${body})`;
   }
@@ -440,7 +464,10 @@ class Compiler {
     this.datasets.add(ds);
     const s: Scope = { ...scope, dataset: ds };
     const bd = scope.breakdown;
-    const needs = bd ? (bd.field ? [bd.field] : bd.expression!.fields) : [];
+    // Under a cohort, a field the key's dataset carries groups the members by their value on the cohort's day.
+    const byMember = !!bd?.field && !scope.total && this.groupsMembers(scope.cohort, bd.field) && !scope.member
+      && (this.ctx.fields[scope.cohort!.key]?.datasets ?? []).includes(ds);
+    const needs = bd && !byMember ? (bd.field ? [bd.field] : bd.expression!.fields) : [];
     const missing = needs.filter((x) => !(this.ctx.fields[x]?.datasets ?? []).includes(ds));
     // A field breakdown can reach a dataset without the field through the key of a dataset that has it.
     // Only a foreign key counts (an `*_id` that is not this dataset's own key or date), as in the Ossie relationships:
@@ -500,7 +527,7 @@ class Compiler {
       where.push(`${date} >= ${ts ? this.d.toTimestamp(this.bound("period_start", scope)) : this.bound("period_start", scope)}`, this.upTo(date, this.bound("period_end", scope), ts));
     }
     if (n.where) where.push(this.expr(n.where, s));
-    if (grouped && bd!.field) where.push(via ? `${this.ph(via.key, ds)} = _d.${via.key}` : `${this.ph(bd!.field, ds)} = _d.${bd!.column}`);
+    if (grouped && bd!.field && !byMember) where.push(via ? `${this.ph(via.key, ds)} = _d.${via.key}` : `${this.ph(bd!.field, ds)} = _d.${bd!.column}`);
     if (grouped && bd!.expression) {
       const e = this.expr(bd!.expression.node, { ...s, breakdown: undefined });
       const whens = bd!.buckets!.map((b) => `WHEN ${e} ${b.hi === null ? `>= ${b.lo}` : `BETWEEN ${b.lo} AND ${b.hi}`} THEN '${b.label}'`);
@@ -524,7 +551,8 @@ class Compiler {
         const off = analyzeFormula({ expr: cond }).fieldRefs.filter((id) => !(this.ctx.fields[id]?.datasets ?? []).includes(keyDs));
         if (off.length) throw new CompileError(`Cohort condition reads ${off.map((id) => `field.${id}`).join(", ")}, which the '${keyDs}' dataset does not carry`);
       }
-      const narrowed = cond ? ` AND ${this.expr(cond, ks)}` : "";
+      if (byMember) this.memberDataset = keyDs;
+      const narrowed = (cond ? ` AND ${this.expr(cond, ks)}` : "") + (byMember ? ` AND ${this.ph(bd!.field!, keyDs)} = _d.${bd!.column}` : "");
       where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.onDay(this.ph(kmeta.date, keyDs), this.bound(scope.cohort.point, { ...scope, shift: [] }), this.type(kmeta.date) === "timestamp")}${active}${narrowed})`);
     }
     if (tuple) {
@@ -533,6 +561,11 @@ class Compiler {
       return `(SELECT COUNT(*) FROM (SELECT DISTINCT ${tuple.join(", ")} FROM {{_table:${ds}}} WHERE ${where.join(" AND ")}) _pairs)`;
     }
     return `(SELECT ${agg} FROM {{_table:${ds}}}${where.length ? ` WHERE ${where.join(" AND ")}` : ""})`;
+  }
+
+  /** True when a breakdown by `field` under `cohort` groups the cohort's members: the key's dataset carries the field. */
+  private groupsMembers(cohort: Formula["cohort"], field: string): boolean {
+    return !!cohort && cohortGroupsBy(cohort.key, field, this.ctx);
   }
 
   /** The dataset a cohort key identifies: the one keyed by it. */
@@ -547,13 +580,17 @@ class Compiler {
    * live row of the key's dataset, and the condition that joins a member row
    * `_c` to the period whose cohort point is that day.
    */
-  members(cohort: { key: string; point: Point }): { sql: string; on: string } {
+  members(cohort: { key: string; point: Point }, dimensions: string[] = []): { sql: string; on: string } {
     const keyDs = this.keyDataset(cohort.key);
+    for (const d of dimensions) {
+      if (!cohortGroupsBy(cohort.key, d, this.ctx)) throw new CompileError(`Cohort table dimension '${d}' is not a field of '${keyDs}', the dataset ${cohort.key} identifies`);
+    }
+    const dims = dimensions.map((d) => `, ${this.ph(d, keyDs)} AS ${d}`).join("");
     this.datasets.add(keyDs);
     const kmeta = this.ctx.datasets[keyDs];
     const active = kmeta.activeWhen ? ` WHERE ${this.expr(parseFormula(kmeta.activeWhen).expr, { toDate: false, shift: [], path: [], dataset: keyDs })}` : "";
     return {
-      sql: `SELECT ${this.ph(cohort.key, keyDs)} AS ${cohort.key}, ${this.ph(kmeta.date, keyDs)} AS _day FROM {{_table:${keyDs}}}${active}`,
+      sql: `SELECT ${this.ph(cohort.key, keyDs)} AS ${cohort.key}, ${this.ph(kmeta.date, keyDs)} AS _day${dims} FROM {{_table:${keyDs}}}${active}`,
       on: this.onDay("_c._day", this.bound(cohort.point, { toDate: false, shift: [], path: [] }), this.type(kmeta.date) === "timestamp"),
     };
   }
@@ -590,7 +627,7 @@ class Compiler {
     if (f.values?.length) return f.values.map((v) => `SELECT '${v.replace(/'/g, "''")}' AS ${field}`).join(" UNION ALL ");
     const carriers = f.datasets ?? [];
     const keyed = carriers.find((d) => this.ctx.datasets[d]?.key === field);
-    const ds = keyed ?? [...this.datasets].find((d) => carriers.includes(d));
+    const ds = keyed ?? this.memberDataset ?? [...this.datasets].find((d) => carriers.includes(d));
     if (!ds) throw new CompileError(`Breakdown by field.${field}: no dataset the formula reads carries it`);
     this.datasets.add(ds);
     const col = this.ph(field, ds);

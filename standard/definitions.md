@@ -563,7 +563,7 @@ Optional CEL field that captures the intent behind a revenue movement. Does not 
 - **Reference:** [CEL change_nature](/v1/cel#change-nature)
 
 ### Segment
-The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract, amendment and credit events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. Segment is a dimension for slicing metrics rather than an ATL tag. Pricing tier lives on the plan.
+The customer classification by size, vertical or fit (SMB, Mid-Market, Enterprise or the organisation's own scheme), recorded in the `segment` field. Revenue, contract, amendment and credit events carry the segment as of the event; the customer and subscription snapshots carry it as of the snapshot. A breakdown of a metric over a cohort (NRR, GRR) groups the customers by the segment each held on the cohort's day. Segment is a dimension for slicing metrics rather than an ATL tag. Pricing tier lives on the plan.
 - **Canonical definition:** [CEL segment](cel.md#segment-on-events)
 - **Used in:** Named `by_segment` breakdowns of MRR, ARR, ARPA, NRR, GRR, the customer counts, the churn and movement metrics, the health score metrics, Expansion Rate and Consumption Revenue
 

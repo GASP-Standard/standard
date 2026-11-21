@@ -333,8 +333,9 @@
     "nrr:by_segment": {
       "kind": "staged",
       "ossieName": "gasp_nrr_by_segment",
-      "stagedDataset": "gasp_staged_gasp_nrr_by_segment",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "grr": {
       "kind": "staged",
@@ -360,8 +361,9 @@
     "grr:by_segment": {
       "kind": "staged",
       "ossieName": "gasp_grr_by_segment",
-      "stagedDataset": "gasp_staged_gasp_grr_by_segment",
-      "reason": "cohort"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "logo_churn_rate": {
       "kind": "staged",

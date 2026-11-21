@@ -10,6 +10,10 @@
  * `SUM(gasp_account_cohorts.<column>)` terms combined as the formula combines
  * them, and a consumer can slice the same rows by customer.
  *
+ * The table also carries each dimension a served breakdown groups the members
+ * by (the customer's segment on the cohort's day), read from the key's dataset
+ * beside the key, so NRR by segment is NRR's expression grouped by that column.
+ *
  * Each column is a fragment of the GASP grammar. A formula over the same
  * cohort is served when every aggregate in it sits inside a fragment that
  * equals a column (metrics.ts matches the parsed fragments); a formula that

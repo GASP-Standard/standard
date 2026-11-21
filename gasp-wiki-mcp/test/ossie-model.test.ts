@@ -16,7 +16,7 @@ import { metricName } from "../src/ossie/names.js";
 import { DIALECT, type DialectName } from "../src/dialect.js";
 import { stagedSource } from "../src/ossie/model.js";
 import { GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
-import { fixtureDb, addOssieViews, scalar, runTemplate } from "./fixture-db.js";
+import { fixtureDb, addOssieViews, scalar, runTemplate, moveSegment } from "./fixture-db.js";
 
 // The Ossie semantic model exporter: every GASP dataset, field and formula
 // expression lands in the model, direct metrics are plain OSSIE_SQL_2026
@@ -210,15 +210,17 @@ describe("Ossie model: metrics", () => {
 
   it("the cohort table serves the Net and Gross Revenue Retention entries as plain sums over one row per customer per period", () => {
     const served = Object.entries(coverage).filter(([, c]) => c.kind === "staged" && c.cohortTable);
-    expect(served.map(([k]) => k).sort()).toEqual(["grr", "grr:adjusted", "grr:per_customer", "nrr", "nrr:M", "nrr:O", "nrr:adjusted"]);
+    expect(served.map(([k]) => k).sort()).toEqual(["grr", "grr:adjusted", "grr:by_segment", "grr:per_customer", "nrr", "nrr:M", "nrr:O", "nrr:adjusted", "nrr:by_segment"]);
     expect(cohortTableProblems(ACCOUNT_COHORTS, data.formulas!)).toEqual([]);
     const ds = byName.get(ACCOUNT_COHORTS.name)!;
     const key = ACCOUNT_COHORTS.cohort.key;
     expect(ds.primary_key).toEqual(["period_start", key]);
-    expect(ds.fields!.slice(0, 3).map((f) => f.name)).toEqual(["period_start", "period_end", key]);
+    // The segment each customer held on the cohort's day follows the key: the one dimension the two breakdowns group by.
+    expect(ds.fields!.slice(0, 4).map((f) => f.name)).toEqual(["period_start", "period_end", key, "segment"]);
+    expect(ds.fields![3]).toMatchObject({ expression: { sql: "segment" }, datatype: "String" });
     expect(ds.fields!.find((f) => f.name === "period_start")!.dimension?.is_time).toBe(true);
     // Every column is declared, in the declared order, and read by a served metric: the table carries nothing unused.
-    const columns = ds.fields!.slice(3).map((f) => f.name);
+    const columns = ds.fields!.slice(4).map((f) => f.name);
     const read = new Set<string>();
     for (const [key, c] of served) {
       if (c.kind !== "staged") continue;
@@ -232,12 +234,19 @@ describe("Ossie model: metrics", () => {
       expect(e, key).not.toContain("COALESCE");
       for (const n of names) read.add(n);
       expect(ext(metricByName.get(c.ossieName)!).staged, key).toBe(true);
+      // A breakdown keeps the expression of the entry it breaks down and names the table's dimension.
+      const [id, variant] = key.split(":");
+      if (variant === "by_segment") {
+        expect(e, key).toBe(expr(coverage[id].ossieName));
+        expect(ext(metricByName.get(c.ossieName)!).gasp_breakdown, key).toBe("segment");
+        expect((metricByName.get(c.ossieName)!.ai_context as any).instructions, key).toContain("grouping by gasp_account_cohorts.segment");
+      } else expect(ext(metricByName.get(c.ossieName)!).gasp_breakdown, key).toBeUndefined();
     }
     expect(columns).toEqual(ACCOUNT_COHORTS.columns.map((c) => c.name).filter((c) => read.has(c)));
     const x = ext(ds);
     expect(x).toMatchObject({ staged: true, reason: "cohort", cohort: { key, point: ACCOUNT_COHORTS.cohort.point }, source_dialect: "POSTGRES" });
     expect([...x.for].sort()).toEqual(served.map(([, c]) => (c as { ossieName: string }).ossieName).sort());
-    expect(ds.source).toMatch(new RegExp(`^SELECT p\\.period_start, p\\.period_end, _c\\.${key}, \\(SELECT `));
+    expect(ds.source).toMatch(new RegExp(`^SELECT p\\.period_start, p\\.period_end, _c\\.${key}, _c\\.segment, \\(SELECT `));
     expect(ds.source).not.toContain("{{");
     expect(Object.keys(x.sources).sort()).toEqual(["BIGQUERY", "DATABRICKS", "SNOWFLAKE"]);
     for (const [ossie, src] of Object.entries(x.sources as Record<string, string>)) {
@@ -245,8 +254,8 @@ describe("Ossie model: metrics", () => {
       expect(src).not.toContain("{{");
       for (const token of DIALECT[ossie.toLowerCase() as DialectName].forbidden) expect(src, `${ossie}: ${token}`).not.toContain(token);
     }
-    // The breakdowns and the cohorts on another key stay on a per-period dataset.
-    for (const k of ["nrr:by_segment", "grr:by_segment", "arr:O", "commit_accuracy", "consumption_net_revenue_retention"]) {
+    // The cohorts on another key or another day stay on a per-period dataset.
+    for (const k of ["arr:O", "commit_accuracy", "consumption_net_revenue_retention"]) {
       expect(coverage[k], k).toMatchObject({ kind: "staged" });
       expect((coverage[k] as { cohortTable?: true }).cohortTable, k).toBeUndefined();
     }
@@ -270,8 +279,9 @@ describe("Ossie model: metrics", () => {
     for (const k of ["nrr", "nrr:O", "nrr:M"]) expect(coverage[k]).toMatchObject({ kind: "staged", reason: "cohort" });
     expect(expr("gasp_nrr_o")).toBe("(CAST((((SUM(gasp_account_cohorts.opening_mrr) + SUM(gasp_account_cohorts.expansion_mrr_o)) - SUM(gasp_account_cohorts.contraction_mrr)) - SUM(gasp_account_cohorts.churned_mrr)) AS DECIMAL) / NULLIF(SUM(gasp_account_cohorts.opening_mrr), 0))");
     expect(expr("gasp_grr_per_customer")).toBe("(CAST(SUM(gasp_account_cohorts.retained_mrr) AS DECIMAL) / NULLIF(SUM(gasp_account_cohorts.mrr_start), 0))");
-    // A breakdown of a cohort metric keeps its per-period dataset.
-    expect(expr("gasp_nrr_by_segment")).toBe("SUM(gasp_staged_gasp_nrr_by_segment.value)");
+    // A breakdown of a cohort metric by a field the customer carries reads the same sums, grouped by the table's column.
+    expect(expr("gasp_nrr_by_segment")).toBe(expr("gasp_nrr"));
+    expect(byName.has("gasp_staged_gasp_nrr_by_segment")).toBe(false);
     // MRR reads the subscription snapshot; the query layer selects the period-end snapshot date.
     expect(coverage.mrr.kind).toBe("direct");
     expect(expr("gasp_mrr")).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)");
@@ -518,6 +528,10 @@ describe("Ossie model: the cohort table gives the values the per-period sources 
   let db: PGlite;
   beforeAll(async () => {
     db = await fixtureDb();
+    // Two customers change segment part way through, so a period that spans the change tells the
+    // segment a customer held on its first day from the segment their later rows carry.
+    await moveSegment(db, "c07", "2026-05-01", "enterprise");
+    await moveSegment(db, "c14", "2026-06-01", "enterprise");
     await addOssieViews(db);
     await db.exec(`CREATE TABLE gasp.period_spine (period_start DATE, period_end DATE); INSERT INTO gasp.period_spine VALUES ${periods.map(([s, e]) => `('${s}', '${e}')`).join(", ")}`);
     await db.exec(`CREATE VIEW ${ACCOUNT_COHORTS.name} AS ${byName.get(ACCOUNT_COHORTS.name)!.source}`);
@@ -538,20 +552,28 @@ describe("Ossie model: the cohort table gives the values the per-period sources 
     if (c.kind !== "staged" || !c.cohortTable) continue;
     it(`${entry} in every period`, async () => {
       const [id, variant] = entry.split(":");
-      const read = async (sql: string) => new Map((await db.query<{ s: string; e: string; value: unknown }>(sql)).rows.map((r) => [key([r.s, r.e]), r.value === null ? null : Number(r.value)]));
-      const table = await read(`SELECT CAST(period_start AS TEXT) s, CAST(period_end AS TEXT) e, ${expr(c.ossieName)} AS value FROM ${ACCOUNT_COHORTS.name} GROUP BY 1, 2`);
-      const general = await read(`SELECT CAST(period_start AS TEXT) s, CAST(period_end AS TEXT) e, value FROM (${stagedSource(compileMetric(id, cctx, variant).sql)}) q`);
-      expect([...general.keys()].sort()).toEqual(periods.map(key).sort());
+      // A breakdown is read per group: the table grouped by its dimension beside the general source's row per group.
+      const dim = ext(metricByName.get(c.ossieName)!).gasp_breakdown as string | undefined;
+      const groups = dim ? (await db.query<{ g: string }>(`SELECT DISTINCT ${dim} AS g FROM gasp.customer WHERE ${dim} IS NOT NULL`)).rows.map((r) => r.g).sort() : [""];
+      if (dim) expect(groups.length).toBeGreaterThan(1);
+      const cell = (p: [string, string], g: string) => `${key(p)} ${g}`.trim();
+      const read = async (sql: string) => new Map((await db.query<{ s: string; e: string; g: string; value: unknown }>(sql)).rows.map((r) => [cell([r.s, r.e], r.g), r.value === null ? null : Number(r.value)]));
+      const g = dim ?? "''";
+      const table = await read(`SELECT CAST(period_start AS TEXT) s, CAST(period_end AS TEXT) e, ${g} AS g, ${expr(c.ossieName)} AS value FROM ${ACCOUNT_COHORTS.name} GROUP BY 1, 2, 3`);
+      const general = await read(`SELECT CAST(period_start AS TEXT) s, CAST(period_end AS TEXT) e, ${g} AS g, value FROM (${stagedSource(compileMetric(id, cctx, variant).sql)}) q`);
+      expect([...general.keys()].sort()).toEqual(periods.flatMap((p) => groups.map((x) => cell(p, x))).sort());
       let values = 0;
-      for (const p of periods) {
-        const want = general.get(key(p))!;
-        // No row for the period sums to NULL, as a ratio over an empty cohort is.
-        const got = table.get(key(p)) ?? null;
-        if (want === null) expect(got, key(p)).toBeNull();
-        else { expect(got, key(p)).toBeCloseTo(want, 12); values++; }
+      for (const p of periods) for (const x of groups) {
+        const want = general.get(cell(p, x))!;
+        // No row for the period and group sums to NULL, as a ratio over an empty cohort is.
+        const got = table.get(cell(p, x)) ?? null;
+        if (want === null) expect(got, cell(p, x)).toBeNull();
+        else { expect(got, cell(p, x)).toBeCloseTo(want, 12); values++; }
       }
-      expect(general.get(key(periods[0]))).toBeNull();
-      expect(values).toBe(periods.length - 1);
+      for (const x of groups) expect(general.get(cell(periods[0], x))).toBeNull();
+      // Every period after the first has a value, and with a breakdown one for more than one group.
+      if (dim) expect(values).toBeGreaterThan(periods.length - 1);
+      else expect(values).toBe(periods.length - 1);
     });
   }
 });

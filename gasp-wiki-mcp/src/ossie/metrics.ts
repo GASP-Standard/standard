@@ -33,7 +33,11 @@
  * fragment the table has a column for, the emission also carries the formula as
  * an expression over that table: each fragment a `SUM(<table>.<column>)`, the
  * arithmetic around them unchanged. model.ts writes that expression and the one
- * table in place of a staged dataset per metric.
+ * table in place of a staged dataset per metric. A breakdown of such a formula
+ * by a field the cohort key's dataset carries (NRR by segment) is served too:
+ * the compiler groups the cohort's members by it (compile.ts), so the table
+ * carries the field as a column and the metric is the same expression, marked
+ * with `gasp_breakdown`.
  *
  * The dataset an aggregate reads is chosen exactly as compile.ts chooses it:
  * the datasets every field in the aggregate shares, preferring one keyed by
@@ -45,6 +49,7 @@
  * END`, since only Postgres has the FILTER clause, and the date differences,
  * the numerator cast and percentiles come from the dialect table (dialect.ts).
  */
+import { cohortGroupsBy } from "../compile.js";
 import { DIALECT, type DialectName } from "../dialect.js";
 import { parseFormula, type Form, type Formula, type Node, type Point } from "../formula.js";
 import type { MetricFormula, OntologyDataset, OntologyField } from "../types.js";
@@ -70,8 +75,8 @@ export type Emission =
       kind: "staged";
       reason: StagedReason;
       reasons: StagedReason[];
-      /** Set when a cohort table serves the entry: the dataset, the expression over it and the columns it reads */
-      table?: { dataset: string; expression: string; columns: string[] };
+      /** Set when a cohort table serves the entry: the dataset, the expression over it, the columns it reads and the member fields a breakdown groups by */
+      table?: { dataset: string; expression: string; columns: string[]; dimensions: string[] };
     }
   | { kind: "notComputable"; reason: string };
 
@@ -163,7 +168,9 @@ export function emitMetric(id: string, ctx: EmitContext, variant?: string): Emis
   if (bd?.buckets) e.reasons.add("bucket");
   if (e.reasons.size) {
     const reasons = STAGED_REASONS.filter((r) => e.reasons.has(r));
-    const table = bd ? undefined : overCohortTable(ACCOUNT_COHORTS, id, src, ctx);
+    // A plain field breakdown is a dimension of the cohort table when the compiler groups the members by it.
+    const dimensions = bd && !bd.total && !bd.buckets ? [bd.field] : [];
+    const table = !bd || dimensions.length ? overCohortTable(ACCOUNT_COHORTS, id, src, ctx, dimensions) : undefined;
     return { kind: "staged", reason: reasons[0], reasons, ...(table ? { table } : {}) };
   }
   return { kind: "direct", expression, datasets: [...e.datasets].sort(), snapshots: [...e.snapshots].sort() };
@@ -173,16 +180,19 @@ export function emitMetric(id: string, ctx: EmitContext, variant?: string): Emis
  * The formula as an expression over a cohort table, when the table serves it:
  * the formula declares the table's cohort, every aggregate in it falls inside a
  * fragment that is one of the table's columns and nothing else in it needs
- * staging. A breakdown is the caller's to exclude: the table has one row per
- * member, so it cannot group by a field of the rows a column sums.
+ * staging. The table has one row per member, so a breakdown is served only by
+ * a field the member itself carries on the cohort's day (`dimensions`), which
+ * is how compile.ts groups a breakdown under a cohort: the expression is the
+ * ungrouped one and the consumer groups the rows by the table's column.
  */
-function overCohortTable(t: CohortTableSpec, id: string, src: string, ctx: EmitContext): { dataset: string; expression: string; columns: string[] } | undefined {
+function overCohortTable(t: CohortTableSpec, id: string, src: string, ctx: EmitContext, dimensions: string[] = []): { dataset: string; expression: string; columns: string[]; dimensions: string[] } | undefined {
   const f = parseFormula(src);
   if (!sameCohort(t, f.cohort)) return undefined;
+  if (dimensions.some((d) => !cohortGroupsBy(t.cohort.key, d, ctx))) return undefined;
   const e = new Emitter(ctx, t);
   const expression = e.formula(f, { toDate: false, path: [id] });
   if (e.unserved || !e.used.size || [...e.reasons].some((r) => r !== "cohort")) return undefined;
-  return { dataset: t.name, expression, columns: t.columns.map((c) => c.name).filter((c) => e.used.has(c)) };
+  return { dataset: t.name, expression, columns: t.columns.map((c) => c.name).filter((c) => e.used.has(c)), dimensions };
 }
 
 /** A cohort table entry's expression in a warehouse dialect, or undefined when no cohort table serves the entry. */

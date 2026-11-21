@@ -72,7 +72,7 @@ datasets:
       - name: segment
         expression:
           sql: segment
-        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so retention and movement metrics slice by it without a join.
+        description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so churn and movement metrics slice by it without a join. A metric over a cohort (NRR, GRR) reads it from the customer snapshot on the cohort's day.
         datatype: String
       - name: snapshot_date
         expression:

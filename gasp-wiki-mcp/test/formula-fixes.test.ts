@@ -5,10 +5,11 @@ import { compileMetric } from "../src/compile.js";
 import { fillTemplate } from "../src/tools.js";
 import { TABLES, columnName } from "../src/synthetic.js";
 import type { QueryTemplate } from "../src/types.js";
-import { adapter, fixtureDb, bind, scalar, runTemplate } from "./fixture-db.js";
+import { adapter, fixtureDb, bind, scalar, runTemplate, moveSegment } from "./fixture-db.js";
 
-// Regression tests for the formula corrections of 2026-11-10 (four) and
-// 2026-11-19 (90-Day Turnover again and Commit Accuracy). Each metric's
+// Regression tests for the formula corrections of 2026-11-10 (four),
+// 2026-11-19 (90-Day Turnover again and Commit Accuracy) and 2026-11-21 (NRR
+// and GRR by segment, a change to how a breakdown reads a cohort). Each metric's
 // compiled template is checked against a value computed in plain SQL over the
 // fixture, and the formula it replaced is compiled and run on the same rows to
 // show it gives a different answer. Rows the synthetic data lacks are planted in
@@ -152,5 +153,81 @@ describe("formula corrections", () => {
     expect(await run("auto_renewal_rate", "2026-06-01", "2026-06-30")).toBeCloseTo(expected, 10);
     const old = "count_distinct(field.subscription_id where in_period(field.contract_end) and field.auto_renewed = true) / count_distinct(field.subscription_id where in_period(field.contract_end))";
     expect(await runFormula("auto_renewal_rate", old, "2026-06-01", "2026-06-30")).toBeCloseTo(1 / 3, 10);
+  });
+});
+
+describe("NRR and GRR by segment group the cohort by the segment held at period start (2026-11-21)", () => {
+  // c07, smb, becomes enterprise on 1 May, five days before its 1,000 expansion.
+  // c14, mid_market, becomes enterprise on 1 June, a week before its 300 contraction.
+  // Both were in the cohort of 1 April under their first segment.
+  const Q2 = ["2026-04-01", "2026-06-30"] as const;
+  const SEGMENTS = ["enterprise", "mid_market", "smb"];
+  const NRR = ["expansion", "contraction", "churn"], GRR = ["contraction", "churn"];
+  let moved: PGlite;
+
+  beforeAll(async () => {
+    moved = await fixtureDb();
+    await moveSegment(moved, "c07", "2026-05-01", "enterprise");
+    await moveSegment(moved, "c14", "2026-06-01", "enterprise");
+  }, 120_000);
+  afterAll(async () => { await moved?.close(); });
+
+  /** The compiled by_segment breakdown of a metric over Q2, a value per segment. */
+  async function compiled(on: PGlite, id: string): Promise<Record<string, number | null>> {
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
+    const k = compileMetric(id, ctx, "by_segment");
+    expect(k.placeholders.filter((p) => p.startsWith("segment@"))).toEqual(["segment@customer"]);
+    const template = { ...data.queryTemplates[id], fields: k.fields, datasets: k.datasets, parameterizedQuery: k.sql, placeholders: k.placeholders, breakdown: k.breakdown } as QueryTemplate;
+    const res = await on.query<Record<string, unknown>>(bind(fillTemplate(template, adapter, data).sql, ...Q2));
+    return Object.fromEntries(res.rows.map((r) => [String(r.segment), r[id] === null || r[id] === undefined ? null : Number(r[id])]));
+  }
+
+  // Plain SQL over the fixture's own names. `who` picks the customers and `rows` narrows the rows read.
+  const active = (segment?: string) => `SELECT ${c("customer", "customer_id")} FROM ${t("customer")} WHERE ${c("customer", "snapshot_date")} = DATE '${Q2[0]}' AND ${c("customer", "customer_status")} = 'active'`
+    + (segment ? ` AND ${c("customer", "segment")} = '${segment}'` : "");
+  const opening = (who: string, rows: string) => `(SELECT COALESCE(SUM(${c("subscription", "mrr")}), 0) FROM ${t("subscription")} WHERE ${c("subscription", "snapshot_date")} = DATE '${Q2[0]}'`
+    + ` AND ${c("subscription", "subscription_status")} = 'active' AND ${c("subscription", "customer_id")} IN (${who})${rows && ` AND ${c("subscription", "segment")} = '${rows}'`})`;
+  const movement = (types: string[], who: string, rows: string) => `(SELECT COALESCE(SUM(${c("revenue_event", "mrr_change")}), 0) FROM ${t("revenue_event")}`
+    + ` WHERE ${c("revenue_event", "event_date")} BETWEEN DATE '${Q2[0]}' AND DATE '${Q2[1]}' AND ${c("revenue_event", "event_type")} IN (${types.map((x) => `'${x}'`).join(", ")})`
+    + ` AND ${c("revenue_event", "customer_id")} IN (${who})${rows && ` AND ${c("revenue_event", "segment")} = '${rows}'`})`;
+  const retained = (on: PGlite, types: string[], who: string, rows = "") =>
+    scalar(on, `SELECT CAST(${opening(who, rows)} + ${movement(types, who, rows)} AS DOUBLE PRECISION) / NULLIF(${opening(who, rows)}, 0)`);
+  /** The rule since 2026-11-21: the customers who held the segment on the first day, with every row of theirs. */
+  const atStart = (on: PGlite, types: string[], segment: string) => retained(on, types, active(segment));
+  /** The rule it replaced: the whole cohort, with each snapshot and event counted in the segment the row carries. */
+  const byRow = (on: PGlite, types: string[], segment: string) => retained(on, types, active(), segment);
+
+  for (const [id, types] of [["nrr", NRR], ["grr", GRR]] as const) {
+    it(`${id}: each customer counts in the segment held on the first day of the period`, async () => {
+      const rows = await compiled(moved, id);
+      expect(Object.keys(rows).sort()).toEqual(SEGMENTS);
+      for (const g of SEGMENTS) expect(rows[g], g).toBeCloseTo((await atStart(moved, types, g))!, 12);
+    });
+
+    it(`${id}: with no customer changing segment the two readings agree`, async () => {
+      const rows = await compiled(db, id);
+      for (const g of SEGMENTS) {
+        expect(rows[g], g).toBeCloseTo((await atStart(db, types, g))!, 12);
+        expect(rows[g], g).toBeCloseTo((await byRow(db, types, g))!, 12);
+      }
+    });
+  }
+
+  it("the reading by row moved a customer's expansion and contraction into a segment that held none of their opening MRR", async () => {
+    const [nrr, grr] = [await compiled(moved, "nrr"), await compiled(moved, "grr")];
+    const opened = async (g: string) => (await scalar(moved, `SELECT ${opening(active(g), "")}`))!;
+    const [ent, mid, smb] = [await opened("enterprise"), await opened("mid_market"), await opened("smb")];
+    // c07's 1,000 expansion: by row, enterprise gained it over an opening that never held c07 and smb lost it.
+    // c14's 300 contraction: by row, enterprise lost it and mid_market kept revenue it had lost.
+    expect((await byRow(moved, NRR, "enterprise"))! - nrr.enterprise!).toBeCloseTo((1000 - 300) / ent, 10);
+    expect((await byRow(moved, NRR, "smb"))! - nrr.smb!).toBeCloseTo(-1000 / smb, 10);
+    expect((await byRow(moved, NRR, "mid_market"))! - nrr.mid_market!).toBeCloseTo(300 / mid, 10);
+    expect((await byRow(moved, GRR, "enterprise"))! - grr.enterprise!).toBeCloseTo(-300 / ent, 10);
+    expect((await byRow(moved, GRR, "mid_market"))! - grr.mid_market!).toBeCloseTo(300 / mid, 10);
+    // GRR reads no expansion, so smb is the same either way.
+    expect(await byRow(moved, GRR, "smb")).toBeCloseTo(grr.smb!, 12);
+    // The segments' values moved and the company's did not: the breakdown regroups the same customers.
+    expect(await runTemplate(moved, data, "nrr", ...Q2)).toBeCloseTo((await runTemplate(db, data, "nrr", ...Q2))!, 12);
+    expect(await runTemplate(moved, data, "grr", ...Q2)).toBeCloseTo((await runTemplate(db, data, "grr", ...Q2))!, 12);
   });
 });

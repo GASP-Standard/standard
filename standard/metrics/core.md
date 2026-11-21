@@ -471,7 +471,7 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 - Mid-market: 105-115% typical
 - Enterprise: 115-125% typical
 
-NRR is reported per customer segment, each snapshot and event counting in the segment it carries.
+NRR is reported per customer segment. Each customer counts in the segment held on the first day of the period, with every snapshot and event of theirs in the period.
 
 **Usage and consumption:** NRR already includes realised usage: overage above a commitment is expansion tagged `usage_realisation`, and for a customer on a prepaid commitment the commitment sits in the MRR base. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The retention of consumption revenue itself is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), a separate basis reported under its own name.
 
@@ -580,7 +580,7 @@ GRR tops out at 100%, reached with zero churn and zero contraction, because it l
 - Mid-market/Enterprise: 90%+ is good
 - High ACV Enterprise: 95%+ expected
 
-GRR is reported per customer segment, each snapshot and event counting in the segment it carries.
+GRR is reported per customer segment. Each customer counts in the segment held on the first day of the period, with every snapshot and event of theirs in the period.
 
 **Usage and consumption:** GRR runs on the same MRR base as NRR, so a prepaid commitment counts in it. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The consumption-revenue basis is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention).
 

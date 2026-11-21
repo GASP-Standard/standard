@@ -81,9 +81,29 @@ const COHORTS = ACCOUNT_COHORTS.name;
 const cohortEntries = new Map(Object.entries(reference.coverage).flatMap(([key, c]) => (c.kind === "staged" && c.cohortTable ? [[c.ossieName, key] as const] : [])));
 const cctx: CompileContext = { fields, datasets: gaspDatasets, formulas: data.formulas! };
 /** A served entry staged the general way over the reference tables, one row per period holding the value: what a target's sums over the cohort table must equal. */
-const generalQuery = (name: string): string => {
+const generalQuery = (name: string, only: (source: string) => string = (s) => s): string => {
   const [id, v] = split(cohortEntries.get(name)!);
-  return stagedValueQuery("SUM(general.value)", "general", stagedSource(compileMetric(id, cctx, v).sql), period);
+  return stagedValueQuery("SUM(general.value)", "general", only(stagedSource(compileMetric(id, cctx, v).sql)), period);
+};
+/** The member field a served breakdown groups by, from the reference metric's GASP extension. */
+const dimensionOf = (name: string): string | undefined =>
+  readGaspExtension<{ gasp_breakdown?: string }>(reference.model.metrics!.find((m) => m.name === name)!.nonportable_extensions)?.gasp_breakdown;
+/**
+ * A served entry's expression summed over a target's cohort rows beside the
+ * general staging. A breakdown is read group by group: the target's rows that
+ * carry the value beside the general row for it.
+ */
+const compareServed = async (db: PGlite, name: string, expression: string, source: string): Promise<void> => {
+  const dim = dimensionOf(name);
+  const groups = dim ? (await db.query<{ g: string }>(`SELECT DISTINCT ${dim} AS g FROM (${source}) s WHERE ${dim} IS NOT NULL ORDER BY 1`)).rows.map((r) => r.g) : [undefined];
+  if (dim) expect(groups.length, name).toBeGreaterThan(1);
+  for (const g of groups) {
+    const only = (sql: string) => (dim ? `SELECT * FROM (${sql}) one WHERE ${dim} = '${g}'` : sql);
+    const got = await scalar(db, `SELECT ${stagedValueQuery(expression, COHORTS, only(source), period)}`);
+    const want = await scalar(db, `SELECT ${generalQuery(name, only)}`);
+    expect(want, `${name} ${g ?? ""}`).not.toBeNull();
+    close(got, want, `${name} ${g ?? ""}`);
+  }
 };
 
 describe("Dialect emitter", () => {
@@ -178,7 +198,9 @@ describe("Snowflake target: the Acme adapter", () => {
     expect(t.base_table).toEqual({ database: "ACME_DW", schema: "BILLING", table: COHORTS.toUpperCase() });
     expect(t.primary_key).toEqual({ columns: ["period_start", ACCOUNT_COHORTS.cohort.key] });
     expect(t.time_dimensions!.map((f) => f.name)).toEqual(["period_start", "period_end"]);
-    expect(t.dimensions!.map((f) => f.name)).toEqual([ACCOUNT_COHORTS.cohort.key]);
+    // The segment each customer held on the cohort's day is a dimension, which the two breakdowns slice by.
+    expect(t.dimensions!.map((f) => f.name)).toEqual([ACCOUNT_COHORTS.cohort.key, "segment"]);
+    expect(metrics.find((m) => m.name === "gasp_nrr_by_segment")!.expr).toBe(metrics.find((m) => m.name === "gasp_nrr")!.expr);
     const facts = new Set(t.facts!.map((f) => f.name));
     const served = metrics.filter((m) => m.expr.includes(`${COHORTS}.`));
     expect(served.map((m) => m.name).sort()).toEqual([...cohortEntries.keys()].sort());
@@ -278,9 +300,10 @@ describe("Cube target: the fixture adapter on PGlite", () => {
       for (const [, col] of m.sql.matchAll(/SUM\(\{CUBE\}\.(\w+)\)/g)) read.add(col);
       expect(m.sql.replace(/SUM\(\{CUBE\}\.\w+\)/g, "x"), m.name).not.toMatch(/\{|SUM|COALESCE/);
     }
-    // Every amount column is read by a measure and each is a number dimension.
-    expect([...read].sort()).toEqual(dims.slice(3).map((d) => d.name).sort());
-    for (const d of dims.slice(3)) expect(d, d.name).toMatchObject({ sql: `{CUBE}.${d.name}`, type: "number" });
+    // The customer's segment follows the key as a string dimension; every amount column is read by a measure and each is a number dimension.
+    expect(dims[3]).toMatchObject({ name: "segment", sql: "{CUBE}.segment", type: "string" });
+    expect([...read].sort()).toEqual(dims.slice(4).map((d) => d.name).sort());
+    for (const d of dims.slice(4)) expect(d, d.name).toMatchObject({ sql: `{CUBE}.${d.name}`, type: "number" });
     expect(measures.find((m) => m.name === "gasp_grr_per_customer")!.sql).toBe("(CAST(SUM({CUBE}.retained_mrr) AS DOUBLE PRECISION) / NULLIF(SUM({CUBE}.mrr_start), 0))");
     const perPeriod = model.model.datasets.filter(isStaged).length - 1;
     expect(r.notes.join(" ")).toContain(`The ${perPeriod} staged cubes hold one row per reporting period`);
@@ -340,12 +363,7 @@ describe("Cube target: the fixture adapter on PGlite", () => {
 
     it("every cohort table measure sums the cube's rows to the value the per-period staging gives", async () => {
       const cube = cubes.get(COHORTS);
-      for (const m of cube.measures as Array<{ name: string; sql: string }>) {
-        const got = await scalar(db, `SELECT ${stagedValueQuery(m.sql.replace(/\{CUBE\}\./g, `${COHORTS}.`), COHORTS, cube.sql, period)}`);
-        const want = await scalar(db, `SELECT ${generalQuery(m.name)}`);
-        expect(want, m.name).not.toBeNull();
-        close(got, want, m.name);
-      }
+      for (const m of cube.measures as Array<{ name: string; sql: string }>) await compareServed(db, m.name, m.sql.replace(/\{CUBE\}\./g, `${COHORTS}.`), cube.sql);
     }, 120_000);
 
     it("every staged cube's query runs and returns the staged source's rows", async () => {
@@ -474,8 +492,11 @@ describe("dbt target", () => {
       expect(s.entities).toEqual([{ name: COHORTS, type: "primary", expr: SURROGATE_KEY }]);
       expect(s.defaults).toEqual({ agg_time_dimension: "period_start" });
       // One measure per column summed, each column once, whichever metric reads it first.
-      const columns = d.fields!.slice(3).map((f) => f.name);
+      const columns = d.fields!.slice(4).map((f) => f.name);
       expect(s.measures!.map((m) => m.expr).sort()).toEqual([...columns].sort());
+      // The customer's segment is a categorical dimension of the model, there for the two breakdowns.
+      expect(d.fields![3].name).toBe("segment");
+      expect(s.dimensions).toContainEqual(expect.objectContaining({ name: "segment", type: "categorical" }));
       for (const m of s.measures!) expect(m, m.name).toEqual({ name: m.name, agg: "sum", expr: m.expr });
       const nrr = metrics.find((m) => m.name === "gasp_nrr")!;
       expect(nrr.type).toBe("derived");
@@ -571,10 +592,7 @@ describe("dbt target", () => {
       for (const name of cohortEntries.keys()) {
         const sql = rebuild(name, r.model, semantic, metrics);
         expect(sql, name).toContain(`SUM(${COHORTS}.`);
-        const got = await scalar(db, `SELECT ${stagedValueQuery(sql, COHORTS, `SELECT * FROM dbt.${COHORTS}`, period)}`);
-        const want = await scalar(db, `SELECT ${generalQuery(name)}`);
-        expect(want, name).not.toBeNull();
-        close(got, want, name);
+        await compareServed(db, name, sql, `SELECT * FROM dbt.${COHORTS}`);
       }
     }, 120_000);
 
