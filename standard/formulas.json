@@ -147,12 +147,12 @@
       "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): a churned customer counts when they were a customer on that day, so the rate stays between 0 and 1. A customer who joins and churns inside the period shows in Churned Customers and is outside this rate. by_segment returns one row per customer segment with each customer in the segment held on the first day, since SMB logos usually churn at several times the enterprise rate."
     },
     "revenue_churn_rate": {
-      "formula": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start",
+      "formula": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "by_segment returns one row per customer segment, so churn concentrated in one segment is visible."
+      "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): the churned and contracted MRR of those customers over their MRR on that day, so the rate equals 1 less GRR over the same period and stays between 0 and 1. The MRR lost by a customer who joins inside the period shows in Churned MRR and Contraction MRR and is outside this rate. by_segment returns one row per customer segment, so churn concentrated in one segment is visible; each customer counts in the segment held on the first day of the period."
     },
     "nps": {
       "formula": "(count(field.nps_score where field.survey_type = 'customer' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'customer' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'customer') * 100",
@@ -682,12 +682,12 @@
       "notes": "Engaged contacts on the contact snapshot at period end over active accounts on the customer snapshot. An account with no contacts counts in the denominator."
     },
     "expansion_rate": {
-      "formula": "metric.expansion_mrr / metric.mrr at period_start",
+      "formula": "metric.expansion_mrr / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "by_segment returns one row per customer segment, since expansion headroom differs by segment."
+      "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): the expansion of those customers over their MRR on that day. Expansion by a customer who joins inside the period shows in Expansion MRR and is outside this rate. by_segment returns one row per customer segment, since expansion headroom differs by segment; each customer counts in the segment held on the first day of the period."
     },
     "license_utilization": {
       "formula": "sum(field.seats_assigned where field.license_status = 'active') / sum(field.seats_purchased where field.license_status = 'active')",

@@ -10,7 +10,8 @@ import { adapter, fixtureDb, bind, scalar, runTemplate, moveSegment } from "./fi
 // Regression tests for the formula corrections of 2026-11-10 (four),
 // 2026-11-19 (90-Day Turnover again and Commit Accuracy) and 2026-11-21 (NRR
 // and GRR by segment, a change to how a breakdown reads a cohort, and Logo
-// Churn Rate, which became a cohort formula). Each metric's
+// Churn Rate, Revenue Churn Rate and Expansion Rate, which became cohort
+// formulas). Each metric's
 // compiled template is checked against a value computed in plain SQL over the
 // fixture, and the formula it replaced is compiled and run on the same rows to
 // show it gives a different answer. Rows the synthetic data lacks are planted in
@@ -320,5 +321,123 @@ describe("Logo Churn Rate follows the customers of the first day of the period (
     const churn = await bySegment(planted);
     expect(res.rows).toHaveLength(SEGMENTS.length);
     for (const r of res.rows) expect(Number(r.logo_retention_rate), String(r.segment)).toBeCloseTo(1 - churn[String(r.segment)]!, 12);
+  });
+});
+
+describe("Revenue Churn Rate and Expansion Rate follow the customers of the first day of the period (2026-11-21)", () => {
+  // Three customers who joined inside Q2 are planted to move MRR before it ends:
+  // c18, enterprise, starts on 13 May and contracts by 500 on 20 June.
+  // c19, smb, starts on 3 June and churns its 700 on 25 June.
+  // c17, mid_market, starts on 21 April and expands by 300 on 18 June.
+  // Two customers of 1 April change segment on 1 May: c06, enterprise, becomes mid_market before its 200
+  // contraction of 18 May and c07, smb, becomes enterprise before its 1,000 expansion of 6 May.
+  const Q2 = ["2026-04-01", "2026-06-30"] as const;
+  const SEGMENTS = ["enterprise", "mid_market", "smb"];
+  const RATES = {
+    revenue_churn_rate: { replaced: "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start", types: ["churn", "contraction"], sign: -1 },
+    expansion_rate: { replaced: "metric.expansion_mrr / metric.mrr at period_start", types: ["expansion"], sign: 1 },
+  } as const;
+  type Rate = keyof typeof RATES;
+  let planted: PGlite;
+
+  const re = (f: string) => c("revenue_event", f);
+  const cu = (f: string) => c("customer", f);
+  const su = (f: string) => c("subscription", f);
+
+  /** Copy the customer's first event as a later movement of another type. */
+  const movement = (customer: string, type: string, date: string, change: number) =>
+    `CREATE TEMP TABLE planted AS SELECT * FROM ${t("revenue_event")} WHERE ${re("customer_id")} = '${customer}' AND ${re("event_type")} = 'new';
+      UPDATE planted SET ${re("event_id")} = 'planted_${type}_${customer}', ${re("event_type")} = '${type}', ${re("event_date")} = DATE '${date}', ${re("mrr_change")} = ${change};
+      INSERT INTO ${t("revenue_event")} SELECT * FROM planted;
+      DROP TABLE planted;`;
+
+  beforeAll(async () => {
+    planted = await fixtureDb();
+    await planted.exec(movement("c18", "contraction", "2026-06-20", -500) + movement("c19", "churn", "2026-06-25", -700) + movement("c17", "expansion", "2026-06-18", 300));
+    await moveSegment(planted, "c06", "2026-05-01", "mid_market");
+    await moveSegment(planted, "c07", "2026-05-01", "enterprise");
+  }, 120_000);
+  afterAll(async () => { await planted?.close(); });
+
+  /** A metric compiled from the canonical formula, or from the one given in its place: the company's value or a value per segment. */
+  function template(id: string, variant?: string, formula?: string): QueryTemplate {
+    const ctx = {
+      fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])),
+      datasets: data.ontology!.datasets!,
+      formulas: formula ? { ...data.formulas!, [id]: { ...data.formulas![id], formula } } : data.formulas!,
+    };
+    const k = compileMetric(id, ctx, variant);
+    if (variant && !formula) expect(k.placeholders.filter((p) => p.startsWith("segment@"))).toEqual(["segment@customer"]);
+    return { ...data.queryTemplates[id], fields: k.fields, datasets: k.datasets, parameterizedQuery: k.sql, placeholders: k.placeholders, breakdown: k.breakdown } as QueryTemplate;
+  }
+  const company = (on: PGlite, id: string, formula?: string) => scalar(on, bind(fillTemplate(template(id, undefined, formula), adapter, data).sql, ...Q2));
+  async function bySegment(on: PGlite, id: string, formula?: string): Promise<Record<string, number | null>> {
+    const res = await on.query<Record<string, unknown>>(bind(fillTemplate(template(id, "by_segment", formula), adapter, data).sql, ...Q2));
+    return Object.fromEntries(res.rows.map((r) => [String(r.segment), r[id] === null || r[id] === undefined ? null : Number(r[id])]));
+  }
+
+  // Plain SQL over the fixture's own names. `who` picks the customers and `rows` narrows the rows read to one segment.
+  const active = (segment?: string) => `SELECT ${cu("customer_id")} FROM ${t("customer")} WHERE ${cu("snapshot_date")} = DATE '${Q2[0]}' AND ${cu("customer_status")} = 'active'`
+    + (segment ? ` AND ${cu("segment")} = '${segment}'` : "");
+  const opening = (who = "", rows = "") => `(SELECT COALESCE(SUM(${su("mrr")}), 0) FROM ${t("subscription")} WHERE ${su("snapshot_date")} = DATE '${Q2[0]}' AND ${su("subscription_status")} = 'active'`
+    + `${who && ` AND ${su("customer_id")} IN (${who})`}${rows && ` AND ${su("segment")} = '${rows}'`})`;
+  const moved = (types: readonly string[], who = "", rows = "") => `(SELECT COALESCE(SUM(${re("mrr_change")}), 0) FROM ${t("revenue_event")}`
+    + ` WHERE ${re("event_date")} BETWEEN DATE '${Q2[0]}' AND DATE '${Q2[1]}' AND ${re("event_type")} IN (${types.map((x) => `'${x}'`).join(", ")})`
+    + `${who && ` AND ${re("customer_id")} IN (${who})`}${rows && ` AND ${re("segment")} = '${rows}'`})`;
+  const rate = (on: PGlite, id: Rate, who: string, rows: string) =>
+    scalar(on, `SELECT CAST(${RATES[id].sign} * ${moved(RATES[id].types, who, rows)} AS DOUBLE PRECISION) / NULLIF(${opening(who, rows)}, 0)`);
+  /** The rule since 2026-11-21: the movements of the customers of the first day over their MRR on that day. */
+  const ofFirstDay = (on: PGlite, id: Rate, segment?: string) => rate(on, id, active(segment), "");
+  /** The rule it replaced: every customer's movements in the period, each row in the segment it carries. */
+  const everyRow = (on: PGlite, id: Rate, segment = "") => rate(on, id, "", segment);
+  const opened = async (segment?: string) => (await scalar(planted, `SELECT ${opening(active(segment))}`))!;
+
+  for (const id of Object.keys(RATES) as Rate[]) {
+    it(`${id}: reads the customers of the first day, for the company and per segment`, async () => {
+      expect(await company(planted, id)).toBeCloseTo((await ofFirstDay(planted, id))!, 12);
+      expect(await company(planted, id, RATES[id].replaced)).toBeCloseTo((await everyRow(planted, id))!, 12);
+      const [rows, replaced] = [await bySegment(planted, id), await bySegment(planted, id, RATES[id].replaced)];
+      expect(Object.keys(rows).sort()).toEqual(SEGMENTS);
+      for (const g of SEGMENTS) {
+        expect(rows[g], g).toBeCloseTo((await ofFirstDay(planted, id, g))!, 12);
+        expect(replaced[g], g).toBeCloseTo((await everyRow(planted, id, g))!, 12);
+      }
+    });
+
+    it(`${id}: with nobody joining and moving MRR in the period and nobody changing segment the two readings agree`, async () => {
+      expect(await company(db, id)).toBeCloseTo((await company(db, id, RATES[id].replaced))!, 12);
+      const [rows, replaced] = [await bySegment(db, id), await bySegment(db, id, RATES[id].replaced)];
+      for (const g of SEGMENTS) expect(rows[g], g).toBeCloseTo(replaced[g]!, 12);
+    });
+  }
+
+  it("the formulas they replace counted MRR that was never in the opening figure", async () => {
+    const all = await opened();
+    const [ent, mid, smb] = [await opened("enterprise"), await opened("mid_market"), await opened("smb")];
+    // Company: c18's 500 and c19's 700 were lost by customers with no MRR on 1 April, as c17's 300 was gained by one.
+    expect((await company(planted, "revenue_churn_rate", RATES.revenue_churn_rate.replaced))! - (await company(planted, "revenue_churn_rate"))!).toBeCloseTo(1200 / all, 12);
+    expect((await company(planted, "expansion_rate", RATES.expansion_rate.replaced))! - (await company(planted, "expansion_rate"))!).toBeCloseTo(300 / all, 12);
+    // Per segment: c06's 200 stays in enterprise, where it opened, and c18's 500 leaves it; mid_market loses c06's 200; smb has no churn without c19.
+    const [churn, churnWas] = [await bySegment(planted, "revenue_churn_rate"), await bySegment(planted, "revenue_churn_rate", RATES.revenue_churn_rate.replaced)];
+    expect(churnWas.enterprise! - churn.enterprise!).toBeCloseTo((500 - 200) / ent, 12);
+    expect(churnWas.mid_market! - churn.mid_market!).toBeCloseTo(200 / mid, 12);
+    expect(churnWas.smb!).toBeCloseTo(700 / smb, 12);
+    expect(churn.smb).toBe(0);
+    // c07's 1,000 expansion stays in smb and c17's 300 leaves mid_market.
+    const [exp, expWas] = [await bySegment(planted, "expansion_rate"), await bySegment(planted, "expansion_rate", RATES.expansion_rate.replaced)];
+    expect(expWas.smb! - exp.smb!).toBeCloseTo(-1000 / smb, 12);
+    expect(expWas.enterprise! - exp.enterprise!).toBeCloseTo(1000 / ent, 12);
+    expect(expWas.mid_market! - exp.mid_market!).toBeCloseTo(300 / mid, 12);
+  });
+
+  it("Revenue Churn Rate is one less GRR over the same period, for the company and per segment, and stays within 0 and 1", async () => {
+    const [churn, grr] = [await company(planted, "revenue_churn_rate"), await company(planted, "grr")];
+    expect(churn).toBeCloseTo(1 - grr!, 12);
+    const [rows, kept] = [await bySegment(planted, "revenue_churn_rate"), await bySegment(planted, "grr")];
+    for (const g of SEGMENTS) {
+      expect(rows[g], g).toBeCloseTo(1 - kept[g]!, 12);
+      expect(rows[g], g).toBeGreaterThanOrEqual(0);
+      expect(rows[g], g).toBeLessThanOrEqual(1);
+    }
   });
 });

@@ -70,11 +70,11 @@ describe("Company compile: the fixture adapter reproduces the reference export",
     expect(cohorts.source).toContain("FROM gasp_subscriptions WHERE snapshot_day = p.period_start AND status = 'active' AND customer_id = _c.customer_id");
     expect(cohorts.source).toContain("FROM gasp_revenue_events WHERE booked_on >= p.period_start AND booked_on <= p.period_end AND event_type = 'expansion' AND account_ref = _c.customer_id");
     expect(cohorts.source).toMatch(/FROM gasp\.period_spine p JOIN \(SELECT customer_id AS customer_id, as_of_date AS _day, segment AS segment FROM gasp_customers WHERE lifecycle_status = 'active'\) _c ON _c\._day = p\.period_start$/);
-    // The segment each customer held on that day rides on the row, for the two breakdowns that group by it.
+    // The segment each customer held on that day rides on the row, for the breakdowns that group by it.
     expect(cohorts.source).toMatch(/^SELECT p\.period_start, p\.period_end, _c\.customer_id, _c\.segment, \(SELECT /);
     expect(cohorts.fields!.map((f) => f.name).slice(0, 4)).toEqual(["period_start", "period_end", "customer_id", "segment"]);
     expect(ext(cohorts)).toMatchObject({ staged: true, reason: "cohort", cohort: ACCOUNT_COHORTS.cohort, source_dialect: "POSTGRES" });
-    expect(ext(cohorts).for).toEqual(["gasp_nrr", "gasp_nrr_o", "gasp_nrr_m", "gasp_nrr_adjusted", "gasp_nrr_by_segment", "gasp_grr", "gasp_grr_per_customer", "gasp_grr_adjusted", "gasp_grr_by_segment"]);
+    expect(ext(cohorts).for).toEqual(["gasp_nrr", "gasp_nrr_o", "gasp_nrr_m", "gasp_nrr_adjusted", "gasp_nrr_by_segment", "gasp_grr", "gasp_grr_per_customer", "gasp_grr_adjusted", "gasp_grr_by_segment", "gasp_revenue_churn_rate", "gasp_revenue_churn_rate_by_segment", "gasp_expansion_rate", "gasp_expansion_rate_by_segment"]);
     expect(ext(cohorts).sources).toBeUndefined(); // one dialect, the company's
     // A cohort entry the table does not serve keeps its dataset of one row per period.
     const arr = r.model.datasets.find((d) => d.name === "gasp_staged_gasp_arr_o")!;
@@ -83,7 +83,7 @@ describe("Company compile: the fixture adapter reproduces the reference export",
     expect(ext(arr).sources).toBeUndefined();
     // Every dataset the fixture maps is in the model, with the spine declared for the staged sources.
     expect(r.model.datasets.find((d) => d.name === SPINE_DATASET)!.source).toBe("gasp.period_spine");
-    // The model counts its staged datasets: the nine metrics on the cohort table share one.
+    // The model counts its staged datasets: the thirteen metrics on the cohort table share one.
     const stagedDatasets = r.model.datasets.filter((d) => d.nonportable_extensions && ext(d).staged === true);
     expect(stagedDatasets.length).toBe(r.counts.staged - ext(cohorts).for.length + 1);
     expect(ext(r.model).compiled).toMatchObject({ dialect: "POSTGRES", period_spine: "gasp.period_spine", metrics: r.model.metrics!.length, staged: stagedDatasets.length });
@@ -259,7 +259,7 @@ describe("Company compile: the Acme adapter", () => {
 
   it("reports in sections and carries the model document", () => {
     const report = formatCompileReport(r, data);
-    for (const h of ["# Compiled GASP metrics: Acme SaaS", "**Mapping:** GASP adapter v1.1", "**Dialect:** snowflake (from the adapter's warehouse `snowflake`)", "**Period spine:** `gasp.period_spine`", "**Checks:** the compiled metrics pass", "## Staged", "- cohort:", "## Left out: unmapped (", "needs `", "## Model", "```yaml", `name: ${c.model.name}`, "gasp_staged_gasp_arr_o", `staged through 26 datasets, one row per period each but the cohort table \`${ACCOUNT_COHORTS.name}\`, one row per customer per period`, "A metric over the cohort table sums that table's rows for the period."]) expect(report).toContain(h);
+    for (const h of ["# Compiled GASP metrics: Acme SaaS", "**Mapping:** GASP adapter v1.1", "**Dialect:** snowflake (from the adapter's warehouse `snowflake`)", "**Period spine:** `gasp.period_spine`", "**Checks:** the compiled metrics pass", "## Staged", "- cohort:", "## Left out: unmapped (", "needs `", "## Model", "```yaml", `name: ${c.model.name}`, "gasp_staged_gasp_arr_o", `staged through 24 datasets, one row per period each but the cohort table \`${ACCOUNT_COHORTS.name}\`, one row per customer per period`, "A metric over the cohort table sums that table's rows for the period."]) expect(report).toContain(h);
     expect(formatCompileReport(r, data, { document: false })).not.toContain("```yaml");
     const text = compileModelFromText(JSON.stringify(acme), undefined, data, { metrics: "MRR", document: false });
     expect(text).toContain("**Compiled:** 1 metric (1 direct, 0 staged");

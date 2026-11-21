@@ -649,6 +649,8 @@ Logo Churn Rate is reported per customer segment. Each customer counts in the se
 Revenue Churn Rate = (Churned MRR + Contraction MRR) / Beginning MRR × 100
 ```
 
+**Who is counted:** The customers active on the first day of the period, the same cohort NRR, GRR and Logo Churn Rate follow. Churned MRR and Contraction MRR count when the customer was active on that day and Beginning MRR is the MRR those customers held on it, so the rate equals 100% less GRR over the same period and stays between 0% and 100%. MRR lost by a customer who joins inside the period appears in [Churned MRR](#churned-mrr) and [Contraction MRR](#contraction-mrr) and sits outside this rate.
+
 This is gross revenue churn: it measures losses only, without netting against expansion. It is the canonical formula because it isolates the leakage.
 
 **Note:** "Net Revenue Churn" (which subtracts expansion) can be calculated but conflates two distinct dynamics. Use NRR for the net view instead.
@@ -658,7 +660,7 @@ This is gross revenue churn: it measures losses only, without netting against ex
 - 2-5%: Average
 - >5%: High (average annual churn ~4.9% for B2B SaaS)
 
-Revenue Churn Rate is reported per customer segment.
+Revenue Churn Rate is reported per customer segment. Each customer counts in the segment they held on the first day of the period.
 
 **What it tells you:** The revenue impact of churn. If revenue churn is lower than logo churn, you're losing smaller customers (often acceptable). If higher, you're losing larger customers (concerning).
 

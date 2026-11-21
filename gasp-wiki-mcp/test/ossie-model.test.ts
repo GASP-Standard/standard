@@ -208,9 +208,9 @@ describe("Ossie model: metrics", () => {
     }
   });
 
-  it("the cohort table serves the Net and Gross Revenue Retention entries as plain sums over one row per customer per period", () => {
+  it("the cohort table serves the NRR, GRR, Revenue Churn Rate and Expansion Rate entries as plain sums over one row per customer per period", () => {
     const served = Object.entries(coverage).filter(([, c]) => c.kind === "staged" && c.cohortTable);
-    expect(served.map(([k]) => k).sort()).toEqual(["grr", "grr:adjusted", "grr:by_segment", "grr:per_customer", "nrr", "nrr:M", "nrr:O", "nrr:adjusted", "nrr:by_segment"]);
+    expect(served.map(([k]) => k).sort()).toEqual(["expansion_rate", "expansion_rate:by_segment", "grr", "grr:adjusted", "grr:by_segment", "grr:per_customer", "nrr", "nrr:M", "nrr:O", "nrr:adjusted", "nrr:by_segment", "revenue_churn_rate", "revenue_churn_rate:by_segment"]);
     expect(cohortTableProblems(ACCOUNT_COHORTS, data.formulas!)).toEqual([]);
     const ds = byName.get(ACCOUNT_COHORTS.name)!;
     const key = ACCOUNT_COHORTS.cohort.key;

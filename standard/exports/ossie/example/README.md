@@ -7,7 +7,7 @@ The Core department of the GASP Standard (Generally Accepted SaaS Principles) as
 | File | Contents |
 | --- | --- |
 | `gasp_saas.ontology.yaml` | 6 entity types (one per dataset), their relationships and 46 value types with enum constraints |
-| `gasp_saas.semantic_model.yaml` | 6 datasets (revenue_event, cost_event, customer, subscription, survey_response, financials), 5 relationships, 13 staged datasets and 39 metrics |
+| `gasp_saas.semantic_model.yaml` | 6 datasets (revenue_event, cost_event, customer, subscription, survey_response, financials), 5 relationships, 12 staged datasets and 39 metrics |
 | `gasp_saas.mapping.yaml` | The ontology mapped onto the model, by name and relative IRI |
 
 Every metric is an `OSSIE_SQL_2026` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see `../coverage.json` for the reason per entry and `../conformance/` for one executed case per reason). Physical sources are `gasp.<dataset>` with columns named by GASP field id; an adopter's mapping replaces both.
@@ -38,7 +38,7 @@ Every metric is an `OSSIE_SQL_2026` expression where the language can state it; 
 | Net Revenue Retention (NRR) (Market form) | `(metric.mrr at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'reactivation') and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)` |
 | Gross Revenue Retention (GRR) | `(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)` |
 | Logo Churn Rate (Customer Churn) | `metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)` |
-| Revenue Churn Rate | `(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start` |
+| Revenue Churn Rate | `(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)` |
 | NPS (Net Promoter Score) | `(count(field.nps_score where field.survey_type = 'customer' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'customer' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'customer') * 100` |
 | Customer Acquisition Cost (CAC) | `sum(field.cost where field.cost_function = 'gtm') / metric.new_customers` |
 | Customer Acquisition Cost (CAC) (Operating form) | `(sum(field.cost where field.cost_function = 'gtm') + sum(field.cost where field.cost_function in ('implementation', 'onboarding'))) / metric.new_customers` |

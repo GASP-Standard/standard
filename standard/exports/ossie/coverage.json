@@ -6,9 +6,9 @@
     "notComputable": 15
   },
   "stagedReasons": {
-    "cohort": 16,
+    "cohort": 26,
     "lag": 6,
-    "at period_start": 30,
+    "at period_start": 20,
     "total": 6,
     "period bound in filter": 93,
     "to_date": 4,
@@ -380,14 +380,16 @@
     "revenue_churn_rate": {
       "kind": "staged",
       "ossieName": "gasp_revenue_churn_rate",
-      "stagedDataset": "gasp_staged_gasp_revenue_churn_rate",
-      "reason": "at period_start"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "revenue_churn_rate:by_segment": {
       "kind": "staged",
       "ossieName": "gasp_revenue_churn_rate_by_segment",
-      "stagedDataset": "gasp_staged_gasp_revenue_churn_rate_by_segment",
-      "reason": "at period_start"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "nps": {
       "kind": "direct",
@@ -444,37 +446,37 @@
       "kind": "staged",
       "ossieName": "gasp_ltv",
       "stagedDataset": "gasp_staged_gasp_ltv",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "ltv:O": {
       "kind": "staged",
       "ossieName": "gasp_ltv_o",
       "stagedDataset": "gasp_staged_gasp_ltv_o",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "ltv:M": {
       "kind": "staged",
       "ossieName": "gasp_ltv_m",
       "stagedDataset": "gasp_staged_gasp_ltv_m",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "ltv_cac_ratio": {
       "kind": "staged",
       "ossieName": "gasp_ltv_cac_ratio",
       "stagedDataset": "gasp_staged_gasp_ltv_cac_ratio",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "ltv_cac_ratio:O": {
       "kind": "staged",
       "ossieName": "gasp_ltv_cac_ratio_o",
       "stagedDataset": "gasp_staged_gasp_ltv_cac_ratio_o",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "ltv_cac_ratio:M": {
       "kind": "staged",
       "ossieName": "gasp_ltv_cac_ratio_m",
       "stagedDataset": "gasp_staged_gasp_ltv_cac_ratio_m",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "cac_payback": {
       "kind": "direct",
@@ -1379,14 +1381,16 @@
     "expansion_rate": {
       "kind": "staged",
       "ossieName": "gasp_expansion_rate",
-      "stagedDataset": "gasp_staged_gasp_expansion_rate",
-      "reason": "at period_start"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "expansion_rate:by_segment": {
       "kind": "staged",
       "ossieName": "gasp_expansion_rate_by_segment",
-      "stagedDataset": "gasp_staged_gasp_expansion_rate_by_segment",
-      "reason": "at period_start"
+      "stagedDataset": "gasp_account_cohorts",
+      "reason": "cohort",
+      "cohortTable": true
     },
     "license_utilization": {
       "kind": "direct",

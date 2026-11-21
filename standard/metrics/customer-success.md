@@ -198,6 +198,8 @@ Contact Coverage = Engaged contacts / Active accounts
 Expansion Rate = Expansion MRR / Beginning MRR × 100
 ```
 
+**Who is counted:** The customers active on the first day of the period, the same cohort NRR and GRR follow. Expansion MRR counts when the customer was active on that day and Beginning MRR is the MRR those customers held on it. Expansion by a customer who joins inside the period appears in [Expansion MRR](core.md#expansion-mrr) and sits outside this rate.
+
 **Benchmarks:**
 - Below 10%: Limited expansion motion
 - 10-20%: Moderate, typical for early-stage
@@ -211,7 +213,7 @@ Expansion Rate = Expansion MRR / Beginning MRR × 100
 - Scale stage ($20M+ ARR): 35%+ from expansion
 - Mature ($200M+ ARR): Up to 66% from expansion
 
-Expansion Revenue Rate is reported per customer segment.
+Expansion Revenue Rate is reported per customer segment. Each customer counts in the segment they held on the first day of the period.
 
 **What it tells you:** How fast existing customers grow their spend. As companies mature, expansion becomes the largest source of growth.
 

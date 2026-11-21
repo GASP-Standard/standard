@@ -1481,7 +1481,7 @@
         "survey_tool"
       ],
       "description": "Customer (account) identifier. Primary business noun; CEL name",
-      "metricCount": 30
+      "metricCount": 32
     },
     {
       "id": "customer_status",
@@ -1500,7 +1500,7 @@
         "dormant"
       ],
       "description": "Customer lifecycle status; active means at least one active subscription",
-      "metricCount": 20
+      "metricCount": 22
     },
     {
       "id": "deflections",
@@ -5304,7 +5304,7 @@
     "executive_sponsor_coverage": "Customer Health Score",
     "contact_coverage": "Customer Health Score",
     "license_utilization": "ARR",
-    "expansion_rate": "Expansion Revenue",
+    "expansion_rate": "Expansion Revenue Rate",
     "upsell_rate": "Expansion Revenue",
     "cross_sell_rate": "Expansion Revenue",
     "renewal_rate": "Renewal Rate",
@@ -5530,9 +5530,9 @@
       "period": "month"
     },
     "Logo Churn": {
-      "grain": "Per event, aggregate monthly",
+      "grain": "Customer cohort at period start",
       "frequency": "Daily sync",
-      "aggregation": "aggregate",
+      "aggregation": "cohort",
       "period": "month"
     },
     "Customer Count": {
@@ -5548,9 +5548,9 @@
       "period": "month"
     },
     "Revenue Churn": {
-      "grain": "Per event, aggregate monthly",
+      "grain": "Customer cohort at period start",
       "frequency": "Daily sync",
-      "aggregation": "aggregate",
+      "aggregation": "cohort",
       "period": "month"
     },
     "LTV:CAC & CAC Payback": {
@@ -5646,6 +5646,12 @@
       "grain": "Per event, aggregate monthly",
       "frequency": "Monthly",
       "aggregation": "aggregate",
+      "period": "month"
+    },
+    "Expansion Revenue Rate": {
+      "grain": "Customer cohort at period start",
+      "frequency": "Monthly",
+      "aggregation": "cohort",
       "period": "month"
     },
     "QBR Completion": {
@@ -6499,7 +6505,7 @@
       ]
     },
     "expansion_rate": {
-      "expression": "metric.expansion_mrr / metric.mrr at period_start",
+      "expression": "metric.expansion_mrr / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "expansion_mrr",
@@ -6514,6 +6520,8 @@
         }
       ],
       "fields": [
+        "customer_id",
+        "customer_status",
         "event_date",
         "event_type",
         "mrr",
@@ -7013,7 +7021,7 @@
       ]
     },
     "revenue_churn_rate": {
-      "expression": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start",
+      "expression": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "churned_mrr",
@@ -7033,6 +7041,8 @@
         }
       ],
       "fields": [
+        "customer_id",
+        "customer_status",
         "event_date",
         "event_type",
         "mrr",
