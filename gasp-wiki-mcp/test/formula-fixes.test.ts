@@ -9,7 +9,8 @@ import { adapter, fixtureDb, bind, scalar, runTemplate, moveSegment } from "./fi
 
 // Regression tests for the formula corrections of 2026-11-10 (four),
 // 2026-11-19 (90-Day Turnover again and Commit Accuracy) and 2026-11-21 (NRR
-// and GRR by segment, a change to how a breakdown reads a cohort). Each metric's
+// and GRR by segment, a change to how a breakdown reads a cohort, and Logo
+// Churn Rate, which became a cohort formula). Each metric's
 // compiled template is checked against a value computed in plain SQL over the
 // fixture, and the formula it replaced is compiled and run on the same rows to
 // show it gives a different answer. Rows the synthetic data lacks are planted in
@@ -229,5 +230,95 @@ describe("NRR and GRR by segment group the cohort by the segment held at period 
     // The segments' values moved and the company's did not: the breakdown regroups the same customers.
     expect(await runTemplate(moved, data, "nrr", ...Q2)).toBeCloseTo((await runTemplate(db, data, "nrr", ...Q2))!, 12);
     expect(await runTemplate(moved, data, "grr", ...Q2)).toBeCloseTo((await runTemplate(db, data, "grr", ...Q2))!, 12);
+  });
+});
+
+describe("Logo Churn Rate follows the customers of the first day of the period (2026-11-21)", () => {
+  // c18, enterprise, starts on 13 May and is planted to churn on 20 June: a customer of Q2 who was not one on 1 April.
+  // c08, mid_market on 1 April, becomes enterprise on 1 May, six weeks before it churns.
+  // Only the rows these formulas read are planted: the churn event and the customer snapshots.
+  const Q2 = ["2026-04-01", "2026-06-30"] as const;
+  const SEGMENTS = ["enterprise", "mid_market", "smb"];
+  const REPLACED = "metric.churned_customers / metric.total_customers at period_start";
+  let planted: PGlite;
+
+  const re = (f: string) => c("revenue_event", f);
+  const cu = (f: string) => c("customer", f);
+
+  beforeAll(async () => {
+    planted = await fixtureDb();
+    await planted.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${t("revenue_event")} WHERE ${re("customer_id")} = 'c05' AND ${re("event_type")} = 'churn';
+      UPDATE planted SET ${re("customer_id")} = 'c18', ${re("event_id")} = 'planted_churn_c18', ${re("event_date")} = DATE '2026-06-20', ${re("segment")} = 'enterprise';
+      INSERT INTO ${t("revenue_event")} SELECT * FROM planted;
+      DROP TABLE planted;
+      UPDATE ${t("customer")} SET ${cu("customer_status")} = 'churned' WHERE ${cu("customer_id")} = 'c18' AND ${cu("snapshot_date")} >= DATE '2026-06-20';`);
+    await moveSegment(planted, "c08", "2026-05-01", "enterprise");
+  }, 120_000);
+  afterAll(async () => { await planted?.close(); });
+
+  /** Logo Churn Rate compiled from the canonical formula, or from the one it replaced, over Q2: the company's value or a value per segment. */
+  function template(variant?: string, formula?: string): QueryTemplate {
+    const ctx = {
+      fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])),
+      datasets: data.ontology!.datasets!,
+      formulas: formula ? { ...data.formulas!, logo_churn_rate: { ...data.formulas!.logo_churn_rate, formula } } : data.formulas!,
+    };
+    const k = compileMetric("logo_churn_rate", ctx, variant);
+    if (variant && !formula) expect(k.placeholders.filter((p) => p.startsWith("segment@"))).toEqual(["segment@customer"]);
+    return { ...data.queryTemplates.logo_churn_rate, fields: k.fields, datasets: k.datasets, parameterizedQuery: k.sql, placeholders: k.placeholders, breakdown: k.breakdown } as QueryTemplate;
+  }
+  const company = (on: PGlite, formula?: string) => scalar(on, bind(fillTemplate(template(undefined, formula), adapter, data).sql, ...Q2));
+  async function bySegment(on: PGlite, formula?: string): Promise<Record<string, number | null>> {
+    const res = await on.query<Record<string, unknown>>(bind(fillTemplate(template("by_segment", formula), adapter, data).sql, ...Q2));
+    return Object.fromEntries(res.rows.map((r) => [String(r.segment), r.logo_churn_rate === null || r.logo_churn_rate === undefined ? null : Number(r.logo_churn_rate)]));
+  }
+
+  // Plain SQL over the fixture's own names.
+  const opening = (segment?: string) => `SELECT ${cu("customer_id")} FROM ${t("customer")} WHERE ${cu("snapshot_date")} = DATE '${Q2[0]}' AND ${cu("customer_status")} = 'active'`
+    + (segment ? ` AND ${cu("segment")} = '${segment}'` : "");
+  const churned = (rows = "") => `SELECT DISTINCT ${re("customer_id")} FROM ${t("revenue_event")} WHERE ${re("event_date")} BETWEEN DATE '${Q2[0]}' AND DATE '${Q2[1]}' AND ${re("event_type")} = 'churn'${rows}`;
+  const count = async (on: PGlite, sql: string) => (await scalar(on, `SELECT COUNT(*) FROM (${sql}) AS x`))!;
+  /** The rule since 2026-11-21: the churned customers among those of the first day, over those of the first day. */
+  const ofFirstDay = async (on: PGlite, segment?: string) => (await count(on, churned(` AND ${re("customer_id")} IN (${opening(segment)})`))) / (await count(on, opening(segment)));
+  /** The rule it replaced: every customer with a churn event in the period, by the segment the event carries. */
+  const everyChurn = async (on: PGlite, segment?: string) => (await count(on, churned(segment ? ` AND ${re("segment")} = '${segment}'` : ""))) / (await count(on, opening(segment)));
+
+  it("counts a churned customer only when they were a customer on the first day", async () => {
+    const customers = await count(planted, opening());
+    expect(await company(planted)).toBeCloseTo(await ofFirstDay(planted), 12);
+    // c05 and c08 opened the quarter as customers; c18 did not.
+    expect(await company(planted)).toBeCloseTo(2 / customers, 12);
+    expect(await company(planted, REPLACED)).toBeCloseTo(await everyChurn(planted), 12);
+    expect(await company(planted, REPLACED)).toBeCloseTo(3 / customers, 12);
+  });
+
+  it("by segment: each customer counts in the segment held on the first day", async () => {
+    const rows = await bySegment(planted);
+    expect(Object.keys(rows).sort()).toEqual(SEGMENTS);
+    for (const g of SEGMENTS) expect(rows[g], g).toBeCloseTo(await ofFirstDay(planted, g), 12);
+    const replaced = await bySegment(planted, REPLACED);
+    for (const g of SEGMENTS) expect(replaced[g], g).toBeCloseTo(await everyChurn(planted, g), 12);
+    const [ent, mid] = [await count(planted, opening("enterprise")), await count(planted, opening("mid_market"))];
+    // c08 churns in mid_market, where it opened the quarter. By row it churned in enterprise, beside c18, who was never in the opening count.
+    expect(rows.mid_market).toBeCloseTo(2 / mid, 12);
+    expect(rows.enterprise).toBe(0);
+    expect(replaced.mid_market).toBeCloseTo(1 / mid, 12);
+    expect(replaced.enterprise).toBeCloseTo(2 / ent, 12);
+  });
+
+  it("with nobody joining and churning in the period and nobody changing segment the two readings agree", async () => {
+    expect(await company(db)).toBeCloseTo((await company(db, REPLACED))!, 12);
+    const [rows, replaced] = [await bySegment(db), await bySegment(db, REPLACED)];
+    for (const g of SEGMENTS) expect(rows[g], g).toBeCloseTo(replaced[g]!, 12);
+  });
+
+  it("Logo Retention Rate is one less the rate, for the company and per segment", async () => {
+    expect(await runTemplate(planted, data, "logo_retention_rate", ...Q2)).toBeCloseTo(1 - (await company(planted))!, 12);
+    const k = compileMetric("logo_retention_rate", { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! }, "by_segment");
+    const tpl = { ...data.queryTemplates.logo_retention_rate, fields: k.fields, datasets: k.datasets, parameterizedQuery: k.sql, placeholders: k.placeholders, breakdown: k.breakdown } as QueryTemplate;
+    const res = await planted.query<Record<string, unknown>>(bind(fillTemplate(tpl, adapter, data).sql, ...Q2));
+    const churn = await bySegment(planted);
+    expect(res.rows).toHaveLength(SEGMENTS.length);
+    for (const r of res.rows) expect(Number(r.logo_retention_rate), String(r.segment)).toBeCloseTo(1 - churn[String(r.segment)]!, 12);
   });
 });

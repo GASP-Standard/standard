@@ -259,7 +259,7 @@ describe("Company compile: the Acme adapter", () => {
 
   it("reports in sections and carries the model document", () => {
     const report = formatCompileReport(r, data);
-    for (const h of ["# Compiled GASP metrics: Acme SaaS", "**Mapping:** GASP adapter v1.1", "**Dialect:** snowflake (from the adapter's warehouse `snowflake`)", "**Period spine:** `gasp.period_spine`", "**Checks:** the compiled metrics pass", "## Staged", "- cohort:", "## Left out: unmapped (", "needs `", "## Model", "```yaml", `name: ${c.model.name}`, "gasp_staged_gasp_arr_o", `staged through 24 datasets, one row per period each but the cohort table \`${ACCOUNT_COHORTS.name}\`, one row per customer per period`, "A metric over the cohort table sums that table's rows for the period."]) expect(report).toContain(h);
+    for (const h of ["# Compiled GASP metrics: Acme SaaS", "**Mapping:** GASP adapter v1.1", "**Dialect:** snowflake (from the adapter's warehouse `snowflake`)", "**Period spine:** `gasp.period_spine`", "**Checks:** the compiled metrics pass", "## Staged", "- cohort:", "## Left out: unmapped (", "needs `", "## Model", "```yaml", `name: ${c.model.name}`, "gasp_staged_gasp_arr_o", `staged through 26 datasets, one row per period each but the cohort table \`${ACCOUNT_COHORTS.name}\`, one row per customer per period`, "A metric over the cohort table sums that table's rows for the period."]) expect(report).toContain(h);
     expect(formatCompileReport(r, data, { document: false })).not.toContain("```yaml");
     const text = compileModelFromText(JSON.stringify(acme), undefined, data, { metrics: "MRR", document: false });
     expect(text).toContain("**Compiled:** 1 metric (1 direct, 0 staged");

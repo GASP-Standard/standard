@@ -28,7 +28,7 @@ A case passes when an implementation loads `data/period_spine.sql` and the `data
 | --- | --- | --- | --- | --- |
 | `c01_cohort_nrr` | cohort | 2026-01-01 to 2026-06-30 | a cohort fixed at the opening of the period and followed through its events (Net Revenue Retention) | `(metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)` |
 | `c02_lag_mrr_growth_rate` | lag | 2026-01-01 to 2026-06-30 | the same aggregate one period earlier (period-over-period growth) | `(metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)` |
-| `c03_at_period_start_logo_churn_rate` | at period_start | 2026-01-01 to 2026-06-30 | a snapshot read at the opening of the period beside events inside it | `metric.churned_customers / metric.total_customers at period_start` |
+| `c03_at_period_start_logo_churn_rate` | at period_start | 2026-01-01 to 2026-06-30 | a snapshot read at the opening of the period beside events inside it | `metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)` |
 | `c04_total_ticket_distribution_by_type` | total | 2026-01-01 to 2026-06-30 | a share of the ungrouped total inside a breakdown | `count_distinct(field.ticket_id) / total(metric.ticket_volume)` |
 | `c05_period_bound_in_filter_win_rate` | period bound in filter | 2026-01-01 to 2026-06-30 | the reporting period bound to a field other than the dataset's time field (opportunities by close date on a snapshot) | `count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage in ('closed_won', 'closed_lost') and in_period(field.close_date))` |
 | `c06_to_date_ticket_backlog` | to_date | 2026-01-01 to 2026-06-30 | an aggregate cumulative from the start of history to the period end | `count_distinct(field.ticket_id where field.ticket_status in ('open', 'pending')) at period_end` |
@@ -40,7 +40,7 @@ A case passes when an implementation loads `data/period_spine.sql` and the `data
 | `c12_snapshot_mrr_month` | snapshot | 2026-06-01 to 2026-06-30 | a sum over a snapshot dataset for a month, read on the last snapshot date of the month | `sum(field.mrr where field.subscription_status = 'active') at period_end` |
 | `c13_snapshot_mrr_quarter` | snapshot | 2026-04-01 to 2026-06-30 | a sum over a snapshot dataset for a quarter, read on the last snapshot date of the quarter | `sum(field.mrr where field.subscription_status = 'active') at period_end` |
 | `c14_snapshot_total_customers_month` | snapshot | 2026-06-01 to 2026-06-30 | a distinct count over a snapshot dataset for a month, read on the last snapshot date of the month | `count_distinct(field.customer_id where field.customer_status = 'active') at period_end` |
-| `c15_at_period_start_logo_churn_rate_four_weeks` | at period_start | 2026-02-09 to 2026-03-08 | the opening value of a period that begins on the day a customer starts, read from the snapshot dated on the first day of the period | `metric.churned_customers / metric.total_customers at period_start` |
+| `c15_at_period_start_logo_churn_rate_four_weeks` | at period_start | 2026-02-09 to 2026-03-08 | the opening value of a period that begins on the day a customer starts, read from the snapshot dated on the first day of the period | `metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)` |
 
 ## Grading
 

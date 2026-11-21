@@ -606,6 +606,8 @@ GRR measures revenue retained from existing customers and leaves expansion out. 
 Logo Churn Rate = Customers lost in period / Customers at start of period × 100
 ```
 
+**Who is counted:** The customers active on the first day of the period, the same cohort NRR and GRR follow. A customer lost in the period counts when they were a customer on that day, so the rate stays between 0% and 100%. A customer who joins and churns inside the period appears in [Churned Customers](#churned-customers) and sits outside this rate.
+
 **Time period:** Monthly or annual basis. Always specify which.
 
 **Benchmarks (Monthly, per OpenView/High Alpha 2024):**
@@ -625,7 +627,7 @@ Logo Churn Rate = Customers lost in period / Customers at start of period × 100
 - Mid-market: 1-2% monthly typical
 - Enterprise: <1% monthly expected
 
-Logo Churn Rate is reported per customer segment.
+Logo Churn Rate is reported per customer segment. Each customer counts in the segment they held on the first day of the period.
 
 **What it tells you:** How many customers are leaving, regardless of their value. Important for understanding customer experience separate from revenue impact.
 

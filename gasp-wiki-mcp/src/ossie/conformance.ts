@@ -27,7 +27,7 @@
  */
 import type { MetricFormula, OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { formulaSource, type StagedReason } from "./metrics.js";
-import { cohortTableFor } from "./model.js";
+import { cohortTableFor, stagedReasonsOf } from "./model.js";
 import type { OssieDataset, OssieExport, OssieMetric, OssieSemanticModel } from "./types.js";
 import { OSSIE_VERSION, expressionText } from "./types.js";
 
@@ -72,6 +72,9 @@ export interface StagedCaseSpec {
   group?: ConformanceCase["group"];
 }
 
+/** The members of a customer cohort fixed on the first day of the period, as the compiled source states them. */
+const OPENING_MEMBERS = "SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active'";
+
 /**
  * One coverage entry per staged reason, in the order metrics.ts ranks the
  * reasons. Chosen for small datasets and for metrics the executed test suite
@@ -84,7 +87,10 @@ export const CONFORMANCE_CASES: ReadonlyArray<StagedCaseSpec> = [
     reason: "at period_start", entry: "logo_churn_rate", construct: "a snapshot read at the opening of the period beside events inside it",
     readings: [
       {
-        grade: "wrong", name: "closing_value", find: "snapshot_date = p.period_start", replace: "snapshot_date = p.period_end",
+        grade: "wrong", name: "closing_value",
+        // The denominator alone: the cohort in the numerator stays the customers of the first day.
+        find: `NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status = 'active' AND customer_id IN (${OPENING_MEMBERS}))), 0)`,
+        replace: "NULLIF(((SELECT COUNT(DISTINCT customer_id) FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active')), 0)",
         description: "the customers active on the last day of the period as the denominator, where the formula reads the first day",
       },
     ],
@@ -171,7 +177,9 @@ export function buildConformanceCases(data: StandardData, exp: OssieExport, spec
   return specs.map(({ reason, entry, construct, readings: listed, period = CONFORMANCE_PERIOD, label, group = "construct" }, i) => {
     const c = exp.coverage[entry];
     if (!c || c.kind !== "staged") throw new Error(`Conformance case ${entry} is not a staged entry (${c?.kind ?? "missing"})`);
-    if (c.reason !== reason) throw new Error(`Conformance case ${entry} is staged for "${c.reason}", not "${reason}"`);
+    // An entry can be staged for several reasons (a cohort formula that reads the opening of the period); coverage names the first.
+    const reasons = stagedReasonsOf(data, entry);
+    if (!reasons.includes(reason)) throw new Error(`Conformance case ${entry} is staged for "${reasons.join(", ")}", not "${reason}"`);
     const metric = metrics.get(c.ossieName);
     // A cohort table is cut to the columns this one metric reads.
     const staged = c.cohortTable && metric ? cohortTableFor(data, [metric]) : byName.get(c.stagedDataset);

@@ -113,7 +113,7 @@
       "construct": "a snapshot read at the opening of the period beside events inside it",
       "metric": "gasp_logo_churn_rate",
       "gasp_id": "logo_churn_rate",
-      "formula": "metric.churned_customers / metric.total_customers at period_start",
+      "formula": "metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "period": {
         "start": "2026-01-01",
@@ -539,7 +539,7 @@
       "construct": "the opening value of a period that begins on the day a customer starts, read from the snapshot dated on the first day of the period",
       "metric": "gasp_logo_churn_rate",
       "gasp_id": "logo_churn_rate",
-      "formula": "metric.churned_customers / metric.total_customers at period_start",
+      "formula": "metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "period": {
         "start": "2026-02-09",

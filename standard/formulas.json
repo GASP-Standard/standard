@@ -139,12 +139,12 @@
       "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
     },
     "logo_churn_rate": {
-      "formula": "metric.churned_customers / metric.total_customers at period_start",
+      "formula": "metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "by_segment returns one row per customer segment, since SMB logos usually churn at several times the enterprise rate."
+      "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): a churned customer counts when they were a customer on that day, so the rate stays between 0 and 1. A customer who joins and churns inside the period shows in Churned Customers and is outside this rate. by_segment returns one row per customer segment with each customer in the segment held on the first day, since SMB logos usually churn at several times the enterprise rate."
     },
     "revenue_churn_rate": {
       "formula": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start",
@@ -637,7 +637,7 @@
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "by_segment returns one row per customer segment through Logo Churn Rate."
+      "notes": "Follows the customers active on the first day of the period, as Logo Churn Rate does. by_segment returns one row per customer segment through Logo Churn Rate. The customer_counts variant reads the closing count less the new customers, so it is lower by one for each customer who joins and churns inside the period."
     },
     "health_score": {
       "formula": "avg(field.composite_score where field.customer_status = 'active') at period_end",

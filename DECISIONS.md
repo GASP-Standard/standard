@@ -5,6 +5,46 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] Research articles on gaspwiki.com under /research
+**Decision:** The standard's site gains a `/research` section for long-form articles, opened on the owner's word with "A churn rate is six decisions" (`/research/how-churn-is-calculated`). An article is one Markdown file in `gasp-wiki-frontend/src/content/research/` (the `research` content collection), rendered by `src/pages/research/[slug].astro` and served again as plain Markdown at `/research/<slug>.md` by `[slug].md.ts`. The layout follows the article on the owner's other site that was named as the template: a header band with a kicker, a title and section headings with one phrase in the accent colour, a byline with the date, sourced quotations with the attribution beneath, pull quotes, and closing sections for the standard's answers, the findings, the sources and a glossary.
+
+**Context:** The site had reference pages and no place for an argument. The reasons behind a formula lived in `DECISIONS.md`, which few readers of a metric page open. The Logo Churn Rate change of the same day needed an account a finance reader could follow, with the published definitions it was measured against (Steven Noble's 2011 post for Shopify, Netflix's 2004 annual report, Peloton's annual reports for fiscal 2023 and 2026, David Skok on negative churn).
+
+**Alternatives considered:**
+- A page under `/v1`: that tree is the standard itself, carries TechArticle markup and the docs sidebar, and an article with a byline and a date is a different kind of page.
+- An `.astro` page per article: the Markdown twin would then be a second copy kept by hand.
+- Publishing on the commercial site: the article states the standard's positions in the standard's voice and names no product.
+
+**Consequences:**
+- An article restates the standard in prose, the drift surface `CLAUDE.md` warns about. `consistency.test.ts` ("Research articles") holds each article to the source: every formula block equals `standard/formulas.json`, every sentence quoted from the standard is in the named file, every internal link is a route and the prose follows the writing style. A formula or a quoted sentence that changes fails the article until it is rewritten.
+- The article is signed and dated, the one place on the site with a byline. The reference pages keep their neutral voice.
+- The article names one question as open: whether Revenue Churn Rate takes the day-one rule. When the owner decides it, the paragraph under "Gross or net" is rewritten in the same change.
+- `/research` is in the Resources menu, the footer, the sitemap and `llms.txt`. Article pages carry Article and BreadcrumbList JSON-LD, `article:published_time` and a `text/markdown` alternate link.
+
+---
+
+## [2026-11-21] Logo Churn Rate follows the customers of the first day of the period
+**Decision:** Logo Churn Rate becomes a cohort formula within `v1`, on the owner's word (2026-11-21): `metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)`. A churned customer counts when they were a customer on the first day of the period. Logo Retention Rate reads `1 - metric.logo_churn_rate` and follows the same customers. Their `by_segment` breakdowns take the rule recorded below for NRR and GRR: each customer counts in the segment the customer snapshot gives on that day.
+
+**Context:** The numerator counted every customer with a churn event in the period and the denominator counted the customers of the first day. A customer who joined and churned inside the period was in the first count and absent from the second, so the rate could pass 100% in a small segment. By segment the numerator read the segment on the churn event and the denominator the opening snapshot's, so a customer who changed segment and then churned counted against a segment whose opening count never held them. The record below left this open for the owner. On the fixture over the second quarter, with one customer planted to join in May and churn in June and one moved from Mid-Market to Enterprise before it churns, the company rate read 3 of 15 where 2 of the 15 opening customers churned. Enterprise read 2 of 4 with none of its four opening customers lost and Mid-Market read 1 of 5 with two lost.
+
+**Alternatives considered:**
+- Keep the formula and fix the breakdown alone, reading the churned customer's opening segment: the segment rates would reconcile while the company rate still counted customers its denominator never held.
+- Add the period's new customers to the denominator: every churned customer is then in both counts and the rate falls for any company that is growing, a different metric from the one the benchmarks quote.
+- Leave it: rejected by the owner.
+
+**Consequences:**
+- A published number changes for a company with a customer who joins and churns inside one reporting period or who changes segment and then churns in it. The company rate drops by one customer for each of the first kind. With neither kind every value is the same, which the regression test shows on the unplanted fixture.
+- The rate stays between 0 and 1. Churned Customers still counts every churn event in the period, so the difference between the two is the customers who joined and left inside it.
+- The `customer_counts` variant of Logo Retention Rate keeps its own reading (the closing count less the new customers, over the opening count) and is lower by one for each such customer. Its formula is unchanged.
+- The two entries and their `by_segment` breakdowns are staged for two reasons, the cohort and the opening of the period. Coverage names the first, so `coverage.json` moves four entries from at period_start (34 to 30) to cohort (12 to 16) with the totals unchanged at 193 direct, 170 staged and 15 not computable. Their aggregates count distinct customers, which the cohort table does not carry, so each keeps its per-period staged dataset.
+- The breakdowns read `segment` from the customer snapshot alone, where the numerator needed it on `revenue_event`. The Acme example maps it on `customer` only, so it now compiles both: 51 metrics (17 direct, 34 staged through 26 datasets), where it compiled 49.
+- The conformance cases `c03_at_period_start_logo_churn_rate` and `c15_at_period_start_logo_churn_rate_four_weeks` keep their names, expected values and reading values, the posted 1/14 and 1/13 among them. Their models, reference queries and reading queries gain the cohort's membership filter. The generator accepts a case whose entry is staged for the case's reason among others (`stagedReasonsOf` in `ossie/model.ts`) and the `closing_value` reading of c03 swaps the denominator alone.
+- Revenue Churn Rate and Expansion Rate have the same shape (movements in the period over MRR at period start, by the segment on each row) and are unchanged. A call for the owner.
+- `test/formula-fixes.test.ts` plants the two customers and checks the compiled metric and its breakdown against plain SQL under both readings.
+
+---
+
 ## [2026-11-21] NRR and GRR by segment group the cohort by the segment held at period start
 **Decision:** The `by_segment` breakdowns of Net Revenue Retention (NRR) and Gross Revenue Retention (GRR) change within `v1`, on the owner's word (2026-11-21). Each customer active on the first day of the period counts in the segment the customer snapshot gives them on that day. Every snapshot and event of theirs in the period counts there with them. The rule is general and lives in the compiler: under `over cohort`, a breakdown by a field the cohort key's dataset carries groups the members and leaves the rows they own ungrouped. NRR and GRR are the two entries it reaches today. With the rule in place both breakdowns are served by the cohort table `gasp_account_cohorts`, which gains a `segment` column beside the customer key.
 
@@ -22,7 +62,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 - A segment with no customer active at period start has no opening MRR and its rate is NULL, as a ratio over zero is. The rows come from the customer snapshot's distinct segments.
 - The reference export serves nine entries from the cohort table and goes from 164 staged datasets to 162 for the same 170 staged entries. `gasp_nrr_by_segment` and `gasp_grr_by_segment` carry the expression of `gasp_nrr` and `gasp_grr` with `gasp_breakdown: segment`. A consumer groups by `gasp_account_cohorts.segment`. The extension schema is unchanged, so `gasp-ossie-validator` 0.1.1 passes the new files.
 - The compile targets carry the column by its role: a dimension in the Snowflake view, a string dimension in the Cube cube and a categorical dimension in the dbt semantic model.
-- Churn and the MRR movement metrics keep grouping by the segment on the event, as `cel.md` describes. Logo Churn Rate by segment is not over a cohort in the grammar: its numerator reads the event's segment and its denominator the customer snapshot at period start, so a customer who changes segment and then churns in the same period counts against the new segment's opening count. Left as it is and noted for the owner.
+- Churn and the MRR movement metrics keep grouping by the segment on the event, as `cel.md` describes. Logo Churn Rate by segment is not over a cohort in the grammar: its numerator reads the event's segment and its denominator the customer snapshot at period start, so a customer who changes segment and then churns in the same period counts against the new segment's opening count. Left as it is and noted for the owner, who changed it the same day (the record above).
 - `test/formula-fixes.test.ts` plants the two movers and checks the compiled breakdowns against plain SQL under both readings; `test/ossie-model.test.ts` plants the same two and checks the table grouped by segment against the per-period source in every period.
 
 ---

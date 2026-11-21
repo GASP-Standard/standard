@@ -6,9 +6,9 @@
     "notComputable": 15
   },
   "stagedReasons": {
-    "cohort": 12,
+    "cohort": 16,
     "lag": 6,
-    "at period_start": 34,
+    "at period_start": 30,
     "total": 6,
     "period bound in filter": 93,
     "to_date": 4,
@@ -369,13 +369,13 @@
       "kind": "staged",
       "ossieName": "gasp_logo_churn_rate",
       "stagedDataset": "gasp_staged_gasp_logo_churn_rate",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "logo_churn_rate:by_segment": {
       "kind": "staged",
       "ossieName": "gasp_logo_churn_rate_by_segment",
       "stagedDataset": "gasp_staged_gasp_logo_churn_rate_by_segment",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "revenue_churn_rate": {
       "kind": "staged",
@@ -1268,7 +1268,7 @@
       "kind": "staged",
       "ossieName": "gasp_logo_retention_rate",
       "stagedDataset": "gasp_staged_gasp_logo_retention_rate",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "logo_retention_rate:customer_counts": {
       "kind": "staged",
@@ -1280,7 +1280,7 @@
       "kind": "staged",
       "ossieName": "gasp_logo_retention_rate_by_segment",
       "stagedDataset": "gasp_staged_gasp_logo_retention_rate_by_segment",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "health_score": {
       "kind": "direct",

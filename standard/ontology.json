@@ -6611,7 +6611,7 @@
       ]
     },
     "logo_churn_rate": {
-      "expression": "metric.churned_customers / metric.total_customers at period_start",
+      "expression": "metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "churned_customers",

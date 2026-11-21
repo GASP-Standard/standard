@@ -20,7 +20,7 @@ import { metricFormulaId, isMetricStub } from "../loader.js";
 import { metricUrl } from "../urls.js";
 import type { Metric, OntologyDataset, OntologyField, StandardData } from "../types.js";
 import { ACCOUNT_COHORTS, type CohortTableSpec } from "./cohorts.js";
-import { breakdownOf, emitMetric, formulaSource, type EmitContext } from "./metrics.js";
+import { breakdownOf, emitMetric, formulaSource, type EmitContext, type StagedReason } from "./metrics.js";
 import { metricName, ossieDataType, physicalSource } from "./names.js";
 import { profileExpression } from "./portability.js";
 import {
@@ -251,6 +251,17 @@ export function cohortTableFor(data: StandardData, metrics: OssieMetric[], t: Mo
   }
   if (!names.length) return undefined;
   return cohortDataset(spec, spec.columns.map((c) => c.name).filter((c) => used.has(c)), names, compileContextOf(data), t, [...dimensions].sort());
+}
+
+/**
+ * Every reason a coverage entry (`<formula id>` or `<formula id>:<form, variant or breakdown>`) is staged for,
+ * in the order metrics.ts ranks them. Coverage records the first; an entry over a cohort that also reads
+ * the opening of the period has both. Empty for a direct or not computable entry.
+ */
+export function stagedReasonsOf(data: StandardData, entry: string, t: ModelTarget = REFERENCE_TARGET): StagedReason[] {
+  const [id, variant] = entry.split(":");
+  const emission = emitMetric(id, { ...compileContextOf(data), ref: t.ref }, variant);
+  return emission.kind === "staged" ? emission.reasons : [];
 }
 
 const FORM_LABEL: Record<string, string> = { O: "Operating form", M: "Market form" };
