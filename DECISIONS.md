@@ -5,6 +5,34 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] Contracted ARR (CARR) is a metric of its own beside ARR, by the SaaS Metrics Standards Board's definition
+**Decision:** The owner's call on 2026-11-21. ARR stays exactly as it is. CARR (Contracted Annual Recurring Revenue), also called Committed ARR, is added as a Finance metric and a graph node, `carr`: ARR plus the Annual Contract Value (ACV) of each new contract signed on or before period end whose start date is later. The formula is `metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date`. Churn and downgrades come off on the day they take effect, through ARR. This is the first of two steps. The second is a variant that also nets out churn known ahead of time, which is how Bessemer reads the same name.
+
+**Context:** The fixed-term record below left an adjusted ARR open and offered two shapes. The owner asked why a variant was recommended when the industry reports a metric of its own, then chose the metric, added beside ARR and replacing nothing. The published definitions were read by page on 2026-11-21 and they differ on one point.
+
+The SaaS Metrics Standards Board (https://www.saasmetricsboard.com/contracted-annual-recurring-revenue): "Contracted Annual Recurring Revenue (CARR) is defined as contracted annual recurring revenue, whether in production or not yet in production." Its formula is "CARR = (MRR¹ x 12) + Contracted but not yet recognized ARR²". On churn: "CARR should be reduced by churned ARR in the accounting period the down-sell or churn contractually occurs. Churned ARR should not be deducted from CARR upon learning about known churn in the future." It adds that "Committed ARR is a term that is used synonymously with Contracted ARR (CARR)."
+
+Bessemer (https://www.bvp.com/atlas/scaling-to-100-million): "CARR (Committed ARR) builds on the ARR concept by adding committed but not yet live contract values to total ARR and netting out forecasted churn or downsell." Its 2012 definition of CMRR (https://www.bvp.com/atlas/cloud-computing-metrics) takes off churn from customers who "are anticipated to" turn the service off.
+
+So the standards body and the investor agree on the addition and split on the subtraction. The owner chose both readings in order: the Board's as the metric, since it is the published standard and the rule ARR already follows for a fixed term, and Bessemer's as a named variant to follow.
+
+**Alternatives considered:**
+- An `adjusted` variant on MRR and ARR that filters on `change_nature`: convenient, since the tag exists, and the first recommendation. The industry reports no such figure under that name, so it fails the owner's rule that the standard takes current industry practice.
+- Bessemer's reading as the metric: it needs a rule for what counts as known churn before the number means one thing, and the standards body says in terms that known future churn stays in.
+- Renaming or replacing ARR: never on the table. The Board says the two "should not be used interchangeably".
+
+**Consequences:**
+- 314 metrics, 302 formula entries, 105 graph nodes (70 metrics) and 213 edges. The new edges are derived: `component` from ARR and `measures` to the customer and subscription entities. No existing formula or value changes.
+- The line under ARR in `standard/metrics/core.md` listed CARR and CMRR as other names for ARR. That came from the consumption decision of 2026-11-08, where "committed" meant commitments without uncommitted usage. The line now keeps Committed ARR and Baseline ARR in that sense and points CARR to its own metric. The same sentence under ARR Including Usage Run-Rate in `finance.md` is corrected. Lookups of "CARR" now resolve to the new metric through its heading.
+- What the formula reads: `acv`, `contract_event_type`, `contract_start` and `event_date` on `contract_event`, beside the MRR snapshot ARR reads. ACV is recurring only and one year, which is the Board's rule for services, overage and multi-year agreements.
+- Two limits, stated on the metric page. Only new contracts are added: the contract ledger carries the annual value of a whole contract, so an upgrade or a renewal uplift signed for a later date enters with ARR when it takes effect (the Board's page is silent on these). A contract cancelled before its start date stays in until that date, since a cancellation event carries no annual value to net against.
+- In the Ossie export CARR is staged (reason `to_date`). It sits in Finance, so the Core example and apache/ossie #773 are untouched.
+- A mapping that covers ARR and has no contract table scores CARR as partly covered, so `generate_checks` now lists the contract table's freshness check among those it cannot run. The Stripe example goes from 36 checks to 37 with the same 18 runnable.
+- `test/execute.test.ts` plants contracts in its own database: one signed in May for a June start adds its ACV to May alone, at the end of June only the contract starting in July is added, and an early renewal, a contract signed after the period and notice of a September ending change nothing.
+- Open: the variant net of known churn (`TODO.md`, next steps item 0).
+
+---
+
 ## [2026-11-21] A fixed-term project stays in MRR and ARR until its contract ends and `change_nature` is the filter
 **Decision:** The owner's call on 2026-11-21. A subscription or an add-on with a set end date (a three, six or nine month project, a seasonal add-on) counts in MRR, and so in ARR as MRR multiplied by twelve, until the day its contract ends. Its ending is Contraction MRR when the customer stays and Churned MRR with a churned customer when they leave, in the period it happens, in every standard figure: Revenue Churn Rate, Logo Churn Rate, Net Revenue Retention (NRR) and Gross Revenue Retention (GRR). No formula changes and no published number moves. The filter is the tag the ledger already carries, `change_nature`: `temporary` on the movement that brings the revenue in and `scheduled_reversal` on the one that ends it. `standard/cel.md` now says in words that a whole subscription sold for a fixed term takes the same pair as an add-on (its `new` event and the `churn` event that ends the term), which the Adjusted NRR definition already implied by naming churn events that are not permanent. `standard/metrics/core.md` states the rule under MRR and ARR.
 

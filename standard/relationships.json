@@ -337,6 +337,14 @@
       "slug": "arr-including-usage-run-rate"
     },
     {
+      "id": "carr",
+      "label": "CARR",
+      "department": "Finance",
+      "signalType": "outcome",
+      "level": 1,
+      "slug": "carr-contracted-annual-recurring-revenue"
+    },
+    {
       "id": "partner_sourced_revenue",
       "label": "Partner-Sourced Revenue",
       "department": "Partnerships",
@@ -1087,6 +1095,11 @@
       "type": "component"
     },
     {
+      "source": "arr",
+      "target": "carr",
+      "type": "component"
+    },
+    {
       "source": "expansion_mrr",
       "target": "expansion_rate",
       "type": "component"
@@ -1277,6 +1290,11 @@
       "type": "measures"
     },
     {
+      "source": "carr",
+      "target": "entity_customer",
+      "type": "measures"
+    },
+    {
       "source": "churned_customers",
       "target": "entity_customer",
       "type": "measures"
@@ -1433,6 +1451,11 @@
     },
     {
       "source": "cac_payback",
+      "target": "entity_subscription",
+      "type": "measures"
+    },
+    {
+      "source": "carr",
       "target": "entity_subscription",
       "type": "measures"
     },

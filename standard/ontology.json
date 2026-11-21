@@ -408,6 +408,7 @@
       "burn_multiple",
       "cac",
       "cac_payback",
+      "carr",
       "carry_mrr",
       "churned_customers",
       "churned_mrr",
@@ -470,6 +471,7 @@
       "burn_multiple",
       "cac",
       "cac_payback",
+      "carr",
       "carry_mrr",
       "churned_customers",
       "churned_mrr",
@@ -875,7 +877,7 @@
         "crm"
       ],
       "description": "Annual contract value, recurring only",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "ad_spend",
@@ -1263,7 +1265,7 @@
         "cancellation"
       ],
       "description": "Contract milestone (CEL Contract_Event.event_type)",
-      "metricCount": 2
+      "metricCount": 3
     },
     {
       "id": "contract_start",
@@ -1280,7 +1282,7 @@
         "cs_platform"
       ],
       "description": "Contract start date",
-      "metricCount": 3
+      "metricCount": 4
     },
     {
       "id": "core_features_adopted",
@@ -1724,7 +1726,7 @@
         "product_analytics"
       ],
       "description": "Date the event occurred",
-      "metricCount": 70
+      "metricCount": 71
     },
     {
       "id": "event_id",
@@ -2666,7 +2668,7 @@
         "billing"
       ],
       "description": "Monthly recurring revenue of the subscription",
-      "metricCount": 17
+      "metricCount": 18
     },
     {
       "id": "mrr_change",
@@ -4053,7 +4055,7 @@
         "derived"
       ],
       "description": "As-of date of the snapshot row",
-      "metricCount": 173
+      "metricCount": 174
     },
     {
       "id": "sql_date",
@@ -4197,7 +4199,7 @@
         "paused"
       ],
       "description": "Subscription status",
-      "metricCount": 18
+      "metricCount": 19
     },
     {
       "id": "survey_completed",
@@ -5481,6 +5483,7 @@
     "usage_run_rate": "Usage Run-Rate",
     "prepaid_credit_balance": "Balances (to date)",
     "arr_including_usage_run_rate": "Usage Run-Rate",
+    "carr": "ARR",
     "credit_breakage": "Consumption Revenue",
     "consumption_revenue_growth_rate": "Consumption Revenue",
     "consumption_net_revenue_retention": "NRR / GRR (trailing 12 months)"
@@ -6210,7 +6213,8 @@
       "consumption_revenue":         { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "usage_run_rate":              { "sensitivityTier": "confidential", "accessScope": "unscoped" },
       "prepaid_credit_balance":      { "sensitivityTier": "confidential", "accessScope": "unscoped" },
-      "arr_including_usage_run_rate": { "sensitivityTier": "confidential", "accessScope": "unscoped" }
+      "arr_including_usage_run_rate": { "sensitivityTier": "confidential", "accessScope": "unscoped" },
+      "carr": { "sensitivityTier": "confidential", "accessScope": "unscoped" }
     }
   },
   "structuredFormulas": {
@@ -6358,6 +6362,25 @@
         "mrr",
         "period_start",
         "revenue",
+        "snapshot_date",
+        "subscription_status"
+      ]
+    },
+    "carr": {
+      "expression": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date",
+      "inputs": [
+        {
+          "ref": "arr",
+          "role": "addend",
+          "polarity": "positive"
+        }
+      ],
+      "fields": [
+        "acv",
+        "contract_event_type",
+        "contract_start",
+        "event_date",
+        "mrr",
         "snapshot_date",
         "subscription_status"
       ]

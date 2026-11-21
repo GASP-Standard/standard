@@ -958,6 +958,9 @@
     "finance::arr-including-usage-run-rate": {
       "primary": "outcome"
     },
+    "finance::carr-contracted-annual-recurring-revenue": {
+      "primary": "outcome"
+    },
     "finance::credit-breakage": {
       "primary": "outcome"
     },

@@ -8305,6 +8305,40 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= DATEADD(month, -3, DATEADD(day, 1, p.period_end)) AND event_date <= p.period_end AND (credit_event_type = 'consumption' AND consumption_basis = 'on_demand'))) * 4)))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 3 MONTH) AND event_date <= p.period_end AND (credit_event_type = 'consumption' AND consumption_basis = 'on_demand'))) * 4)))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= DATEADD(MONTH, -3, DATEADD(DAY, 1, p.period_end)) AND event_date <= p.period_end AND (credit_event_type = 'consumption' AND consumption_basis = 'on_demand'))) * 4)))) AS value FROM gasp.period_spine p
+  - name: gasp_staged_gasp_carr
+    source: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (SELECT COALESCE(SUM(acv), 0) FROM gasp.contract_event WHERE event_date <= p.period_end AND (contract_event_type = 'new_contract' AND contract_start > p.period_end)))) AS value FROM gasp.period_spine p
+    description: "Staged dataset for gasp_carr: one row per reporting period holding the metric value, computed by the GASP compiled query (needs to_date, period bound in filter)."
+    primary_key:
+      - period_start
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: CARR (Contracted Annual Recurring Revenue) for the period
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          staged: true
+          for: gasp_carr
+          reason: to_date
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (SELECT COALESCE(SUM(acv), 0) FROM gasp.contract_event WHERE event_date <= p.period_end AND (contract_event_type = 'new_contract' AND contract_start > p.period_end)))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (SELECT COALESCE(SUM(acv), 0) FROM gasp.contract_event WHERE event_date <= p.period_end AND (contract_event_type = 'new_contract' AND contract_start > p.period_end)))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) * 12)) + (SELECT COALESCE(SUM(acv), 0) FROM gasp.contract_event WHERE event_date <= p.period_end AND (contract_event_type = 'new_contract' AND contract_start > p.period_end)))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_consumption_revenue_growth_rate
     source: SELECT p.period_start, p.period_end, ((CAST((((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND credit_event_type = 'consumption'))) - ((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= (p.period_start - INTERVAL '1 month') AND event_date <= (((p.period_end + INTERVAL '1 day') - INTERVAL '1 month') - INTERVAL '1 day') AND credit_event_type = 'consumption')))) AS DOUBLE PRECISION) / NULLIF(((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= (p.period_start - INTERVAL '1 month') AND event_date <= (((p.period_end + INTERVAL '1 day') - INTERVAL '1 month') - INTERVAL '1 day') AND credit_event_type = 'consumption'))), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_consumption_revenue_growth_rate: one row per reporting period holding the metric value, computed by the GASP compiled query (needs lag)."
@@ -14379,6 +14413,23 @@ metrics:
           gasp_version: "1"
           unit: currency
           formula: metric.arr + metric.usage_run_rate
+          staged: true
+  - name: gasp_carr
+    expression:
+      sql: SUM(gasp_staged_gasp_carr.value)
+    description: CARR (Contracted Annual Recurring Revenue). Annual Recurring Revenue (ARR) plus the annual recurring value of contracts that are signed and have not yet started, as of period end. Also called Committed ARR. Committed Monthly Recurring Revenue (CMRR) is the same figure stated monthly.
+    datatype: Decimal
+    ai_context:
+      synonyms:
+        - CARR
+      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/finance/carr-contracted-annual-recurring-revenue. Staged (to_date): gasp_staged_gasp_carr holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          gasp_id: carr
+          gasp_version: "1"
+          unit: currency
+          formula: metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date
           staged: true
   - name: gasp_credit_breakage
     expression:

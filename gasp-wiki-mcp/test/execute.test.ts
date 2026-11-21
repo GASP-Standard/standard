@@ -3,6 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
 import { buildAdapter, addDays, START, END, type Row } from "./fixture/generate.js";
 import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate } from "./fixture-db.js";
+import { TABLES, columnName } from "../src/synthetic.js";
 
 // Runs the compiled SQL. The fixture (test/fixture) is loaded into an in-process
 // Postgres, every template is filled from the fixture's per-dataset adapter and
@@ -676,5 +677,53 @@ describe("hand-computed metric values, credit ledger", () => {
 
   it("Consumption NRR has no value: the ledger holds no consumption twelve months before June 2026", async () => {
     expect(await runFormula("consumption_net_revenue_retention", "2025-07-01", END)).toBeNull();
+  });
+});
+
+// CARR (Contracted ARR) is ARR plus the annual value of new contracts signed by
+// period end that start later (finance.md, the SaaS Metrics Standards Board
+// formula). Every contract in the synthetic data starts on the day it is signed,
+// so the contracts that wait for a start date are planted in this block's own database.
+describe("Contracted ARR (CARR)", () => {
+  let own: PGlite;
+  const table = TABLES.contract_event;
+  const col = (f: string) => columnName("contract_event", f);
+  const months = [["2026-04-01", "2026-04-30"], ["2026-05-01", "2026-05-31"], ["2026-06-01", END]] as const;
+
+  /** Copy a new contract row as another contract event with its own dates and annual value. */
+  async function plantContract(id: string, type: string, signed: string, start: string, end: string, acv: number) {
+    await own.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${table} WHERE ${col("contract_event_type")} = 'new_contract' LIMIT 1;
+      UPDATE planted SET ${col("event_id")} = '${id}', ${col("contract_event_type")} = '${type}', ${col("event_date")} = '${signed}',
+        ${col("contract_start")} = '${start}', ${col("contract_end")} = '${end}', ${col("acv")} = ${acv}, ${col("tcv")} = ${acv};
+      INSERT INTO ${table} SELECT * FROM planted;
+      DROP TABLE planted;`);
+  }
+
+  beforeAll(async () => {
+    own = await fixtureDb();
+    await plantContract("p_may", "new_contract", "2026-05-20", "2026-06-15", "2027-06-14", 12000);
+    await plantContract("p_june", "new_contract", "2026-06-10", "2026-07-15", "2027-07-14", 24000);
+    await plantContract("p_july", "new_contract", "2026-07-02", "2026-08-01", "2027-07-31", 36000);
+    await plantContract("p_renewal", "renewal", "2026-06-20", "2026-09-01", "2027-08-31", 50000);
+    await plantContract("p_notice", "cancellation", "2026-06-25", "2025-10-01", "2026-09-30", 0);
+  }, 120_000);
+
+  afterAll(async () => { await own?.close(); });
+
+  it("equals ARR while every contract starts on the day it is signed", async () => {
+    for (const [start, end] of months) expect(await run("carr", start, end), end).toBe(await run("arr", start, end));
+    expect(await run("carr", ...JUNE)).toBe(290400);
+  });
+
+  it("adds a contract signed in May for a June start to May and to no later month", async () => {
+    expect(await runTemplate(own, data, "carr", ...months[1])).toBe((await run("arr", ...months[1]))! + 12000);
+    expect(await runTemplate(own, data, "carr", ...months[0])).toBe(await run("arr", ...months[0]));
+  });
+
+  it("at the end of June holds the contract that starts in July alone", async () => {
+    // p_may has started and left the second term, p_july is signed after the period,
+    // a renewal signed early adds nothing and notice of an ending in September takes nothing off.
+    expect(await runTemplate(own, data, "carr", ...JUNE)).toBe(290400 + 24000);
+    expect(await runTemplate(own, data, "arr", ...JUNE)).toBe(290400);
   });
 });

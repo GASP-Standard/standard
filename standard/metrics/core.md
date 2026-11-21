@@ -81,7 +81,7 @@ ARR = MRR × 12
 
 **Include:** Same inclusions/exclusions as MRR, annualised. A fixed-term subscription or a temporary add-on is annualised like any other MRR until its contract ends. ARR is a run rate, so an ending that is known in advance comes off on the day it happens. The `change_nature` tag on the ledger marks that revenue for anyone who filters on it.
 
-**Industry equivalents:** Committed ARR, CARR (Committed Annual Recurring Revenue), Baseline ARR and CMRR (Committed Monthly Recurring Revenue, annualised). GASP's ARR includes contractual commitments and leaves uncommitted usage out, which is what each of these names describes. Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
+**Industry equivalents:** Consumption companies call this figure Committed ARR or Baseline ARR: GASP's ARR includes contractual commitments and leaves uncommitted usage out. Contracted ARR (CARR), which adds contracts that are signed and have not yet started, is a metric of its own: [CARR](finance.md#carr-contracted-annual-recurring-revenue). Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
 
 ARR is reported per customer segment.
 

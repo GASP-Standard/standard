@@ -1599,6 +1599,11 @@
       "unit": "currency",
       "notes": "What consumption companies print as ARR: committed ARR plus annualised uncommitted usage. GASP keeps ARR committed and names the combined figure, so the two cannot be confused."
     },
+    "carr": {
+      "formula": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date",
+      "unit": "currency",
+      "notes": "Contracted ARR, also called Committed ARR: ARR plus the annual contract value of each new contract signed on or before period end whose start date is later. The SaaS Metrics Standards Board formula, (MRR x 12) + contracted but not yet recognised ARR. A contract leaves the second term on its start date and enters ARR through MRR, so it is counted once. Churn and downgrades come off through ARR on the day they take effect, as the Board states, never on notice. ACV is recurring only and one year of a multi-year agreement. An upgrade or a renewal uplift signed for a later date enters when it takes effect."
+    },
     "credit_breakage": {
       "formula": "-sum(field.credit_amount where field.credit_event_type = 'expiry')",
       "unit": "currency",

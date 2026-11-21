@@ -60,6 +60,49 @@ See [Core Metrics: MRR](core.md#mrr-monthly-recurring-revenue) and [ARR](core.md
 
 ---
 
+### CARR (Contracted Annual Recurring Revenue)
+
+**Definition:** Annual Recurring Revenue (ARR) plus the annual recurring value of contracts that are signed and have not yet started, as of period end. Also called Committed ARR. Committed Monthly Recurring Revenue (CMRR) is the same figure stated monthly.
+
+**Formula:**
+```
+CARR = ARR + Contracted ARR not yet started
+```
+
+**Include:**
+- [ARR](core.md#arr-annual-recurring-revenue) at period end
+- The Annual Contract Value (ACV) of each new contract signed on or before period end whose start date is after period end
+
+**Exclude:**
+- One-time fees, professional services and usage above a commitment, as in ARR
+- The later years of a multi-year agreement: a contract adds one year of recurring value
+- A signed contract once it has started: from its start date it is in ARR and leaves the second term
+
+**When churn comes off:** A cancellation or a downgrade reduces CARR on the day it takes effect, through ARR. Notice of a future ending changes nothing until that day. This is the SaaS Metrics Standards Board's rule and the one ARR follows for a [fixed-term subscription](core.md#mrr-monthly-recurring-revenue). Bessemer's definition also nets out churn that is known ahead of time, so a figure reported as CARR needs its churn rule stated beside it.
+
+**Signed changes to a live contract:** An upgrade or a renewal uplift signed for a later date enters CARR when it takes effect, with ARR. The contract ledger carries the annual value of a whole contract, so the formula reads new contracts alone.
+
+**A contract cancelled before it starts:** It stays in CARR until its start date and then drops out, since it never reaches ARR. A cancellation on the contract ledger carries no annual value to net against the contract it ends, so a company with many of these states the amount beside the figure.
+
+**Relation to ARR:** CARR is ARR or more. The gap is the recurring revenue under contract and waiting for its start date, which the industry calls contracted and not yet live.
+
+**What it tells you:** The recurring revenue customers have signed for, started or not. A gap that grows faster than ARR shows sales closing faster than contracts start.
+
+**Common mistakes:**
+- Reporting Bookings as CARR: Bookings carry total contract value, every year of a multi-year agreement and services
+- Deducting a customer's revenue when notice arrives instead of when the contract ends
+- Counting a contract in both terms after it starts
+
+**Related metrics:** ARR, Bookings, ACV
+
+**Sources:**
+- [SaaS Metrics Standards Board: Contracted Annual Recurring Revenue](https://www.saasmetricsboard.com/contracted-annual-recurring-revenue)
+- [SaaS Metrics Standards Board: Annual Recurring Revenue](https://www.saasmetricsboard.com/annual-recurring-revenue)
+- [Bessemer: Scaling to $100 Million](https://www.bvp.com/atlas/scaling-to-100-million)
+- [Bessemer: Cloud computing metrics](https://www.bvp.com/atlas/cloud-computing-metrics)
+
+---
+
 ### Deferred Revenue
 
 See [RevOps](revops.md#deferred-revenue-balance) for the canonical definition: deferred revenue is a balance, cumulative billings to date minus cumulative revenue recognised to date. It arises on billing, not on cash receipt.
@@ -197,7 +240,7 @@ ARR Including Usage Run-Rate = ARR + Usage Run-Rate
 
 **No double counting:** ARR carries commitments and the overage realised above them; Usage Run-Rate carries on-demand consumption alone. Each dollar of usage sits in exactly one of the two.
 
-**Relation to ARR:** The GASP Standard keeps [ARR](core.md#arr-annual-recurring-revenue) committed, which is what the industry calls Committed ARR, CARR or Baseline ARR. Public consumption companies split between that policy and a usage-inclusive ARR, so the combined figure carries its own name and the two stay distinct.
+**Relation to ARR:** The GASP Standard keeps [ARR](core.md#arr-annual-recurring-revenue) committed: commitments in and uncommitted usage out, which consumption companies call Committed ARR or Baseline ARR. Public consumption companies split between that policy and a usage-inclusive ARR, so the combined figure carries its own name and the two stay distinct.
 
 **What it tells you:** The annual scale of the business with usage included, on a basis comparable to the ARR consumption companies report. The gap to ARR is the share of scale that no contract guarantees.
 
@@ -611,6 +654,7 @@ Bad Debt Rate = Bad debt expense / Revenue × 100
 | Metric | Type | Primary Indicator Of |
 |--------|------|---------------------|
 | ARR | Revenue | Business scale |
+| CARR | Revenue | Recurring revenue under contract, started or not |
 | Consumption Revenue | Revenue | Usage earned |
 | Usage Run-Rate | Revenue | Scale of uncommitted usage |
 | Prepaid Credit Balance | Revenue | Prepaid consumption not yet used |

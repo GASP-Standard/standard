@@ -1,6 +1,6 @@
 # GASP Standard
 
-**Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 313 metrics across 13 departments, 99 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 280 fields across 54 datasets, a relationship graph of 104 nodes and 210 edges plus an MCP server that gives AI agents all of it as structured tools.
+**Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 314 metrics across 13 departments, 99 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 280 fields across 54 datasets, a relationship graph of 105 nodes and 213 edges plus an MCP server that gives AI agents all of it as structured tools.
 
 The standard is published at **https://gaspwiki.com**. This repository holds its source and the tooling that compiles it. It works with Apache Ossie (incubating): `npm run derive` writes the standard out as Ossie files, which pass the upstream validator.
 
@@ -8,7 +8,7 @@ The standard is published at **https://gaspwiki.com**. This repository holds its
 
 | Path | What it is | Licence |
 | --- | --- | --- |
-| `standard/` | The canon. Metric definitions per department (`metrics/*.md`), the glossary (`definitions.md`), the Commercial Event Ledger (`cel.md`) and Attribution Taxonomy Layer (`atl.md`), the ontology (`ontology.json`: fields, datasets, 28 entities and 7 concepts), the formulas (`formulas.json`: 301 entries, 286 computable and 15 with the reason they are not), the signal taxonomy, the adapter schema and the relationship graph (`relationships.json`) | CC BY 4.0 (`standard/LICENSE`) |
+| `standard/` | The canon. Metric definitions per department (`metrics/*.md`), the glossary (`definitions.md`), the Commercial Event Ledger (`cel.md`) and Attribution Taxonomy Layer (`atl.md`), the ontology (`ontology.json`: fields, datasets, 28 entities and 7 concepts), the formulas (`formulas.json`: 302 entries, 287 computable and 15 with the reason they are not), the signal taxonomy, the adapter schema and the relationship graph (`relationships.json`) | CC BY 4.0 (`standard/LICENSE`) |
 | `standard/exports/` | Generated from the canon by `npm run derive`: the Neo4j Cypher export, the adapter template and the Apache Ossie ontology, reference semantic model and mapping | CC BY 4.0 |
 | `gasp-wiki-mcp/` | The MCP server, published on npm as [`gasp-standard-mcp`](https://www.npmjs.com/package/gasp-standard-mcp). The parser, formula grammar, SQL compiler, graph traversal, Ossie exporters and the test suite, which runs every compiled formula against a seeded dataset in an in-process Postgres | Apache 2.0 (`LICENSE`) |
 | `docs/` | Decision documents, the Ossie spike findings, the Ossie interop spec (`docs/ossie-interop-spec.md`) and the benchmark method and results (`docs/benchmark/`) | CC BY 4.0 |

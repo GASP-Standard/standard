@@ -2,7 +2,7 @@
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a dataset carrying the compiled SQL: one row per period, or the cohort table's one row per customer per period, marked cohortTable) or notComputable. Written by npm run derive.",
   "counts": {
     "direct": 193,
-    "staged": 170,
+    "staged": 171,
     "notComputable": 15
   },
   "stagedReasons": {
@@ -11,7 +11,7 @@
     "at period_start": 20,
     "total": 6,
     "period bound in filter": 93,
-    "to_date": 4,
+    "to_date": 5,
     "period_days": 2,
     "bucket": 1,
     "window": 7,
@@ -2950,6 +2950,12 @@
       "ossieName": "gasp_arr_including_usage_run_rate",
       "stagedDataset": "gasp_staged_gasp_arr_including_usage_run_rate",
       "reason": "window"
+    },
+    "carr": {
+      "kind": "staged",
+      "ossieName": "gasp_carr",
+      "stagedDataset": "gasp_staged_gasp_carr",
+      "reason": "to_date"
     },
     "credit_breakage": {
       "kind": "direct",
