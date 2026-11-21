@@ -727,3 +727,142 @@ describe("Contracted ARR (CARR)", () => {
     expect(await runTemplate(own, data, "arr", ...JUNE)).toBe(290400);
   });
 });
+
+// The two variants of CARR take churn off before it takes effect: the first reads
+// what the ledgers state as contract, the second the renewal forecast. Each planted
+// row is one a company would hold: a temporary add-on, a fixed-term project, notice
+// of an ending, a forecast below the current value.
+describe("CARR net of known churn and net of forecast churn", () => {
+  let known: PGlite;
+  let forecast: PGlite;
+  const months = [["2026-04-01", "2026-04-30"], ["2026-05-01", "2026-05-31"], ["2026-06-01", END]] as const;
+  const events = TABLES.revenue_event;
+  const ev = (f: string) => columnName("revenue_event", f);
+  const subs = TABLES.subscription;
+  const sub = (f: string) => columnName("subscription", f);
+  const contracts = TABLES.contract_event;
+  const con = (f: string) => columnName("contract_event", f);
+
+  /** A named variant compiled straight from formulas.json and run over a database. */
+  async function variant(on: PGlite, name: string, start: string, end: string): Promise<number | null> {
+    const { compileMetric } = await import("../src/compile.js");
+    const { fillTemplate } = await import("../src/tools.js");
+    const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
+    const c = compileMetric("carr", ctx, name);
+    const filled = fillTemplate({ ...data.queryTemplates.carr, fields: c.fields, datasets: c.datasets, parameterizedQuery: c.sql, placeholders: c.placeholders }, adapter, data);
+    expect([...filled.missingFields, ...filled.missingTables], name).toEqual([]);
+    const res = await on.query<Record<string, unknown>>(bind(filled.sql, start, end));
+    const value = Object.values(res.rows[0])[0];
+    return value === null || value === undefined ? null : Number(value);
+  }
+
+  /** Copy a revenue event as another customer's movement with its own tags. */
+  async function plantEvent(id: string, customer: string, date: string, type: string, change: number, nature: string, classification: string | null, subscription = `s${customer.slice(1)}`) {
+    await known.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${events} LIMIT 1;
+      UPDATE planted SET ${ev("event_id")} = '${id}', ${ev("customer_id")} = '${customer}', ${ev("subscription_id")} = '${subscription}',
+        ${ev("event_date")} = '${date}', ${ev("event_type")} = '${type}', ${ev("mrr_change")} = ${change}, ${ev("change_nature")} = '${nature}',
+        ${ev("expansion_classification")} = ${classification ? `'${classification}'` : "NULL"};
+      INSERT INTO ${events} SELECT * FROM planted;
+      DROP TABLE planted;`);
+  }
+
+  /** Add an amount to a customer's MRR on every snapshot from one day up to another, or to the end. */
+  async function addMrr(customer: string, amount: number, from: string, before?: string) {
+    await known.exec(`UPDATE ${subs} SET ${sub("mrr")} = ${sub("mrr")} + ${amount}
+      WHERE ${sub("customer_id")} = '${customer}' AND ${sub("snapshot_date")} >= '${from}'${before ? ` AND ${sub("snapshot_date")} < '${before}'` : ""}`);
+  }
+
+  beforeAll(async () => {
+    known = await fixtureDb();
+    forecast = await fixtureDb();
+
+    // A three-month add-on from May, $200 a month, due to end on 1 August.
+    await plantEvent("p_addon", "c01", "2026-05-01", "expansion", 200, "temporary", "same_product");
+    await addMrr("c01", 200, "2026-05-01");
+    // A six-month project from 10 April at $1,000 a month, as a subscription of its own.
+    await known.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${subs} WHERE ${sub("subscription_id")} = 's16' AND ${sub("snapshot_date")} >= '2026-04-10';
+      UPDATE planted SET ${sub("subscription_id")} = 'p_project', ${sub("customer_id")} = 'p_customer', ${sub("mrr")} = 1000,
+        ${sub("contract_start")} = '2026-04-10', ${sub("contract_end")} = '2026-10-09';
+      INSERT INTO ${subs} SELECT * FROM planted;
+      DROP TABLE planted;`);
+    await plantEvent("p_project", "p_customer", "2026-04-10", "new", 1000, "temporary", null, "p_project");
+    // An add-on from 5 April, $300 a month, due to end in July and ended early on 20 May.
+    await plantEvent("p_early", "c02", "2026-04-05", "expansion", 300, "temporary", "same_product");
+    await plantEvent("p_early_end", "c02", "2026-05-20", "contraction", -300, "scheduled_reversal", "same_product");
+    await addMrr("c02", 300, "2026-04-05", "2026-05-20");
+    // An add-on from 12 April, $150 a month, made permanent on 10 June: the temporary
+    // event is corrected with its opposite and the change booked again as permanent.
+    await plantEvent("p_kept", "c09", "2026-04-12", "expansion", 150, "temporary", "same_product");
+    await plantEvent("p_kept_correction", "c09", "2026-06-10", "expansion", -150, "temporary", "same_product");
+    await plantEvent("p_kept_permanent", "c09", "2026-06-10", "expansion", 150, "permanent", "same_product");
+    await addMrr("c09", 150, "2026-04-12");
+    // A month of usage over the commitment: the realisation pair, which MRR never held.
+    await plantEvent("p_usage", "c15", "2026-06-30", "expansion", 500, "temporary", "usage_realisation");
+    await plantEvent("p_usage_reversal", "c15", "2026-07-01", "contraction", -500, "scheduled_reversal", "usage_realisation");
+    // Notice given on 25 June that a $500 a month subscription ends on 30 September.
+    await known.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${contracts} WHERE ${con("contract_event_type")} = 'cancellation' LIMIT 1;
+      UPDATE planted SET ${con("event_id")} = 'p_notice', ${con("event_date")} = '2026-06-25', ${con("contract_end")} = '2026-09-30', ${con("acv")} = 6000;
+      INSERT INTO ${contracts} SELECT * FROM planted;
+      DROP TABLE planted;`);
+
+    // Forecasts: c12 ($500 a month, term ending 9 June) is expected to renew at $3,000 a year,
+    // c08 ($600 a month, term ending 7 June) to leave and c15 ($600 a month, term ending
+    // in March 2027) to renew at $5,000. c11 keeps the fixture's forecast of an uplift.
+    for (const [customer, amount] of [["c12", 3000], ["c08", 0], ["c15", 5000]] as const) {
+      await forecast.exec(`UPDATE ${subs} SET ${sub("forecast_renewal_amount")} = ${amount} WHERE ${sub("customer_id")} = '${customer}'`);
+    }
+  }, 240_000);
+
+  afterAll(async () => { await known?.close(); await forecast?.close(); });
+
+  it("both equal CARR on the fixture, which tags nothing temporary, ends every contract the day it is cancelled and forecasts no shortfall", async () => {
+    for (const [start, end] of months) {
+      const carr = await run("carr", start, end);
+      expect(await variant(db, "net_of_known_churn", start, end), end).toBe(carr);
+      expect(await variant(db, "net_of_forecast_churn", start, end), end).toBe(carr);
+    }
+  });
+
+  it("CARR holds the add-on and the project and the variant leaves both out", async () => {
+    // April: the project, the add-on that ends early and the add-on later kept.
+    expect(await runTemplate(known, data, "carr", ...months[0])).toBe(225600 + 12000 + 3600 + 1800);
+    expect(await variant(known, "net_of_known_churn", ...months[0])).toBe(225600);
+    // May: the three-month add-on has started and the early ending has reversed.
+    expect(await runTemplate(known, data, "carr", ...months[1])).toBe(261600 + 2400 + 12000 + 1800);
+    expect(await variant(known, "net_of_known_churn", ...months[1])).toBe(261600);
+  });
+
+  it("an add-on ended early and one made permanent leave nothing behind", async () => {
+    // By the end of June the early ending is out of MRR and the kept add-on is permanent,
+    // so the variant holds the $1,800 a year it left out in April and May.
+    expect(await runTemplate(known, data, "carr", ...months[2])).toBe(290400 + 2400 + 12000 + 1800);
+    expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800 - 6000);
+  });
+
+  it("a usage realisation pair moves neither figure and notice of a later ending comes off the variant alone", async () => {
+    await known.exec(`DELETE FROM ${contracts} WHERE ${con("event_id")} = 'p_notice'`);
+    expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800);
+    await known.exec(`DELETE FROM ${events} WHERE ${ev("event_id")} IN ('p_usage', 'p_usage_reversal')`);
+    expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800);
+    expect(await runTemplate(known, data, "carr", ...months[2])).toBe(290400 + 2400 + 12000 + 1800);
+  });
+
+  it("a temporary discount is read as ARR reads it, with nothing added back before it reverses", async () => {
+    // $100 a month off for three months from 15 June. Summing every temporary event would add the $1,200 back.
+    await plantEvent("p_discount", "c16", "2026-06-15", "contraction", -100, "temporary", "pricing_adjustment");
+    await addMrr("c16", -100, "2026-06-15");
+    expect(await runTemplate(known, data, "carr", ...months[2])).toBe(290400 + 2400 + 12000 + 1800 - 1200);
+    expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800 - 1200);
+  });
+
+  it("a forecast below the current value comes off until the term ends and an uplift adds nothing", async () => {
+    // April and May: c12 falls short by 6,000 - 3,000, c08 by 7,200 and c15 by 7,200 - 5,000.
+    for (const [start, end] of [months[0], months[1]]) {
+      expect(await runTemplate(forecast, data, "carr", start, end), end).toBe(await run("carr", start, end));
+      expect(await variant(forecast, "net_of_forecast_churn", start, end), end).toBe((await run("carr", start, end))! - 3000 - 7200 - 2200);
+    }
+    // June: the terms of c12 and c08 have ended, so what happened is in ARR and only c15's forecast is left.
+    expect(await variant(forecast, "net_of_forecast_churn", ...months[2])).toBe(290400 - 2200);
+    expect(await variant(forecast, "net_of_known_churn", ...months[2])).toBe(290400);
+  });
+});

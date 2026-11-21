@@ -1602,6 +1602,10 @@
     "carr": {
       "formula": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date",
       "unit": "currency",
+      "variants": {
+        "net_of_known_churn": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date - 12 * sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) to_date - sum(field.acv where field.contract_event_type = 'cancellation' and field.contract_end > period_end) to_date",
+        "net_of_forecast_churn": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date - sum(max(field.mrr * 12 - field.forecast_renewal_amount, 0) where field.subscription_status = 'active' and field.contract_end > period_end and field.forecast_renewal_amount is not null)"
+      },
       "notes": "Contracted ARR, also called Committed ARR: ARR plus the annual contract value of each new contract signed on or before period end whose start date is later. The SaaS Metrics Standards Board formula, (MRR x 12) + contracted but not yet recognised ARR. A contract leaves the second term on its start date and enters ARR through MRR, so it is counted once. Churn and downgrades come off through ARR on the day they take effect, as the Board states, never on notice. ACV is recurring only and one year of a multi-year agreement. An upgrade or a renewal uplift signed for a later date enters when it takes effect."
     },
     "credit_breakage": {

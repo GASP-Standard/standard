@@ -78,11 +78,25 @@ CARR = ARR + Contracted ARR not yet started
 - The later years of a multi-year agreement: a contract adds one year of recurring value
 - A signed contract once it has started: from its start date it is in ARR and leaves the second term
 
-**When churn comes off:** A cancellation or a downgrade reduces CARR on the day it takes effect, through ARR. Notice of a future ending changes nothing until that day. This is the SaaS Metrics Standards Board's rule and the one ARR follows for a [fixed-term subscription](core.md#mrr-monthly-recurring-revenue). Bessemer's definition also nets out churn that is known ahead of time, so a figure reported as CARR needs its churn rule stated beside it.
+**When churn comes off:** A cancellation or a downgrade reduces CARR on the day it takes effect, through ARR. Notice of a future ending changes nothing until that day. This is the SaaS Metrics Standards Board's rule and the one ARR follows for a [fixed-term subscription](core.md#mrr-monthly-recurring-revenue). Bessemer's definition also nets out forecasted churn or downsell, which the two variants below compute, so a figure reported as CARR needs its churn rule stated beside it.
+
+**Variants:** Two variants take churn off before it takes effect. Each is CARR less one amount, reported under its own name beside CARR.
+
+```
+CARR net of known churn = CARR - (Temporary MRR still running × 12) - ACV of cancellations yet to take effect
+CARR net of forecast churn = CARR - Renewal forecast shortfall
+```
+
+- **CARR net of known churn** (`net_of_known_churn`) takes off the endings the ledgers state as contract. One is an increase tagged [`temporary`](../cel.md#change-nature) whose reversal is still ahead, such as a six-month project or a three-month add-on, at twelve times its monthly value. The other is the annual value of each cancellation made on or before period end for a contract that ends after it. Usage realisation events carry the same tags and are left out, since ARR never held them.
+- **CARR net of forecast churn** (`net_of_forecast_churn`) takes off the shortfall in the renewal forecast, which is Bessemer's reading in full. For each active subscription that carries a forecast and whose term ends after period end, the shortfall is twelve times its MRR less its forecast renewal value. A forecast above the current value adds nothing, since the uplift is yet to be signed. [Renewal Forecast Accuracy](customer-success.md#renewal-forecast-accuracy) scores the forecast this variant reads.
+
+The two are alternatives. A renewal forecast is expected to carry the known endings as well, with a subscription under notice or a project forecast at zero, so the two amounts overlap and are never added together.
+
+**What the variants leave in:** A partial downgrade signed for a later date stays in CARR net of known churn until it takes effect, since an amendment on the contract ledger carries the size of a change without its direction. A temporary reduction, such as a three-month discount, is read as ARR reads it and nothing is added back before it reverses. A subscription with no forecast takes nothing off CARR net of forecast churn. That variant reads live subscriptions, so a contract cancelled before it starts stays in it until the start date.
 
 **Signed changes to a live contract:** An upgrade or a renewal uplift signed for a later date enters CARR when it takes effect, with ARR. The contract ledger carries the annual value of a whole contract, so the formula reads new contracts alone.
 
-**A contract cancelled before it starts:** It stays in CARR until its start date and then drops out, since it never reaches ARR. A cancellation on the contract ledger carries no annual value to net against the contract it ends, so a company with many of these states the amount beside the figure.
+**A contract cancelled before it starts:** It stays in CARR until its start date and then drops out, since it never reaches ARR. Its cancellation carries the contract's annual value and the start date as the day it ends, so CARR net of known churn takes it off from the day it is cancelled.
 
 **Relation to ARR:** CARR is ARR or more. The gap is the recurring revenue under contract and waiting for its start date, which the industry calls contracted and not yet live.
 
@@ -90,10 +104,11 @@ CARR = ARR + Contracted ARR not yet started
 
 **Common mistakes:**
 - Reporting Bookings as CARR: Bookings carry total contract value, every year of a multi-year agreement and services
-- Deducting a customer's revenue when notice arrives instead of when the contract ends
+- Deducting a customer's revenue when notice arrives and reporting the result as CARR, which is the figure net of known churn
+- Adding the deductions of the two variants together
 - Counting a contract in both terms after it starts
 
-**Related metrics:** ARR, Bookings, ACV
+**Related metrics:** ARR, Bookings, ACV, Renewal Forecast Accuracy
 
 **Sources:**
 - [SaaS Metrics Standards Board: Contracted Annual Recurring Revenue](https://www.saasmetricsboard.com/contracted-annual-recurring-revenue)

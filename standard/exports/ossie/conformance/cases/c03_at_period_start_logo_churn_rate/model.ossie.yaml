@@ -14,7 +14,7 @@ datasets:
       - name: change_nature
         expression:
           sql: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
         datatype: String
         ai_context:
           instructions: One of permanent, temporary, scheduled_reversal

@@ -876,7 +876,7 @@
         "billing",
         "crm"
       ],
-      "description": "Annual contract value, recurring only",
+      "description": "Annual contract value, recurring only. On a cancellation, the annual recurring value that ends",
       "metricCount": 2
     },
     {
@@ -1128,8 +1128,8 @@
         "temporary",
         "scheduled_reversal"
       ],
-      "description": "permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)",
-      "metricCount": 2
+      "description": "permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)",
+      "metricCount": 3
     },
     {
       "id": "channel",
@@ -1247,7 +1247,7 @@
         "crm"
       ],
       "description": "Contract end date",
-      "metricCount": 6
+      "metricCount": 7
     },
     {
       "id": "contract_event_type",
@@ -1767,7 +1767,7 @@
         "renewal"
       ],
       "description": "Revenue movement classifier (CEL Revenue_Event.event_type)",
-      "metricCount": 21
+      "metricCount": 22
     },
     {
       "id": "expansion_classification",
@@ -1788,7 +1788,7 @@
         "usage_realisation"
       ],
       "description": "ATL expansion tag; read by ARR-O, NRR-O and NRR-M",
-      "metricCount": 2
+      "metricCount": 3
     },
     {
       "id": "feature_created_date",
@@ -1893,8 +1893,8 @@
         "crm",
         "finance"
       ],
-      "description": "Forecast renewal value",
-      "metricCount": 1
+      "description": "Forecast annual recurring value of the subscription after its current term, zero when it is expected to end",
+      "metricCount": 2
     },
     {
       "id": "forecasted_revenue",
@@ -2681,7 +2681,7 @@
         "billing"
       ],
       "description": "Change in MRR; negative for contraction and churn",
-      "metricCount": 15
+      "metricCount": 16
     },
     {
       "id": "mrr_end",

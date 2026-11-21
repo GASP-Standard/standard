@@ -5,6 +5,35 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] CARR gains two variants that take churn off early: net of known churn and net of forecast churn
+**Decision:** The owner's call on 2026-11-21, the second step of the CARR record below. CARR itself is unchanged. Two variants sit under it in `standard/formulas.json`:
+
+- `net_of_known_churn`: CARR less twelve times the temporary MRR still running, less the ACV of each cancellation made on or before period end for a contract that ends after it. Every input is a contract fact on the ledgers.
+- `net_of_forecast_churn`: CARR less the renewal forecast shortfall, which is twelve times MRR less `forecast_renewal_amount`, floored at zero, for each active subscription that carries a forecast and whose term ends after period end. This is Bessemer's wording in full, "netting out forecasted churn or downsell" (https://www.bvp.com/atlas/scaling-to-100-million).
+
+**Context:** The plan offered the contract facts alone as the reading of "known". The owner asked for forecasts as well. One figure holding both would count an ending twice: a subscription under notice is also forecast at zero and the grammar puts each aggregate on one dataset with no join between them. So the readings are two variants and the standard says they are alternatives. A renewal forecast is expected to carry the known endings too.
+
+**Rules this adds to the standard:**
+- A `cancellation` on the contract ledger carries the day the contract ends in `contract_end` and the annual recurring value that ends in `acv`. An immediate ending carries the event date. A contract cancelled before it starts carries its start date, so the contract and its cancellation leave the variant together. A withdrawn notice is a second cancellation with the ACV negated.
+- A `scheduled_reversal` is dated the day the temporary change ends, early or on time. A temporary change the customer keeps is corrected by an event of the same type and tag with the opposite sign and booked again as `permanent` the same day. MRR, NRR and GRR stay where they were and Adjusted NRR gains the expansion that day.
+- `forecast_renewal_amount` is the forecast annual recurring value after the current term, zero when the subscription is expected to end.
+
+**Alternatives considered:**
+- One variant holding both deductions: it double counts, as above.
+- Summing every `temporary` and `scheduled_reversal` event: a temporary discount would be added back before it reverses, which is an uplift and CARR adds no uplift before it takes effect. The variant reads temporary increases (`new`, `expansion`, `reactivation`) and their reversals (`contraction`, `churn`).
+- Reading notice from the subscription snapshot: it has no notice field and a new one would be a field only this variant reads. The contract ledger already holds the cancellation.
+
+**Consequences:**
+- No published value changes. On the synthetic dataset both variants equal CARR in every month: nothing is tagged temporary, every cancellation ends its contract the day it is made and no forecast falls short.
+- The synthetic dataset's three cancellation rows now carry the day of the cancellation as `contract_end` and the annual value that ends as `acv` (they carried the original contract end and zero). No other formula reads either value on a cancellation.
+- The descriptions of `acv`, `forecast_renewal_amount` and `change_nature` in `ontology.json` state the new readings. The CARR section in `finance.md` drops the sentence that a cancellation carries no annual value.
+- Usage realisation pairs carry the same two tags and are left out by their classification, since ARR never held them.
+- Limits, stated on the metric page: a partial downgrade signed for a later date stays in until it takes effect, since an amendment carries no direction. A subscription without a forecast takes nothing off the forecast variant.
+- In the Ossie export the two variants are staged entries (reason `to_date`), so the staged count goes from 171 to 173. Finance sits outside the Core example and apache/ossie #773.
+- `test/execute.test.ts` plants each case in its own database: a three-month add-on, a six-month project, an add-on ended early, an add-on made permanent, a usage realisation pair, notice of a September ending, a temporary discount and three forecasts.
+
+---
+
 ## [2026-11-21] Contracted ARR (CARR) is a metric of its own beside ARR, by the SaaS Metrics Standards Board's definition
 **Decision:** The owner's call on 2026-11-21. ARR stays exactly as it is. CARR (Contracted Annual Recurring Revenue), also called Committed ARR, is added as a Finance metric and a graph node, `carr`: ARR plus the Annual Contract Value (ACV) of each new contract signed on or before period end whose start date is later. The formula is `metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date`. Churn and downgrades come off on the day they take effect, through ARR. This is the first of two steps. The second is a variant that also nets out churn known ahead of time, which is how Bessemer reads the same name.
 

@@ -368,6 +368,7 @@
       ],
       "source": "Billing",
       "usedBy": [
+        "CARR (Contracted Annual Recurring Revenue)",
         "Gross Revenue Retention (GRR)",
         "Net Revenue Retention (NRR)"
       ]
@@ -384,6 +385,7 @@
       ],
       "source": "Billing",
       "usedBy": [
+        "CARR (Contracted Annual Recurring Revenue)",
         "Gross Revenue Retention (GRR)",
         "Net Revenue Retention (NRR)"
       ]
@@ -632,6 +634,7 @@
       "source": "Billing",
       "usedBy": [
         "Auto-Renewal Rate",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Days to Renewal",
         "Renewal Forecast Accuracy",
         "Renewal Notification Rate",
@@ -647,6 +650,7 @@
       "source": "Billing",
       "usedBy": [
         "Auto-Renewal Rate",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Days to Renewal",
         "Renewal Forecast Accuracy",
         "Renewal Notification Rate",
@@ -2692,6 +2696,7 @@
         "Burn Multiple",
         "CAC (Customer Acquisition Cost)",
         "CAC Payback Period",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Carry MRR",
         "Churned Customers",
         "Churned MRR",
@@ -2728,6 +2733,7 @@
       "source": "Billing",
       "usedBy": [
         "ARR (Annual Recurring Revenue)",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Net Revenue Retention (NRR)"
       ]
     },
@@ -2747,6 +2753,7 @@
       "source": "Billing",
       "usedBy": [
         "ARR (Annual Recurring Revenue)",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Net Revenue Retention (NRR)"
       ]
     },
@@ -2854,6 +2861,7 @@
       "warehouseRef": "",
       "source": "CRM",
       "usedBy": [
+        "CARR (Contracted Annual Recurring Revenue)",
         "Renewal Forecast Accuracy"
       ]
     },
@@ -3664,6 +3672,7 @@
       "usedBy": [
         "ARR (Annual Recurring Revenue)",
         "Burn Multiple",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Carry MRR",
         "Churned MRR",
         "Contraction MRR",
@@ -3688,6 +3697,7 @@
       "usedBy": [
         "ARR (Annual Recurring Revenue)",
         "Burn Multiple",
+        "CARR (Contracted Annual Recurring Revenue)",
         "Carry MRR",
         "Churned MRR",
         "Contraction MRR",

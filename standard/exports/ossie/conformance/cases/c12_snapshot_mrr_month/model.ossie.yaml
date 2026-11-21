@@ -35,7 +35,7 @@ datasets:
       - name: forecast_renewal_amount
         expression:
           sql: forecast_renewal_amount
-        description: Forecast renewal value
+        description: Forecast annual recurring value of the subscription after its current term, zero when it is expected to end
         datatype: Decimal
       - name: plan_id
         expression:

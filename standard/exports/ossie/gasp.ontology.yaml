@@ -10,7 +10,7 @@ ontology:
       - event_id
     relationships:
       - name: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -190,7 +190,7 @@ ontology:
       - event_id
     relationships:
       - name: acv
-        description: Annual contract value, recurring only
+        description: Annual contract value, recurring only. On a cancellation, the annual recurring value that ends
         roles:
           - concept: Acv
         multiplicity: ManyToOne
@@ -280,7 +280,7 @@ ontology:
         verbalizes:
           - "{AmendmentEvent} has {AmendmentType}"
       - name: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -774,7 +774,7 @@ ontology:
         verbalizes:
           - "{Subscription} belongs to {Customer}"
       - name: forecast_renewal_amount
-        description: Forecast renewal value
+        description: Forecast annual recurring value of the subscription after its current term, zero when it is expected to end
         roles:
           - concept: Date
           - concept: ForecastRenewalAmount
@@ -3457,7 +3457,7 @@ ontology:
       - Decimal
   - concept: Acv
     type: ValueType
-    description: Annual contract value, recurring only
+    description: Annual contract value, recurring only. On a cancellation, the annual recurring value that ends
     extends:
       - Decimal
   - concept: AdSpend
@@ -3551,7 +3551,7 @@ ontology:
       - Integer
   - concept: ChangeNature
     type: ValueType
-    description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+    description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
     extends:
       - String
     requires:
@@ -3748,7 +3748,7 @@ ontology:
       - ForecastCategory == 'pipeline' OR ForecastCategory == 'best_case' OR ForecastCategory == 'commit' OR ForecastCategory == 'closed'
   - concept: ForecastRenewalAmount
     type: ValueType
-    description: Forecast renewal value
+    description: Forecast annual recurring value of the subscription after its current term, zero when it is expected to end
     extends:
       - Decimal
   - concept: ForecastedRevenue

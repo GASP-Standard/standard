@@ -89,11 +89,13 @@ A contractual milestone. Primary input for bookings, renewal rate and contract-l
 | `subscription_id` | `string` | [Subscription](definitions.md#subscription-contract-agreement) identifier |
 | `contract_event_type` | `enum` | `new_contract`, `renewal`, `amendment`, `cancellation` |
 | `contract_start` | `date` | Contract start date |
-| `contract_end` | `date` | Contract end date |
+| `contract_end` | `date` | Contract end date. On a `cancellation`, the day the contract ends |
 | `tcv` | `decimal` | Total contract value |
-| `acv` | `decimal` | Annual contract value |
+| `acv` | `decimal` | Annual contract value. On a `cancellation`, the annual recurring value that ends |
 | `currency` | `string` | ISO 4217 currency code |
 | `segment` | `string` | Segment the customer was in when the event occurred. A customer that moves segment keeps its history as it was. See [Segment on events](#segment-on-events). |
+
+A `cancellation` is dated the day notice is given. Its `contract_end` is the day the contract ends: the event date when the ending is immediate and the contract's start date when it is cancelled before it starts. Its `acv` is the annual recurring value that ends. A notice that is withdrawn is a second `cancellation` with the same `contract_end` and the `acv` negated. [CARR net of known churn](metrics/finance.md#carr-contracted-annual-recurring-revenue) reads these rows.
 
 ---
 
@@ -495,6 +497,14 @@ An optional field on `Revenue_Event` and `Amendment_Event` that captures the int
 | `scheduled_reversal` | This event reverses a prior `temporary` event. It should be paired with the original event for analysis. | The 3-month add-on expires and MRR returns to its prior level. |
 
 A subscription sold for a fixed term with no renewal clause, such as a six-month project, takes the same pair: its `new` event is `temporary` and the `churn` event on the day the term ends is a `scheduled_reversal`.
+
+### When a Temporary Change Ends Early or Stays
+
+The `scheduled_reversal` is dated the day the temporary change ends. An add-on due to run three months that the customer drops after two reverses on the day it is dropped, with the same tag.
+
+A temporary change the customer decides to keep is corrected on the day the contract changes. The correction is an event of the same type with the `temporary` tag and the opposite sign. The change is booked again that day as `permanent`. The two net to zero in MRR, so the standard metrics stay where they were and Adjusted NRR gains the expansion that day.
+
+Under both rules the temporary increases of a ledger (`new`, `expansion` and `reactivation` events tagged `temporary`) and their reversals (`contraction` and `churn` events tagged `scheduled_reversal`) sum, at any date, to the temporary revenue still running. [CARR net of known churn](metrics/finance.md#carr-contracted-annual-recurring-revenue) takes that amount off at twelve times its monthly value.
 
 ### Design Principles
 

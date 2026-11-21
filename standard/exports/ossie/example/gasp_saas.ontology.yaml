@@ -10,7 +10,7 @@ ontology:
       - event_id
     relationships:
       - name: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -335,7 +335,7 @@ ontology:
         verbalizes:
           - "{Subscription} belongs to {Customer}"
       - name: forecast_renewal_amount
-        description: Forecast renewal value
+        description: Forecast annual recurring value of the subscription after its current term, zero when it is expected to end
         roles:
           - concept: Date
           - concept: ForecastRenewalAmount
@@ -584,7 +584,7 @@ ontology:
       - Integer
   - concept: ChangeNature
     type: ValueType
-    description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR)
+    description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
     extends:
       - String
     requires:
@@ -678,7 +678,7 @@ ontology:
       - ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting' OR ExpansionClassification == 'usage_realisation'
   - concept: ForecastRenewalAmount
     type: ValueType
-    description: Forecast renewal value
+    description: Forecast annual recurring value of the subscription after its current term, zero when it is expected to end
     extends:
       - Decimal
   - concept: LifecycleAttribution

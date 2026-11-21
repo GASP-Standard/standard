@@ -855,8 +855,9 @@ function generateExtensions(t: Record<string, Row[]>): void {
       const start = CUSTOMER_STORIES[c][0].date;
       t.contract_event.push(row("contract_event", id, {
         event_id: id, event_date: m.date, customer_id: c, subscription_id: subscriptionOf(c), contract_event_type: type, currency: "USD",
-        contract_start: type === "new_contract" ? m.date : start, contract_end: RENEWALS[c]?.end ?? addDays(start, 365),
-        acv: type === "cancellation" ? 0 : Math.abs(m.change) * 12, tcv: type === "cancellation" ? 0 : Math.abs(m.change) * 12,
+        // A cancellation carries the day the contract ends, here the day it is made, and the annual value that ends.
+        contract_start: type === "new_contract" ? m.date : start, contract_end: type === "cancellation" ? m.date : RENEWALS[c]?.end ?? addDays(start, 365),
+        acv: Math.abs(m.change) * 12, tcv: type === "cancellation" ? 0 : Math.abs(m.change) * 12,
       }));
       if (m.type === "expansion" || m.type === "contraction") {
         const amendment = m.type === "contraction" ? "downgrade" : c === "c10" ? "cross_sell" : c === "c07" ? "add_on" : "upgrade";
