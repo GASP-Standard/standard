@@ -27,6 +27,11 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      # Keeps the ANTLR jar the grammar tests download from Maven Central between runs, so a refused download does not fail the suite. After npm ci, which empties node_modules.
+      - uses: actions/cache@v4
+        with:
+          path: gasp-wiki-mcp/node_modules/.cache/antlr
+          key: antlr-jar-${{ hashFiles('gasp-wiki-mcp/test/ossie-grammar.py') }}
       - run: npm run build
       # Writes build/standard-data.json and standard-version.json, which two bundle tests read.
       - run: npm run export-data

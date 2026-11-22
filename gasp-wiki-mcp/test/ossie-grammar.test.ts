@@ -10,7 +10,7 @@
  * The parser is generated the way upstream's own tests generate it
  * (test/ossie-grammar.py): the ANTLR tool under Java, the Python runtime under
  * `uv`, nothing generated committed. The tests skip without `uv` or Java; the
- * test workflows install both.
+ * test workflows install both and keep the jar between runs.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -97,6 +97,66 @@ const NOT_EXPRESSIONS = [
   "SUM(subscription.mrr) FILTER WHERE subscription.subscription_status = 'active'",
   "sum(field.mrr where field.subscription_status = 'active')",
 ];
+
+/**
+ * Runs the script's `download` against a local server that gives the listed
+ * status codes in order (the last one repeats) and reports what came back.
+ */
+const DOWNLOAD_PROBE = `
+import importlib.util, json, sys, threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+spec = importlib.util.spec_from_file_location("ossie_grammar", sys.argv[1])
+script = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(script)
+answers, seen = json.loads(sys.argv[2]), []
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        code = answers[min(len(seen), len(answers) - 1)]
+        seen.append(code)
+        body = b"jar" if code == 200 else b""
+        self.send_response(code)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+server = HTTPServer(("127.0.0.1", 0), Handler)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+try:
+    body = script.download(f"http://127.0.0.1:{server.server_port}/antlr.jar", waits=(0, 0))
+    print(json.dumps({"body": body.decode(), "seen": seen}))
+except Exception as e:
+    print(json.dumps({"error": f"{type(e).__name__}: {e}", "seen": seen}))
+`;
+
+function probeDownload(answers: number[]): { body?: string; error?: string; seen: number[] } {
+  const r = spawnSync("uv", ["run", "--no-project", "python", "-c", DOWNLOAD_PROBE, join(pkg, "test", "ossie-grammar.py"), JSON.stringify(answers)], { encoding: "utf-8" });
+  if (r.status !== 0) throw new Error(`the download probe failed:\n${r.stderr}`);
+  return JSON.parse(r.stdout.trim().split("\n").pop()!);
+}
+
+// Maven Central answered 429 to the test workflow's download on 2026-11-22 and the suite failed on it.
+describe.skipIf(!uvAvailable())("the ANTLR jar download", () => {
+  it("tries again after a 429 and a 5xx and returns the file", () => {
+    expect(probeDownload([429, 503, 200])).toEqual({ body: "jar", seen: [429, 503, 200] });
+  }, 60_000);
+
+  it("raises the last answer once the waits are used up", () => {
+    const r = probeDownload([429]);
+    expect(r.error).toMatch(/^HTTPError: HTTP Error 429/);
+    expect(r.seen).toEqual([429, 429, 429]);
+  }, 60_000);
+
+  it("raises any other refusal at once", () => {
+    const r = probeDownload([404, 200]);
+    expect(r.error).toMatch(/^HTTPError: HTTP Error 404/);
+    expect(r.seen).toEqual([404]);
+  }, 60_000);
+});
 
 describe("the upstream expression grammar", () => {
   const errors = new Map<string, string[]>();

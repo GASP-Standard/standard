@@ -37,7 +37,7 @@ The upstream validator checks document shape, unique names, the ontology's inter
 
 `core-spec/grammar/OssieExpression.g4` covers expressions only and is stricter than the validator, which parses with sqlglot. `test/ossie-grammar.test.ts` parses every expression in the published models with it, and every reference the published mappings make.
 
-The parser is generated on each run the way upstream's tests generate it (`core-spec/grammar/tests/conftest.py` there, `test/ossie-grammar.py` here): the ANTLR 4.13.2 tool under Java 11 or later, the jar fetched from Maven Central on first use and checked against the SHA-256 upstream pins, the Python runtime under `uv`. The jar is kept in `node_modules/.cache/antlr/` and nothing generated is committed. The tests skip when `uv` or Java is missing.
+The parser is generated on each run the way upstream's tests generate it (`core-spec/grammar/tests/conftest.py` there, `test/ossie-grammar.py` here): the ANTLR 4.13.2 tool under Java 11 or later, the jar fetched from Maven Central on first use and checked against the SHA-256 upstream pins, the Python runtime under `uv`. The jar is kept in `node_modules/.cache/antlr/` and nothing generated is committed. A download Maven Central refuses for now (a 429, a 5xx or no connection) is tried again three times, and the two test workflows keep the jar between runs with a cache step keyed on `test/ossie-grammar.py`. The tests skip when `uv` or Java is missing.
 
 ```bash
 cd gasp-wiki-mcp
