@@ -5,6 +5,14 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] The accuracy benchmark is a research article at /research/benchmark
+
+**Context.** The benchmark sat at `/v1/benchmark` in the docs shell, between AI Tools and Adapter in the sidebar. It is a signed, dated piece of evidence, the kind of page `/research` was opened for the same day, and the owner asked for it beside the churn article with a redirect for the old link.
+
+**Decision.** The benchmark is served at `/research/benchmark` in the research article layout (eyebrow, display headline, byline, reading column, Article JSON-LD), dated 2026-11-07, the day it was first published. It stays an Astro page: every figure is read from the run's JSON, which a Markdown file in the collection cannot do. The article chrome moved out of `[slug].astro` into `ResearchLayout.astro` so both kinds share it, and `src/lib/research-pages.ts` registers a page article for the index. A page article has no Markdown twin; the run's own Markdown and JSON stay under `/downloads/benchmark/`. `/v1/benchmark` is a 301 in `gasp-wiki-frontend/public/_redirects`, and `koinedata-site/public/_redirects` sends its old `/v1/benchmark` straight to the new address ahead of the `/v1/*` splat. The docs sidebar loses the entry, since a sidebar link that leaves the docs shell reads as a broken section.
+
+**Consequences.** Links printed elsewhere (the Claude directory listing, the Ossie posts, the commercial site's cached pages) keep working through the redirect. `site-quality.test.ts` fails if the old page returns, a source links to the old address or the rule goes; `consistency.test.ts` fails on a page article missing from the registry, `VALID_ROUTES` or `llms.txt`; the commercial site's suite checks its rule. The article's prose is unchanged.
+
 ## [2026-11-21] Contraction MRR is worded as every reduction in committed recurring revenue, with or without a change in service
 **Decision:** The owner's call on 2026-11-21. Contraction MRR was defined as "MRR reduction from existing customers who downgraded but didn't churn" and its list named plan downgrades, removed seats and dropped add-ons. The definition now reads "The reduction in MRR from existing customers who remain customers. Every decrease in committed recurring revenue counts, whether or not the service changed." The list adds a subscription cancelled by a customer who keeps another, price reductions, discounts applied to a running subscription and contract changes that lower the monthly value. The worked case is a customer on $1,000 a month who moves to annual billing at a 10% discount: $10,800 a year, $900 of MRR, $100 of Contraction MRR with the entitlements unchanged.
 
