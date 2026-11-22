@@ -5,6 +5,14 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-22] The shipped log and the MCP server map are files of their own, read on demand
+
+**Context.** A session opened with `/orient` filled its context window before its first task was finished. Three files were read whole at the start: `TODO.md` at 163 KB, of which 128 KB was the Shipped log, `DECISIONS.md` at 214 KB and `CLAUDE.md` at 81 KB, of which 39 KB described `gasp-wiki-mcp/src/` file by file. `CLAUDE.md` is also loaded into every session and every subagent whatever the task.
+
+**Decision.** The Shipped log is `SHIPPED.md` at the repository root and `TODO.md` keeps the three open sections (Next steps, Backlog, Parked). The file-by-file account of the MCP server and its test suite is `docs/mcp-server-map.md`; `CLAUDE.md` keeps one line per module, the rules that hold everywhere (exact-only lookups, URLs from `urls.ts`, the parser quirk, the Workspace switch) and the instruction to read the map before changing an area. The owner's `/orient` skill reads the open sections of `TODO.md`, the newest five decision records with the headings of the rest and leaves `CLAUDE.md` alone when it is already loaded.
+
+**Consequences.** A session start reads about a fifth of what it did. A change to a module now means two edits, the line in `CLAUDE.md` when the summary moves and the bullet in the map, so the map can fall behind; `site-quality.test.ts` holds its tool count to the server's as it does for `CLAUDE.md`. Finished work goes to `SHIPPED.md` with the date, searched by date or subject. `DECISIONS.md` itself stays one file.
+
 ## [2026-11-21] The Ossie readers take vendor and dialect names in any case and a table source as an object, ahead of upstream
 
 **Context.** Two upstream pull requests change how an Ossie document may be written and both are open: apache/ossie #712 makes `vendor_name` and `dialect` case-insensitive in ASCII, and #704 lets a dataset `source` be a table object, `{kind: table, identifier: [...]}`, beside the string. The earlier plan waited for each to merge and for the validator pin to move. The owner put the readers on the open-foundation list instead (item 0, 2026-11-19): a document written in either form by another tool should load today. The vendored validator at `1b1ebb6` accepts neither form, so nothing GASP writes may use them.
