@@ -5,12 +5,78 @@
  * `additionalProperties: false` upstream, so add nothing that is not here.
  */
 
+import { OSSIE_DIALECT_OF } from "../dialect.js";
+
 export const OSSIE_VERSION = "0.3.0.dev0";
 /** The development version 0.3.0.dev0 replaced (apache/ossie #691); `migrateDocument` reads a document declaring it. */
 export const LEGACY_OSSIE_VERSION = "0.2.0.dev0";
 /** The only dialect whose semantics Ossie defines (core-spec/expression_language.md). */
 export const OSSIE_DIALECT = "OSSIE_SQL_2026";
 export const GASP_VENDOR = "GASP";
+
+/**
+ * A vendor or dialect name in the form names are compared in: ASCII `a` to `z`
+ * as `A` to `Z`, every other character as written (apache/ossie #712, which
+ * makes both names case-insensitive; open when this was written, so the pinned
+ * validator still compares exactly and GASP writes the uppercase form).
+ */
+export const canonicalName = (name: string): string => name.replace(/[a-z]+/g, (m) => m.toUpperCase());
+/** True when two vendor or dialect names are the same name, whatever their case. */
+export const sameName = (a: unknown, b: string): boolean => typeof a === "string" && canonicalName(a) === canonicalName(b);
+
+/** The dialect names GASP reads by name: the portable one and the registered name of each compiler dialect. */
+const KNOWN_DIALECTS = [OSSIE_DIALECT, ...new Set(Object.values(OSSIE_DIALECT_OF))];
+
+/** A table source's part: a plain identifier, which GASP's SQL writers place unquoted. */
+const PLAIN_PART = /^[A-Za-z_][\w$]*$/;
+
+/**
+ * A dataset `source` as the string GASP's readers take. A string is returned as
+ * is. A table object, `{ kind: table, identifier: [...] }` with each part a
+ * name or `{ name, level }` (apache/ossie #704, open when this was written),
+ * becomes its parts joined by `.`, which upstream defines as the same table in
+ * shorthand; the level labels are not kept. Anything GASP cannot read as a
+ * table is a problem rather than a guess: another `kind`, an empty or malformed
+ * identifier, or a part that is not a plain identifier, since the SQL writers
+ * place table names unquoted and upstream forbids flattening such a part.
+ */
+export function sourceText(source: unknown): { text: string } | { problem: string } {
+  if (typeof source === "string") return { text: source };
+  if (typeof source !== "object" || source === null || Array.isArray(source)) return { problem: "source is neither a string nor an object" };
+  const s = source as { kind?: unknown; identifier?: unknown };
+  if (s.kind !== "table") return { problem: `source kind ${JSON.stringify(s.kind)} is not supported; GASP reads a string or a table source, { kind: table, identifier: [...] }` };
+  if (!Array.isArray(s.identifier) || !s.identifier.length) return { problem: "table source has no identifier parts" };
+  const parts: string[] = [];
+  for (const part of s.identifier as unknown[]) {
+    const name = typeof part === "string" ? part : typeof part === "object" && part !== null ? (part as { name?: unknown }).name : undefined;
+    if (typeof name !== "string" || !name.trim()) return { problem: `table source has an identifier part with no name: ${JSON.stringify(part)}` };
+    if (!PLAIN_PART.test(name)) return { problem: `table source part ${JSON.stringify(name)} is not a plain identifier (letters, digits, _ and $). GASP writes table names unquoted and cannot name this table; a source of plain parts, such as a view over it, loads` };
+    parts.push(name);
+  }
+  return { text: parts.join(".") };
+}
+
+/** Every dataset source in a parsed document that GASP cannot read, named by dataset; empty when all load. Run after `migrateDocument`. */
+export function sourceProblems(doc: unknown): string[] {
+  const out: string[] = [];
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) { for (const x of v) walk(x); return; }
+    if (typeof v !== "object" || v === null) return;
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (k === EXTENSIONS_KEY || k === LEGACY_EXTENSIONS_KEY) continue;
+      if (k === "datasets" && Array.isArray(x)) {
+        for (const d of x) {
+          if (typeof d !== "object" || d === null || !("source" in d)) continue;
+          const r = sourceText((d as { source: unknown }).source);
+          if ("problem" in r) out.push(`Dataset ${JSON.stringify((d as { name?: unknown }).name ?? "?")}: ${r.problem}.`);
+        }
+      }
+      walk(x);
+    }
+  };
+  walk(doc);
+  return out;
+}
 
 /**
  * A non-portable extension entry: a vendor name and a `data` object whose keys
@@ -36,7 +102,7 @@ export function extensionData(e: { data?: unknown } | undefined): Record<string,
 
 /** A document's GASP extension; undefined when absent or unreadable. */
 export function readGaspExtension<T = Record<string, unknown>>(exts: OssieExtension[] | undefined): T | undefined {
-  return extensionData(exts?.find((x) => x.vendor_name === GASP_VENDOR)) as T | undefined;
+  return extensionData(exts?.find((x) => sameName(x.vendor_name, GASP_VENDOR))) as T | undefined;
 }
 
 /** The key `nonportable_extensions` replaced; `migrateDocument` folds it into the current key. */
@@ -52,6 +118,13 @@ const EXTENSIONS_KEY = "nonportable_extensions";
  * twice keeps the first of each: `adapterToOssie` wrote one for a dataset whose
  * key is its date until 2026-11-19, and upstream rejects it since apache/ossie
  * #705. Returns the number of rewrites.
+ * Two forms upstream has proposed are read the same way. A `vendor_name` that
+ * is GASP's and a `dialect` GASP reads by name become their uppercase spelling
+ * whatever case they were written in (apache/ossie #712); another vendor's name
+ * and a dialect GASP does not know keep their spelling, since the pinned
+ * validator still compares exactly. A dataset `source` given as a table object
+ * becomes the string `sourceText` gives for it (apache/ossie #704); one it
+ * cannot read is left for `sourceProblems` to name.
  * A string that is not a JSON object is left for the schema check to name, and
  * nothing under an extension's `data` is walked, since those keys are the
  * vendor's own.
@@ -77,10 +150,28 @@ export function migrateDocument(doc: unknown): number {
       o.primary_key = [...new Set(key)];
       n++;
     }
+    if (Array.isArray(o.dialects)) {
+      for (const d of o.dialects as unknown[]) {
+        if (typeof d !== "object" || d === null) continue;
+        const name = (d as { dialect?: unknown }).dialect;
+        const known = KNOWN_DIALECTS.find((k) => sameName(name, k));
+        if (known && name !== known) { (d as { dialect: unknown }).dialect = known; n++; }
+      }
+    }
+    if (Array.isArray(o.datasets)) {
+      for (const d of o.datasets as unknown[]) {
+        if (typeof d !== "object" || d === null || typeof (d as { source?: unknown }).source !== "object") continue;
+        const r = sourceText((d as { source: unknown }).source);
+        if ("text" in r) { (d as { source: unknown }).source = r.text; n++; }
+      }
+    }
     for (const [k, x] of Object.entries(o)) {
       if (k === EXTENSIONS_KEY && Array.isArray(x)) {
         for (const e of x) {
-          if (typeof e !== "object" || e === null || typeof (e as { data?: unknown }).data !== "string") continue;
+          if (typeof e !== "object" || e === null) continue;
+          const vendor = (e as { vendor_name?: unknown }).vendor_name;
+          if (vendor !== GASP_VENDOR && sameName(vendor, GASP_VENDOR)) { (e as { vendor_name: unknown }).vendor_name = GASP_VENDOR; n++; }
+          if (typeof (e as { data?: unknown }).data !== "string") continue;
           const data = extensionData(e as { data?: unknown });
           if (data) { (e as { data: unknown }).data = data; n++; }
         }
@@ -102,7 +193,7 @@ export function gaspExtension(value: Record<string, unknown>): OssieExtension {
 
 /** The extensions with the GASP one set to `value`, first; other vendors kept. */
 export function writeGaspExtension(exts: OssieExtension[] | undefined, value: Record<string, unknown>): OssieExtension[] {
-  return [gaspExtension(value), ...(exts ?? []).filter((x) => x.vendor_name !== GASP_VENDOR)];
+  return [gaspExtension(value), ...(exts ?? []).filter((x) => !sameName(x.vendor_name, GASP_VENDOR))];
 }
 
 export type OssieDataType = "String" | "Integer" | "Decimal" | "Float" | "Boolean" | "Date" | "Time" | "DateTime" | "DateTimeTz" | "Opaque";
@@ -125,18 +216,21 @@ export const portable = (sql: string): OssieExpression => ({ sql });
 export function expressionText(f: { expression: OssieExpression | string }): string | undefined {
   const e = f.expression;
   if (typeof e === "string") return e;
-  return portableSql(e) ?? (e?.dialects?.find((d) => d.dialect === OSSIE_DIALECT) ?? e?.dialects?.[0])?.expression;
+  return portableSql(e) ?? (e?.dialects?.find((d) => sameName(d.dialect, OSSIE_DIALECT)) ?? e?.dialects?.[0])?.expression;
 }
 
 /** The `sql` field when it is a non-empty string; an empty or non-string value is treated as absent. */
 const portableSql = (e: OssieExpression | undefined): string | undefined => (typeof e?.sql === "string" && e.sql.trim() ? e.sql : undefined);
 
-/** Every entry of an expression as dialect and text: `sql` as OSSIE_SQL_2026 first, then the dialect entries it does not supersede. */
+/** Every entry of an expression as dialect and text: `sql` as OSSIE_SQL_2026 first, then the dialect entries it does not supersede. An OSSIE_SQL_2026 entry written in another case comes back under that spelling. */
 export function portableEntries(e: OssieExpression | undefined): Array<{ dialect: string; expression: string }> {
   const out: Array<{ dialect: string; expression: string }> = [];
   const sql = portableSql(e);
   if (sql) out.push({ dialect: OSSIE_DIALECT, expression: sql });
-  for (const d of e?.dialects ?? []) if (!(sql && d.dialect === OSSIE_DIALECT)) out.push(d);
+  for (const d of e?.dialects ?? []) {
+    const portableEntry = sameName(d.dialect, OSSIE_DIALECT);
+    if (!(sql && portableEntry)) out.push(portableEntry ? { ...d, dialect: OSSIE_DIALECT } : d);
+  }
   return out;
 }
 
@@ -161,7 +255,7 @@ export interface OssieField {
 
 export interface OssieDataset {
   name: string;
-  /** A physical table reference or a query */
+  /** A physical table reference or a query. A document that gives a table object is read into this string on load (`sourceText`). */
   source: string;
   primary_key?: string[];
   unique_keys?: string[][];

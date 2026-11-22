@@ -26,7 +26,7 @@ import { mappingOver, type MappingGap } from "./mapping.js";
 import { primaryKey } from "./model.js";
 import { ossieDataType, slug } from "./names.js";
 import { exportOntology, planOntology } from "./ontology.js";
-import { GASP_VENDOR, OSSIE_VERSION, expressionText, gaspExtension, portable, readGaspExtension, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, migrateDocument } from "./types.js";
+import { GASP_VENDOR, OSSIE_VERSION, expressionText, gaspExtension, portable, readGaspExtension, sourceProblems, type OssieDataset, type OssieField, type OssieLinkMapping, type OssieMapping, type OssieSemanticModel, migrateDocument } from "./types.js";
 
 /** An identifier first: every mapping already written names it, so it changes only with a breaking version. The file is served at the same address. */
 export const GASP_ONTOLOGY_IRI = "https://gaspwiki.com/downloads/ossie/gasp.ontology.yaml";
@@ -44,18 +44,26 @@ export const isOssieModel = (doc: unknown): doc is OssieSemanticModel =>
  * document saved before the move to Ossie 0.3.0.dev0 (the `custom_extensions`
  * key, `data` as a JSON string, version 0.2.0.dev0) is migrated to the current
  * shape on the way in, so the schema layer and every reader see one shape and
- * a tool that hands a document back hands back a current one.
+ * a tool that hands a document back hands back a current one. The same pass
+ * reads GASP's vendor name and the dialects it knows in any case and a table
+ * source written as an object; a dataset source no reader can take (another
+ * kind, a part that needs quoting) is the error, named by dataset.
  */
 export function parseDocument(text: string): { doc?: Record<string, unknown>; error?: string } {
   const object = (v: unknown) => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
-  const parsed = (v: unknown) => { const doc = object(v); if (doc) migrateDocument(doc); return doc; };
+  const parsed = (v: unknown, otherwise: string) => {
+    const doc = object(v);
+    if (!doc) return { error: otherwise };
+    migrateDocument(doc);
+    const unread = sourceProblems(doc);
+    return unread.length ? { error: unread.join(" ") } : { doc };
+  };
+  let json: unknown;
+  let isJson = true;
+  try { json = JSON.parse(text); } catch { isJson = false; }
+  if (isJson) return parsed(json, "The document is not an object.");
   try {
-    const doc = parsed(JSON.parse(text));
-    return doc ? { doc } : { error: "The document is not an object." };
-  } catch { /* not JSON */ }
-  try {
-    const doc = parsed(parseYaml(text));
-    return doc ? { doc } : { error: "The document is not a YAML or JSON object." };
+    return parsed(parseYaml(text), "The document is not a YAML or JSON object.");
   } catch (e) {
     return { error: `The document is neither JSON nor YAML: ${(e as Error).message.split("\n")[0]}` };
   }

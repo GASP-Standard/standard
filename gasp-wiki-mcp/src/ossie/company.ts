@@ -22,7 +22,7 @@ import { expressionText, ossieSchemaErrors, resolveCompany, type Company, type M
 import { checkCompiledMetrics } from "./check.js";
 import { buildMetrics, PERIOD_SPINE, type ModelTarget } from "./model.js";
 import { ossieYaml } from "./index.js";
-import { GASP_VENDOR, OSSIE_DIALECT, portable, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel, gaspExtension, readGaspExtension } from "./types.js";
+import { GASP_VENDOR, OSSIE_DIALECT, portable, sameName, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel, gaspExtension, readGaspExtension } from "./types.js";
 
 /** The dataset that declares the period spine the staged sources read. */
 export const SPINE_DATASET = "gasp_period_spine";
@@ -58,7 +58,7 @@ const isGaspDataset = (d: OssieDataset): boolean => ext(d).staged === true || d.
 
 /** A model field's SQL in the compile dialect: its entry for that dialect, else the portable one, else the first. */
 export function fieldSql(f: OssieField, dialect: DialectName): string {
-  const vendor = f.expression?.dialects?.find((d) => d.dialect === OSSIE_DIALECT_OF[dialect]);
+  const vendor = f.expression?.dialects?.find((d) => sameName(d.dialect, OSSIE_DIALECT_OF[dialect]));
   return vendor?.expression ?? expressionText(f) ?? f.name;
 }
 
@@ -123,7 +123,7 @@ export function compileModel(company: Company, data: StandardData, opts: Compile
     datasets,
     ...(base.relationships ? { relationships: base.relationships } : {}),
     metrics: [...kept, ...metrics],
-    nonportable_extensions: [...(base.nonportable_extensions ?? []).filter((e) => e.vendor_name !== GASP_VENDOR), compiled],
+    nonportable_extensions: [...(base.nonportable_extensions ?? []).filter((e) => !sameName(e.vendor_name, GASP_VENDOR)), compiled],
   };
   const names = new Set([...metrics.map((m) => m.name)]);
   const problems = [...(ossieSchemaErrors(model, "model", data) ?? []).map((e) => `Ossie schema: ${e}`), ...checkCompiledMetrics(model, names, { extensionSchema: data.extensionSchema })];

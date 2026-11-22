@@ -24,8 +24,9 @@ import { exportOssie, ossieYaml } from "../src/ossie/index.js";
 import { exportOntology } from "../src/ossie/ontology.js";
 import { parseStatistics, profileSchema } from "../src/ossie/profile.js";
 import { proposeMapping } from "../src/ossie/propose.js";
-import { GASP_VENDOR, LEGACY_EXTENSIONS_KEY, LEGACY_OSSIE_VERSION, OSSIE_VERSION, extensionData, gaspExtension, migrateDocument, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
-import { compileModelFromText } from "../src/ossie/company.js";
+import { GASP_VENDOR, LEGACY_EXTENSIONS_KEY, LEGACY_OSSIE_VERSION, OSSIE_DIALECT, OSSIE_VERSION, canonicalName, expressionText, extensionData, gaspExtension, migrateDocument, portableEntries, readGaspExtension, sameName, sourceProblems, sourceText, writeGaspExtension, type OssieExtension, type OssieMapping, type OssieSemanticModel } from "../src/ossie/types.js";
+import { compileModelFromText, fieldSql } from "../src/ossie/company.js";
+import { parseDocument } from "../src/ossie/adapt.js";
 import { validateMapping } from "../src/ossie/adapt.js";
 import { parse as parseYaml } from "yaml";
 import type { Adapter } from "../src/tools.js";
@@ -342,5 +343,187 @@ describe("documents saved before the move to Ossie 0.3.0.dev0", () => {
     expect(checkExport(docs, opts)).toEqual([`Model: nonportable_extensions data of dataset "${ds.name}" (vendor GASP) is not an object`]);
     entry.data = "{not json";
     expect(checkExport(docs, opts)).toEqual([`Model: nonportable_extensions data of dataset "${ds.name}" (vendor GASP) is not an object`]);
+  });
+});
+
+// Two forms upstream has proposed and not yet merged: vendor and dialect names
+// in any case (apache/ossie #712) and a table source as an object (#704). The
+// pinned validator accepts neither, so GASP reads them and writes neither.
+describe("documents in the forms upstream has proposed", () => {
+  /** A copy with `each` applied to every object outside the extension payloads. */
+  const rewritten = <T>(doc: T, each: (o: Record<string, unknown>) => void): T => {
+    const copy = structuredClone(doc);
+    const walk = (v: unknown, inData = false): void => {
+      if (Array.isArray(v)) { v.forEach((x) => walk(x, inData)); return; }
+      if (typeof v !== "object" || v === null || inData) return;
+      const o = v as Record<string, unknown>;
+      for (const [k, x] of Object.entries(o)) walk(x, k === "data" && typeof o.vendor_name === "string");
+      each(o);
+    };
+    walk(copy);
+    return copy;
+  };
+  const vendorsAs = <T>(doc: T, spell: (s: string) => string): T => rewritten(doc, (o) => { if (typeof o.vendor_name === "string") o.vendor_name = spell(o.vendor_name); });
+  /** Every `sql` expression as a dialect entry under `name`, the form documents carried before `sql` existed. */
+  const dialectsAs = <T>(doc: T, name: string): T => rewritten(doc, (o) => {
+    const e = o.expression as { sql?: string; dialects?: unknown } | undefined;
+    if (typeof e?.sql === "string") o.expression = { dialects: [{ dialect: name, expression: e.sql }] };
+  });
+  /** Every dataset source that is a dotted table name as a table object, alternate parts labelled with a level. */
+  const sourcesAsObjects = <T>(doc: T): T => rewritten(doc, (o) => {
+    if (!Array.isArray(o.datasets)) return;
+    for (const d of o.datasets as Array<{ source: unknown }>) {
+      if (typeof d.source !== "string" || !/^[\w$.]+$/.test(d.source)) continue;
+      d.source = { kind: "table", identifier: d.source.split(".").map((name, i) => (i % 2 ? name : { name, level: i ? "table" : "schema" })) };
+    }
+  });
+  const lower = (s: string) => s.toLowerCase();
+  const mixed = (s: string) => s[0] + s.slice(1).toLowerCase();
+
+  const form = adapterToOssie(JSON.parse(acmeAdapterText) as Adapter, data);
+  const mapping = ossieYaml(form.mapping);
+  // The compiled Acme model: GASP extensions on the model, the staged datasets and every compiled metric.
+  const compiledModel = parseYaml(compileModelFromText(mapping, ossieYaml(form.model), data, { document: true }).split("```yaml\n")[1].split("\n```")[0]) as OssieSemanticModel;
+  const model = ossieYaml(compiledModel);
+  const report = validateMapping(mapping, model, data);
+  const document = compileModelFromText(mapping, model, data, { document: true });
+
+  it("the baseline is a compiled model that recompiles to itself", () => {
+    expect(report).toContain("Valid against apache/ossie ontology/mapping.json.");
+    expect(model).toContain("vendor_name: GASP");
+    expect(compiledModel.datasets.some((d) => d.name === "gasp_account_cohorts")).toBe(true);
+    expect(document).toContain(model.trim());
+  });
+
+  it("names compare by ASCII case alone", () => {
+    expect(canonicalName("gasp")).toBe("GASP");
+    expect(canonicalName("ossie_sql_2026")).toBe(OSSIE_DIALECT);
+    expect(canonicalName("Größe ab")).toBe("GRößE AB");
+    expect(sameName("Gasp", GASP_VENDOR)).toBe(true);
+    expect(sameName("GASP ", GASP_VENDOR)).toBe(false);
+    expect(sameName(undefined, GASP_VENDOR)).toBe(false);
+  });
+
+  for (const [name, spell] of [["lowercase", lower], ["mixed case", mixed]] as const) {
+    it(`validate_mapping and compile_model read vendor names in ${name} as the current form`, () => {
+      const t = { mapping: ossieYaml(vendorsAs(form.mapping, spell)), model: ossieYaml(vendorsAs(compiledModel, spell)) };
+      expect(t.model).toContain(`vendor_name: ${spell(GASP_VENDOR)}`);
+      expect(t.model).not.toContain(`vendor_name: ${GASP_VENDOR}`);
+      expect(t.mapping).not.toContain(`vendor_name: ${GASP_VENDOR}`);
+      expect(validateMapping(t.mapping, t.model, data)).toEqual(report);
+      expect(compileModelFromText(t.mapping, t.model, data, { document: true })).toEqual(document);
+      expect(company(t.mapping, t.model).model).toEqual(company(mapping, model).model);
+    });
+
+    it(`validate_mapping and compile_model read dialect names in ${name} as the current form`, () => {
+      const current = { mapping, model: ossieYaml(dialectsAs(compiledModel, OSSIE_DIALECT)) };
+      const t = { mapping, model: ossieYaml(dialectsAs(compiledModel, spell(OSSIE_DIALECT))) };
+      expect(t.model).toContain(`dialect: ${spell(OSSIE_DIALECT)}`);
+      expect(t.model).not.toContain(`dialect: ${OSSIE_DIALECT}`);
+      const expected = validateMapping(current.mapping, current.model, data);
+      expect(expected).toContain("Valid against apache/ossie ontology/mapping.json.");
+      expect(validateMapping(t.mapping, t.model, data)).toEqual(expected);
+      expect(compileModelFromText(t.mapping, t.model, data, { document: true })).toEqual(compileModelFromText(current.mapping, current.model, data, { document: true }));
+    });
+  }
+
+  it("the readers take either case in memory, and a field's warehouse entry is found under any spelling", () => {
+    const exts = [{ vendor_name: "ACME", data: { a: 1 } }, { vendor_name: "gasp", data: { b: 2 } }];
+    expect(readGaspExtension(exts)).toEqual({ b: 2 });
+    expect(writeGaspExtension(exts, { c: 3 })).toEqual([{ vendor_name: GASP_VENDOR, data: { c: 3 } }, { vendor_name: "ACME", data: { a: 1 } }]);
+    const e = { dialects: [{ dialect: "Snowflake", expression: "amount_cents / 100" }, { dialect: "ossie_sql_2026", expression: "amount" }] };
+    expect(expressionText({ expression: e })).toBe("amount");
+    expect(portableEntries(e)).toEqual([{ dialect: "Snowflake", expression: "amount_cents / 100" }, { dialect: OSSIE_DIALECT, expression: "amount" }]);
+    expect(portableEntries({ sql: "x", dialects: [{ dialect: "Ossie_Sql_2026", expression: "y" }] })).toEqual([{ dialect: OSSIE_DIALECT, expression: "x" }]);
+    expect(fieldSql({ name: "amount", expression: e }, "snowflake")).toBe("amount_cents / 100");
+    expect(fieldSql({ name: "amount", expression: e }, "bigquery")).toBe("amount");
+
+    const exp = exportOssie(data);
+    const docs = { ontology: exp.ontology, model: vendorsAs(exp.model, lower), mapping: vendorsAs(exp.mapping, lower) };
+    expect(checkExport(docs, opts)).toEqual([]);
+    const ds = docs.model.datasets.find((d) => d.nonportable_extensions?.length)!;
+    (ds.nonportable_extensions![0].data as Record<string, unknown>).colour = "blue";
+    expect(checkExport(docs, opts)).toEqual([`Model: nonportable_extensions of dataset "${ds.name}" (GASP): \`/\` must NOT have additional properties: \`colour\``]);
+  });
+
+  it("migrateDocument respells GASP's vendor name and the dialects it reads, and leaves every other name as written", () => {
+    const doc = {
+      nonportable_extensions: [{ vendor_name: "gasp", data: { vendor_name: "gasp" } }, { vendor_name: "acme", data: {} }],
+      datasets: [{ name: "d", source: "s.d", fields: [{ name: "f", expression: { dialects: [
+        { dialect: "ossie_sql_2026", expression: "f" }, { dialect: "snowflake", expression: "f" }, { dialect: "Postgres", expression: "f" },
+        { dialect: "my_dialect", expression: "f" }, { dialect: "BIGQUERY", expression: "f" },
+      ] } }] }],
+    };
+    expect(migrateDocument(doc)).toBe(4);
+    expect(doc.nonportable_extensions).toEqual([{ vendor_name: GASP_VENDOR, data: { vendor_name: "gasp" } }, { vendor_name: "acme", data: {} }]);
+    expect(doc.datasets[0].fields[0].expression.dialects.map((d) => d.dialect)).toEqual([OSSIE_DIALECT, "SNOWFLAKE", "POSTGRES", "my_dialect", "BIGQUERY"]);
+    expect(migrateDocument(doc)).toBe(0);
+  });
+
+  it("validate_mapping and compile_model read a table source written as an object as the string form", () => {
+    const objects = sourcesAsObjects(compiledModel);
+    const tables = compiledModel.datasets.filter((d) => /^[\w$.]+$/.test(d.source));
+    expect(tables.length).toBeGreaterThanOrEqual(4);
+    expect(objects.datasets.find((d) => d.name === tables[0].name)!.source).toEqual({ kind: "table", identifier: [{ name: "billing", level: "schema" }, tables[0].source.split(".")[1]] });
+    const t = { mapping, model: ossieYaml(objects) };
+    expect(t.model).toContain("kind: table");
+    expect(validateMapping(t.mapping, t.model, data)).toEqual(report);
+    expect(compileModelFromText(t.mapping, t.model, data, { document: true })).toEqual(document);
+    expect(company(t.mapping, t.model).model).toEqual(company(mapping, model).model);
+    const copy = structuredClone(objects);
+    expect(migrateDocument(copy)).toBe(tables.length);
+    expect(copy).toEqual(compiledModel);
+  });
+
+  it("sourceText gives a table object's parts joined by a dot and names what it cannot read", () => {
+    expect(sourceText("billing.subscriptions")).toEqual({ text: "billing.subscriptions" });
+    expect(sourceText("SELECT 1")).toEqual({ text: "SELECT 1" });
+    expect(sourceText({ kind: "table", identifier: ["orders"] })).toEqual({ text: "orders" });
+    expect(sourceText({ kind: "table", identifier: [{ name: "PROD", level: "catalog" }, "sales", { name: "orders$1", level: "table" }] })).toEqual({ text: "PROD.sales.orders$1" });
+    const problem = (s: unknown) => (sourceText(s) as { problem: string }).problem;
+    expect(problem({ kind: "query", sql: "SELECT 1" })).toContain('source kind "query" is not supported');
+    expect(problem({ identifier: ["orders"] })).toContain("source kind undefined is not supported");
+    expect(problem({ kind: "table" })).toBe("table source has no identifier parts");
+    expect(problem({ kind: "table", identifier: [] })).toBe("table source has no identifier parts");
+    expect(problem({ kind: "table", identifier: ["sales", { level: "table" }] })).toContain("identifier part with no name");
+    expect(problem({ kind: "table", identifier: ["prod", "sales", "eu.orders"] })).toContain('part "eu.orders" is not a plain identifier');
+    expect(problem({ kind: "table", identifier: ["my project", "orders"] })).toContain('part "my project" is not a plain identifier');
+    expect(problem({ kind: "table", identifier: ["2024"] })).toContain('part "2024" is not a plain identifier');
+    expect(problem(7)).toBe("source is neither a string nor an object");
+    expect(problem(["a"])).toBe("source is neither a string nor an object");
+  });
+
+  it("a source no reader can take is refused by name, never flattened or read as another kind", () => {
+    const withSource = (source: unknown) => {
+      const m = structuredClone(compiledModel) as unknown as { datasets: Array<{ name: string; source: unknown }> };
+      m.datasets[0].source = source;
+      return { name: m.datasets[0].name, text: JSON.stringify(m), doc: m };
+    };
+    const dotted = withSource({ kind: "table", identifier: ["prod", "sales", "eu.orders"] });
+    expect(migrateDocument(structuredClone(dotted.doc))).toBe(0);
+    expect(sourceProblems(dotted.doc)).toEqual([`Dataset "${dotted.name}": table source part "eu.orders" is not a plain identifier (letters, digits, _ and $). GASP writes table names unquoted and cannot name this table; a source of plain parts, such as a view over it, loads.`]);
+    expect(parseDocument(dotted.text)).toEqual({ error: sourceProblems(dotted.doc)[0] });
+    expect(validateMapping(mapping, dotted.text, data)).toBe(`Invalid semantic model. ${sourceProblems(dotted.doc)[0]}`);
+    expect(compileModelFromText(mapping, dotted.text, data, { document: true })).toContain(`Dataset "${dotted.name}": table source part "eu.orders"`);
+
+    const query = withSource({ kind: "query", sql: "SELECT * FROM billing.subscriptions" });
+    expect(parseDocument(query.text).error).toBe(`Dataset "${query.name}": source kind "query" is not supported; GASP reads a string or a table source, { kind: table, identifier: [...] }.`);
+    expect(validateMapping(mapping, query.text, data)).toContain("Invalid semantic model.");
+
+    expect(sourceProblems(compiledModel)).toEqual([]);
+    expect(sourceProblems({ nonportable_extensions: [{ vendor_name: "ACME", data: { datasets: [{ name: "x", source: { kind: "file" } }] } }] })).toEqual([]);
+  });
+
+  it("a tool that loads either form hands back the form the pinned validator accepts", () => {
+    const t = { mapping: ossieYaml(vendorsAs(form.mapping, lower)), model: ossieYaml(sourcesAsObjects(vendorsAs(dialectsAs(compiledModel, lower(OSSIE_DIALECT)), lower))) };
+    const c = company(t.mapping, t.model);
+    expect(c.model.datasets.every((d) => typeof d.source === "string")).toBe(true);
+    const out = compileModelFromText(t.mapping, t.model, data, { document: true });
+    expect(out).not.toContain("kind: table");
+    expect(out).not.toContain("vendor_name: gasp");
+    expect(out).not.toContain("dialect: ossie_sql_2026");
+    expect(out).toContain("vendor_name: GASP");
+    expect(GASP_VENDOR).toBe(canonicalName(GASP_VENDOR));
+    expect(ossieYaml(exportOssie(data).model)).not.toContain("kind: table");
   });
 });

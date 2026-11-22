@@ -84,7 +84,7 @@ The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return pat
 
 ## Data
 
-Version 1.21.0.
+Version 1.22.0.
 
 - 314 metrics across 13 departments
 - 99 glossary definitions (86 SaaS domain + 13 GASP framework)
@@ -103,7 +103,7 @@ Version 1.21.0.
 - CEL `change_nature` field for revenue quality analysis (Adjusted NRR/GRR) and `segment` on revenue, contract and amendment events, so MRR, retention and churn metrics break down by customer segment
 - Per-department cross-references (NRR under Customer Success, CAC under Marketing) resolve to the full canonical record, with its access classification, structured formula and entity mappings
 - Every metric and definition result carries its gaspwiki.com page URL; definitions keep their full body and reference links
-- One mapping format: a company's warehouse mapping is an Apache Ossie mapping document over its semantic model, and the v1 adapter is accepted everywhere and converted on load (`src/ossie/adapt.ts`). The upstream Ossie schemas travel in the bundled data as `ossieSchemas`, so `validate_mapping` checks an Ossie mapping offline
+- One mapping format: a company's warehouse mapping is an Apache Ossie mapping document over its semantic model, and the v1 adapter is accepted everywhere and converted on load (`src/ossie/adapt.ts`). The upstream Ossie schemas travel in the bundled data as `ossieSchemas`, so `validate_mapping` checks an Ossie mapping offline. Every tool reads a document in the forms Apache Ossie has proposed as well as the current one: `vendor_name` and `dialect` in any case (apache/ossie #712) and a dataset `source` as a table object, `{kind: table, identifier: [...]}` (apache/ossie #704), and hands back the form the pinned validator accepts
 - The schema profiler (`src/ossie/profile.ts`, behind `profile_schema`) turns a schema dump into a minimal Ossie semantic model with its evidence; the Acme DDL in `test/fixture/acme-schema.sql` is its fixture.
 - The mapping proposer (`src/ossie/propose.ts`, behind `propose_mapping`) turns that model into a draft GASP mapping with the evidence per pair, transforms where the name or the values call for one and candidates for the pairs the evidence does not settle; on the Acme DDL it reproduces the Acme adapter.
 - The CEL derivations (`src/cel.ts`, behind `derive_cel`) are the standard's rules for turning a subscription ledger, an invoice ledger or usage records into `Revenue_Event` rows, compiled over a company's mapping in its dialect. The test suite runs them over the synthetic dataset: every generated movement comes back from the subscription snapshots with monthly sums equal to the compiled MRR movement metrics, the monthly invoices give the month-start movements with a lapsed subscription churning the day after its last period, the usage records give a tagged pair per month over the commitment, chained with the ledger's steps, the credit ledger's overage consumption gives the same pairs row for row, and the usage records derive into the credit ledger's overage rows.

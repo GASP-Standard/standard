@@ -19,7 +19,7 @@ import type {
   OssieReferentMapping,
   OssieSemanticModel,
 } from "./types.js";
-import { extensionData, GASP_VENDOR, OSSIE_DIALECT, portableEntries } from "./types.js";
+import { extensionData, GASP_VENDOR, OSSIE_DIALECT, portableEntries, sameName } from "./types.js";
 import type { ValidateFunction } from "ajv";
 import { formatSchemaError, newAjv } from "../tools.js";
 
@@ -28,7 +28,7 @@ const BUILT_INS = new Set(["Any", "Boolean", "Date", "DateTime", "Decimal", "Flo
 /** True when an expression carries both `sql` and an OSSIE_SQL_2026 dialect entry with different text (the validator warns on the same). */
 function supersededDiffers(e: { sql?: string; dialects?: Array<{ dialect: string; expression: string }> } | undefined): boolean {
   if (typeof e?.sql !== "string" || !e.sql.trim()) return false;
-  return (e.dialects ?? []).some((d) => d.dialect === OSSIE_DIALECT && d.expression !== e.sql);
+  return (e.dialects ?? []).some((d) => sameName(d.dialect, OSSIE_DIALECT) && d.expression !== e.sql);
 }
 
 function dupes(names: string[]): string[] {
@@ -248,7 +248,7 @@ function checkExt(
       p.push(`${schema?.doc ?? "Model"}: nonportable_extensions data of ${who} (vendor ${e.vendor_name}) is not an object`);
       continue;
     }
-    if (!schema || e.vendor_name !== GASP_VENDOR) continue;
+    if (!schema || !sameName(e.vendor_name, GASP_VENDOR)) continue;
     if ("undefinedOn" in schema) {
       p.push(`${schema.doc}: nonportable_extensions of ${who} (${GASP_VENDOR}): GASP defines no extension on a ${schema.undefinedOn}; its payloads sit on the semantic model, a dataset, a metric or the mapping`);
       continue;

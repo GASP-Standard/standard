@@ -5,6 +5,20 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-21] The Ossie readers take vendor and dialect names in any case and a table source as an object, ahead of upstream
+
+**Context.** Two upstream pull requests change how an Ossie document may be written and both are open: apache/ossie #712 makes `vendor_name` and `dialect` case-insensitive in ASCII, and #704 lets a dataset `source` be a table object, `{kind: table, identifier: [...]}`, beside the string. The earlier plan waited for each to merge and for the validator pin to move. The owner put the readers on the open-foundation list instead (item 0, 2026-11-19): a document written in either form by another tool should load today. The vendored validator at `1b1ebb6` accepts neither form, so nothing GASP writes may use them.
+
+**Decision.** Read both, write neither.
+
+- Names compare through `sameName` in `ossie/types.ts`, which upper-cases `a` to `z` and leaves every other character, the comparison #712 specifies. Every reader of a vendor or dialect name uses it.
+- `migrateDocument`, which every tool runs on a document it loads, respells the names GASP reads by name: a `vendor_name` that is GASP's becomes `GASP` and a `dialect` that is `OSSIE_SQL_2026` or the registered name of a compiler dialect becomes its uppercase form. Another vendor's name and an unknown dialect keep their spelling, because under the specification as merged today they are distinct names and GASP has no business changing them.
+- The same pass rewrites a table object to its parts joined by a dot, which #704 defines as the same table in shorthand. The level labels are dropped: the string form cannot carry them.
+- A source GASP cannot name is refused in `parseDocument`, with the dataset named: any other `kind`, and a table part that is not a plain identifier (a dot, a space, a leading digit). The SQL writers place table names unquoted, and #704 forbids a consumer to flatten such a part or read a source as another kind.
+- #712 also rejects two entries in one list whose names differ only by case. GASP does not enforce that: it is a breaking change of its own that upstream has yet to approve.
+
+**Consequences.** A document in either form gives the same `validate_mapping` report and the same compiled model as the current form, and the document a tool hands back passes the pinned validator. When #712 and #704 merge and the pin moves, the readers need no change; the open question then is whether the writers keep a table object as authored, with its levels, which wants per-dialect quoting in the SQL writers first. A string source with a hyphenated part, such as a BigQuery project id, is still wrapped as a query by `compile_model`, as before this change.
+
 ## [2026-11-21] The accuracy benchmark is a research article at /research/benchmark
 
 **Context.** The benchmark sat at `/v1/benchmark` in the docs shell, between AI Tools and Adapter in the sidebar. It is a signed, dated piece of evidence, the kind of page `/research` was opened for the same day, and the owner asked for it beside the churn article with a redirect for the old link.
