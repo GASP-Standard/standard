@@ -4,6 +4,9 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+### Changed
+- The vendored Apache Ossie validator moves to upstream `4a315fa` (2026-11-22, nine commits on; #780, #782, #792 and #793 touch the vendored files). The script rejects an aggregate function with no `OVER` clause in a field's `OSSIE_SQL_2026` expression, declares `sqlglot>=30.29.0` and warns on a sqlglot too old to check SQL. Every published file passes with the same output and no exported file changes.
+
 ## [1.22.0] - 2026-11-21
 
 ### Added

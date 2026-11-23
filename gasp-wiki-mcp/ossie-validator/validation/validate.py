@@ -5,7 +5,7 @@
 # dependencies = [
 #     "jsonschema>=4.26.0",
 #     "pyyaml>=6.0.3",
-#     "sqlglot>=30.19.0",
+#     "sqlglot>=30.29.0",
 # ]
 # ///
 
@@ -139,6 +139,15 @@ try:
     from sqlglot.tokens import TokenType
     SQLGLOT_AVAILABLE = True
 except ImportError:
+    SQLGLOT_AVAILABLE = False
+
+# The minimum the script header declares: the oldest sqlglot the test suite
+# passes on. AGG() parses to exp.Agg, which sqlglot ships only from 30.19.0.
+# An older sqlglot would raise AttributeError in the checks below, so treat it
+# as unavailable and skip them instead.
+SQLGLOT_MIN_VERSION = "30.29.0"
+SQLGLOT_TOO_OLD = SQLGLOT_AVAILABLE and not hasattr(exp, "Agg")
+if SQLGLOT_TOO_OLD:
     SQLGLOT_AVAILABLE = False
 
 # The dialect the portable `sql` form is written in; the only one this
@@ -1614,6 +1623,9 @@ def validate_sql(data: dict) -> list[str]:
         return []
 
     if not SQLGLOT_AVAILABLE:
+        # Too old, not missing: validate_document already warned about that.
+        if SQLGLOT_TOO_OLD:
+            return []
         return [ValidationWarning(
             "[SQL] Warning: sqlglot not installed, skipping SQL validation. Install with: pip install sqlglot"
         )]
@@ -2119,6 +2131,91 @@ def validate_agg_placement(data: dict) -> list[str]:
     return errors
 
 
+# Aggregates of the expression language (expression_language.md, Aggregation
+# Functions) that sqlglot's default dialect parses as an unknown function, so
+# they are recognized by name.
+AGGREGATES_UNKNOWN_TO_SQLGLOT = frozenset({"APPROX_PERCENTILE"})
+
+
+def unwindowed_aggregates(tree: object) -> list[str]:
+    """Names of the aggregate functions an expression calls without an OVER clause.
+
+    Each is named once, in the order they appear. A call is windowed when it
+    is the function of a window, bare or under FILTER (WHERE ...), WITHIN GROUP
+    or IGNORE/RESPECT NULLS. An aggregate in the window's PARTITION BY or
+    ORDER BY, or in the argument of the windowed call, is not: SUM(SUM(x))
+    OVER () still aggregates x. AGG is left to validate_agg_placement. A call
+    inside a query belongs to that query, and whether an expression may hold a
+    query is not this check's question.
+    """
+    # What sqlglot puts between a windowed call and its Window node.
+    window_wrappers = (exp.Filter, exp.WithinGroup, exp.IgnoreNulls, exp.RespectNulls)
+    names = []
+    for call in tree.find_all(exp.AggFunc, exp.Anonymous, bfs=False):
+        if isinstance(call, exp.Agg):
+            continue
+        if isinstance(call, exp.Anonymous):
+            name = call.name.upper()
+            if name not in AGGREGATES_UNKNOWN_TO_SQLGLOT:
+                continue
+        else:
+            name = call.sql_name()
+        # `SELECT {expr}` is how _parse_sql_expression reads some expressions,
+        # so a bare projection at the root is the expression itself.
+        query = call.find_ancestor(exp.Select)
+        if query is not None and not (query is tree and _is_bare_projection(tree)):
+            continue
+        node = call
+        while isinstance(node.parent, window_wrappers) and node.arg_key == "this":
+            node = node.parent
+        if isinstance(node.parent, exp.Window) and node.arg_key == "this":
+            continue
+        if name not in names:
+            names.append(name)
+    return names
+
+
+def validate_field_aggregates(data: dict) -> list[str]:
+    """Report an aggregate function in a field expression.
+
+    A field is a row-level attribute and its expression is scalar, with no
+    aggregations (spec.md, Fields, Expression Object); an aggregation is a
+    metric. A window function still yields one value for each row, so an
+    aggregate with an OVER clause is accepted. Like the other checks of the
+    portable language, this one is for OSSIE_SQL_2026, so other dialects are
+    skipped. AGG in a field is validate_agg_placement's finding.
+    """
+    if not SQLGLOT_AVAILABLE or not isinstance(data, dict) or "datasets" not in data:
+        return []
+
+    model_name = data.get("name", "<unnamed>")
+    errors = []
+    for expression in iter_expressions(data):
+        # A superseded OSSIE_SQL_2026 dialect entry is non-authoritative; the
+        # top-level `sql` it defers to is checked in its place.
+        if (
+            expression.kind != "field"
+            or expression.dialect != PORTABLE_DIALECT
+            or not isinstance(expression.text, str)
+            or not expression.text
+            or expression.superseded_by is not None
+        ):
+            continue
+        context = expression.context(model_name)
+        tree, _ = _parse_sql_expression(expression.text, expression.dialect, context)
+        if tree is None:
+            continue
+        names = unwindowed_aggregates(tree)
+        if names:
+            errors.append(
+                f"[Scope] {context} calls {', '.join(names)} without an OVER clause in a "
+                f"field expression. A field expression is scalar, with no aggregations: "
+                f"add an OVER clause to make it a window function, or define the "
+                f"aggregation as a metric."
+            )
+    return errors
+
+
 def as_list(value: object) -> list:
     """The items of a list, or nothing for shapes that already failed the schema."""
     return value if isinstance(value, list) else []
@@ -2212,6 +2309,7 @@ def validate_semantic_model(data: dict) -> list[str]:
     errors.extend(validate_field_shadowing(data))
     errors.extend(validate_metric_scoping(data))
     errors.extend(validate_agg_placement(data))
+    errors.extend(validate_field_aggregates(data))
     errors.extend(validate_sql(data))
     errors.extend(validate_metric_agreement(data))
     return errors
@@ -2652,10 +2750,12 @@ def validate_mapping(data: dict, base: Path | None) -> list[str]:
     # dataset to a regular identifier, so their fields are pooled.
     datasets = None
     if model is not None and not SQLGLOT_AVAILABLE:
-        errors.append(ValidationWarning(
-            "[Reference] Warning: sqlglot is not installed, so the fields the mapping "
-            "expressions name are not checked. Install with: pip install sqlglot"
-        ))
+        # Too old, not missing: validate_document already warned about that.
+        if not SQLGLOT_TOO_OLD:
+            errors.append(ValidationWarning(
+                "[Reference] Warning: sqlglot is not installed, so the fields the mapping "
+                "expressions name are not checked. Install with: pip install sqlglot"
+            ))
     elif model is not None:
         datasets = {}
         for dataset in model["datasets"]:
@@ -3118,6 +3218,13 @@ def validate_document(
     checks have passed, and the rest are left alone.
     """
     errors = []
+    # Too old to ship exp.Agg: warn once, then let the checks below skip.
+    if SQLGLOT_TOO_OLD:
+        errors.append(ValidationWarning(
+            f"[SQL] Warning: sqlglot {sqlglot.__version__} is installed, but SQL validation "
+            f"requires sqlglot >= {SQLGLOT_MIN_VERSION}, so SQL expressions are not checked. "
+            f"Upgrade with: pip install -U 'sqlglot>={SQLGLOT_MIN_VERSION}'"
+        ))
     errors.extend(validate_schema(data, schema))
     # Same severity as a schema type error. The schema does not describe keys
     # under data, so dates and non-finite floats are caught here. Portable

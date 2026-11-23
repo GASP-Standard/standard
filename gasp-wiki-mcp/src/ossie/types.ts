@@ -1,7 +1,7 @@
 /**
  * Apache Ossie (incubating) document shapes, as far as the GASP exporters use
  * them. Mirrors core-spec/ossie-schema.json, ontology/ontology.json and
- * ontology/mapping.json at apache/ossie 1b1ebb6 (2026-11-20). Every shape is
+ * ontology/mapping.json at apache/ossie 4a315fa (2026-11-22). Every shape is
  * `additionalProperties: false` upstream, so add nothing that is not here.
  */
 
