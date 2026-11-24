@@ -15,8 +15,8 @@ describe("data integrity", () => {
     expect(data.metrics).toHaveLength(314);
   });
 
-  it("loads 99 definitions (86 SaaS domain + 13 GASP framework)", () => {
-    expect(data.definitions).toHaveLength(99);
+  it("loads 121 definitions (108 SaaS domain + 13 GASP framework)", () => {
+    expect(data.definitions).toHaveLength(121);
   });
 
   it("loads 105 relationship nodes (70 metrics + 28 entities + 7 concepts)", () => {

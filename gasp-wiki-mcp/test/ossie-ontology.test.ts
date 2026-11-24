@@ -8,7 +8,7 @@ import { loadStandard } from "../src/loader.js";
 import { exportOntology, unmappedEdges, edgesWithoutJoin, planOntology, expandIri, ONTOLOGY_PREFIXES } from "../src/ossie/ontology.js";
 import { exportExample } from "../src/ossie/example.js";
 import { exportOssie } from "../src/ossie/index.js";
-import { celClassUrl, definitionUrl, nodeUrl } from "../src/urls.js";
+import { celClassUrl, datasetUrl, definitionUrl, nodeUrl } from "../src/urls.js";
 import { exportMapping } from "../src/ossie/mapping.js";
 import { exportModel } from "../src/ossie/model.js";
 import type { OssieConcept, OssieLinkMapping, OssieObjectMapping, OssieOntologyRelationship, OssieReferentMapping } from "../src/ossie/types.js";
@@ -119,7 +119,7 @@ describe("Ossie ontology export", () => {
     expect(rel("Customer", "owns")!.roles).toEqual([{ concept: "Subscription" }]);
   });
 
-  it("gives a concept the address of its own page as iri, written against a declared prefix", () => {
+  it("gives every entity type the address of its own page as iri, written against a declared prefix", () => {
     expect(ontology.prefixes).toEqual({ ...ONTOLOGY_PREFIXES });
     const node = (id: string) => data.nodes.find((n) => n.id === id);
     const expected = new Map<string, string>();
@@ -134,21 +134,30 @@ describe("Ossie ontology export", () => {
     }
     // A CEL event dataset: the heading of its class on the CEL page.
     for (const [id, d] of datasets) if (d.cel && !expected.has(plan.datasetConcept[id])) expected.set(plan.datasetConcept[id], celClassUrl(d.cel));
-    expect(expected.size).toBeGreaterThan(10);
+    // Any other dataset: its entry in the datasets reference.
+    for (const [id] of datasets) if (!expected.has(plan.datasetConcept[id])) expected.set(plan.datasetConcept[id], datasetUrl(id));
     for (const c of ontology.ontology) {
       const want = expected.get(c.concept);
       if (!want) {
+        // A value type is described by its field and has no page.
+        expect(c.type, c.concept).not.toBe("EntityType");
         expect(c.iri, c.concept).toBeUndefined();
         continue;
       }
-      expect(c.iri, c.concept).toMatch(/^(gasp|cel):[A-Za-z0-9_-]+$/);
+      expect(c.iri, c.concept).toMatch(/^(gasp|cel|dataset):[A-Za-z0-9_-]+$/);
       expect(expandIri(c.iri!, ontology.prefixes), c.concept).toBe(want);
     }
+    // Every graph entity and concept has a glossary page, so each of those addresses is a glossary one.
+    for (const n of data.nodes) if (n.nodeType === "entity" || n.nodeType === "concept") expect(n.definition, n.id).toBeTruthy();
+    const entityTypes = ontology.ontology.filter((c) => c.type === "EntityType");
+    expect(entityTypes.every((c) => c.iri)).toBe(true);
+    expect(entityTypes.filter((c) => c.iri!.startsWith("gasp:")).length).toBe(data.ontology!.entities.length + (data.ontology!.concepts ?? []).length);
     // An iri says two concepts are the same thing, so no two share one.
     const iris = ontology.ontology.flatMap((c) => (c.iri ? [c.iri] : []));
     expect(new Set(iris).size).toBe(iris.length);
     expect(iris.length).toBe(expected.size);
     expect(expandIri("gasp:incident")).toBe(definitionUrl({ slug: "incident" }));
+    expect(expandIri("dataset:usage_record")).toBe(datasetUrl("usage_record"));
     expect(expandIri("https://example.com/x")).toBe("https://example.com/x");
   });
 

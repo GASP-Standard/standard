@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadStandard, findDefinition, search } from "../src/loader.js";
-import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink, celClassUrl } from "../src/urls.js";
+import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink, celClassUrl, datasetUrl } from "../src/urls.js";
 import type { StandardData } from "../src/types.js";
 
 // Regression: agents were handed definitions with no URL and guessed their
@@ -157,6 +157,18 @@ describe.skipIf(!existsSync(PAGES))("every emitted URL resolves", () => {
     const classes = new Set(Object.values(data.ontology!.datasets ?? {}).flatMap((d) => (d.cel ? [d.cel] : [])));
     expect(classes.size).toBe(6);
     for (const c of classes) expect(html, c).toContain(`id="${new URL(celClassUrl(c)).hash.slice(1)}"`);
+  });
+
+  it("a dataset address is the datasets reference with the dataset id as anchor", () => {
+    expect(datasetUrl("usage_record")).toBe(`${SITE}/v1/datasets#usage_record`);
+    expect(staticRoutes().has("/v1/datasets")).toBe(true);
+  });
+
+  it.skipIf(!existsSync(join(DIST, "v1", "datasets", "index.html")))("every dataset has its anchor on the built datasets reference", () => {
+    const html = readFileSync(join(DIST, "v1", "datasets", "index.html"), "utf-8");
+    const ids = Object.keys(data.ontology!.datasets ?? {});
+    expect(ids.length).toBeGreaterThan(50);
+    for (const id of ids) expect(html, id).toContain(`id="${new URL(datasetUrl(id)).hash.slice(1)}"`);
   });
 
   it.skipIf(!existsSync(DIST))("exists in the built site", () => {

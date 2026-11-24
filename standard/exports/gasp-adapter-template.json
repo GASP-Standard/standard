@@ -1832,7 +1832,8 @@
         "Net Revenue Retention (NRR)",
         "Revenue Churn Rate",
         "Tickets per Customer",
-        "Total Customers"
+        "Total Customers",
+        "Upsell Rate"
       ]
     },
     {

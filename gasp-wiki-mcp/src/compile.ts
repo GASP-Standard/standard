@@ -544,13 +544,16 @@ class Compiler {
       this.datasets.add(keyDs);
       const kmeta = this.ctx.datasets[keyDs];
       const ks: Scope = { ...scope, dataset: keyDs };
-      const active = kmeta.activeWhen ? ` AND ${this.expr(parseFormula(kmeta.activeWhen).expr, ks)}` : "";
       // The cohort's own condition is read on the key's dataset at the cohort point (the deals in commit then).
       const cond = scope.cohort.where;
-      if (cond) {
-        const off = analyzeFormula({ expr: cond }).fieldRefs.filter((id) => !(this.ctx.fields[id]?.datasets ?? []).includes(keyDs));
-        if (off.length) throw new CompileError(`Cohort condition reads ${off.map((id) => `field.${id}`).join(", ")}, which the '${keyDs}' dataset does not carry`);
-      }
+      const condFields = cond ? analyzeFormula({ expr: cond }).fieldRefs : [];
+      const off = condFields.filter((id) => !(this.ctx.fields[id]?.datasets ?? []).includes(keyDs));
+      if (off.length) throw new CompileError(`Cohort condition reads ${off.map((id) => `field.${id}`).join(", ")}, which the '${keyDs}' dataset does not carry`);
+      // The members are the keys the dataset counts as active on that day. A condition on the field of
+      // that rule states the membership itself (the users dormant then), so the rule is left out.
+      const rule = kmeta.activeWhen ? parseFormula(kmeta.activeWhen).expr : undefined;
+      const restated = !!rule && analyzeFormula({ expr: rule }).fieldRefs.some((id) => condFields.includes(id));
+      const active = rule && !restated ? ` AND ${this.expr(rule, ks)}` : "";
       if (byMember) this.memberDataset = keyDs;
       const narrowed = (cond ? ` AND ${this.expr(cond, ks)}` : "") + (byMember ? ` AND ${this.ph(bd!.field!, keyDs)} = _d.${bd!.column}` : "");
       where.push(`${this.ph(key, ds)} IN (SELECT ${this.ph(key, keyDs)} FROM {{_table:${keyDs}}} WHERE ${this.onDay(this.ph(kmeta.date, keyDs), this.bound(scope.cohort.point, { ...scope, shift: [] }), this.type(kmeta.date) === "timestamp")}${active}${narrowed})`);

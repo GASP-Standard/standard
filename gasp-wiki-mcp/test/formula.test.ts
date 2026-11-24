@@ -254,6 +254,27 @@ describe("distinct pairs, total() and breakdowns", () => {
       .toThrow("Cohort condition reads field.agent_id, which the 'customer' dataset does not carry");
   });
 
+  it("a cohort is the keys active on its day and a condition on the status field states the membership itself", () => {
+    const f = {
+      ...fields,
+      plan_tier: { id: "plan_tier", type: "enum", datasets: ["customer"], values: ["free", "paid"] },
+      customer_status: { id: "customer_status", type: "enum", datasets: ["customer"], values: ["active", "dormant"] },
+    };
+    const ds = { ...datasets, customer: { ...datasets.customer, activeWhen: "field.customer_status = 'active'" } };
+    const members = (cohort: string) => {
+      const sql = compileMetric("t", { fields: f, datasets: ds, formulas: { t: { formula: `count(field.ticket_id) over ${cohort}`, unit: "count" } } }).sql;
+      return sql.slice(sql.indexOf("IN (SELECT"), sql.lastIndexOf(")) AS t") + 1);
+    };
+    const day = "IN (SELECT {{customer_id@customer}} FROM {{_table:customer}} WHERE {{snapshot_date@customer}} = {{_period_start}}";
+    expect(members("cohort(field.customer_id, period_start)")).toBe(`${day} AND {{customer_status@customer}} = 'active')`);
+    // A condition on another field narrows the active keys.
+    expect(members("cohort(field.customer_id, period_start where field.plan_tier = 'paid')")).toBe(`${day} AND {{customer_status@customer}} = 'active' AND {{plan_tier@customer}} = 'paid')`);
+    // A condition on the field of the active rule replaces it: active and dormant together would be nobody.
+    expect(members("cohort(field.customer_id, period_start where field.customer_status = 'dormant')")).toBe(`${day} AND {{customer_status@customer}} = 'dormant')`);
+    expect(members("cohort(field.customer_id, period_start where field.customer_status = 'dormant' and field.plan_tier = 'paid')"))
+      .toBe(`${day} AND ({{customer_status@customer}} = 'dormant' AND {{plan_tier@customer}} = 'paid'))`);
+  });
+
   it("parses total() and validates its placement", () => {
     expect(parseFormula("count(field.mrr) / total(count(field.mrr))").expr).toMatchObject({ kind: "binary", right: { kind: "total", arg: { kind: "agg" } } });
     expect(errorsOf("sum(field.mrr) / total(metric.mrr)")).toEqual([]);

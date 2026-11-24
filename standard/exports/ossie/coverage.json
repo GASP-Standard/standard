@@ -6,9 +6,9 @@
     "notComputable": 15
   },
   "stagedReasons": {
-    "cohort": 26,
+    "cohort": 33,
     "lag": 6,
-    "at period_start": 20,
+    "at period_start": 13,
     "total": 6,
     "period bound in filter": 93,
     "to_date": 7,
@@ -578,13 +578,13 @@
       "kind": "staged",
       "ossieName": "gasp_partner_churn_rate",
       "stagedDataset": "gasp_staged_gasp_partner_churn_rate",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "partner_churn_rate:by_partner_tier": {
       "kind": "staged",
       "ossieName": "gasp_partner_churn_rate_by_partner_tier",
       "stagedDataset": "gasp_staged_gasp_partner_churn_rate_by_partner_tier",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "partner_sourced_revenue": {
       "kind": "staged",
@@ -703,7 +703,7 @@
       "kind": "staged",
       "ossieName": "gasp_partner_lifetime_value",
       "stagedDataset": "gasp_staged_gasp_partner_lifetime_value",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "partner_roi": {
       "kind": "staged",
@@ -1334,7 +1334,7 @@
       "kind": "staged",
       "ossieName": "gasp_at_risk_rate_entered_at_risk",
       "stagedDataset": "gasp_staged_gasp_at_risk_rate_entered_at_risk",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "at_risk_rate:by_segment": {
       "kind": "direct",
@@ -1416,13 +1416,13 @@
       "kind": "staged",
       "ossieName": "gasp_upsell_rate",
       "stagedDataset": "gasp_staged_gasp_upsell_rate",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "cross_sell_rate": {
       "kind": "staged",
       "ossieName": "gasp_cross_sell_rate",
       "stagedDataset": "gasp_staged_gasp_cross_sell_rate",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "renewal_rate": {
       "kind": "staged",
@@ -1856,7 +1856,7 @@
       "kind": "staged",
       "ossieName": "gasp_resurrection_rate",
       "stagedDataset": "gasp_staged_gasp_resurrection_rate",
-      "reason": "at period_start"
+      "reason": "cohort"
     },
     "release_frequency": {
       "kind": "direct",

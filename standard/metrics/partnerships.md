@@ -69,14 +69,16 @@ A recruited partner becomes active once productive: a first deal registered or c
 
 ### Partner Churn Rate
 
-**Definition:** Percentage of partners who leave or become inactive.
+**Definition:** The percentage of partners active at period start who left the programme in the period.
 
 **Formula:**
 ```
-Partner Churn = Partners churned in period / Active partners at start of period × 100
+Partner Churn Rate = Partners active at start of period who left in the period / Active partners at start of period × 100
 ```
 
-Partner Churn Rate is reported per partner tier.
+**Who is counted:** The partners active on the first day of the period. A partner counts when they were active on that day and their churn date falls in the period, so the rate stays between 0% and 100%. A partner activated inside the period who leaves in it sits outside this rate.
+
+Partner Churn Rate is reported per partner tier. Each partner counts in the tier held on the first day of the period.
 
 **What it tells you:** Partner program health and competitiveness.
 

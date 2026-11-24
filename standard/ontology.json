@@ -37,8 +37,7 @@
       "id": "lead",
       "label": "Lead",
       "aliases": [
-        "Prospect",
-        "Contact"
+        "Prospect"
       ],
       "definition": "A person or company that has shown interest but has not been qualified as a sales opportunity.",
       "level": "acquisition"
@@ -1502,7 +1501,7 @@
         "dormant"
       ],
       "description": "Customer lifecycle status; active means at least one active subscription",
-      "metricCount": 22
+      "metricCount": 23
     },
     {
       "id": "deflections",
@@ -5214,7 +5213,7 @@
     "total_active_partners": "Active Partners",
     "partner_tier_distribution": "Active Partners",
     "partner_activation_rate": "Partner Revenue",
-    "partner_churn_rate": "Partner Revenue",
+    "partner_churn_rate": "Partner Churn",
     "partner_sourced_revenue": "Partner Revenue",
     "partner_influenced_revenue": "Partner Revenue",
     "channel_revenue_percentage": "Partner Revenue",
@@ -5307,8 +5306,8 @@
     "contact_coverage": "Customer Health Score",
     "license_utilization": "ARR",
     "expansion_rate": "Expansion Revenue Rate",
-    "upsell_rate": "Expansion Revenue",
-    "cross_sell_rate": "Expansion Revenue",
+    "upsell_rate": "Upsell and Cross-sell",
+    "cross_sell_rate": "Upsell and Cross-sell",
     "renewal_rate": "Renewal Rate",
     "renewal_forecast_accuracy": "Renewal Rate",
     "days_to_renewal": "ARR / MRR",
@@ -5364,7 +5363,7 @@
     "pqas": "PQAs",
     "user_retention_day_n": "Cohort Retention",
     "cohort_retention": "Cohort Retention",
-    "resurrection_rate": "Activation",
+    "resurrection_rate": "Resurrection",
     "release_frequency": "DORA Metrics",
     "feature_delivery_rate": "Delivery",
     "roadmap_completion": "Backlog",
@@ -5645,10 +5644,10 @@
       "aggregation": "aggregate",
       "period": "month"
     },
-    "Expansion Revenue": {
-      "grain": "Per event, aggregate monthly",
+    "Upsell and Cross-sell": {
+      "grain": "Customer cohort at period start",
       "frequency": "Monthly",
-      "aggregation": "aggregate",
+      "aggregation": "cohort",
       "period": "month"
     },
     "Expansion Revenue Rate": {
@@ -5908,6 +5907,18 @@
       "aggregation": "cohort",
       "period": "month"
     },
+    "Partner Churn": {
+      "grain": "Partner cohort at period start",
+      "frequency": "Monthly",
+      "aggregation": "cohort",
+      "period": "month"
+    },
+    "Resurrection": {
+      "grain": "User cohort at period start",
+      "frequency": "Daily",
+      "aggregation": "cohort",
+      "period": "month"
+    },
     "Pipeline Hygiene": {
       "grain": "Weekly snapshot",
       "frequency": "Weekly",
@@ -6128,7 +6139,7 @@
       "id": "tcv",
       "label": "TCV (Total Contract Value)",
       "definition": "The total value of a contract over its full term, including one-time fees and multi-year commitments. Distinct from Bookings (period-attributable) and ACV (annualized).",
-      "provenance": "definitions.md: Bookings vs ACV vs TCV"
+      "provenance": "definitions.md: TCV (Total Contract Value)"
     }
   ],
   "accessControl": {

@@ -12,9 +12,10 @@
  *                           event         binary (value)
  *   entityRelationships   relationship on the source concept named by the edge type
  *
- * A concept whose definition has its own address on gaspwiki.com carries it as
+ * Every entity type carries the address of its definition on gaspwiki.com as
  * `iri`, written `prefix:local` against the root `prefixes`: the glossary page
- * of an entity or GASP concept, the CEL page heading of an event class. What
+ * of an entity or GASP concept, else the CEL page heading of an event class,
+ * else the dataset's entry in the datasets reference. What
  * the ontology core has no field for goes in `annotations` under `gasp_` keys:
  * the version ontology.json declares (root), an entity's level (its dataset
  * concept) and an edge's classification (its relationship).
@@ -25,13 +26,13 @@
 import type { StandardData, OntologyField, OntologyDataset, EntityRelationship } from "../types.js";
 import type { OssieConcept, OssieOntology, OssieOntologyRelationship, OssieRole } from "./types.js";
 import { OSSIE_VERSION } from "./types.js";
-import { celClassUrl, definitionUrl } from "../urls.js";
+import { celClassUrl, datasetUrl, definitionUrl } from "../urls.js";
 import { builtInFor, conceptName, enumRequires, isBuiltInRole, pascal, valueTypeName } from "./names.js";
 
 const BUILT_INS = new Set(["Any", "Boolean", "Date", "DateTime", "Decimal", "Float", "Integer", "String"]);
 
-/** The namespaces a concept's `iri` is written against: the glossary and the event class headings of the CEL page. */
-export const ONTOLOGY_PREFIXES = { gasp: definitionUrl({ slug: "" }), cel: celClassUrl("") } as const;
+/** The namespaces a concept's `iri` is written against: the glossary, the event class headings of the CEL page and the entries of the datasets reference. */
+export const ONTOLOGY_PREFIXES = { gasp: definitionUrl({ slug: "" }), cel: celClassUrl(""), dataset: datasetUrl("") } as const;
 
 /** An `iri` as the full address it abbreviates; one with no declared prefix is returned as written. */
 export function expandIri(iri: string, prefixes: Record<string, string> = ONTOLOGY_PREFIXES): string {
@@ -320,7 +321,7 @@ export function exportOntology(data: StandardData): OssieOntology {
   for (const [id, d] of plan.datasets) {
     const name = plan.datasetConcept[id];
     const entity = entityOf(data, plan, id, d);
-    const iri = (entity && glossary(`entity_${entity.id}`)) ?? (d.cel ? `cel:${d.cel.toLowerCase()}` : undefined);
+    const iri = (entity && glossary(`entity_${entity.id}`)) ?? (d.cel ? `cel:${d.cel.toLowerCase()}` : `dataset:${id}`);
     concepts.push({
       concept: name,
       type: "EntityType",

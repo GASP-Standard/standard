@@ -5,6 +5,60 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-24] Five rates follow the population of the first day of the period and a cohort condition can state the membership
+
+**Context.** The Revenue Churn Rate record of 2026-11-21 left five rates as they were: Partner Churn Rate, Cross-sell Rate, Upsell Rate, the `entered_at_risk` variant of At-Risk Rate and Resurrection Rate. Each divided every event of the period by a count taken on its first day. A partner recruited in May who left in June was in the numerator and absent from the denominator. So was a customer who signed in May and upgraded in June. A user who went dormant and came back inside one quarter made Resurrection Rate read 200% against one dormant user. The owner's rule from that record applies: where the standard has a choice of this kind it takes current industry practice. On 2026-11-24 the owner asked for no incorrect metrics to be left standing.
+
+How the industry counts, from pages read on 2026-11-24 through a summarising reader, so each is described here and none is quoted:
+- Partner Churn Rate. Every formula found divides by the partners at the start of the period. Impartner's partner retention formula subtracts the partners acquired in the period from the closing count (https://impartner.com/glossary/what-is-partner-retention). Forrester, Canalys and the partner management vendors publish no churn formula.
+- Cross-sell Rate. Wall Street Prep's worked example takes the customers existing at the start of the month (https://www.wallstreetprep.com/knowledge/cross-sell-rate). CIENCE divides by the customers eligible for the second product. Other pages say total customers and give no day.
+- Upsell Rate. Monetizely's upgrade rate divides the customers who upgraded by the customers at the start of the period (https://www.getmonetizely.com/articles/understanding-and-tracking-saas-subscription-movement-a-guide-to-upgrade-and-downgrade-rates). ProfitWell shows an upgrade rate and publishes no denominator.
+- At-Risk Rate, `entered_at_risk`. No published definition of the flow form was found. The share of accounts in the red band on a day is the form practitioners describe, which is the metric's main formula and stays as it is.
+- Resurrection Rate. Duolingo's growth model defines the rate as a transition: the users resurrected on a day are the rate times the users dormant the day before (https://blog.duolingo.com/growth-model-duolingo/, 17 February 2023). Amplitude's Lifecycle chart and the growth accounting framework define a resurrected user by no activity in the interval before.
+
+The evidence is thin for four of the five and settled for Resurrection Rate. No source was found that publishes the open form, every event of the period over the opening count, as a deliberate definition. The standard's own prose already described the opening population for each ("at start of period" in every formula block), so the formulas were narrower than the words.
+
+**Decision.** All five become cohort formulas within `v1`, each a governed change that can move a published number.
+- Partner Churn Rate: `... at period_start over cohort(field.partner_id, period_start)`. A partner who left counts when they were active on the first day. `by_partner_tier` puts each partner in the tier held on that day.
+- Cross-sell Rate and the `entered_at_risk` variant: `... over cohort(field.customer_id, period_start)`. A customer counts when they were active on the first day.
+- Upsell Rate: `... over cohort(field.customer_id, period_start where field.upgrade_eligible = true)`. A customer counts when they were active and eligible for an upgrade on the first day, so the numerator is a subset of the denominator.
+- Resurrection Rate: `... over cohort(field.user_id, period_start where field.user_status = 'dormant')`. A returning user counts when they were dormant on the first day.
+
+Resurrection Rate needed a rule the compiler lacked. A cohort is the keys its dataset counts as active on the cohort's day (`activeWhen`) and a `where` narrows it, so the dormant users compiled to `user_status = 'active' AND user_status = 'dormant'`, nobody. **A cohort condition that reads the field of the active rule states the membership itself and replaces the rule.** A condition on any other field still narrows the active keys (Commit Accuracy, Upsell Rate).
+
+**Alternatives considered.**
+- Leave the five and document the open form: no source publishes it and the 200% reading of Resurrection Rate is a defect on any reading.
+- Add the period's joiners to the denominator: no source found does this for any of the five and the opening count is the one element every formula shares.
+- Leave the `entered_at_risk` variant alone for lack of a published definition: it would stay the one rate in the standard whose numerator can hold a customer its denominator lacks. It takes the rule of its neighbours and the record says the source is the standard's own consistency.
+- A new dataset attribute for "dormant on the day" in place of the compiler rule: the status field already holds the fact and a second rule per dataset would be read by one metric.
+
+**Consequences.**
+- A published number changes for a company where a partner, customer or user joins and acts inside one reporting period. Upsell Rate also changes where a customer upgrades without the eligible flag or is flagged and inactive on the first day. On the synthetic dataset four of the five read the same before and after (second quarter: Partner Churn Rate 0.125, Cross-sell Rate 0.0667, `entered_at_risk` 0, Resurrection Rate 1). Upsell Rate reads 0.1111 for the second quarter where it read 0.2222 and 0.1667 for the first half where it read 0.5714: two customers upgrade without the flag and were in the old numerator.
+- Each rate stays between 0 and 1.
+- Partner Lifetime Value divides by Partner Churn Rate, so it follows.
+- Upsell Rate now reads `customer_status` from the customer snapshot, which the adapter template lists.
+- The entries keep their per-period staged datasets: the reference export has the same 173 staged entries and `coverage.json` moves seven from at period_start (20 to 13) to cohort (26 to 33), the five, `by_partner_tier` and Partner Lifetime Value. No Core example value or conformance case changes.
+- Temporal semantics: "Partner Churn" and "Resurrection" are new with the aggregation `cohort`. "Expansion Revenue" is renamed "Upsell and Cross-sell" with the same aggregation.
+- Each rate's entry in its department file gains a "Who is counted" paragraph, which the department page and `llms-full.txt` carry. Its formula block names the opening population in the numerator. The metric's own page states the rule in the notes of its computable definition.
+- `test/formula-fixes.test.ts` plants a partner who joins and leaves inside the second quarter, a partner who changes tier before leaving, a customer who joins and then buys a second product, upgrades and turns at risk. It also plants a user who goes dormant and returns. It checks each compiled rate against plain SQL under the new formula and the one it replaced. `test/formula.test.ts` checks the three shapes of a cohort's membership.
+
+---
+
+## [2026-11-24] Every entity and concept has a glossary page and every entity type in the Ossie ontology has an address
+
+**Context.** The record below gave an `iri` to the 16 concepts of `gasp.ontology.yaml` whose page existed and left 45 entity types without one. That count was a list of gaps in the standard: 24 of the 28 entities and one of the 7 concepts (TCV) had no glossary entry. The 20 datasets that are neither an entity nor a CEL class had no page of any kind. The site had no page listing the 54 datasets. On 2026-11-24 the owner asked for the gaps to be closed.
+
+**Decision.**
+- **The glossary defines every entity and concept.** `standard/definitions.md` gains a section, Operational Entities, with 21 entries (Campaign, Contact, Ticket, Knowledge Article, Employee, Requisition, Invoice, Quote, Order, Partner, Deal Registration, Project, Project Milestone, Deliverable, Plan, Product, Feature, Release, Deployment, Issue, Vulnerability) and an entry for TCV (Total Contract Value). Lead, Opportunity and User already had entries; Lead is reworded and loses the alias Contact, which is an entity of its own. Each of the 35 entity and concept nodes of the graph carries its `definition` slug.
+- **A dataset has an address.** `/v1/datasets` on gaspwiki.com lists the 54 datasets with kind, date and key fields, entities, CEL class and fields, each under an anchor of its id. `datasetUrl` in `urls.ts` writes the address.
+- **Every entity type in the ontology carries an `iri`**, 61 of 61, against three root prefixes: `gasp:<slug>` for the 35 with a glossary page, `cel:<anchor>` for the six CEL event classes and `dataset:<id>` (`https://gaspwiki.com/v1/datasets#`) for the 20 datasets that are neither. The rule of the record below holds: an `iri` is the address of a page that exists.
+
+**Alternatives considered.** A glossary entry for each of the 20 remaining datasets was rejected: a snapshot of financials or a survey response is a table, the business term behind it is already defined where one exists and 20 entries written to fill a slot would thin the glossary. Leaving those 20 without an `iri` kept a gap for no reason once the datasets page existed.
+
+**Consequences.** The standard has 121 definitions (99 before). Value types and relationships still carry no `iri`, since fields and edges have no page. The Core example's ontology gains the third prefix and an `iri` on its last two entity types (`survey_response`, `financials`), so the copy in apache/ossie #773 at `c182d39` is one step behind; its branch is refreshed after the datasets page is live, so the address resolves when a reviewer follows it. A dataset renamed in `ontology.json` changes its anchor and its `iri`.
+
+---
+
 ## [2026-11-24] The Ossie ontology carries addresses and annotations and a snapshot dataset states its own reading rule
 
 **Context.** The extension audit of 2026-11-23 (`docs/ossie-interop-spec.md`) named three core slots GASP held data for and left empty and one place where core prose repeated the extension. The ontology schema gives a concept an `iri` that root `prefixes` abbreviate. It gives the root, a concept, a relationship and a role an open `annotations` object ("Use `annotations` only for data that the spec cannot express"). `gasp.ontology.yaml` used neither. A semantic model dataset takes `ai_context`, yet the rule for reading a snapshot ("select one snapshot date") sat on each of the 68 metrics of the reference model that read one. Each dataset description ended "Kind: snapshot." and, for the six ledgers, "CEL class: Revenue_Event.", which the GASP extension on the same dataset holds as `kind` and `cel`. The audit also said every entity, concept and field has a gaspwiki.com page. The graph says otherwise: 4 of the 28 entities and 6 of the 7 concepts have a glossary page and fields have none.
@@ -179,7 +233,7 @@ Read through a summary and unquoted here: the annual reports of Snowflake, Datad
 - The temporal semantics "Logo Churn" and "Revenue Churn" carry the aggregation `cohort` (the Logo Churn Rate change had left the first as `aggregate`) and Expansion Rate has its own semantic, "Expansion Revenue Rate".
 - The research article named this as its open question. Its formula block and the paragraph under "Gross or net" are rewritten in the same change, with the Paddle, Chargebee, ChartMogul and SaaS Metrics Standards Board quotations.
 - The example demo's expected values change again, so the update to apache/ossie #773 carries them when its review moves.
-- Five rates still divide a count taken over the period by a count taken at its start, with no cohort: Partner Churn Rate, Cross-sell Rate, Upsell Rate, the `entered_at_risk` variant of At-Risk Rate and Resurrection Rate. They count partners, customers and users, the industry's practice for each has not been checked and they are unchanged (`TODO.md` backlog).
+- Five rates still divide a count taken over the period by a count taken at its start, with no cohort: Partner Churn Rate, Cross-sell Rate, Upsell Rate, the `entered_at_risk` variant of At-Risk Rate and Resurrection Rate. They count partners, customers and users and the industry's practice for each had not been checked, so they were left unchanged here. They took the cohort form on 2026-11-24 (the record of that date).
 - `test/formula-fixes.test.ts` plants a customer who joins and contracts, one who joins and churns and one who joins and expands inside the second quarter, moves two customers between segments and checks each compiled metric and its breakdown against plain SQL under both readings, with Revenue Churn Rate equal to 1 less GRR for the company and per segment.
 - The first push of `/research` left the commercial site's test job red: its suite requires a redirect to the standard for every top-level route of the standard's site. `koinedata-site/public/_redirects` gains the two `/research` rules.
 

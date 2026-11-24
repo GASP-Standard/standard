@@ -585,73 +585,85 @@
       "id": "entity_lead",
       "label": "Lead",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "lead"
     },
     {
       "id": "entity_opportunity",
       "label": "Opportunity",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "opportunity"
     },
     {
       "id": "entity_user",
       "label": "User",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "user"
     },
     {
       "id": "entity_ticket",
       "label": "Ticket",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "ticket"
     },
     {
       "id": "entity_employee",
       "label": "Employee",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "employee"
     },
     {
       "id": "entity_invoice",
       "label": "Invoice",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "invoice"
     },
     {
       "id": "entity_partner",
       "label": "Partner",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "partner"
     },
     {
       "id": "entity_project",
       "label": "Project",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "project"
     },
     {
       "id": "entity_plan",
       "label": "Plan",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "plan"
     },
     {
       "id": "entity_product",
       "label": "Product",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "product"
     },
     {
       "id": "entity_campaign",
       "label": "Campaign",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "campaign"
     },
     {
       "id": "entity_contact",
       "label": "Contact",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "contact"
     },
     {
       "id": "entity_incident",
@@ -664,73 +676,85 @@
       "id": "entity_deployment",
       "label": "Deployment",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "deployment"
     },
     {
       "id": "entity_release",
       "label": "Release",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "release"
     },
     {
       "id": "entity_issue",
       "label": "Issue",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "issue"
     },
     {
       "id": "entity_vulnerability",
       "label": "Vulnerability",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "vulnerability"
     },
     {
       "id": "entity_feature",
       "label": "Feature",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "feature"
     },
     {
       "id": "entity_requisition",
       "label": "Requisition",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "requisition"
     },
     {
       "id": "entity_project_milestone",
       "label": "Project Milestone",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "project-milestone"
     },
     {
       "id": "entity_deliverable",
       "label": "Deliverable",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "deliverable"
     },
     {
       "id": "entity_quote",
       "label": "Quote",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "quote"
     },
     {
       "id": "entity_order",
       "label": "Order",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "order"
     },
     {
       "id": "entity_kb_article",
       "label": "Knowledge Article",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "knowledge-article"
     },
     {
       "id": "entity_deal_registration",
       "label": "Deal Registration",
       "nodeType": "entity",
-      "level": 0
+      "level": 0,
+      "definition": "deal-registration"
     },
     {
       "id": "concept_revenue",
@@ -778,7 +802,8 @@
       "id": "concept_tcv",
       "label": "TCV",
       "nodeType": "concept",
-      "level": 0
+      "level": 0,
+      "definition": "tcv-total-contract-value"
     }
   ],
   "edges": [

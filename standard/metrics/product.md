@@ -333,8 +333,10 @@ Cohort Retention (Week N) = Active users in week N / Users in cohort × 100
 
 **Formula:**
 ```
-Resurrection Rate = Reactivated users / Dormant users × 100
+Resurrection Rate = Users dormant at start of period who returned in the period / Dormant users at start of period × 100
 ```
+
+**Who is counted:** The users dormant on the first day of the period. A user counts when they were dormant on that day and a reactivation event of theirs falls in the period. A user who goes dormant and returns inside the period sits outside this rate.
 
 **What it tells you:** How many lapsed users you win back.
 

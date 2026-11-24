@@ -92,7 +92,7 @@ CREATE (:Metric {id: 'enps', name: 'Employee NPS', department: 'People', signalT
 CREATE (:Entity {id: 'customer', name: 'Customer', aliases: 'Account, Organization', definition: 'A distinct billing entity with one or more subscriptions. The "who" of your business relationship.', level: 'billing'});
 CREATE (:Entity {id: 'subscription', name: 'Subscription', aliases: 'Contract, Agreement', definition: 'A billable agreement between a customer and your product, with defined terms, pricing, and status. The "what and when" of the relationship.', level: 'billing'});
 CREATE (:Entity {id: 'license', name: 'License', aliases: 'Entitlement, Access, Quota', definition: 'A specific capability, quantity, or configuration granted by a subscription. The "how much" of the relationship.', level: 'billing'});
-CREATE (:Entity {id: 'lead', name: 'Lead', aliases: 'Prospect, Contact', definition: 'A person or company that has shown interest but has not been qualified as a sales opportunity.', level: 'acquisition'});
+CREATE (:Entity {id: 'lead', name: 'Lead', aliases: 'Prospect', definition: 'A person or company that has shown interest but has not been qualified as a sales opportunity.', level: 'acquisition'});
 CREATE (:Entity {id: 'opportunity', name: 'Opportunity', aliases: 'Deal, Pipeline Item', definition: 'A qualified sales prospect with an estimated value, stage, and expected close date.', level: 'acquisition'});
 CREATE (:Entity {id: 'user', name: 'User', aliases: 'Product User, End User', definition: 'An individual who uses the product. In B2B, one Customer may have many Users. Usage metrics are measured at this level.', level: 'engagement'});
 CREATE (:Entity {id: 'ticket', name: 'Ticket', aliases: 'Support Case', definition: 'A discrete support interaction initiated by a customer or user, tracked to resolution.', level: 'support'});
@@ -257,7 +257,7 @@ CREATE (:Field {id: 'criteria_met', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'csm_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'currency', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'customer_id', type: 'string', metricCount: 32});
-CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 22, values: 'trial|active|churned|dormant'});
+CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 23, values: 'trial|active|churned|dormant'});
 CREATE (:Field {id: 'deflections', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'deliverable_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'department', type: 'string', metricCount: 3});

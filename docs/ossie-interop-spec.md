@@ -26,7 +26,7 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 |  | Apache Ossie (incubating) | GASP |
 | --- | --- | --- |
 | What it is | Vendor-neutral spec for semantic models and ontology | Canonical SaaS metric standard |
-| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 314 metrics, 99 definitions, 280 canonical fields in 54 datasets, 28 entities, 7 concepts, 22 source categories |
+| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 314 metrics, 121 definitions, 280 canonical fields in 54 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, `OSSIE_SQL_2026`, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL and others) | GASP formula grammar (warehouse-agnostic), compiled to SQL for Postgres (which also runs on Redshift), Snowflake, BigQuery and Databricks |
 | Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 105 nodes and 213 edges across 21 edge types |
 | Spec version | 0.3.0.dev0 on main since 2026-11-09 (#691); GASP writes it since 2026-11-11, when #522 merged | v1 |
@@ -44,7 +44,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines six immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 314 metrics, 99 definitions, 23 MCP tools |
+| Canonical definitions agents can read | Strong | 314 metrics, 121 definitions, 23 MCP tools |
 | Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 314 metrics covered (287 formulas, 15 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Partial | `profile_schema` and `propose_mapping` take a pasted schema and statistics; the server has no warehouse access. `derive_cel` compiles the standard's derivation rules (`cel.md`) over the mapping, so a subscription ledger becomes CEL revenue events |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Freshness, row identity and unique-id checks are in `generate_checks`; value-distribution checks are still to come |
@@ -268,10 +268,10 @@ GASP writes no extension on fields or relationships (`standard/gasp-ossie-extens
 
 **Moves made on 2026-11-24** (`DECISIONS.md`). Three of the audit's findings are closed in the files as published.
 
-- **Addresses.** 16 concepts of `gasp.ontology.yaml` carry an `iri`, each the address of a page that already exists, written against two root `prefixes`: `gasp` (`https://gaspwiki.com/v1/definitions/`) for the 4 entities and 6 concepts with a glossary page and `cel` (`https://gaspwiki.com/v1/cel#`) for the six CEL event classes. The other 24 entities, the concept without a page (TCV), the value types and the relationships carry none: an `iri` is added when its page exists.
+- **Addresses.** All 61 entity types of `gasp.ontology.yaml` carry an `iri`, each the address of a page that exists, written against three root `prefixes`: `gasp` (`https://gaspwiki.com/v1/definitions/`) for the 28 entities and 7 concepts, `cel` (`https://gaspwiki.com/v1/cel#`) for the six CEL event classes and `dataset` (`https://gaspwiki.com/v1/datasets#`) for the 20 datasets that are neither. The first move gave 16 an `iri` and showed the gap behind the rest: 24 entities and TCV had no glossary page and the datasets had no page at all. Both were closed the same day (`DECISIONS.md` 2026-11-24, the glossary record). The value types and the relationships carry none, since fields and edges have no page.
 - **Annotations.** The root carries `gasp_ontology_version` (the `version` of `ontology.json`, since the document's own `version` is the specification's), each of the 28 entity concepts carries `gasp_level` and each of the 30 relationships written from an `entityRelationships` edge carries `gasp_edge_class`. Field source categories stay out: 66 of the 280 fields are dates, which have no value type concept to carry them.
 - **Dataset prose and the snapshot rule.** A dataset's description is its label. Each of the 25 snapshot datasets states its grain and its reading rule once in `ai_context.instructions` ("select one snapshot_date (the period end)"), where 68 metrics of the reference model each repeated it before. A model `compile_model` writes over a company's own datasets keeps the rule on each metric, since the tool leaves those datasets as the company wrote them.
-- **Open from the audit:** the review comment on pull request #287 about a dimensionless unit (`docs/ossie-287-review-comment.md`, for the owner to post).
+- **Open from the audit:** the answer to the review comment on pull request #287 about a dimensionless unit, posted 2026-11-24 (`docs/ossie-287-review-comment.md`).
 
 **Not emitted yet.** Metric edges (`DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF`; exit P1; upstream a roadmap discussion on metric trees, with draft pull request #685 on action effects the nearest text), the GASP taxonomy (department, signal type, layer), the access classes from the governance framework (`sensitivity`, `access_scope`; Catalog WG candidate; issues #59, #87 and #58, none with a pull request), field lineage and accountability (`source_category`, `owner`, `notes`; Catalog WG candidate; issue #305 and pull request #748, whose `knowledge_refs` could point at notes). The ontology version is emitted since 2026-11-24 as `gasp_ontology_version` in root `annotations`. The rest stay in `standard/` until a placement is added to the schema or a core slot takes them.
 

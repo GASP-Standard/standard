@@ -87,7 +87,7 @@ The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return pat
 Version 1.22.0.
 
 - 314 metrics across 13 departments
-- 99 glossary definitions (86 SaaS domain + 13 GASP framework)
+- 121 glossary definitions (108 SaaS domain + 13 GASP framework)
 - 105 relationship nodes (70 metrics + 28 entities + 7 concepts), 213 edges
 - 21 relationship types: metric signal (drives, reduces, predicts, component, measures), entity lifecycle (converts_to, parent_of, belongs_to), entity ownership (owns, grants, priced_by), entity interactions (manages, serves, engages_via, submits, represented_by, sources), entity financial flows (generates, produces, contributes_to, incurs)
 - 287 data requirements, one per metric with a formula, compiled from the formula at load time: fields with types, datasets, grain and a compiled example query

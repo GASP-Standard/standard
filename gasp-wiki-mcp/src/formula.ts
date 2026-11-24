@@ -58,9 +58,12 @@
  * including those reached through metric references, must read a dataset that
  * carries the field. `total()` outside a breakdown is a compile error.
  * `over cohort(key, point)` restricts every aggregate, including those inside
- * referenced metrics, to entities present at that point. A `where` narrows the
- * cohort to the entities that met a condition then, read from the key's own
- * dataset (Commit Accuracy follows the deals in commit when the period opened).
+ * referenced metrics, to entities present at that point: the keys the dataset
+ * counts as active then (its `activeWhen`). A `where` narrows the cohort to the
+ * entities that met a condition then, read from the key's own dataset (Commit
+ * Accuracy follows the deals in commit when the period opened). A condition on
+ * the field of the active rule states the membership itself and replaces the
+ * rule (Resurrection Rate follows the users dormant when the period opened).
  * `lag` and `cohort` mark metrics that need a staged dataset to run as a single
  * Ossie aggregate.
  */

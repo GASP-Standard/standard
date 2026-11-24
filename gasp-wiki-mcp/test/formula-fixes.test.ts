@@ -11,7 +11,8 @@ import { adapter, fixtureDb, bind, scalar, runTemplate, moveSegment } from "./fi
 // 2026-11-19 (90-Day Turnover again and Commit Accuracy) and 2026-11-21 (NRR
 // and GRR by segment, a change to how a breakdown reads a cohort, and Logo
 // Churn Rate, Revenue Churn Rate and Expansion Rate, which became cohort
-// formulas). Each metric's
+// formulas) and 2026-11-24 (five rates that divided the period's events by an
+// opening count, now cohort formulas too). Each metric's
 // compiled template is checked against a value computed in plain SQL over the
 // fixture, and the formula it replaced is compiled and run on the same rows to
 // show it gives a different answer. Rows the synthetic data lacks are planted in
@@ -438,6 +439,159 @@ describe("Revenue Churn Rate and Expansion Rate follow the customers of the firs
       expect(rows[g], g).toBeCloseTo(1 - kept[g]!, 12);
       expect(rows[g], g).toBeGreaterThanOrEqual(0);
       expect(rows[g], g).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+describe("Five rates follow the population of the first day of the period (2026-11-24)", () => {
+  // Partner Churn Rate, Cross-sell Rate, Upsell Rate, the entered_at_risk variant of At-Risk Rate and
+  // Resurrection Rate each divided every event of the period by a count taken on its first day. Planted over Q2:
+  // p08, platinum, recruited on 4 June, becomes active on 10 June and leaves on 25 June.
+  // p09, registered and active on 1 April, becomes gold on 1 May, six weeks before it leaves.
+  // c18, a customer from 13 May, buys a second product and upgrades on 24 June and turns at risk on 20 June.
+  // c09, a customer on 1 April, turns at risk on 5 May.
+  // u01, active on 1 April, is dormant from 1 May and returns on 10 June.
+  const Q2 = ["2026-04-01", "2026-06-30"] as const;
+  const REPLACED = {
+    partner_churn_rate: "count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start",
+    cross_sell_rate: "count_distinct(field.customer_id where field.amendment_type = 'cross_sell') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
+    upsell_rate: "count_distinct(field.customer_id where field.amendment_type = 'upgrade') / count_distinct(field.customer_id where field.upgrade_eligible = true) at period_start",
+    at_risk_rate: "count_distinct(field.customer_id where field.state_category = 'at_risk') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
+    resurrection_rate: "count_distinct(field.user_id where field.product_event_type = 'reactivation') / count_distinct(field.user_id where field.user_status = 'dormant') at period_start",
+  } as const;
+  type Rate = keyof typeof REPLACED;
+  /** The entry the rate lives in: the main formula, or the variant for At-Risk Rate. */
+  const VARIANT: Partial<Record<Rate, string>> = { at_risk_rate: "entered_at_risk" };
+  let planted: PGlite;
+
+  const pa = (f: string) => c("partner", f);
+  const cu = (f: string) => c("customer", f);
+  const am = (f: string) => c("amendment_event", f);
+  const lc = (f: string) => c("lifecycle_event", f);
+  const us = (f: string) => c("user", f);
+  const pe = (f: string) => c("product_event", f);
+
+  /** Copy one row of a dataset onto the planted database with some columns changed. */
+  const copy = (ds: string, where: string, set: string) => planted.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${t(ds)} WHERE ${where};
+    UPDATE planted SET ${set};
+    INSERT INTO ${t(ds)} SELECT * FROM planted;
+    DROP TABLE planted;`);
+
+  beforeAll(async () => {
+    planted = await fixtureDb();
+    await planted.exec(`UPDATE ${t("partner")} SET ${pa("partner_status")} = 'active' WHERE ${pa("partner_id")} = 'p08' AND ${pa("snapshot_date")} >= DATE '2026-06-10';
+      UPDATE ${t("partner")} SET ${pa("partner_status")} = 'churned', ${pa("partner_churn_date")} = DATE '2026-06-25' WHERE ${pa("partner_id")} = 'p08' AND ${pa("snapshot_date")} >= DATE '2026-06-25';
+      UPDATE ${t("partner")} SET ${pa("partner_tier")} = 'gold' WHERE ${pa("partner_id")} = 'p09' AND ${pa("snapshot_date")} >= DATE '2026-05-01';
+      UPDATE ${t("user")} SET ${us("user_status")} = 'dormant' WHERE ${us("user_id")} = 'u01' AND ${us("snapshot_date")} BETWEEN DATE '2026-05-01' AND DATE '2026-06-09';`);
+    const amendment = (type: string) => `${am("customer_id")} = 'c18', ${am("event_id")} = 'planted_${type}_c18', ${am("event_date")} = DATE '2026-06-24', ${am("amendment_type")} = '${type}'`;
+    await copy("amendment_event", `${am("customer_id")} = 'c10' AND ${am("amendment_type")} = 'cross_sell'`, amendment("cross_sell"));
+    await copy("amendment_event", `${am("customer_id")} = 'c13' AND ${am("amendment_type")} = 'upgrade'`, amendment("upgrade"));
+    const atRisk = (customer: string, day: string) => `${lc("customer_id")} = '${customer}', ${lc("event_id")} = 'planted_risk_${customer}', ${lc("event_date")} = DATE '${day}', ${lc("prior_state")} = 'active', ${lc("new_state")} = 'at_risk', ${lc("state_category")} = 'at_risk'`;
+    const churnOfC05 = `${lc("customer_id")} = 'c05' AND ${lc("state_category")} = 'churned'`;
+    await copy("lifecycle_event", churnOfC05, atRisk("c09", "2026-05-05"));
+    await copy("lifecycle_event", churnOfC05, atRisk("c18", "2026-06-20"));
+    await copy("product_event", `${pe("event_id")} = 'pe_u29_back'`, `${pe("user_id")} = 'u01', ${pe("event_id")} = 'planted_back_u01', ${pe("event_date")} = DATE '2026-06-10'`);
+  }, 120_000);
+  afterAll(async () => { await planted?.close(); });
+
+  /** A rate compiled from the canonical entry, or with the formula it replaced in its place, optionally by a breakdown. */
+  function template(id: Rate, replaced: boolean, breakdown?: string): QueryTemplate {
+    const entry = data.formulas![id];
+    const old = VARIANT[id] ? { ...entry, variants: { ...entry.variants, [VARIANT[id]!]: REPLACED[id] } } : { ...entry, formula: REPLACED[id] };
+    const ctx = {
+      fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])),
+      datasets: data.ontology!.datasets!,
+      formulas: replaced ? { ...data.formulas!, [id]: old } : data.formulas!,
+    };
+    const k = compileMetric(id, ctx, breakdown ?? VARIANT[id]);
+    expect(k.staged, id).toBe(!replaced);
+    return { ...data.queryTemplates[id], fields: k.fields, datasets: k.datasets, parameterizedQuery: k.sql, placeholders: k.placeholders, breakdown: k.breakdown } as QueryTemplate;
+  }
+  const rate = (on: PGlite, id: Rate, replaced = false) => scalar(on, bind(fillTemplate(template(id, replaced), adapter, data).sql, ...Q2));
+  const count = async (sql: string) => (await scalar(planted, `SELECT COUNT(*) FROM (${sql}) AS x`))!;
+
+  // Plain SQL over the fixture's own names.
+  const inQ2 = (col: string) => `${col} BETWEEN DATE '${Q2[0]}' AND DATE '${Q2[1]}'`;
+  const openingCustomers = (and = "") => `SELECT ${cu("customer_id")} FROM ${t("customer")} WHERE ${cu("snapshot_date")} = DATE '${Q2[0]}' AND ${cu("customer_status")} = 'active'${and}`;
+  const amended = (type: string) => `SELECT DISTINCT ${am("customer_id")} FROM ${t("amendment_event")} WHERE ${inQ2(am("event_date"))} AND ${am("amendment_type")} = '${type}'`;
+  const of = (events: string, key: string, members: string) => `${events} AND ${key} IN (${members})`;
+
+  it("Partner Churn Rate counts a partner who left only when they were active on the first day", async () => {
+    const opening = (tier?: string) => `SELECT ${pa("partner_id")} FROM ${t("partner")} WHERE ${pa("snapshot_date")} = DATE '${Q2[0]}' AND ${pa("partner_status")} = 'active'` + (tier ? ` AND ${pa("partner_tier")} = '${tier}'` : "");
+    const left = (tier?: string) => `SELECT ${pa("partner_id")} FROM ${t("partner")} WHERE ${pa("snapshot_date")} = DATE '${Q2[1]}' AND ${inQ2(pa("partner_churn_date"))}` + (tier ? ` AND ${pa("partner_tier")} = '${tier}'` : "");
+    const partners = await count(opening());
+    expect(partners).toBe(8);
+    // p09 was active on 1 April; p08 was not a partner yet.
+    expect(await count(of(left(), pa("partner_id"), opening()))).toBe(1);
+    expect(await rate(planted, "partner_churn_rate")).toBeCloseTo(1 / partners, 12);
+    expect(await count(left())).toBe(2);
+    expect(await rate(planted, "partner_churn_rate", true)).toBeCloseTo(2 / partners, 12);
+
+    // By tier each partner counts in the tier held on the first day: p09 left from registered, where it opened the quarter.
+    const TIERS = ["gold", "platinum", "registered", "silver"];
+    const byTier = async (replaced: boolean) => {
+      const res = await planted.query<Record<string, unknown>>(bind(fillTemplate(template("partner_churn_rate", replaced, "by_partner_tier"), adapter, data).sql, ...Q2));
+      return Object.fromEntries(res.rows.map((r) => [String(r.partner_tier), r.partner_churn_rate === null || r.partner_churn_rate === undefined ? null : Number(r.partner_churn_rate)]));
+    };
+    const [rows, replaced] = [await byTier(false), await byTier(true)];
+    expect(Object.keys(rows).sort()).toEqual(TIERS);
+    for (const g of TIERS) {
+      expect(rows[g], g).toBeCloseTo((await count(of(left(), pa("partner_id"), opening(g)))) / (await count(opening(g))), 12);
+      expect(replaced[g], g).toBeCloseTo((await count(left(g))) / (await count(opening(g))), 12);
+    }
+    expect(rows.registered).toBeCloseTo(1 / (await count(opening("registered"))), 12);
+    expect([rows.gold, rows.platinum, rows.silver]).toEqual([0, 0, 0]);
+    // By the tier of the last day p09 left from gold and p08, never in the opening count, made platinum 100%.
+    expect([replaced.registered, replaced.platinum]).toEqual([0, 1]);
+    expect(replaced.gold).toBeCloseTo(1 / (await count(opening("gold"))), 12);
+  });
+
+  it("Cross-sell Rate counts a second product only from a customer of the first day", async () => {
+    const customers = await count(openingCustomers());
+    // c10 was a customer on 1 April; c18 joined on 13 May.
+    expect(await count(of(amended("cross_sell"), am("customer_id"), openingCustomers()))).toBe(1);
+    expect(await rate(planted, "cross_sell_rate")).toBeCloseTo(1 / customers, 12);
+    expect(await count(amended("cross_sell"))).toBe(2);
+    expect(await rate(planted, "cross_sell_rate", true)).toBeCloseTo(2 / customers, 12);
+  });
+
+  it("Upsell Rate counts an upgrade only from a customer active and eligible on the first day", async () => {
+    const eligible = openingCustomers(` AND ${cu("upgrade_eligible")} = TRUE`);
+    const customers = await count(eligible);
+    // c13 was eligible on 1 April. c04 upgrades without the flag and c18 joined on 13 May.
+    expect(await count(of(amended("upgrade"), am("customer_id"), eligible))).toBe(1);
+    expect(await rate(planted, "upsell_rate")).toBeCloseTo(1 / customers, 12);
+    expect(await count(amended("upgrade"))).toBe(3);
+    const flagged = await count(`SELECT ${cu("customer_id")} FROM ${t("customer")} WHERE ${cu("snapshot_date")} = DATE '${Q2[0]}' AND ${cu("upgrade_eligible")} = TRUE`);
+    expect(await rate(planted, "upsell_rate", true)).toBeCloseTo(3 / flagged, 12);
+  });
+
+  it("At-Risk Rate, entered_at_risk, counts a customer of the first day who turned at risk", async () => {
+    const customers = await count(openingCustomers());
+    const turned = `SELECT DISTINCT ${lc("customer_id")} FROM ${t("lifecycle_event")} WHERE ${inQ2(lc("event_date"))} AND ${lc("state_category")} = 'at_risk'`;
+    // c09 was a customer on 1 April; c18 joined on 13 May.
+    expect(await count(of(turned, lc("customer_id"), openingCustomers()))).toBe(1);
+    expect(await rate(planted, "at_risk_rate")).toBeCloseTo(1 / customers, 12);
+    expect(await count(turned)).toBe(2);
+    expect(await rate(planted, "at_risk_rate", true)).toBeCloseTo(2 / customers, 12);
+  });
+
+  it("Resurrection Rate follows the users dormant on the first day and stays within 0 and 1", async () => {
+    const dormant = `SELECT ${us("user_id")} FROM ${t("user")} WHERE ${us("snapshot_date")} = DATE '${Q2[0]}' AND ${us("user_status")} = 'dormant'`;
+    const back = `SELECT DISTINCT ${pe("user_id")} FROM ${t("product_event")} WHERE ${inQ2(pe("event_date"))} AND ${pe("product_event_type")} = 'reactivation'`;
+    // u29 was dormant on 1 April and returns on 17 June. u01 went dormant and returned inside the quarter.
+    expect(await count(dormant)).toBe(1);
+    expect(await count(of(back, pe("user_id"), dormant))).toBe(1);
+    expect(await rate(planted, "resurrection_rate")).toBe(1);
+    expect(await count(back)).toBe(2);
+    // The formula it replaces returned two users for one dormant user: 200%.
+    expect(await rate(planted, "resurrection_rate", true)).toBe(2);
+  });
+
+  it("with nobody joining and acting inside the period the two readings agree", async () => {
+    // Upsell Rate is left out: the fixture's c04 upgrades without the eligible flag, so the two differ on any rows.
+    for (const id of ["partner_churn_rate", "cross_sell_rate", "at_risk_rate", "resurrection_rate"] as const) {
+      expect(await rate(db, id), id).toBeCloseTo((await rate(db, id, true))!, 12);
     }
   });
 });

@@ -229,12 +229,12 @@
       "notes": "Partners recruited in the period who are active at period end over partners recruited in the period, as partnerships.md defines it. A partner moves from recruited to active status once productive (first deal registered or closed, or the engagement threshold met)."
     },
     "partner_churn_rate": {
-      "formula": "count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start",
+      "formula": "count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start over cohort(field.partner_id, period_start)",
       "unit": "percent",
       "breakdowns": {
         "by_partner_tier": "field.partner_tier"
       },
-      "notes": "Partners with a churn date in the period over partners active at period start. by_partner_tier returns one row per partner tier, which tests whether tier benefits retain partners."
+      "notes": "Over the partners active on the first day of the period (cohort method, as Logo Churn Rate): a partner counts when they were active on that day and their churn date falls in the period, so the rate stays between 0 and 1. A partner activated inside the period who leaves in it is outside this rate. by_partner_tier returns one row per partner tier with each partner in the tier held on the first day, which tests whether tier benefits retain partners."
     },
     "partner_sourced_revenue": {
       "formula": "sum(field.opportunity_amount where field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
@@ -659,12 +659,12 @@
       "formula": "count_distinct(field.customer_id where field.composite_score < 40) / count_distinct(field.customer_id where field.composite_score is not null)",
       "unit": "percent",
       "variants": {
-        "entered_at_risk": "count_distinct(field.customer_id where field.state_category = 'at_risk') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start"
+        "entered_at_risk": "count_distinct(field.customer_id where field.state_category = 'at_risk') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start over cohort(field.customer_id, period_start)"
       },
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Health scores run 0 to 100; below 40 is at risk. Variant entered_at_risk is the flow: the share of customers active at period start who moved into the at_risk lifecycle state during the period (cel.md Lifecycle_State_Change). by_segment returns one row per customer segment, so risk in the segment that carries the most revenue is visible on its own."
+      "notes": "Health scores run 0 to 100; below 40 is at risk. Variant entered_at_risk is the flow: the share of customers active at period start who moved into the at_risk lifecycle state during the period (cel.md Lifecycle_State_Change). It follows that cohort, so a customer who joins and turns at risk inside the period is outside it. by_segment returns one row per customer segment, so risk in the segment that carries the most revenue is visible on its own."
     },
     "qbr_completion": {
       "formula": "count_distinct(field.customer_id where field.qbr_completed = true) / count_distinct(field.customer_id where field.qbr_due = true)",
@@ -698,12 +698,14 @@
       "notes": "Active licenses on the license snapshot at period end. Seats purchased is the entitlement the subscription grants; seats assigned is the number held by a named user. by_product returns one row per product the licenses cover, with the product id and product name: the name lives on the product dataset and licenses reach it through product_id."
     },
     "upsell_rate": {
-      "formula": "count_distinct(field.customer_id where field.amendment_type = 'upgrade') / count_distinct(field.customer_id where field.upgrade_eligible = true) at period_start",
-      "unit": "percent"
+      "formula": "count_distinct(field.customer_id where field.amendment_type = 'upgrade') / count_distinct(field.customer_id where field.upgrade_eligible = true) at period_start over cohort(field.customer_id, period_start where field.upgrade_eligible = true)",
+      "unit": "percent",
+      "notes": "Over the customers active and eligible for an upgrade on the first day of the period (cohort method): a customer counts when an upgrade amendment of theirs falls in the period. A customer who joins or becomes eligible inside the period and upgrades in it is outside this rate."
     },
     "cross_sell_rate": {
-      "formula": "count_distinct(field.customer_id where field.amendment_type = 'cross_sell') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start",
-      "unit": "percent"
+      "formula": "count_distinct(field.customer_id where field.amendment_type = 'cross_sell') / count_distinct(field.customer_id where field.customer_status = 'active') at period_start over cohort(field.customer_id, period_start)",
+      "unit": "percent",
+      "notes": "Over the customers active on the first day of the period (cohort method): a customer counts when a cross_sell amendment of theirs falls in the period. A customer who joins and buys a second product inside the period is outside this rate."
     },
     "renewal_rate": {
       "formula": "count_distinct(field.subscription_id where field.renewed = true and in_period(field.contract_end)) / count_distinct(field.subscription_id where in_period(field.contract_end))",
@@ -993,8 +995,9 @@
       "notes": "Week 8 retention for the signup cohort of the period: users who signed up in the period and had qualifying activity 49 to 55 days after signup, over users who signed up in the period. The numerator reads all time because week 8 falls after period_end."
     },
     "resurrection_rate": {
-      "formula": "count_distinct(field.user_id where field.product_event_type = 'reactivation') / count_distinct(field.user_id where field.user_status = 'dormant') at period_start",
-      "unit": "percent"
+      "formula": "count_distinct(field.user_id where field.product_event_type = 'reactivation') / count_distinct(field.user_id where field.user_status = 'dormant') at period_start over cohort(field.user_id, period_start where field.user_status = 'dormant')",
+      "unit": "percent",
+      "notes": "Over the users dormant on the first day of the period (cohort method): a user counts when a reactivation event of theirs falls in the period. A user who goes dormant and returns inside the period is outside this rate."
     },
     "release_frequency": {
       "formula": "count_distinct(field.release_id)",

@@ -126,7 +126,7 @@ At-Risk Rate = Customers with health score < 40 / Total scored customers × 100
 
 At-Risk Customer Rate is reported per customer segment.
 
-**Variant `entered_at_risk`:** the share of customers active at period start that entered the `at_risk` state in the period. The move into `state_category = 'at_risk'` is a leading indicator of churn, which this variant counts as it happens.
+**Variant `entered_at_risk`:** the share of customers active at period start that entered the `at_risk` state in the period. A customer counts when they were active on the first day, so one who joins and turns at risk inside the period sits outside the variant. The move into `state_category = 'at_risk'` is a leading indicator of churn, which this variant counts as it happens.
 
 **Benchmarks:**
 - Below 5%: Healthy portfolio
@@ -247,8 +247,10 @@ License Utilization = Seats assigned / Seats purchased × 100
 
 **Formula:**
 ```
-Upsell Rate = Customers who upgraded / Customers eligible for upgrade × 100
+Upsell Rate = Eligible customers at start of period who upgraded in the period / Customers eligible for upgrade at start of period × 100
 ```
+
+**Who is counted:** The customers active and eligible for an upgrade on the first day of the period. A customer counts when they were in that group and an upgrade of theirs falls in the period. A customer who joins or becomes eligible inside the period and upgrades in it sits outside this rate.
 
 **What it tells you:** How well you turn upgrade headroom into upgrades.
 
@@ -260,8 +262,10 @@ Upsell Rate = Customers who upgraded / Customers eligible for upgrade × 100
 
 **Formula:**
 ```
-Cross-sell Rate = Customers who bought additional product / Total customers × 100
+Cross-sell Rate = Customers at start of period who bought an additional product in the period / Customers at start of period × 100
 ```
+
+**Who is counted:** The customers active on the first day of the period. A customer counts when they were a customer on that day and a cross-sell amendment of theirs falls in the period. A customer who joins and buys a second product inside the period sits outside this rate.
 
 ---
 

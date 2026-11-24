@@ -27,6 +27,11 @@ export function celClassUrl(celClass: string): string {
   return `${SITE}/v1/cel#${celClass.toLowerCase()}`;
 }
 
+/** A dataset (`subscription`, `usage_record`) is an entry of the datasets reference, so its address is that entry's anchor. */
+export function datasetUrl(datasetId: string): string {
+  return `${SITE}/v1/datasets#${datasetId}`;
+}
+
 /**
  * The page behind a relationship graph node, the same rule the site uses to
  * generate src/data/metric-links.ts: a metric node links to its canonical

@@ -98,6 +98,12 @@ The annualised value of a contract, normalising multi-year deals to a single yea
 - **Canonical definition:** [Sales Metrics](metrics/sales.md#acv-annual-contract-value)
 - **Used in:** Sales, Finance
 
+### TCV (Total Contract Value)
+The full value of a contract over its whole term: every year of a multi-year agreement, with one-time fees and services. Each Contract_Event carries it as `tcv`.
+- **Distinct from:** ACV (recurring value only, for one year), Bookings (the TCV signed in a period)
+- **Canonical definition:** [CEL Contract_Event](cel.md#contract_event)
+- **Used in:** Finance, Sales
+
 ### ARPA (Average Revenue Per Account)
 Average monthly recurring revenue per customer account.
 - **Formula:** MRR / Active Customers
@@ -242,7 +248,8 @@ A user who performed a qualifying action in the defined period.
 - **Qualifying action:** Defined per product; must be intentional engagement
 
 ### Lead
-A contact who has expressed interest (form fill, signup, etc.).
+A person or company that has expressed interest (form fill, signup, etc.) and is yet to be qualified as an opportunity.
+- **Distinct from:** Contact (a named person at a customer account)
 - **Canonical definition:** [Marketing Metrics](metrics/marketing.md#leads)
 
 ### MQL (Marketing Qualified Lead)
@@ -419,6 +426,126 @@ Percentage of users using a specific feature.
 Moment when new user experiences core product value.
 - **Definition:** Product-specific, must be explicitly defined
 - **Canonical framework:** [Product Metrics](metrics/product.md#activation-rate)
+
+---
+
+## Operational Entities
+
+The things the departmental metrics count, beside the customer hierarchy under Foundational Entities. Each is an entity in the ontology with a dataset of its own. Its definition page lists the fields and relationships the standard records for it. Lead, Opportunity and User are defined under Customer Terms.
+
+### Campaign
+A marketing initiative that runs on one channel. The standard records what each campaign spent in each period.
+- **Also called:** Marketing Campaign, Initiative
+- **Key metrics at this level:** CAC by Channel, Paid Media Efficiency (ROAS)
+
+### Contact
+A named person at a customer account with a part in buying, renewing or expanding: an executive sponsor, a decision maker, a champion, a day-to-day contact or procurement.
+- **Also called:** Stakeholder
+- **Distinct from:** User (a person who uses the product), Lead (a person or company that is yet to be qualified)
+- **Key metrics at this level:** Contact Coverage, Executive Sponsor Coverage
+
+### Ticket
+A support request from a customer or user, tracked from the moment it is created until it is resolved. A ticket that is reopened stays one ticket.
+- **Also called:** Support Case
+- **Distinct from:** Issue (an entry in the engineering backlog), Incident (an interruption of the service)
+- **Key metrics at this level:** Ticket Volume, First Contact Resolution (FCR), Resolution Time (Time to Resolution)
+
+### Knowledge Article
+A self-service help article. The standard records how many support requests each article deflected in each period.
+- **Also called:** Help Article, KB Article
+- **Key metrics at this level:** Self-Service Rate (Ticket Deflection)
+
+### Employee
+A person employed by the company, in any department. Sales reps and consultants are employees. Headcount counts the employees whose status is active on the day.
+- **Also called:** Team Member
+- **Distinct from:** User (a person at a customer who uses the product), Contact (a person at a customer involved in the commercial relationship)
+- **Key metrics at this level:** Total Headcount, Time to Hire, Revenue per Employee
+
+### Requisition
+An approved opening for a role, open from the day it is opened until it is filled or closed.
+- **Also called:** Job Opening, Req
+- **Key metrics at this level:** Open Positions, Time to Fill, Offer Acceptance Rate
+
+### Invoice
+A bill issued to a customer, with its amount, the service period it covers, the amount still outstanding and its payment status.
+- **Also called:** Billing Document
+- **Distinct from:** Revenue_Event (a change in recurring revenue in the Commercial Event Ledger). An invoice records what was billed and collected
+- **Key metrics at this level:** Billings, Accounts Receivable Balance, Collection Rate, Aging Buckets
+
+### Quote
+A priced offer sent to a prospect or customer before an order, with its list price, its quoted price and the number of revisions it took.
+- **Also called:** Proposal, Pricing Quote
+- **Key metrics at this level:** Quote Volume, Quote Cycle Time, Discount Rate
+
+### Order
+An accepted quote in fulfilment, from the time it is received to the time it is completed.
+- **Also called:** Sales Order
+- **Key metrics at this level:** Order Processing Time, Order Error Rate, Quote-to-Order Rate
+
+### Partner
+An external organisation that sources, influences or resells deals. A partner is recruited, becomes active and may churn. The partner counts read the active ones.
+- **Also called:** Channel Partner
+- **Key metrics at this level:** Total Active Partners, Partner Activation Rate, Partner Churn Rate, Partner Win Rate
+
+### Deal Registration
+A partner's claim on an opportunity it brought, followed from the day it is registered to the close of the opportunity.
+- **Also called:** Partner Registration
+- **Key metrics at this level:** Partner Deal Registration Volume, Deal Registration-to-Close Rate, Partner Sales Cycle
+
+### Project
+A professional services engagement for a customer, with a start date, a target date, budgeted hours, revenue and cost.
+- **Also called:** Engagement, SOW
+- **Key metrics at this level:** On-Time Delivery, On-Budget Delivery, Project Margin
+
+### Project Milestone
+A dated checkpoint inside a project, with a planned date and an actual date.
+- **Also called:** Milestone
+- **Key metrics at this level:** Project Milestone Completion Rate
+
+### Deliverable
+A piece of work a project hands to the customer, which the customer accepts or sends back for rework.
+- **Also called:** Work Product
+- **Key metrics at this level:** Rework Rate
+
+### Plan
+A priced package that subscriptions are sold on (Starter, Pro, Enterprise), with a name and a billing period.
+- **Also called:** Tier, Pricing Plan, Package
+- **Distinct from:** Segment (classifies the customer), Product (a purchasable part of the offering)
+- **Used in:** The `by_plan` breakdown of MRR
+
+### Product
+A separately purchasable part of the offering, such as a module or a SKU, with a name and a product line.
+- **Also called:** Module, SKU
+- **Distinct from:** Plan (the package a subscription is priced on), Feature (a unit of functionality)
+- **Used in:** The `by_product` breakdown of License Utilization
+
+### Feature
+A unit of product functionality, with its planned and actual ship dates and the date customers first used it.
+- **Also called:** Capability
+- **Key metrics at this level:** Feature Delivery Rate, Time to Market, Breadth of Adoption
+
+### Release
+A versioned set of features shipped to customers on a date. A feature names the release it shipped in.
+- **Also called:** Version
+- **Distinct from:** Deployment (one change reaching production)
+- **Key metrics at this level:** Release Frequency
+
+### Deployment
+A change shipped to production, with the time of its commit and the incident it caused, if any.
+- **Also called:** Deploy, Production Change
+- **Distinct from:** Release (the versioned set of features customers receive)
+- **Key metrics at this level:** Deployment Frequency, Lead Time for Changes, Change Failure Rate
+
+### Issue
+A tracked bug, feature request, question or incident report in the engineering backlog, with its source (a user report, internal or monitoring) and the environment it was found in.
+- **Also called:** Bug, Defect, Feature Request
+- **Distinct from:** Ticket (the support request a customer raises)
+- **Key metrics at this level:** Bug Escape Rate, Feature Request Volume, User-Reported Issues
+
+### Vulnerability
+A security weakness found in the product or its infrastructure, tracked from its discovery until it is patched or accepted.
+- **Also called:** CVE, Security Finding
+- **Key metrics at this level:** Vulnerability Count, Time to Patch
 
 ---
 
