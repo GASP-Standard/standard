@@ -28,6 +28,7 @@ import type { Metric, StandardData } from "../types.js";
 import { companyTarget, fieldSql, isGaspMetric, type CompiledModel } from "../ossie/company.js";
 import { cohortExpressionFor, directExpressionFor, type EmitContext } from "../ossie/metrics.js";
 import { relationshipsOf } from "../ossie/model.js";
+import { modelMetrics } from "../ossie/scope.js";
 import { readGaspExtension, type OssieAIContext, type OssieDataType, type OssieDataset, type OssieExtension, type OssieRelationship } from "../ossie/types.js";
 
 export type FieldRole = "time" | "key" | "dimension" | "fact";
@@ -244,9 +245,13 @@ export function targetModel(r: CompiledModel, data: StandardData): TargetModel {
   for (const [key, c] of Object.entries(r.coverage)) if (c.kind === "direct" || c.kind === "staged") keyOf.set(c.ossieName, key);
   const label = owners(data);
 
+  // The model declares a metric under the dataset it reads or at the root; a target lists them in the standard's order.
+  const order = new Map([...keyOf.keys()].map((name, i) => [name, i]));
+  const compiled = modelMetrics(r.model).filter((m) => isGaspMetric(m) && order.has(m.name));
+  compiled.sort((a, b) => order.get(a.name)! - order.get(b.name)!);
+
   const metrics: TargetMetric[] = [];
-  for (const m of r.model.metrics ?? []) {
-    if (!isGaspMetric(m)) continue;
+  for (const m of compiled) {
     const key = keyOf.get(m.name);
     const cov = key ? r.coverage[key] : undefined;
     if (!key || !cov) continue;

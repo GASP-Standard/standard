@@ -28,7 +28,8 @@ import { compileModel, isGaspMetric, type CompiledModel } from "./company.js";
 import { directQuery, stagedValueQuery, type Period } from "./demo.js";
 import { formulaSource } from "./metrics.js";
 import { aggregateSpans } from "./portability.js";
-import { portable, type MetricCoverage, type OssieMetric, type OssieSemanticModel } from "./types.js";
+import { modelMetrics } from "./scope.js";
+import { portable, type MetricCoverage, type OssieDataset, type OssieMetric, type OssieSemanticModel } from "./types.js";
 
 /** The six monthly periods of the synthetic dataset's window. */
 export const DRIFT_PERIODS: Period[] = [31, 28, 31, 30, 31, 30].map((days, i) => {
@@ -461,6 +462,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
   }
 
   const filterCtx = { fields, formulas: data.formulas ?? {} };
+  const compiledMetrics = new Map(modelMetrics(ns.compiled.model).map((m) => [m.name, m]));
   const run = async (): Promise<DriftScore[]> => {
     const schema = `drift_${++calls}`;
     await createViews(engine, schema, ns, company);
@@ -478,7 +480,7 @@ export async function scoreDrift(company: Company, metrics: OssieMetric[], data:
           continue;
         }
         score.canonicalKind = cov.kind;
-        const expression = exprOf(ns.compiled.model.metrics!.find((x) => x.name === cov.ossieName)!);
+        const expression = exprOf(compiledMetrics.get(cov.ossieName)!);
         const canonical = cov.kind === "direct" ? expression : ns.compiled.model.datasets.find((d) => d.name === cov.stagedDataset)!.source;
         score.canonical = canonical;
         if (cov.kind === "staged") score.stagedReason = cov.reason;
@@ -689,15 +691,24 @@ export function formatDriftReport(r: DriftResult): string {
 
 // ── the tool ─────────────────────────────────────────────────────────────────
 
-/** The company's own metrics from a semantic model document, or any document carrying a `metrics` list. */
-export function companyMetrics(text: string | undefined): { metrics?: OssieMetric[]; error?: string } {
+/**
+ * The company's own metrics from a semantic model document, or any document
+ * carrying a `metrics` list: the model-root list and each dataset's own, every
+ * one in the `dataset.field` form (scope.ts). `declaring` is the company's
+ * model, read for the fields of a dataset the document names without them.
+ */
+export function companyMetrics(text: string | undefined, declaring?: OssieSemanticModel): { metrics?: OssieMetric[]; error?: string } {
   if (!text?.trim()) return { error: "Pass semantic_model: your Ossie semantic model (YAML or JSON) holding the metrics to score; with a GASP adapter as the mapping, any document with a metrics list will do." };
   const doc = parseDocument(text);
   if (!doc.doc) return { error: `Invalid semantic model. ${doc.error}` };
-  const metrics = doc.doc.metrics;
-  if (!Array.isArray(metrics)) return { error: "The semantic model has no metrics list." };
+  // Both scopes: the model-root list and each dataset's own, read in the dataset.field form (scope.ts).
+  const model = doc.doc as { datasets?: OssieDataset[]; metrics?: OssieMetric[] };
+  const scoped = Array.isArray(model.datasets) && model.datasets.some((d) => Array.isArray(d?.metrics));
+  if (!Array.isArray(model.metrics) && !scoped) return { error: "The semantic model has no metrics list, at the model root or under a dataset." };
+  // A dataset the document writes without fields takes them from the company's model, which declares it.
+  const metrics = modelMetrics(model, (name) => declaring?.datasets.find((d) => d.name === name)?.fields?.map((f) => f.name));
   const bad = metrics.findIndex((m) => !m || typeof m !== "object" || typeof (m as OssieMetric).name !== "string" || !expressionText(m as OssieMetric));
-  if (bad >= 0) return { error: `metrics[${bad}] needs a name and an expression with \`sql\` or at least one dialect entry.` };
+  if (bad >= 0) return { error: `${scoped ? `Metric ${bad + 1} of the model (each dataset's metrics first, then the model-root list)` : `metrics[${bad}]`} needs a name and an expression with \`sql\` or at least one dialect entry.` };
   return { metrics: metrics as OssieMetric[] };
 }
 
@@ -705,7 +716,7 @@ export function companyMetrics(text: string | undefined): { metrics?: OssieMetri
 export async function scoreDriftFromText(documentText: string, modelText: string | undefined, data: StandardData, opts: { matches?: string; metrics?: string; output?: "report" | "json"; engine?: Engine } = {}): Promise<string> {
   const company = resolveCompany(documentText, modelText, data);
   if ("error" in company) return company.error;
-  const own = companyMetrics(modelText);
+  const own = companyMetrics(modelText, company.model);
   if (!own.metrics) return own.error!;
   const only = opts.metrics?.trim() ? new Set(opts.metrics.split(",").map((s) => s.trim()).filter(Boolean)) : undefined;
   const r = await scoreDrift(company, own.metrics, data, { matches: parseMatches(opts.matches), only, engine: opts.engine });

@@ -7,7 +7,9 @@ ai_context:
 datasets:
   - name: user
     source: gasp.user
-    description: "User. Kind: snapshot."
+    description: User.
+    ai_context:
+      instructions: "Snapshot, one row per user_id per snapshot_date: select one snapshot_date (the period end), since summing rows across dates double counts."
     primary_key:
       - user_id
       - snapshot_date
@@ -68,7 +70,7 @@ datasets:
           activeWhen: field.user_status = 'active'
   - name: product_event
     source: gasp.product_event
-    description: "Product usage event. Kind: event."
+    description: Product usage event.
     primary_key:
       - event_id
     fields:
@@ -153,6 +155,22 @@ datasets:
           sql: value
         datatype: Decimal
         description: User Retention (Day N) for the period
+    metrics:
+      - name: gasp_user_retention_day_n
+        expression:
+          sql: SUM(value)
+        description: User Retention (Day N). Percentage of users who return on day N after signup.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/user-retention-day-n. Staged (all_time): gasp_staged_gasp_user_retention_day_n holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: user_retention_day_n
+              gasp_version: "1"
+              unit: percent
+              formula: all_time(count_distinct(field.user_id where field.product_event_type = 'qualifying' and in_period(field.signup_date) and (field.event_date - field.signup_date) = 30)) / count_distinct(field.user_id where in_period(field.signup_date))
+              staged: true
     nonportable_extensions:
       - vendor_name: GASP
         data:
@@ -164,19 +182,3 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE ((product_event_type = 'qualifying' AND (signup_date >= p.period_start AND signup_date <= p.period_end)) AND DATEDIFF(day, signup_date, event_date) = 30)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT user_id) FROM gasp.user WHERE snapshot_date = p.period_end AND (signup_date >= p.period_start AND signup_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE ((product_event_type = 'qualifying' AND (signup_date >= p.period_start AND signup_date <= p.period_end)) AND DATE_DIFF(event_date, signup_date, DAY) = 30)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT user_id) FROM gasp.user WHERE snapshot_date = p.period_end AND (signup_date >= p.period_start AND signup_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE ((product_event_type = 'qualifying' AND (signup_date >= p.period_start AND signup_date <= p.period_end)) AND DATEDIFF(event_date, signup_date) = 30)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT user_id) FROM gasp.user WHERE snapshot_date = p.period_end AND (signup_date >= p.period_start AND signup_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
-metrics:
-  - name: gasp_user_retention_day_n
-    expression:
-      sql: SUM(gasp_staged_gasp_user_retention_day_n.value)
-    description: User Retention (Day N). Percentage of users who return on day N after signup.
-    datatype: Decimal
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/user-retention-day-n. Staged (all_time): gasp_staged_gasp_user_retention_day_n holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: user_retention_day_n
-          gasp_version: "1"
-          unit: percent
-          formula: all_time(count_distinct(field.user_id where field.product_event_type = 'qualifying' and in_period(field.signup_date) and (field.event_date - field.signup_date) = 30)) / count_distinct(field.user_id where in_period(field.signup_date))
-          staged: true

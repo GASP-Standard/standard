@@ -262,6 +262,8 @@ export interface OssieDataset {
   description?: string;
   ai_context?: OssieAIContext | string;
   fields?: OssieField[];
+  /** Dataset-scoped metrics: each names this dataset's fields by single-part name. Read them through `modelMetrics` (scope.ts). */
+  metrics?: OssieMetric[];
   nonportable_extensions?: OssieExtension[];
 }
 
@@ -291,6 +293,7 @@ export interface OssieSemanticModel {
   ai_context?: OssieAIContext | string;
   datasets: OssieDataset[];
   relationships?: OssieRelationship[];
+  /** Model-scoped metrics: each names fields as `dataset.field`. The metrics that read one dataset sit in that dataset's `metrics`. */
   metrics?: OssieMetric[];
   nonportable_extensions?: OssieExtension[];
 }
@@ -300,10 +303,18 @@ export interface OssieSemanticModel {
 export type ConceptType = "EntityType" | "ValueType";
 export type Multiplicity = "ManyToOne" | "OneToOne";
 
+/**
+ * The open slot the ontology gives for what its core cannot express: any keys,
+ * any JSON values, kept as written by a tool that does not know them. GASP's
+ * own keys start `gasp_` (ontology.ts).
+ */
+export type OssieAnnotations = Record<string, unknown>;
+
 export interface OssieRole {
   concept: string;
   /** Required when the same concept plays more than one role in the relationship */
   name?: string;
+  annotations?: OssieAnnotations;
 }
 
 export interface OssieOntologyRelationship {
@@ -315,7 +326,9 @@ export interface OssieOntologyRelationship {
   requires?: string[];
   /** One pattern per phrasing; every role appears as {Concept} or {Concept:role} */
   verbalizes: string[];
+  /** A full IRI, or `prefix:local` read against the ontology's `prefixes` */
   iri?: string;
+  annotations?: OssieAnnotations;
 }
 
 export interface OssieConcept {
@@ -327,7 +340,9 @@ export interface OssieConcept {
   identify_by?: string[];
   requires?: string[];
   relationships?: OssieOntologyRelationship[];
+  /** A full IRI, or `prefix:local` read against the ontology's `prefixes` */
   iri?: string;
+  annotations?: OssieAnnotations;
 }
 
 export interface OssieOntology {
@@ -336,7 +351,9 @@ export interface OssieOntology {
   description?: string;
   ai_context?: OssieAIContext | string;
   requires?: string[];
+  /** Namespace prefix → the IRI it abbreviates, for `iri` values written as `prefix:local` */
   prefixes?: Record<string, string>;
+  annotations?: OssieAnnotations;
   ontology: OssieConcept[];
 }
 

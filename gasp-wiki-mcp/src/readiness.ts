@@ -30,6 +30,7 @@ import { openQuestions, type DecisionRecord } from "./ossie/decide.js";
 import { parseMatches, scoreDrift, type DriftResult, type Engine } from "./ossie/drift.js";
 import type { Question } from "./ossie/profile.js";
 import type { Candidate } from "./ossie/propose.js";
+import { modelMetrics } from "./ossie/scope.js";
 import { expressionText, readGaspExtension, type OssieMapping, type OssieMetric, type OssieSemanticModel } from "./ossie/types.js";
 import { formatSchemaDrift, schemaColumns, schemaDrift, type SchemaDriftResult } from "./schema-drift.js";
 import type { SchemaColumn } from "./ossie/profile.js";
@@ -101,7 +102,7 @@ const names = (xs: string[], limit = 6): string => xs.slice(0, limit).join(", ")
 
 /** The company's own metrics in a model: those an earlier compile did not write, with a readable expression. */
 function ownMetrics(model: OssieSemanticModel | undefined): OssieMetric[] {
-  return (model?.metrics ?? []).filter((m) => m && typeof m.name === "string" && !isGaspMetric(m) && Boolean(expressionText(m)));
+  return modelMetrics(model).filter((m) => m && typeof m.name === "string" && !isGaspMetric(m) && Boolean(expressionText(m)));
 }
 
 /** The readiness of a company: its mapping, the model it gave (for the open questions, the compiled metrics and its own metrics) and the check results. */
@@ -142,7 +143,7 @@ export async function readiness(company: Company, model: OssieSemanticModel | un
     : { clean: [] as string[], failing: [] as Array<{ metric: string; failing: string[] }>, waiting: [...coreCovered] };
 
   // L4: the compiled metrics in the given model, what compile_model would write, and the drift of the company's own metrics.
-  const compiledIn = given.metrics?.filter(isGaspMetric) ?? [];
+  const compiledIn = modelMetrics(given).filter(isGaspMetric);
   // A staged metric reads a staged dataset: its own, or the cohort table several metrics share.
   const stagedNames = new Set(given.datasets.filter((d) => readGaspExtension(d.nonportable_extensions)?.staged === true).map((d) => d.name));
   const readsStaged = (m: OssieMetric): boolean => [...(expressionText(m) ?? "").matchAll(/\b([A-Za-z_]\w*)\./g)].some((x) => stagedNames.has(x[1]));

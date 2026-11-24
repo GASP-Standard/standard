@@ -21,6 +21,7 @@ import { isMetricStub, metricFormulaId } from "../loader.js";
 import type { StandardData } from "../types.js";
 import { checkExport } from "./check.js";
 import { cohortTableFor } from "./model.js";
+import { metricCount, modelMetrics, placeMetrics, withoutMetrics } from "./scope.js";
 import { planOntology } from "./ontology.js";
 import {
   portableEntries,
@@ -65,7 +66,7 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
     metricNames.add(c.ossieName);
     if (c.kind === "staged") stagedNames.add(c.stagedDataset);
   }
-  const metrics = (exp.model.metrics ?? []).filter((m) => metricNames.has(m.name));
+  const metrics = modelMetrics(exp.model).filter((m) => metricNames.has(m.name));
 
   // ── datasets: what the kept expressions and staged sources read ──
   const gaspDatasets = new Set(Object.keys(data.ontology!.datasets!));
@@ -81,13 +82,16 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
   const keptNames = new Set(keptDatasets.map((d) => d.name));
   const datasets = keptDatasets.map((d) => d.name).filter((n) => read.has(n));
 
+  // The kept metrics, each declared in its scope over the kept datasets.
+  const placed = placeMetrics(keptDatasets.map(withoutMetrics), metrics);
+  const { metrics: _all, ...reference } = exp.model;
   const model: OssieSemanticModel = {
-    ...exp.model,
+    ...reference,
     name: "GASP SaaS core",
     description: `The Core metrics of the GASP Standard (Generally Accepted SaaS Principles) as an Apache Ossie semantic model: ${metrics.length} metrics over ${datasets.length} datasets, cut from the full reference model at https://gaspwiki.com/downloads/ossie/. Each metric carries its canonical page and its GASP formula.`,
-    datasets: keptDatasets,
+    datasets: placed.datasets,
     relationships: (exp.model.relationships ?? []).filter((r) => keptNames.has(r.from) && keptNames.has(r.to)),
-    metrics,
+    ...(placed.metrics.length ? { metrics: placed.metrics } : {}),
   };
 
   // ── ontology: the kept datasets' concepts, the value types they use, the relationships among them ──
@@ -122,6 +126,7 @@ export function exportExample(data: StandardData, exp: OssieExport): OssieExampl
     name: "GASP SaaS core",
     description: `The concepts behind the Core metrics of the GASP Standard: ${entityConcepts.size} entity types (one per dataset the metrics read), their relationships and ${valueTypes.size} value types, cut from the full GASP ontology at https://gaspwiki.com/downloads/ossie/.`,
     ...(exp.ontology.requires ? { requires: exp.ontology.requires.filter((line) => mentions(line).every((n) => kept.has(n))) } : {}),
+    ...(exp.ontology.prefixes ? { prefixes: Object.fromEntries(Object.entries(exp.ontology.prefixes).filter(([p]) => concepts.some((c) => c.iri?.startsWith(`${p}:`)))) } : {}),
     ontology: concepts,
   };
 
@@ -180,10 +185,10 @@ The Core department of the GASP Standard (Generally Accepted SaaS Principles) as
 | File | Contents |
 | --- | --- |
 | \`${EXAMPLE_BASENAME}.ontology.yaml\` | ${ex.ontology.ontology.filter((c) => c.type === "EntityType").length} entity types (one per dataset), their relationships and ${ex.ontology.ontology.filter((c) => c.type === "ValueType").length} value types with enum constraints |
-| \`${EXAMPLE_BASENAME}.semantic_model.yaml\` | ${ex.datasets.length} datasets (${ex.datasets.join(", ")}), ${ex.model.relationships?.length ?? 0} relationships, ${ex.model.datasets.length - ex.datasets.length} staged datasets and ${ex.model.metrics?.length ?? 0} metrics |
+| \`${EXAMPLE_BASENAME}.semantic_model.yaml\` | ${ex.datasets.length} datasets (${ex.datasets.join(", ")}), ${ex.model.relationships?.length ?? 0} relationships, ${ex.model.datasets.length - ex.datasets.length} staged datasets and ${metricCount(ex.model)} metrics |
 | \`${EXAMPLE_BASENAME}.mapping.yaml\` | The ontology mapped onto the model, by name and relative IRI |
 
-Every metric is an \`OSSIE_SQL_2026\` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see \`../coverage.json\` for the reason per entry and \`../conformance/\` for one executed case per reason). Physical sources are \`gasp.<dataset>\` with columns named by GASP field id; an adopter's mapping replaces both.
+Every metric is an \`OSSIE_SQL_2026\` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see \`../coverage.json\` for the reason per entry and \`../conformance/\` for one executed case per reason). A metric that reads one dataset is declared under that dataset and names its fields directly; a metric that reads several is declared at the model root and names each field as \`dataset.field\`. Physical sources are \`gasp.<dataset>\` with columns named by GASP field id; an adopter's mapping replaces both.
 
 ## Metrics
 

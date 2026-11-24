@@ -6,6 +6,7 @@ import { buildConformance, readConformance, CONFORMANCE_DIR } from "../scripts/o
 import { CONFORMANCE_CASES, type ConformanceManifest } from "../src/ossie/conformance.js";
 import { SNAPSHOT_CASE_COUNT } from "../src/ossie/conformance-snapshot.js";
 import { STAGED_REASONS } from "../src/ossie/metrics.js";
+import { modelMetrics } from "../src/ossie/scope.js";
 import { validateUpstream, uvAvailable } from "../src/ossie/validate.js";
 
 // The conformance set (standard/exports/ossie/conformance) is derived from the
@@ -40,7 +41,9 @@ describe("Ossie conformance set", async () => {
       const model = parse(files[`cases/${c.id}/model.ossie.yaml`]);
       // A staged case declares its staged dataset after the ones it reads; a direct case declares those alone.
       expect(model.datasets.map((d: { name: string }) => d.name), c.id).toEqual(c.kind === "staged" ? [...c.datasets, model.datasets.at(-1).name] : c.datasets);
-      expect(model.metrics.map((x: { name: string }) => x.name), c.id).toEqual([c.metric]);
+      expect(modelMetrics(model).map((x) => x.name), c.id).toEqual([c.metric]);
+      // Each case's metric reads one dataset, so the model declares it there with single-part names.
+      expect(model.metrics, c.id).toBeUndefined();
       expect(files[`cases/${c.id}/expected.sql`], c.id).toContain(`AS expected (${c.columns.join(", ")})`);
     }
   });

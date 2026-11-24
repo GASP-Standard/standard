@@ -12,12 +12,13 @@
  * (grade `alternative`). With them a result is graded as right, alternative,
  * wrong or failed (`GRADING`).
  *
- * The shapes follow the two upstream compliance suites: a case directory holds
- * `model.ossie.yaml` (as compliance/portability's one-model-per-rung fixtures),
- * `reference.postgres.sql` and `expected.sql` (as compliance/query's
- * `reference.duckdb.sql` and `expected.sql`, a VALUES list in standard SQL), and
- * the shared `data/` directory holds one `CREATE TABLE` + `INSERT` script per
- * dataset plus the period spine. A case passes when an implementation loads the
+ * A case directory holds `model.ossie.yaml` (one model per case, as
+ * compliance/portability upstream keeps one per rung), `reference.postgres.sql`
+ * and `expected.sql`, a VALUES list in standard SQL that needs no runner to
+ * read. Upstream's compliance/query held the same pair until apache/ossie #769
+ * (2026-11-21) made each of its cases one ost script; docs/ossie-ost-spike.md
+ * records the GASP cases run through that tool. The shared `data/` directory
+ * holds one `CREATE TABLE` + `INSERT` script per dataset plus the period spine. A case passes when an implementation loads the
  * data and the model, evaluates the metric for the period and returns the rows
  * of expected.sql.
  *
@@ -29,6 +30,7 @@ import type { MetricFormula, OntologyDataset, OntologyField, StandardData } from
 import { formulaSource, type StagedReason } from "./metrics.js";
 import { cohortTableFor, stagedReasonsOf } from "./model.js";
 import type { OssieDataset, OssieExport, OssieMetric, OssieSemanticModel } from "./types.js";
+import { modelMetrics, placeMetrics, withoutMetrics } from "./scope.js";
 import { OSSIE_VERSION, expressionText } from "./types.js";
 
 export interface ConformancePeriod { start: string; end: string }
@@ -172,7 +174,7 @@ const datasetRefs = (source: string): string[] => [...new Set([...source.matchAl
 
 export function buildConformanceCases(data: StandardData, exp: OssieExport, specs: ReadonlyArray<StagedCaseSpec> = CONFORMANCE_CASES, offset = 0): ConformanceCase[] {
   const byName = new Map<string, OssieDataset>(exp.model.datasets.map((d) => [d.name, d]));
-  const metrics = new Map<string, OssieMetric>((exp.model.metrics ?? []).map((m) => [m.name, m]));
+  const metrics = new Map<string, OssieMetric>(modelMetrics(exp.model).map((m) => [m.name, m]));
   const formulas = data.formulas ?? {};
   return specs.map(({ reason, entry, construct, readings: listed, period = CONFORMANCE_PERIOD, label, group = "construct" }, i) => {
     const c = exp.coverage[entry];
@@ -192,14 +194,16 @@ export function buildConformanceCases(data: StandardData, exp: OssieExport, spec
     const dimensions = c.cohortTable ? [] : (staged.fields ?? []).map((x) => x.name).filter((n) => !["period_start", "period_end", "value"].includes(n));
     const expression = expressionText(metric) ?? "";
     const canonicalUrl = canonicalUrlOf(metric);
+    // The case's one metric, declared in its scope: under the staged dataset it reads.
+    const placed = placeMetrics([...datasets.map((n) => byName.get(n)!), staged].map(withoutMetrics), [metric]);
     const id = `c${String(offset + i + 1).padStart(2, "0")}_${reason.replace(/\W+/g, "_")}_${formulaId}${variant ? `_${variant}` : ""}${label ? `_${label}` : ""}`;
     const model: OssieSemanticModel = {
       version: OSSIE_VERSION,
       name: `gasp_conformance_${id}`,
       description: `GASP conformance case ${id}: ${construct}. The metric ${metric.name} is staged because its formula needs "${reason}", which OSSIE_SQL_2026 cannot state; ${c.cohortTable ? `the staged dataset ${staged.name} carries the compiled SQL, one row per cohort member per period, and the metric's expression sums it` : "its staged dataset carries the compiled SQL"}. Formula: ${formula}`,
       ai_context: { instructions: `Evaluate ${metric.name} for the period ${period.start} to ${period.end} (one row of gasp.period_spine) over the tables in ../../data/ and compare with expected.sql.` },
-      datasets: [...datasets.map((n) => byName.get(n)!), staged],
-      metrics: [metric],
+      datasets: placed.datasets,
+      ...(placed.metrics.length ? { metrics: placed.metrics } : {}),
     };
     const order = dimensions.length ? `\nORDER BY ${dimensions.join(", ")}` : "";
     const sql = c.cohortTable
@@ -222,7 +226,7 @@ export function referenceSql(c: ConformanceCase): string {
     `-- Metric ${c.metric} (GASP formula: ${c.formula}) for the period ${c.period.start} to ${c.period.end}.`,
   ];
   const how = c.kind === "staged" ? [
-    ...(c.cohortTable ? [`-- The select list is the metric's OSSIE_SQL_2026 expression, evaluated over the rows of the period.`] : []),
+    ...(c.cohortTable ? [`-- The select list is the metric's OSSIE_SQL_2026 expression with each field named by its dataset, evaluated over the rows of the period.`] : []),
     `-- The subquery is the source of the staged dataset ${c.stagedDataset} in model.ossie.yaml,`,
     `-- ${c.cohortTable ? "one row per cohort member per period, " : ""}compiled by GASP from the formula (Postgres dialect; the GASP extension on the dataset carries`,
     `-- Snowflake, BigQuery and Databricks). It reads the tables in ../../data/, including gasp.period_spine.`,
@@ -264,7 +268,7 @@ export function sqlLiteral(v: unknown): string {
   if (typeof v === "number" || (typeof v === "string" && /^-?\d+(\.\d+)?$/.test(v) && !/^0\d/.test(v))) {
     const n = Number(v);
     if (Number.isInteger(n)) return String(n);
-    // An approximate numeric literal, as compliance/query asks for a computed ratio.
+    // An approximate numeric literal for a computed ratio, compared within a relative 1e-9.
     return n.toExponential(15).replace(/\.?0+e/, "e").toUpperCase();
   }
   return `'${String(v).replace(/'/g, "''")}'`;
@@ -381,9 +385,9 @@ ${count(snapshots.length, "case")} cover which rows of a snapshot dataset a repo
 | --- | --- |
 | \`data/period_spine.sql\` | The schema and the reporting periods the staged sources compute for (${periods.join("; ")}) |
 | \`data/<dataset>.sql\` | One GASP dataset as \`CREATE TABLE\` + \`INSERT\`, columns named by GASP field id, rows from the GASP test fixture |
-| \`cases/<case>/model.ossie.yaml\` | A complete Ossie semantic model: the datasets the case reads, the staged dataset where the case has one and the metric |
+| \`cases/<case>/model.ossie.yaml\` | A complete Ossie semantic model: the datasets the case reads, the staged dataset where the case has one and the metric, declared under the dataset it reads |
 | \`cases/<case>/reference.postgres.sql\` | The staged dataset's source read for the period, or the direct expression read on the period's last snapshot date, as a query over \`data/\` (Postgres dialect) |
-| \`cases/<case>/expected.sql\` | The expected result as a \`VALUES\` list in standard SQL, in the shape of \`compliance/query\` upstream |
+| \`cases/<case>/expected.sql\` | The expected result as a \`VALUES\` list in standard SQL |
 | \`cases/<case>/readings.sql\` | On the cases listed under Grading: one row per named mistake or alternative reading with the value it returns (Postgres dialect) |
 | \`manifest.json\` | Every case with its reason, formula, period, datasets, columns, expected rows and readings |
 

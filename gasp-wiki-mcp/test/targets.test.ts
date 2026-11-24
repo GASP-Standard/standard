@@ -30,7 +30,8 @@ import { exportModel, stagedSource } from "../src/ossie/model.js";
 import { readGaspExtension, type OssieExtension } from "../src/ossie/types.js";
 import { compileTarget, compileTargetFromText, withDatabase, type TargetResult } from "../src/targets/index.js";
 import { aggregatesIn, DBT_DIR, SURROGATE_KEY } from "../src/targets/dbt.js";
-import type { TargetModel } from "../src/targets/common.js";
+import { targetModel, type TargetModel } from "../src/targets/common.js";
+import { modelMetrics } from "../src/ossie/scope.js";
 import { TOOL_TITLES, createServer } from "../src/server.js";
 import { addOssieViews, adapter as fixtureAdapter, fixtureDb, scalar } from "./fixture-db.js";
 import { columnName, TABLES } from "./fixture/generate.js";
@@ -42,7 +43,7 @@ const gaspDatasets = data.ontology!.datasets!;
 const ctx: EmitContext = { fields, datasets: gaspDatasets, formulas: data.formulas! };
 const acme: Adapter = acmeAdapter();
 const reference = exportModel(data);
-const refMetric = new Map(reference.model.metrics!.map((m) => [m.name, m.expression.sql!]));
+const refMetric = new Map(modelMetrics(reference.model).map((m) => [m.name, m.expression.sql!]));
 const directKeys = Object.entries(reference.coverage).flatMap(([key, c]) => (c.kind === "direct" ? [{ key, name: c.ossieName }] : []));
 const split = (key: string): [string, string | undefined] => { const [id, v] = key.split(":"); return [id, v]; };
 
@@ -87,7 +88,7 @@ const generalQuery = (name: string, only: (source: string) => string = (s) => s)
 };
 /** The member field a served breakdown groups by, from the reference metric's GASP extension. */
 const dimensionOf = (name: string): string | undefined =>
-  readGaspExtension<{ gasp_breakdown?: string }>(reference.model.metrics!.find((m) => m.name === name)!.nonportable_extensions)?.gasp_breakdown;
+  readGaspExtension<{ gasp_breakdown?: string }>(modelMetrics(reference.model).find((m) => m.name === name)!.nonportable_extensions)?.gasp_breakdown;
 /**
  * A served entry's expression summed over a target's cohort rows beside the
  * general staging. A breakdown is read group by group: the target's rows that
@@ -167,6 +168,12 @@ describe("Snowflake target: the Acme adapter", () => {
   type Table = { name: string; base_table: Record<string, string>; primary_key?: { columns: string[] }; time_dimensions?: Array<{ name: string; expr: string }>; dimensions?: Array<{ name: string; expr: string }>; facts?: Array<{ name: string; expr: string }> };
   const tables = doc.tables as Table[];
   const metrics = doc.metrics as Array<{ name: string; expr: string }>;
+
+  it("lists the metrics in the standard's order, whichever scope the model declares them in", () => {
+    const names = Object.values(model.coverage).flatMap((cov) => (cov.kind === "direct" || cov.kind === "staged" ? [cov.ossieName] : []));
+    expect(model.model.datasets.some((d) => d.metrics?.length)).toBe(true);
+    expect(targetModel(model, data).metrics.map((m) => m.name)).toEqual(names);
+  });
 
   it("writes every table with a three-part base table and its primary key", () => {
     expect(tables.map((t) => t.name).sort()).toEqual(model.model.datasets.map((d) => d.name).sort());

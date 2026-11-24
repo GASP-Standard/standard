@@ -7,7 +7,7 @@ ai_context:
 datasets:
   - name: product_event
     source: gasp.product_event
-    description: "Product usage event. Kind: event."
+    description: Product usage event.
     primary_key:
       - event_id
     fields:
@@ -92,6 +92,22 @@ datasets:
           sql: value
         datatype: Decimal
         description: DAU/MAU Ratio (Stickiness) for the period
+    metrics:
+      - name: gasp_dau_mau
+        expression:
+          sql: SUM(value)
+        description: DAU/MAU Ratio (Stickiness). The ratio of daily to monthly active users, indicating how often users return.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/daumau-ratio-stickiness. Staged (window): gasp_staged_gasp_dau_mau holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: dau_mau
+              gasp_version: "1"
+              unit: percent
+              formula: metric.daily_active_users_dau / metric.monthly_active_users_mau
+              staged: true
     nonportable_extensions:
       - vendor_name: GASP
         data:
@@ -103,19 +119,3 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= DATEADD(day, -1, DATEADD(day, 1, p.period_end)) AND event_date <= p.period_end AND product_event_type = 'qualifying')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= DATEADD(day, -30, DATEADD(day, 1, p.period_end)) AND event_date <= p.period_end AND product_event_type = 'qualifying')), 0))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 DAY) AND event_date <= p.period_end AND product_event_type = 'qualifying')) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 30 DAY) AND event_date <= p.period_end AND product_event_type = 'qualifying')), 0))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= DATEADD(DAY, -1, DATEADD(DAY, 1, p.period_end)) AND event_date <= p.period_end AND product_event_type = 'qualifying')) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT user_id) FROM gasp.product_event WHERE event_date >= DATEADD(DAY, -30, DATEADD(DAY, 1, p.period_end)) AND event_date <= p.period_end AND product_event_type = 'qualifying')), 0))) AS value FROM gasp.period_spine p
-metrics:
-  - name: gasp_dau_mau
-    expression:
-      sql: SUM(gasp_staged_gasp_dau_mau.value)
-    description: DAU/MAU Ratio (Stickiness). The ratio of daily to monthly active users, indicating how often users return.
-    datatype: Decimal
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/product/daumau-ratio-stickiness. Staged (window): gasp_staged_gasp_dau_mau holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: dau_mau
-          gasp_version: "1"
-          unit: percent
-          formula: metric.daily_active_users_dau / metric.monthly_active_users_mau
-          staged: true

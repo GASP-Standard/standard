@@ -22,6 +22,11 @@ export function definitionUrl(d: Pick<Definition, "slug">): string {
   return `${SITE}/v1/definitions/${d.slug}`;
 }
 
+/** A CEL event class (`Revenue_Event`) is a heading of the CEL page, so its address is that heading's anchor. */
+export function celClassUrl(celClass: string): string {
+  return `${SITE}/v1/cel#${celClass.toLowerCase()}`;
+}
+
 /**
  * The page behind a relationship graph node, the same rule the site uses to
  * generate src/data/metric-links.ts: a metric node links to its canonical

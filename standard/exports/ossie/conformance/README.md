@@ -14,9 +14,9 @@ This directory holds two groups of case.
 | --- | --- |
 | `data/period_spine.sql` | The schema and the reporting periods the staged sources compute for (2026-01-01 to 2026-06-30; 2026-02-09 to 2026-03-08) |
 | `data/<dataset>.sql` | One GASP dataset as `CREATE TABLE` + `INSERT`, columns named by GASP field id, rows from the GASP test fixture |
-| `cases/<case>/model.ossie.yaml` | A complete Ossie semantic model: the datasets the case reads, the staged dataset where the case has one and the metric |
+| `cases/<case>/model.ossie.yaml` | A complete Ossie semantic model: the datasets the case reads, the staged dataset where the case has one and the metric, declared under the dataset it reads |
 | `cases/<case>/reference.postgres.sql` | The staged dataset's source read for the period, or the direct expression read on the period's last snapshot date, as a query over `data/` (Postgres dialect) |
-| `cases/<case>/expected.sql` | The expected result as a `VALUES` list in standard SQL, in the shape of `compliance/query` upstream |
+| `cases/<case>/expected.sql` | The expected result as a `VALUES` list in standard SQL |
 | `cases/<case>/readings.sql` | On the cases listed under Grading: one row per named mistake or alternative reading with the value it returns (Postgres dialect) |
 | `manifest.json` | Every case with its reason, formula, period, datasets, columns, expected rows and readings |
 

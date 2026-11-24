@@ -161,7 +161,7 @@ Done 2026-11-03 as the `profile_schema` tool (`gasp-wiki-mcp/src/ossie/profile.t
 
 Done 2026-11-02 as the `compile_model` tool (`gasp-wiki-mcp/src/ossie/company.ts`): it takes the mapping in either format, compiles into the company's own model (given, or synthesised from a v1 adapter), writes staged sources in the warehouse dialect the mapping names, declares the period spine as `gasp_period_spine`, lists the entries left out with the pairs they need and replaces its own additions on a recompile. The exporter's metric loop is shared: the reference model is one target of it.
 
-The compiler reads `standard/formulas.json` and the company's mapping and emits Ossie `metrics[]` into the company's model. It emits only metrics whose fields are all mapped; the rest go into the coverage report. Generated metrics carry a `gasp_` prefix so they never collide with the company's own. O/M forms compile to separate metrics (`gasp_nrr_o`, `gasp_nrr_m`).
+The compiler reads `standard/formulas.json` and the company's mapping and emits Ossie metrics into the company's model. A metric that reads one dataset is declared under that dataset (`datasets[].metrics`) and names its fields by single-part name; a metric that reads several is declared at the model root and names each field as `dataset.field` (2026-11-23, `DECISIONS.md`). It emits only metrics whose fields are all mapped; the rest go into the coverage report. Generated metrics carry a `gasp_` prefix so they never collide with the company's own. O/M forms compile to separate metrics (`gasp_nrr_o`, `gasp_nrr_m`).
 
 Canonical formulas are written in the GASP formula grammar: arithmetic over `metric.` refs, aggregates over `field.` refs with `where` filters, `at period_start|period_end` snapshots, `lag()`, `over cohort()`, windows and breakdowns. Ratios are unscaled with a separate `unit`. The test suite parses every formula, resolves it against the ontology and checks for cycles.
 
@@ -175,21 +175,23 @@ nrr = (metric.mrr at period_start + metric.expansion_mrr
 **Compiler output for NRR** (the expression as the reference model writes it, the other fields abridged)
 
 ```yaml
-metrics:
-  - name: gasp_nrr_o
-    description: Net Revenue Retention (operating form), GASP canonical definition
-    expression:
-      sql: (CAST((((SUM(gasp_account_cohorts.opening_mrr) + SUM(gasp_account_cohorts.expansion_mrr_o)) - SUM(gasp_account_cohorts.contraction_mrr)) - SUM(gasp_account_cohorts.churned_mrr)) AS DECIMAL) / NULLIF(SUM(gasp_account_cohorts.opening_mrr), 0))
-    ai_context:
-      synonyms: ["net dollar retention", "NDR"]
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr"
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: nrr
-          gasp_version: "1"
-          form: O
-          unit: percent
+datasets:
+  - name: gasp_account_cohorts
+    metrics:
+      - name: gasp_nrr_o
+        description: Net Revenue Retention (operating form), GASP canonical definition
+        expression:
+          sql: (CAST((((SUM(opening_mrr) + SUM(expansion_mrr_o)) - SUM(contraction_mrr)) - SUM(churned_mrr)) AS DECIMAL) / NULLIF(SUM(opening_mrr), 0))
+        ai_context:
+          synonyms: ["net dollar retention", "NDR"]
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core#net-revenue-retention-nrr"
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: nrr
+              gasp_version: "1"
+              form: O
+              unit: percent
 ```
 
 Formulas that use `cohort` or `lag`, or that need the reporting period inside a filter, compile to a plain aggregate over a staged dataset that every Ossie engine can run today. Most staged datasets hold one row per period with the metric's value. NRR and GRR read `gasp_account_cohorts` (built 2026-11-20, `DECISIONS.md`), one row per customer per period with opening MRR and the period's movements as columns, so each is a sum over those columns and can be sliced by anything joined on the customer. The table carries the segment each customer held on the period's first day, which the `by_segment` breakdowns of the two group by (2026-11-21). An Ossie dataset's `source` may be a query, so the staged table's SQL travels inside the model. `OSSIE_SQL_2026` is the only dialect whose semantics Ossie defines, so direct metrics are emitted in it. `Dataset.source` is a single string with no dialect, so a staged dataset's `source` holds the Postgres query and its GASP extension carries the Snowflake, BigQuery and Databricks versions. The reference model's `coverage.json` records which metrics are direct and which are staged, with the reason for each. The staged set is the test set for proposal P2.
@@ -236,25 +238,42 @@ What Ossie cannot yet hold travels in `nonportable_extensions` under `vendor_nam
 
 **Schema:** published 2026-11-03 at `https://gaspwiki.com/schemas/gasp-ossie-extension-v1.json` from `standard/gasp-ossie-extension-v1.json`, versioned independently of the mapping. It defines the parsed payload per placement (model, dataset, metric, mapping) with no additional properties, and `checkExport` (`gasp-wiki-mcp/src/ossie/check.ts`) validates every GASP payload against it, so a key the schema does not list fails the cross-document checks.
 
-| Placement | Keys | Content | Exit |
-| --- | --- | --- | --- |
-| Model | `profiled`, `compiled` | How the model was made: written by `profile_schema`, or GASP metrics compiled into it by `compile_model` | Stays; provenance |
-| Dataset | `kind`, `cel`, `activeWhen` | The GASP dataset kind, its CEL event class and the condition selecting live rows (cohort membership) | Stays; GASP-specific |
-| Dataset | `staged`, `for`, `reason`, `cohort`, `period_spine` | A staged dataset, the metric or metrics it serves and the construct Ossie cannot state: one row per period holding one metric's value or, with `cohort` (its key and point), one row per entity per period that several metrics sum; the table of reporting periods the staged datasets read | P2 (period-over-period and cohort metrics) |
-| Dataset | `source_dialect`, `sources` | The dialect of a staged dataset's source query and the query in each other dialect, keyed by Ossie dialect name | A `dialects` form for `Dataset.source`, matching expressions (question for the Metric Language WG) |
-| Dataset | `profile` | What the profiler inferred about the table: kind, confidence, evidence, open questions and listed enum values | Stays; pipeline state |
-| Metric | `gasp_id`, `gasp_version`, `variant`, `unit` | The GASP formula id, the extension version, the named variant and the unit (ratios unscaled) | Stays; GASP-specific |
-| Metric | `formula` | The canonical formula in the GASP grammar, before any warehouse exists | P3 (concept-level metrics) |
-| Metric | `form` | `O` (operating) or `M` (market); one Ossie metric per form | Stays; GASP-specific |
-| Metric | `gasp_breakdown` | The field a direct metric is grouped by | Stays until Ossie metrics can declare a grouping |
-| Metric | `staged` | The metric reads a staged dataset | P2 |
-| Mapping | `adapter_version`, `organization`, `warehouse` | The v1 adapter's metadata, kept when a mapping is converted from one | Stays; provenance |
-| Mapping | `metricOwners`, `decisions` | Who owns each metric definition; every recorded mapping decision, one per subject | Catalog WG candidate |
-| Mapping | `proposed` | What the mapping proposer paired and what it left to review | Stays; pipeline state |
+| Placement | Keys | Content | Exit | Upstream on 2026-11-23 |
+| --- | --- | --- | --- | --- |
+| Model | `profiled`, `compiled` | How the model was made: written by `profile_schema` or GASP metrics compiled into it by `compile_model` | Stays; provenance | No slot. Issue #294 (a default dialect on the model, no pull request) would hold `compiled.dialect` alone |
+| Dataset | `kind`, `cel`, `activeWhen` | The GASP dataset kind, its CEL event class and the condition selecting live rows (cohort membership) | Stays; GASP-specific | No slot: a core dataset has no kind, grain or filter |
+| Dataset | `staged`, `for`, `reason`, `cohort`, `period_spine` | A staged dataset, the metric or metrics it serves and the construct Ossie cannot state: one row per period holding one metric's value or, with `cohort` (its key and point), one row per entity per period that several metrics sum; the table of reporting periods the staged datasets read | P2 (period-over-period and cohort metrics) | No slot. Issue #648 (query-time parameters) bears on the 93 of 161 staged datasets whose reason is a period bound in a filter and issue #290 (non-additive metrics) on the 20 staged for `at period_start`. Neither has a pull request and nothing covers cohort, lag or window |
+| Dataset | `source_dialect`, `sources` | The dialect of a staged dataset's source query and the query in each other dialect, keyed by Ossie dialect name | A `dialects` form for `Dataset.source`, matching expressions (question for the Metric Language WG) | No slot: `source` is one string. Pull request #704 (table sources as objects) leaves queries and per-dialect sources out, so the proposal is GASP's to raise |
+| Dataset | `profile` | What the profiler inferred about the table: kind, confidence, evidence, open questions and listed enum values | Stays; pipeline state | No slot |
+| Metric | `gasp_id`, `gasp_version`, `variant` | The GASP formula id, the extension version and the named variant | Stays; GASP-specific | No slot. Pull request #287 adds `glossary_references`, which would hold the canonical gaspwiki.com address that `ai_context.instructions` carries today; `gasp_id` stays beside it |
+| Metric | `unit` | The unit (ratios unscaled) | Core `measurement` when #287 merges | Pull request #287 (open, review required) adds `measurement` with `quantity_kind`, `unit` and `unit_system` to fields and metrics. Currency and the durations map; ratio, score and count need a dimensionless convention, a point to raise in its review |
+| Metric | `formula` | The canonical formula in the GASP grammar, before any warehouse exists | P3 (concept-level metrics) | No slot and no proposal |
+| Metric | `form` | `O` (operating) or `M` (market); one Ossie metric per form | Stays; GASP-specific | No slot |
+| Metric | `gasp_breakdown` | The field a direct metric is grouped by | Stays until Ossie metrics can declare a grouping | No slot: the wide table interface puts dimensions in the query |
+| Metric | `staged` | The metric reads a staged dataset | P2 | As the staged dataset keys above |
+| Mapping | `adapter_version`, `organization`, `warehouse` | The v1 adapter's metadata, kept when a mapping is converted from one | Stays; provenance | No slot |
+| Mapping | `metricOwners`, `decisions` | Who owns each metric definition; every recorded mapping decision, one per subject | Catalog WG candidate | Issue #305 (an owner attribute, no pull request) would put the owner on the metric, so a move changes the placement. Nothing for decisions |
+| Mapping | `proposed` | What the mapping proposer paired and what it left to review | Stays; pipeline state | No slot |
 
 GASP writes no extension on fields or relationships (`standard/gasp-ossie-extension-v1.json`).
 
-**Not emitted yet.** Metric edges (`DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF`; exit P1), the GASP taxonomy (department, signal type, layer), the access classes from the governance framework (`sensitivity`, `access_scope`; Catalog WG candidate), field lineage and accountability (`source_category`, `owner`, `notes`; Catalog WG candidate) and the ontology version. They stay in `standard/` until a placement is added to the schema.
+**Audit of 2026-11-23**, against `apache/ossie` `main` at `91689e6`. The schema holds 27 keys in the 14 rows above: 2 on the model, 11 on a dataset, 8 on a metric and 6 on a mapping.
+
+- **No key has a core slot today.** A core metric holds `name`, `expression`, `description`, `datatype`, `ai_context` and `nonportable_extensions`; a core dataset adds `source`, the keys, `fields` and `metrics`. GASP writes no extension key that repeats a core field.
+- **One key has a proposal that fits it:** `unit`, through `measurement` in pull request #287. The same pull request's `desired_direction` (`higher_is_better`, `lower_is_better`, `neutral`) and `glossary_references` would hold two things GASP has and writes elsewhere or leaves out: each metric's polarity and its canonical address.
+- **The extension content is repeated in core prose.** The dataset description names the kind on 54 of 54 canonical datasets and the CEL class on 6 of 6; a staged dataset's description names its metric and its reason on 161 of 161; the metric description names the form on 14 of 14 and the variant on 65 of 65; `ai_context.instructions` restates the breakdown on 52 of 52 and the staging on 173 of 173. The instructions are what a consumer that ignores the extension needs to run the metric, so they stay. The "Kind:" and "CEL class:" sentences gave such a consumer nothing to act on and were cut on 2026-11-24.
+- **Core slots GASP holds data for and leaves empty.** In the ontology: `iri` on concepts and relationships with root `prefixes` (no concept in `gasp.ontology.yaml` carried one; 4 of the 28 entities and 6 of the 7 concepts have a glossary page on gaspwiki.com, the six CEL classes have a heading on the CEL page and fields have no page) and `annotations`, the open slot the ontology specification gives for what core cannot express (the entity level, the edge type classification, the ontology content version, field source categories). In the model: `ai_context` on the model, a dataset or a relationship, where the snapshot reading rule now repeats on each metric. Dataset-scoped metrics were the fourth and are used since 2026-11-23.
+- **The model-root metrics fit the wide table interface.** `core-spec/wide_table_semantics.md` section 5.2 rejects a model-scoped metric with an unaggregated field, a window function, an aggregate that reads several datasets or none or a filter that reads another dataset. None of the 35 root metrics of the reference model (97 aggregates) or the 10 of the Core example has one.
+- **Left unread:** the roadmap discussions the items below cite (#5, #12, #31, #40, #47, #55), named from `ROADMAP.md`.
+
+**Moves made on 2026-11-24** (`DECISIONS.md`). Three of the audit's findings are closed in the files as published.
+
+- **Addresses.** 16 concepts of `gasp.ontology.yaml` carry an `iri`, each the address of a page that already exists, written against two root `prefixes`: `gasp` (`https://gaspwiki.com/v1/definitions/`) for the 4 entities and 6 concepts with a glossary page and `cel` (`https://gaspwiki.com/v1/cel#`) for the six CEL event classes. The other 24 entities, the concept without a page (TCV), the value types and the relationships carry none: an `iri` is added when its page exists.
+- **Annotations.** The root carries `gasp_ontology_version` (the `version` of `ontology.json`, since the document's own `version` is the specification's), each of the 28 entity concepts carries `gasp_level` and each of the 30 relationships written from an `entityRelationships` edge carries `gasp_edge_class`. Field source categories stay out: 66 of the 280 fields are dates, which have no value type concept to carry them.
+- **Dataset prose and the snapshot rule.** A dataset's description is its label. Each of the 25 snapshot datasets states its grain and its reading rule once in `ai_context.instructions` ("select one snapshot_date (the period end)"), where 68 metrics of the reference model each repeated it before. A model `compile_model` writes over a company's own datasets keeps the rule on each metric, since the tool leaves those datasets as the company wrote them.
+- **Open from the audit:** the review comment on pull request #287 about a dimensionless unit (`docs/ossie-287-review-comment.md`, for the owner to post).
+
+**Not emitted yet.** Metric edges (`DRIVES`, `REDUCES`, `PREDICTS`, `COMPONENT_OF`; exit P1; upstream a roadmap discussion on metric trees, with draft pull request #685 on action effects the nearest text), the GASP taxonomy (department, signal type, layer), the access classes from the governance framework (`sensitivity`, `access_scope`; Catalog WG candidate; issues #59, #87 and #58, none with a pull request), field lineage and accountability (`source_category`, `owner`, `notes`; Catalog WG candidate; issue #305 and pull request #748, whose `knowledge_refs` could point at notes). The ontology version is emitted since 2026-11-24 as `gasp_ontology_version` in root `annotations`. The rest stay in `standard/` until a placement is added to the schema or a core slot takes them.
 
 **Rules**
 

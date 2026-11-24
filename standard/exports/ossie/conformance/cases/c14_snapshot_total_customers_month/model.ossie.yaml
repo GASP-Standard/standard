@@ -7,7 +7,9 @@ ai_context:
 datasets:
   - name: customer
     source: gasp.customer
-    description: "Customer. Kind: snapshot."
+    description: Customer.
+    ai_context:
+      instructions: "Snapshot, one row per customer_id per snapshot_date: select one snapshot_date (the period end), since summing rows across dates double counts."
     primary_key:
       - customer_id
       - snapshot_date
@@ -86,23 +88,23 @@ datasets:
           sql: upgrade_eligible
         description: Customer is on a plan with an upgrade path
         datatype: Boolean
+    metrics:
+      - name: gasp_total_customers
+        expression:
+          sql: COUNT(DISTINCT customer_id) FILTER (WHERE customer_status = 'active')
+        description: Total Customers. The number of active customers at the end of the period.
+        datatype: Integer
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/total-customers."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: total_customers
+              gasp_version: "1"
+              unit: count
+              formula: count_distinct(field.customer_id where field.customer_status = 'active') at period_end
     nonportable_extensions:
       - vendor_name: GASP
         data:
           kind: snapshot
           activeWhen: field.customer_status = 'active'
-metrics:
-  - name: gasp_total_customers
-    expression:
-      sql: COUNT(DISTINCT customer.customer_id) FILTER (WHERE customer.customer_status = 'active')
-    description: Total Customers. The number of active customers at the end of the period.
-    datatype: Integer
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/total-customers. Reads the customer snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: total_customers
-          gasp_version: "1"
-          unit: count
-          formula: count_distinct(field.customer_id where field.customer_status = 'active') at period_end

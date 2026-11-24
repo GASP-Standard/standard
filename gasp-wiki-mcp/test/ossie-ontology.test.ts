@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
 import { loadStandard } from "../src/loader.js";
-import { exportOntology, unmappedEdges, edgesWithoutJoin, planOntology } from "../src/ossie/ontology.js";
+import { exportOntology, unmappedEdges, edgesWithoutJoin, planOntology, expandIri, ONTOLOGY_PREFIXES } from "../src/ossie/ontology.js";
+import { exportExample } from "../src/ossie/example.js";
+import { exportOssie } from "../src/ossie/index.js";
+import { celClassUrl, definitionUrl, nodeUrl } from "../src/urls.js";
 import { exportMapping } from "../src/ossie/mapping.js";
 import { exportModel } from "../src/ossie/model.js";
 import type { OssieConcept, OssieLinkMapping, OssieObjectMapping, OssieOntologyRelationship, OssieReferentMapping } from "../src/ossie/types.js";
@@ -113,6 +117,71 @@ describe("Ossie ontology export", () => {
     // subscription_id identifies two datasets; the foreign key resolves to Subscription
     expect(rel("RevenueEvent", "subscription_id")!.roles).toEqual([{ concept: "Subscription" }]);
     expect(rel("Customer", "owns")!.roles).toEqual([{ concept: "Subscription" }]);
+  });
+
+  it("gives a concept the address of its own page as iri, written against a declared prefix", () => {
+    expect(ontology.prefixes).toEqual({ ...ONTOLOGY_PREFIXES });
+    const node = (id: string) => data.nodes.find((n) => n.id === id);
+    const expected = new Map<string, string>();
+    // An entity or GASP concept with a glossary page of its own: the page the graph node links to.
+    for (const e of data.ontology!.entities) {
+      const n = node(`entity_${e.id}`);
+      if (n?.definition) expected.set(plan.datasetConcept[plan.entityDataset[e.id]], nodeUrl(n));
+    }
+    for (const c of data.ontology!.concepts ?? []) {
+      const n = node(`concept_${c.id}`);
+      if (n?.definition) expected.set(plan.gaspConcept[c.id], nodeUrl(n));
+    }
+    // A CEL event dataset: the heading of its class on the CEL page.
+    for (const [id, d] of datasets) if (d.cel && !expected.has(plan.datasetConcept[id])) expected.set(plan.datasetConcept[id], celClassUrl(d.cel));
+    expect(expected.size).toBeGreaterThan(10);
+    for (const c of ontology.ontology) {
+      const want = expected.get(c.concept);
+      if (!want) {
+        expect(c.iri, c.concept).toBeUndefined();
+        continue;
+      }
+      expect(c.iri, c.concept).toMatch(/^(gasp|cel):[A-Za-z0-9_-]+$/);
+      expect(expandIri(c.iri!, ontology.prefixes), c.concept).toBe(want);
+    }
+    // An iri says two concepts are the same thing, so no two share one.
+    const iris = ontology.ontology.flatMap((c) => (c.iri ? [c.iri] : []));
+    expect(new Set(iris).size).toBe(iris.length);
+    expect(iris.length).toBe(expected.size);
+    expect(expandIri("gasp:incident")).toBe(definitionUrl({ slug: "incident" }));
+    expect(expandIri("https://example.com/x")).toBe("https://example.com/x");
+  });
+
+  it("names every CEL class by a heading of standard/cel.md, the anchor its iri points at", () => {
+    const headings = new Set([...readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "standard", "cel.md"), "utf-8").matchAll(/^### (\S+)$/gm)].map((m) => m[1]));
+    for (const [id, d] of datasets) if (d.cel) expect(headings.has(d.cel), `${id}: ${d.cel}`).toBe(true);
+  });
+
+  it("keeps what the ontology core has no field for in annotations: the content version, entity levels, edge classes", () => {
+    expect(ontology.version).not.toBe(data.ontology!.version);
+    expect(ontology.annotations).toEqual({ gasp_ontology_version: data.ontology!.version });
+    for (const e of data.ontology!.entities) {
+      expect(concepts.get(plan.datasetConcept[plan.entityDataset[e.id]])!.annotations, e.id).toEqual({ gasp_level: e.level });
+    }
+    const classOf = new Map<string, string>();
+    for (const [cls, types] of Object.entries(data.ontology!.entityRelationships!.edgeTypeClassification!)) for (const t of types) classOf.set(t, cls);
+    expect(plan.edges.length).toBeGreaterThan(0);
+    for (const e of plan.edges) {
+      expect(classOf.has(e.edge.type), e.edge.type).toBe(true);
+      expect(rel(e.source, e.name)!.annotations, `${e.source}.${e.name}`).toEqual({ gasp_edge_class: classOf.get(e.edge.type) });
+    }
+    // A relationship that stands for a field carries none, and every key is GASP's own.
+    const annotated = ontology.ontology.flatMap((c) => [c.annotations, ...(c.relationships ?? []).map((r) => r.annotations)]).filter(Boolean) as Array<Record<string, unknown>>;
+    expect(annotated.length).toBe(data.ontology!.entities.length + plan.edges.length);
+    for (const a of annotated) for (const k of Object.keys(a)) expect(k).toMatch(/^gasp_/);
+  });
+
+  it("the Core example declares only the prefixes its concepts use", () => {
+    const ex = exportExample(data, exportOssie(data)).ontology;
+    const used = new Set(ex.ontology.flatMap((c) => (c.iri ? [c.iri.split(":")[0]] : [])));
+    expect(used.size).toBeGreaterThan(0);
+    expect(Object.keys(ex.prefixes ?? {}).sort()).toEqual([...used].sort());
+    expect(ex.annotations).toEqual(ontology.annotations);
   });
 
   it("reports renames and unmapped edges", () => {

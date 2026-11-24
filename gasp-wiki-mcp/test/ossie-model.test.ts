@@ -6,7 +6,7 @@ import { validateUpstream, uvAvailable } from "../src/ossie/validate.js";
 import { stringify } from "yaml";
 import { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
-import { exportModel, stagedDatasetName } from "../src/ossie/model.js";
+import { exportModel, snapshotRule, stagedDatasetName } from "../src/ossie/model.js";
 import { emitMetric } from "../src/ossie/metrics.js";
 import { ACCOUNT_COHORTS, cohortTableProblems } from "../src/ossie/cohorts.js";
 import { stagedValueQuery } from "../src/ossie/demo.js";
@@ -15,6 +15,7 @@ import type { MetricFormula } from "../src/types.js";
 import { metricName } from "../src/ossie/names.js";
 import { DIALECT, type DialectName } from "../src/dialect.js";
 import { stagedSource } from "../src/ossie/model.js";
+import { modelMetrics } from "../src/ossie/scope.js";
 import { GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
 import { fixtureDb, addOssieViews, scalar, runTemplate, moveSegment } from "./fixture-db.js";
 
@@ -27,7 +28,9 @@ const { model, coverage } = exportModel(data);
 const ontology = data.ontology!;
 const gaspDatasets = ontology.datasets!;
 const byName = new Map(model.datasets.map((d) => [d.name, d]));
-const metricByName = new Map((model.metrics ?? []).map((m) => [m.name, m]));
+/** Every metric of the model in the `dataset.field` form, whichever scope declares it. */
+const metrics = modelMetrics(model);
+const metricByName = new Map(metrics.map((m) => [m.name, m]));
 const expr = (name: string) => metricByName.get(name)?.expression.sql;
 const ext = (d: { nonportable_extensions?: Array<{ vendor_name: string; data: Record<string, any> }> }) => // eslint-disable-line @typescript-eslint/no-explicit-any
   d.nonportable_extensions!.find((e) => e.vendor_name === GASP_VENDOR)!.data;
@@ -50,6 +53,22 @@ describe("Ossie model: datasets", () => {
       if (d.cel) expect(x.cel).toBe(d.cel);
       if (d.activeWhen) expect(x.activeWhen).toBe(d.activeWhen);
     }
+  });
+
+  it("describes a dataset by its label alone and states the snapshot reading rule once, on each snapshot", () => {
+    for (const [id, d] of Object.entries(gaspDatasets)) {
+      const ds = byName.get(id)!;
+      // The kind and the CEL class are in the extension; the description repeats neither.
+      expect(ds.description, id).toBe(d.label.replace(/\.?$/, "."));
+      const instructions = (ds.ai_context as { instructions?: string } | undefined)?.instructions;
+      if (d.kind === "snapshot") {
+        expect(instructions, id).toBe(snapshotRule(d));
+        expect(instructions, id).toContain(`select one ${d.date} (the period end)`);
+        expect(instructions, id).toContain(d.key === d.date ? `one row per ${d.date}:` : `one row per ${d.key} per ${d.date}:`);
+      } else expect(ds.ai_context, id).toBeUndefined();
+    }
+    // No metric of the reference model restates it: every snapshot it reads says so itself.
+    for (const m of metricByName.values()) expect(JSON.stringify(m.ai_context ?? ""), m.name).not.toContain("double counts");
   });
 
   it("has every field on every dataset it belongs to, typed, with enum values", () => {
@@ -132,8 +151,8 @@ describe("Ossie model: metrics", () => {
       expect(metricByName.has(c.ossieName), c.ossieName).toBe(true);
     }
     const emitted = Object.values(coverage).filter((c) => c.kind !== "notComputable").length;
-    expect(model.metrics!.length).toBe(emitted);
-    expect(new Set(model.metrics!.map((m) => m.name)).size).toBe(model.metrics!.length);
+    expect(metrics.length).toBe(emitted);
+    expect(new Set(metrics.map((m) => m.name)).size).toBe(metrics.length);
   });
 
   it("every main formula marked notComputable is reported, and no metric is emitted for it", () => {
@@ -143,7 +162,7 @@ describe("Ossie model: metrics", () => {
   });
 
   it("no metric expression contains SELECT, a bare WHERE or a placeholder", () => {
-    for (const m of model.metrics!) {
+    for (const m of metrics) {
       // The portable form alone, as upstream's canonical examples write it since apache/ossie#640; no dialect entries beside it.
       expect(Object.keys(m.expression), m.name).toEqual(["sql"]);
       const e = m.expression.sql!;
@@ -161,7 +180,7 @@ describe("Ossie model: metrics", () => {
     const kind = new Map(Object.values(coverage).flatMap((c) => (c.kind === "notComputable" ? [] : [[c.ossieName, c.kind] as const])));
     // A staged dataset is one GASP marks as staged: the per-period ones and the cohort table.
     const stagedNames = new Set(model.datasets.filter((d) => ext(d).staged === true).map((d) => d.name));
-    for (const m of model.metrics!) {
+    for (const m of metrics) {
       for (const [, ds, field] of m.expression.sql!.matchAll(/\b([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)\b/g)) {
         expect(byName.has(ds), `${m.name}: ${ds}`).toBe(true);
         expect(byName.get(ds)!.fields!.some((f) => f.name === field), `${m.name}: ${ds}.${field}`).toBe(true);
@@ -262,7 +281,7 @@ describe("Ossie model: metrics", () => {
   });
 
   it("every metric carries a description, datatype, canonical link and its GASP extension", () => {
-    for (const m of model.metrics!) {
+    for (const m of metrics) {
       expect(m.description, m.name).toBeTruthy();
       expect(["Decimal", "Integer"]).toContain(m.datatype);
       const x = ext(m);
@@ -285,7 +304,8 @@ describe("Ossie model: metrics", () => {
     // MRR reads the subscription snapshot; the query layer selects the period-end snapshot date.
     expect(coverage.mrr.kind).toBe("direct");
     expect(expr("gasp_mrr")).toBe("COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)");
-    expect((metricByName.get("gasp_mrr")!.ai_context as any).instructions).toMatch(/select one snapshot date/);
+    expect((byName.get("subscription")!.ai_context as any).instructions).toMatch(/select one snapshot_date \(the period end\)/);
+    expect((metricByName.get("gasp_mrr")!.ai_context as any).instructions).not.toMatch(/double counts/);
     // Win rate filters the opportunity snapshot by close_date in the period: a period bound the metric cannot see.
     expect(coverage.win_rate).toMatchObject({ kind: "staged", reason: "period bound in filter" });
     expect(coverage.cac.kind).toBe("direct");
@@ -349,7 +369,7 @@ describe("Ossie model: metrics", () => {
     const withEntry = (id: string, f: MetricFormula) => exportModel({ ...data, formulas: { ...data.formulas!, [id]: f } });
     const direct = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id)", unit: "count", breakdown: "field.ticket_type" });
     expect(direct.coverage.ticket_volume.kind).toBe("direct");
-    const m = direct.model.metrics!.find((x) => x.name === "gasp_ticket_volume")!;
+    const m = modelMetrics(direct.model).find((x) => x.name === "gasp_ticket_volume")!;
     expect(m.expression.sql).toBe("COUNT(DISTINCT ticket.ticket_id)");
     expect(ext(m).gasp_breakdown).toBe("ticket_type");
     expect((m.ai_context as any).instructions).toMatch(/Broken down by ticket_type/);
@@ -357,10 +377,10 @@ describe("Ossie model: metrics", () => {
     const named = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id)", unit: "count", breakdowns: { by_type: "field.ticket_type" } });
     expect(named.coverage.ticket_volume.kind).toBe("direct");
     expect(named.coverage["ticket_volume:by_type"].kind).toBe("direct");
-    const nm = named.model.metrics!.find((x) => x.name === "gasp_ticket_volume_by_type")!;
+    const nm = modelMetrics(named.model).find((x) => x.name === "gasp_ticket_volume_by_type")!;
     expect(nm.expression.sql).toBe("COUNT(DISTINCT ticket.ticket_id)");
     expect(ext(nm)).toMatchObject({ gasp_id: "ticket_volume", variant: "by_type", gasp_breakdown: "ticket_type" });
-    expect(ext(named.model.metrics!.find((x) => x.name === "gasp_ticket_volume")!).gasp_breakdown).toBeUndefined();
+    expect(ext(modelMetrics(named.model).find((x) => x.name === "gasp_ticket_volume")!).gasp_breakdown).toBeUndefined();
     // A staged main formula stages the named breakdown too, one row per period and value.
     const namedStaged = withEntry("ticket_volume", { formula: "count_distinct(field.ticket_id) to_date", unit: "count", breakdowns: { by_type: "field.ticket_type" } });
     expect(namedStaged.coverage["ticket_volume:by_type"]).toMatchObject({ kind: "staged", reason: "to_date" });

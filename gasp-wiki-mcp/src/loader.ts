@@ -201,6 +201,7 @@ export function loadStandard(): StandardData {
     const ontRaw = JSON.parse(readFileSync(ontologyPath, "utf-8"));
     ontRawTemporal = { temporalMapping: ontRaw.temporalMapping, temporalSemantics: ontRaw.temporalSemantics };
     ontology = {
+      ...(typeof ontRaw.version === "string" ? { version: ontRaw.version } : {}),
       entities: ontRaw.entities || [],
       fields: ontRaw.fields || [],
       datasets: ontRaw.datasets || undefined,

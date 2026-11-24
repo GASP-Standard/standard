@@ -17,6 +17,7 @@
 import type { OntologyDataset, OntologyField } from "../types.js";
 import { CONFORMANCE_PERIOD, sqlLiteral } from "./conformance.js";
 import { aggregateSpans } from "./portability.js";
+import { modelMetrics } from "./scope.js";
 import { expressionText, readGaspExtension, type OssieExtension, type OssieSemanticModel } from "./types.js";
 
 export const DEMO_PERIOD = CONFORMANCE_PERIOD;
@@ -111,9 +112,9 @@ export function stagedDatasetOf(expression: string, model: OssieSemanticModel): 
   return d ? { name: d.name, source: d.source } : undefined;
 }
 
-/** One demo query per metric of the model, in model order. */
+/** One demo query per metric of the model, in model order: each dataset's metrics, then the model-root ones. */
 export function demoMetrics(model: OssieSemanticModel, datasets: Record<string, OntologyDataset>, fields: Record<string, OntologyField>, period: Period = DEMO_PERIOD): DemoMetric[] {
-  return (model.metrics ?? []).map((m) => {
+  return modelMetrics(model).map((m) => {
     const expression = expressionText(m) ?? "";
     const ext = extension(m);
     const formula = String(ext.formula ?? "");

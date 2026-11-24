@@ -8,11 +8,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadStandard } from "../src/loader.js";
 import { exportModel } from "../src/ossie/model.js";
+import { modelMetrics } from "../src/ossie/scope.js";
 import { aggregateSpans, CONSTRUCTS, profileExpression, RUNGS, summarisePortability } from "../src/ossie/portability.js";
 
 const data = loadStandard();
 const { model, coverage } = exportModel(data);
-const expressionOf = new Map(model.metrics!.map((m) => [m.name, m.expression.sql!]));
+const expressionOf = new Map(modelMetrics(model).map((m) => [m.name, m.expression.sql!]));
 
 describe("Portability profile: the upstream fixtures", () => {
   it("classifies each compliance/portability rung to itself", () => {

@@ -7,7 +7,9 @@ ai_context:
 datasets:
   - name: subscription
     source: gasp.subscription
-    description: "Subscription. Kind: snapshot."
+    description: Subscription.
+    ai_context:
+      instructions: "Snapshot, one row per subscription_id per snapshot_date: select one snapshot_date (the period end), since summing rows across dates double counts."
     primary_key:
       - subscription_id
       - snapshot_date
@@ -134,6 +136,24 @@ datasets:
           sql: value
         datatype: Decimal
         description: MRR Growth Rate for the period
+    metrics:
+      - name: gasp_mrr_growth_rate
+        expression:
+          sql: SUM(value)
+        description: MRR Growth Rate. The month-over-month percentage change in MRR.
+        datatype: Decimal
+        ai_context:
+          synonyms:
+            - MRR
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/mrr-growth-rate. Staged (lag): gasp_staged_gasp_mrr_growth_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: mrr_growth_rate
+              gasp_version: "1"
+              unit: percent
+              formula: (metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)
+              staged: true
     nonportable_extensions:
       - vendor_name: GASP
         data:
@@ -145,21 +165,3 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(month, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active'))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(day, -1, DATEADD(month, -1, DATEADD(day, 1, p.period_end))) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 MONTH), INTERVAL 1 DAY) AND subscription_status = 'active'))) AS FLOAT64) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 1 MONTH), INTERVAL 1 DAY) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active')) - ((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(MONTH, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active'))) AS DOUBLE) / NULLIF(((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = DATEADD(DAY, -1, DATEADD(MONTH, -1, DATEADD(DAY, 1, p.period_end))) AND subscription_status = 'active')), 0))) AS value FROM gasp.period_spine p
-metrics:
-  - name: gasp_mrr_growth_rate
-    expression:
-      sql: SUM(gasp_staged_gasp_mrr_growth_rate.value)
-    description: MRR Growth Rate. The month-over-month percentage change in MRR.
-    datatype: Decimal
-    ai_context:
-      synonyms:
-        - MRR
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/mrr-growth-rate. Staged (lag): gasp_staged_gasp_mrr_growth_rate holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: mrr_growth_rate
-          gasp_version: "1"
-          unit: percent
-          formula: (metric.mrr - lag(metric.mrr, 1 month)) / lag(metric.mrr, 1 month)
-          staged: true

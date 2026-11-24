@@ -1,6 +1,6 @@
 -- GASP conformance case c01_cohort_nrr: a cohort fixed at the opening of the period and followed through its events (Net Revenue Retention).
 -- Metric gasp_nrr (GASP formula: (metric.mrr at period_start + metric.expansion_mrr - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)) for the period 2026-01-01 to 2026-06-30.
--- The select list is the metric's OSSIE_SQL_2026 expression, evaluated over the rows of the period.
+-- The select list is the metric's OSSIE_SQL_2026 expression with each field named by its dataset, evaluated over the rows of the period.
 -- The subquery is the source of the staged dataset gasp_account_cohorts in model.ossie.yaml,
 -- one row per cohort member per period, compiled by GASP from the formula (Postgres dialect; the GASP extension on the dataset carries
 -- Snowflake, BigQuery and Databricks). It reads the tables in ../../data/, including gasp.period_spine.

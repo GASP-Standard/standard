@@ -24,6 +24,7 @@ import {
   type ConformanceCase, type ConformancePeriod, type Grade, type Reading, type StagedCaseSpec,
 } from "./conformance.js";
 import { aggregateQuery } from "./demo.js";
+import { modelMetrics, placeMetrics, withoutMetrics } from "./scope.js";
 import { expressionText, OSSIE_VERSION, type OssieExport, type OssieSemanticModel } from "./types.js";
 
 /** Which snapshot dates of the period a reading's aggregates run over. */
@@ -124,7 +125,7 @@ const DATASET_REF = /\b([a-z_][a-z0-9_]*)\.[a-z_][a-z0-9_]*\b/g;
 export function buildSnapshotCases(data: StandardData, exp: OssieExport, offset: number): ConformanceCase[] {
   const datasets = (data.ontology?.datasets ?? {}) as Record<string, OntologyDataset>;
   const byName = new Map(exp.model.datasets.map((d) => [d.name, d]));
-  const metrics = new Map((exp.model.metrics ?? []).map((m) => [m.name, m]));
+  const metrics = new Map(modelMetrics(exp.model).map((m) => [m.name, m]));
   const direct = SNAPSHOT_CASES.map((spec, i): ConformanceCase => {
     const { entry, label, period, construct } = spec;
     const c = exp.coverage[entry];
@@ -146,14 +147,16 @@ export function buildSnapshotCases(data: StandardData, exp: OssieExport, offset:
       const text = r.rewrite ? expression.split(r.rewrite.find).join(r.rewrite.replace) : expression;
       return { grade: r.grade, name: r.name, description: r.description, query: scalar(r.rows, text) };
     });
+    // The case's one metric, declared in its scope: under the snapshot dataset when it reads one.
+    const placed = placeMetrics(names.map((n) => withoutMetrics(byName.get(n)!)), [metric]);
     const id = `c${String(offset + i + 1).padStart(2, "0")}_${SNAPSHOT_REASON}_${formulaId}${variant ? `_${variant}` : ""}_${label}`;
     const model: OssieSemanticModel = {
       version: OSSIE_VERSION,
       name: `gasp_conformance_${id}`,
       description: `GASP conformance case ${id}: ${construct}. The metric ${metric.name} is a direct OSSIE_SQL_2026 expression over ${names.join(" and ")}, a snapshot dataset with one row per entity per snapshot date. GASP evaluates it on the last snapshot date of the period. Formula: ${formula}`,
       ai_context: { instructions: `Evaluate ${metric.name} for the period ${period.start} to ${period.end} over the tables in ../../data/ and compare with expected.sql.` },
-      datasets: names.map((n) => byName.get(n)!),
-      metrics: [metric],
+      datasets: placed.datasets,
+      ...(placed.metrics.length ? { metrics: placed.metrics } : {}),
     };
     const everyDate = spec.readings.some((r) => r.rows === "every_date");
     return {

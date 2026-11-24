@@ -2,10 +2,16 @@
 version: 0.3.0.dev0
 name: GASP
 description: "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://gaspwiki.com."
+prefixes:
+  gasp: https://gaspwiki.com/v1/definitions/
+  cel: https://gaspwiki.com/v1/cel#
+annotations:
+  gasp_ontology_version: "1.0"
 ontology:
   - concept: RevenueEvent
     type: EntityType
     description: "Revenue event (event dataset `revenue_event`). CEL class: Revenue_Event."
+    iri: cel:revenue_event
     identify_by:
       - event_id
     relationships:
@@ -103,6 +109,7 @@ ontology:
   - concept: CostEvent
     type: EntityType
     description: "Cost event (event dataset `cost_event`). CEL class: Cost_Event."
+    iri: cel:cost_event
     identify_by:
       - event_id
     relationships:
@@ -186,6 +193,7 @@ ontology:
   - concept: ContractEvent
     type: EntityType
     description: "Contract event (event dataset `contract_event`). CEL class: Contract_Event."
+    iri: cel:contract_event
     identify_by:
       - event_id
     relationships:
@@ -269,6 +277,7 @@ ontology:
   - concept: AmendmentEvent
     type: EntityType
     description: "Amendment event (event dataset `amendment_event`). CEL class: Amendment_Event."
+    iri: cel:amendment_event
     identify_by:
       - event_id
     relationships:
@@ -345,6 +354,7 @@ ontology:
   - concept: LifecycleEvent
     type: EntityType
     description: "Lifecycle state change (event dataset `lifecycle_event`). CEL class: Lifecycle_State_Change."
+    iri: cel:lifecycle_state_change
     identify_by:
       - event_id
     relationships:
@@ -430,6 +440,9 @@ ontology:
   - concept: Customer
     type: EntityType
     description: 'Customer (snapshot dataset `customer`). A distinct billing entity with one or more subscriptions. The "who" of your business relationship. Also known as: Account, Organization.'
+    iri: gasp:customer-account-organization
+    annotations:
+      gasp_level: billing
     identify_by:
       - customer_id
     relationships:
@@ -546,24 +559,32 @@ ontology:
           - concept: Subscription
         verbalizes:
           - "{Customer} owns {Subscription}"
+        annotations:
+          gasp_edge_class: structural
       - name: engages_via
         description: In B2B SaaS, one customer organization has many product users. Usage and engagement metrics are measured at the user level.
         roles:
           - concept: User
         verbalizes:
           - "{Customer} engages via {User}"
+        annotations:
+          gasp_edge_class: behavioral
       - name: submits
         description: Customers open support tickets. Support volume and resolution metrics are measured at the ticket level.
         roles:
           - concept: Ticket
         verbalizes:
           - "{Customer} submits {Ticket}"
+        annotations:
+          gasp_edge_class: behavioral
       - name: belongs_to_cohort
         description: Each customer belongs to an acquisition cohort based on their start date. Cohort analysis isolates vintage effects in retention and expansion.
         roles:
           - concept: Cohort
         verbalizes:
           - "{Customer} belongs to {Cohort}"
+        annotations:
+          gasp_edge_class: generative
       - name: parent_of
         description: Self-referential edge for account hierarchy. Global enterprises with subsidiaries roll up to a parent customer. Used for global account ARR and consolidated reporting.
         roles:
@@ -571,21 +592,29 @@ ontology:
             name: child
         verbalizes:
           - "{Customer} is parent of {Customer:child}"
+        annotations:
+          gasp_edge_class: structural
       - name: represented_by
         description: A customer account is represented by named individuals (champions, decision makers, executive sponsors). Enables buying-center coverage metrics and stakeholder mapping.
         roles:
           - concept: Contact
         verbalizes:
           - "{Customer} is represented by {Contact}"
+        annotations:
+          gasp_edge_class: assignment
       - name: belongs_to_segment
         description: Each customer belongs to a segment classification (SMB, Mid-Market, Enterprise) based on size, ARR or fit. Segment is the foundational lens for cohort and benchmark comparisons.
         roles:
           - concept: Segment
         verbalizes:
           - "{Customer} belongs to {Segment}"
+        annotations:
+          gasp_edge_class: generative
   - concept: Contact
     type: EntityType
     description: "Contact (snapshot dataset `contact`). A named individual at a customer account involved in the buying or expansion process. Distinct from User (product user) and Lead (pre-qualification). Also known as: Stakeholder, Decision Maker, Champion."
+    annotations:
+      gasp_level: acquisition
     identify_by:
       - contact_id
     relationships:
@@ -622,6 +651,8 @@ ontology:
   - concept: Plan
     type: EntityType
     description: "Plan (snapshot dataset `plan`). A pricing tier offered to customers (e.g. Starter, Pro, Enterprise). Each plan defines a price point and a set of included products and quotas. Also known as: Tier, Pricing Plan, Package."
+    annotations:
+      gasp_level: billing
     identify_by:
       - plan_id
     relationships:
@@ -651,6 +682,8 @@ ontology:
   - concept: Product
     type: EntityType
     description: "Product (snapshot dataset `product`). A distinct purchasable unit within the company's offering (e.g. Analytics Module, Automation Module). A subscription may include multiple products. Also known as: Module, SKU, Feature Bundle."
+    annotations:
+      gasp_level: billing
     identify_by:
       - product_id
     relationships:
@@ -680,6 +713,9 @@ ontology:
   - concept: License
     type: EntityType
     description: 'License (snapshot dataset `license`). A specific capability, quantity, or configuration granted by a subscription. The "how much" of the relationship. Also known as: Entitlement, Access, Quota.'
+    iri: gasp:license-entitlement-access-quota
+    annotations:
+      gasp_level: billing
     identify_by:
       - license_id
     relationships:
@@ -734,9 +770,14 @@ ontology:
           - concept: Product
         verbalizes:
           - "{License} grants {Product}"
+        annotations:
+          gasp_edge_class: structural
   - concept: Subscription
     type: EntityType
     description: 'Subscription (snapshot dataset `subscription`). A billable agreement between a customer and your product, with defined terms, pricing, and status. The "what and when" of the relationship. Also known as: Contract, Agreement.'
+    iri: gasp:subscription-contract-agreement
+    annotations:
+      gasp_level: billing
     identify_by:
       - subscription_id
     relationships:
@@ -883,33 +924,45 @@ ontology:
           - concept: License
         verbalizes:
           - "{Subscription} grants {License}"
+        annotations:
+          gasp_edge_class: structural
       - name: generates_revenue
         description: Subscriptions generate recognized revenue over their term as obligations are fulfilled.
         roles:
           - concept: Revenue
         verbalizes:
           - "{Subscription} generates {Revenue}"
+        annotations:
+          gasp_edge_class: generative
       - name: generates_invoice
         description: Subscriptions generate periodic invoices according to their billing schedule.
         roles:
           - concept: Invoice
         verbalizes:
           - "{Subscription} generates {Invoice}"
+        annotations:
+          gasp_edge_class: generative
       - name: incurs
         description: Delivering on subscriptions incurs costs (hosting, support, onboarding) that form the COGS basis for Gross Margin.
         roles:
           - concept: Cogs
         verbalizes:
           - "{Subscription} incurs {Cogs}"
+        annotations:
+          gasp_edge_class: generative
       - name: priced_by
         description: A subscription is priced according to a plan. Many subscriptions can share the same plan. Enables tier-mix analysis, upgrade-path metrics and packaging health.
         roles:
           - concept: Plan
         verbalizes:
           - "{Subscription} is priced by {Plan}"
+        annotations:
+          gasp_edge_class: structural
   - concept: Opportunity
     type: EntityType
     description: "Opportunity (snapshot dataset `opportunity`). A qualified sales prospect with an estimated value, stage, and expected close date. Also known as: Deal, Pipeline Item."
+    annotations:
+      gasp_level: acquisition
     identify_by:
       - opportunity_id
     relationships:
@@ -1092,27 +1145,37 @@ ontology:
           - concept: Customer
         verbalizes:
           - "{Opportunity} converts to {Customer}"
+        annotations:
+          gasp_edge_class: lifecycle
       - name: produces_bookings
         description: Closed-won opportunities produce bookings. Bookings convert to revenue over the contract term.
         roles:
           - concept: Bookings
         verbalizes:
           - "{Opportunity} produces {Bookings}"
+        annotations:
+          gasp_edge_class: generative
       - name: contributes_to
         description: Active opportunities contribute to pipeline value, weighted by stage probability.
         roles:
           - concept: Pipeline
         verbalizes:
           - "{Opportunity} contributes to {Pipeline}"
+        annotations:
+          gasp_edge_class: generative
       - name: produces_tcv
         description: "Closed-won opportunities produce TCV (Total Contract Value). Distinct from Bookings (period-attributable) and ACV (annualized): TCV captures the full multi-year commitment value."
         roles:
           - concept: Tcv
         verbalizes:
           - "{Opportunity} produces {Tcv}"
+        annotations:
+          gasp_edge_class: generative
   - concept: Lead
     type: EntityType
     description: "Lead (snapshot dataset `lead`). A person or company that has shown interest but has not been qualified as a sales opportunity. Also known as: Prospect, Contact."
+    annotations:
+      gasp_level: acquisition
     identify_by:
       - lead_id
     relationships:
@@ -1172,9 +1235,13 @@ ontology:
           - concept: Opportunity
         verbalizes:
           - "{Lead} converts to {Opportunity}"
+        annotations:
+          gasp_edge_class: lifecycle
   - concept: User
     type: EntityType
     description: "User (snapshot dataset `user`). An individual who uses the product. In B2B, one Customer may have many Users. Usage metrics are measured at this level. Also known as: Product User, End User."
+    annotations:
+      gasp_level: engagement
     identify_by:
       - user_id
     relationships:
@@ -1247,6 +1314,8 @@ ontology:
   - concept: Employee
     type: EntityType
     description: "Employee (snapshot dataset `employee`). An internal team member. People metrics and efficiency ratios (revenue per employee) are measured at this level. Also known as: Team Member, Headcount."
+    annotations:
+      gasp_level: internal
     identify_by:
       - employee_id
     relationships:
@@ -1370,9 +1439,13 @@ ontology:
           - concept: Customer
         verbalizes:
           - "{Employee} manages {Customer}"
+        annotations:
+          gasp_edge_class: assignment
   - concept: Partner
     type: EntityType
     description: "Partner (snapshot dataset `partner`). An external organization that sources, influences, or resells deals. Partner metrics are measured at this level. Also known as: Channel Partner, Reseller."
+    annotations:
+      gasp_level: channel
     identify_by:
       - partner_id
     relationships:
@@ -1439,15 +1512,21 @@ ontology:
           - concept: Opportunity
         verbalizes:
           - "{Partner} sources {Opportunity}"
+        annotations:
+          gasp_edge_class: assignment
       - name: submits
         description: A partner submits deal registrations for opportunities it sourced. Registration volume and approval rate are measured per partner.
         roles:
           - concept: DealRegistration
         verbalizes:
           - "{Partner} submits {DealRegistration}"
+        annotations:
+          gasp_edge_class: behavioral
   - concept: Project
     type: EntityType
     description: "Project (snapshot dataset `project`). A professional services engagement with defined scope, timeline, and deliverables. Also known as: Engagement, SOW."
+    annotations:
+      gasp_level: services
     identify_by:
       - project_id
     relationships:
@@ -1570,21 +1649,29 @@ ontology:
           - concept: Customer
         verbalizes:
           - "{Project} serves {Customer}"
+        annotations:
+          gasp_edge_class: assignment
       - name: owns
         description: A professional services project owns its milestones. Milestone completion and schedule accuracy are measured against the owning project.
         roles:
           - concept: ProjectMilestone
         verbalizes:
           - "{Project} owns {ProjectMilestone}"
+        annotations:
+          gasp_edge_class: structural
       - name: produces
         description: A project produces deliverables the customer accepts or sends back. Rework rate reads deliverables through their project.
         roles:
           - concept: Deliverable
         verbalizes:
           - "{Project} produces {Deliverable}"
+        annotations:
+          gasp_edge_class: generative
   - concept: Invoice
     type: EntityType
     description: "Invoice (snapshot dataset `invoice`). A billing document representing money owed or collected. Cash flow and collections metrics are measured at this level. Also known as: Transaction, Billing Document."
+    annotations:
+      gasp_level: financial
     identify_by:
       - invoice_id
     relationships:
@@ -1729,6 +1816,8 @@ ontology:
   - concept: Campaign
     type: EntityType
     description: "Campaign spend (fact dataset `campaign`). A marketing initiative with defined objectives, channels, budget and dates. Campaigns source leads and influence opportunities. Also known as: Marketing Campaign, Initiative."
+    annotations:
+      gasp_level: acquisition
     identify_by:
       - campaign_id
     relationships:
@@ -1761,6 +1850,8 @@ ontology:
           - concept: Lead
         verbalizes:
           - "{Campaign} sources {Lead}"
+        annotations:
+          gasp_edge_class: assignment
   - concept: SalesRep
     type: EntityType
     description: Sales rep period (fact dataset `sales_rep`).
@@ -1832,6 +1923,8 @@ ontology:
   - concept: Ticket
     type: EntityType
     description: "Support ticket (event dataset `ticket`). A discrete support interaction initiated by a customer or user, tracked to resolution. Also known as: Support Case."
+    annotations:
+      gasp_level: support
     identify_by:
       - ticket_id
     relationships:
@@ -2102,6 +2195,8 @@ ontology:
   - concept: KbArticle
     type: EntityType
     description: "Knowledge base article (fact dataset `kb_article`). A self-service help article. Ticket deflection and self-service rates are measured at this level. Also known as: Help Article, KB Article."
+    annotations:
+      gasp_level: support
     identify_by:
       - article_id
     relationships:
@@ -2123,6 +2218,8 @@ ontology:
   - concept: Requisition
     type: EntityType
     description: "Job requisition (snapshot dataset `requisition`). An approved request to hire for a role, open until filled or closed. Recruiting metrics (time to fill, offer acceptance rate) are measured at this level. Also known as: Job Opening, Req."
+    annotations:
+      gasp_level: internal
     identify_by:
       - requisition_id
     relationships:
@@ -2182,9 +2279,14 @@ ontology:
           - concept: Employee
         verbalizes:
           - "{Requisition} converts to {Employee}"
+        annotations:
+          gasp_edge_class: lifecycle
   - concept: Incident
     type: EntityType
     description: "Incident (event dataset `incident`). An unplanned interruption or degradation of service, tracked from start to resolution. Reliability metrics (MTTR, incident rate) are measured at this level. Also known as: Outage, SEV."
+    iri: gasp:incident
+    annotations:
+      gasp_level: engineering
     identify_by:
       - incident_id
     relationships:
@@ -2247,6 +2349,8 @@ ontology:
   - concept: Deployment
     type: EntityType
     description: "Deployment (event dataset `deployment`). A release of code to production. DORA delivery metrics (deployment frequency, lead time for changes, change failure rate) are measured at this level. Also known as: Deploy, Production Change."
+    annotations:
+      gasp_level: engineering
     identify_by:
       - deployment_id
     relationships:
@@ -2284,9 +2388,13 @@ ontology:
           - concept: Incident
         verbalizes:
           - "{Deployment} generates {Incident}"
+        annotations:
+          gasp_edge_class: generative
   - concept: Vulnerability
     type: EntityType
     description: "Vulnerability (snapshot dataset `vulnerability`). A security weakness found in the product or its infrastructure, tracked from discovery to patch. Security remediation metrics are measured at this level. Also known as: CVE, Security Finding."
+    annotations:
+      gasp_level: engineering
     identify_by:
       - vulnerability_id
     relationships:
@@ -2385,6 +2493,8 @@ ontology:
   - concept: Issue
     type: EntityType
     description: "Issue (bug or request) (event dataset `issue`). A tracked defect or request in the engineering backlog, with its source and the environment it was found in. Quality metrics (escaped defects, bug rate) are measured at this level. Also known as: Bug, Defect, Feature Request."
+    annotations:
+      gasp_level: engineering
     identify_by:
       - issue_id
     relationships:
@@ -2426,6 +2536,8 @@ ontology:
   - concept: Feature
     type: EntityType
     description: "Feature (snapshot dataset `feature`). A unit of product functionality with planned and actual ship dates and a first use by customers. Adoption and roadmap delivery metrics are measured at this level. Also known as: Capability."
+    annotations:
+      gasp_level: product
     identify_by:
       - feature_id
     relationships:
@@ -2494,9 +2606,13 @@ ontology:
           - concept: Release
         verbalizes:
           - "{Feature} belongs to {Release}"
+        annotations:
+          gasp_edge_class: generative
   - concept: Release
     type: EntityType
     description: "Release (event dataset `release`). A versioned bundle of features shipped to customers. Delivery predictability metrics are measured at this level. Also known as: Version."
+    annotations:
+      gasp_level: engineering
     identify_by:
       - release_id
     relationships:
@@ -2538,6 +2654,8 @@ ontology:
   - concept: ProjectMilestone
     type: EntityType
     description: "Project milestone (snapshot dataset `project_milestone`). A dated checkpoint inside a professional services project, with a planned and an actual date. Delivery predictability is measured at this level. Also known as: Milestone."
+    annotations:
+      gasp_level: services
     identify_by:
       - project_milestone_id
     relationships:
@@ -2652,6 +2770,8 @@ ontology:
   - concept: Deliverable
     type: EntityType
     description: "Deliverable (snapshot dataset `deliverable`). An artefact a professional services project hands to the customer, which the customer accepts or sends back for rework. Delivery quality is measured at this level. Also known as: Work Product."
+    annotations:
+      gasp_level: services
     identify_by:
       - deliverable_id
     relationships:
@@ -2836,6 +2956,8 @@ ontology:
   - concept: Quote
     type: EntityType
     description: "Quote (snapshot dataset `quote`). A priced offer sent to a prospect or customer before an order. Quote turnaround and discounting are measured at this level. Also known as: Proposal, Pricing Quote."
+    annotations:
+      gasp_level: financial
     identify_by:
       - quote_id
     relationships:
@@ -2892,9 +3014,13 @@ ontology:
           - concept: Order
         verbalizes:
           - "{Quote} converts to {Order}"
+        annotations:
+          gasp_edge_class: lifecycle
   - concept: Order
     type: EntityType
     description: "Order (snapshot dataset `order`). An accepted quote in fulfilment, from receipt to completion. Order accuracy and fulfilment time are measured at this level. Also known as: Sales Order."
+    annotations:
+      gasp_level: financial
     identify_by:
       - order_id
     relationships:
@@ -3246,6 +3372,8 @@ ontology:
   - concept: DealRegistration
     type: EntityType
     description: "Partner deal registration (snapshot dataset `deal_registration`). A partner's claim on an opportunity it sourced, moving from qualification to close. Partner pipeline and conflict metrics are measured at this level. Also known as: Partner Registration."
+    annotations:
+      gasp_level: channel
     identify_by:
       - registration_id
     relationships:
@@ -3302,6 +3430,8 @@ ontology:
           - concept: Opportunity
         verbalizes:
           - "{DealRegistration} converts to {Opportunity}"
+        annotations:
+          gasp_edge_class: lifecycle
   - concept: Forecast
     type: EntityType
     description: Revenue forecast (fact dataset `forecast`).
@@ -3332,6 +3462,7 @@ ontology:
   - concept: CreditEvent
     type: EntityType
     description: "Credit event (event dataset `credit_event`). CEL class: Credit_Event."
+    iri: cel:credit_event
     identify_by:
       - event_id
     relationships:
@@ -3422,21 +3553,27 @@ ontology:
   - concept: Revenue
     type: EntityType
     description: Revenue (GAAP). Recognized revenue under accrual accounting. The financial outcome of delivering on subscription obligations.
+    iri: gasp:revenue-gaap
   - concept: Bookings
     type: EntityType
     description: Bookings. The total value of new contracts signed in a period. A forward-looking commitment that converts to revenue over the contract term.
+    iri: gasp:bookings
   - concept: Cogs
     type: EntityType
     description: "COGS. Cost of Goods Sold: the direct cost of delivering the product, infrastructure only (hosting, compute, payment processing, delivery software). Support, success engineering, implementation and onboarding are subtracted in Gross Margin's Operating form, not in COGS. Subtracted from revenue in Gross Margin."
+    iri: gasp:cogs-cost-of-goods-sold
   - concept: Cohort
     type: EntityType
     description: Cohort. A time-bound grouping of customers by acquisition period. Used for retention and expansion analysis to isolate vintage effects.
+    iri: gasp:cohort
   - concept: Pipeline
     type: EntityType
     description: Pipeline. The aggregate weighted value of active opportunities. Represents potential future bookings at various probability stages.
+    iri: gasp:pipeline
   - concept: Segment
     type: EntityType
     description: Segment. A classification of customers by size, vertical or fit (e.g. SMB, Mid-Market, Enterprise). Used for cohort analysis and benchmark comparison. Recorded in the segment field, which revenue, contract and amendment events carry as of the event and the customer and subscription snapshots carry as of the snapshot.
+    iri: gasp:segment
   - concept: Tcv
     type: EntityType
     description: TCV (Total Contract Value). The total value of a contract over its full term, including one-time fees and multi-year commitments. Distinct from Bookings (period-attributable) and ACV (annualized).

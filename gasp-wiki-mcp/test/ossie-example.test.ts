@@ -7,6 +7,7 @@ import { loadStandard, metricFormulaId, isMetricStub } from "../src/loader.js";
 import { exportOssie } from "../src/ossie/index.js";
 import { exportExample, EXAMPLE_DEPARTMENT, EXAMPLE_BASENAME } from "../src/ossie/example.js";
 import { DERIVED_FILES } from "../src/derive.js";
+import { modelMetrics } from "../src/ossie/scope.js";
 import { validateUpstream, uvAvailable } from "../src/ossie/validate.js";
 
 // The compact example (standard/exports/ossie/example) is the Core department cut
@@ -31,7 +32,7 @@ describe("Ossie example (GASP SaaS core)", () => {
 
   it("every metric and staged source reads only datasets the example has", () => {
     const names = new Set(ex.model.datasets.map((d) => d.name));
-    for (const m of ex.model.metrics ?? []) {
+    for (const m of modelMetrics(ex.model)) {
       for (const ref of m.expression.sql!.matchAll(/\b([a-z_][a-z0-9_]*)\.[a-z_]/g)) expect(names.has(ref[1]), `${m.name} reads ${ref[1]}`).toBe(true);
     }
     for (const d of ex.model.datasets) {

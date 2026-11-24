@@ -12,15 +12,33 @@
  *                           event         binary (value)
  *   entityRelationships   relationship on the source concept named by the edge type
  *
+ * A concept whose definition has its own address on gaspwiki.com carries it as
+ * `iri`, written `prefix:local` against the root `prefixes`: the glossary page
+ * of an entity or GASP concept, the CEL page heading of an event class. What
+ * the ontology core has no field for goes in `annotations` under `gasp_` keys:
+ * the version ontology.json declares (root), an entity's level (its dataset
+ * concept) and an edge's classification (its relationship).
+ *
  * `planOntology` holds every naming and resolution decision so the mapping
  * exporter (mapping.ts) and the tests read the same answers.
  */
 import type { StandardData, OntologyField, OntologyDataset, EntityRelationship } from "../types.js";
 import type { OssieConcept, OssieOntology, OssieOntologyRelationship, OssieRole } from "./types.js";
 import { OSSIE_VERSION } from "./types.js";
+import { celClassUrl, definitionUrl } from "../urls.js";
 import { builtInFor, conceptName, enumRequires, isBuiltInRole, pascal, valueTypeName } from "./names.js";
 
 const BUILT_INS = new Set(["Any", "Boolean", "Date", "DateTime", "Decimal", "Float", "Integer", "String"]);
+
+/** The namespaces a concept's `iri` is written against: the glossary and the event class headings of the CEL page. */
+export const ONTOLOGY_PREFIXES = { gasp: definitionUrl({ slug: "" }), cel: celClassUrl("") } as const;
+
+/** An `iri` as the full address it abbreviates; one with no declared prefix is returned as written. */
+export function expandIri(iri: string, prefixes: Record<string, string> = ONTOLOGY_PREFIXES): string {
+  const i = iri.indexOf(":");
+  const base = i > 0 ? prefixes[iri.slice(0, i)] : undefined;
+  return base === undefined ? iri : base + iri.slice(i + 1);
+}
 
 /** How one field sits on one dataset. */
 export type FieldRole =
@@ -260,14 +278,25 @@ function datasetRelationships(plan: OntologyPlan, ds: string): OssieOntologyRela
   return out;
 }
 
-function edgeRelationship(e: ResolvedEdge): OssieOntologyRelationship {
+function edgeRelationship(e: ResolvedEdge, edgeClass?: string): OssieOntologyRelationship {
   const r: OssieRole = e.source === e.target ? { concept: e.target, name: SELF_ROLE[e.edge.type] ?? "other" } : { concept: e.target };
-  return { name: e.name, description: e.edge.description, roles: [r], verbalizes: [`{${e.source}} ${edgeVerb(e.edge.type)} ${ref(r)}`] };
+  return {
+    name: e.name,
+    description: e.edge.description,
+    roles: [r],
+    verbalizes: [`{${e.source}} ${edgeVerb(e.edge.type)} ${ref(r)}`],
+    ...(edgeClass ? { annotations: { gasp_edge_class: edgeClass } } : {}),
+  };
+}
+
+/** The entity a dataset concept stands for: the one whose primary dataset it is. */
+function entityOf(data: StandardData, plan: OntologyPlan, ds: string, d: OntologyDataset) {
+  return data.ontology!.entities.find((e) => plan.entityDataset[e.id] === ds && (e.id === ds || d.entities?.includes(e.id)));
 }
 
 function datasetDescription(data: StandardData, plan: OntologyPlan, ds: string, d: OntologyDataset): string {
   const parts = [`${d.label} (${d.kind} dataset \`${ds}\`).`];
-  const entity = data.ontology!.entities.find((e) => plan.entityDataset[e.id] === ds && (e.id === ds || d.entities?.includes(e.id)));
+  const entity = entityOf(data, plan, ds, d);
   if (entity) {
     parts.push(entity.definition);
     if (entity.aliases.length) parts.push(`Also known as: ${entity.aliases.join(", ")}.`);
@@ -279,14 +308,25 @@ function datasetDescription(data: StandardData, plan: OntologyPlan, ds: string, 
 export function exportOntology(data: StandardData): OssieOntology {
   const plan = planOntology(data);
   const concepts: OssieConcept[] = [];
-  const edgesFrom = (concept: string) => plan.edges.filter((e) => e.source === concept).map(edgeRelationship);
+  const edgeClass = new Map<string, string>();
+  for (const [cls, types] of Object.entries(data.ontology!.entityRelationships?.edgeTypeClassification ?? {})) for (const t of types) edgeClass.set(t, cls);
+  const edgesFrom = (concept: string) => plan.edges.filter((e) => e.source === concept).map((e) => edgeRelationship(e, edgeClass.get(e.edge.type)));
+  // The glossary page of a graph node, when it has one of its own.
+  const glossary = (nodeId: string): string | undefined => {
+    const slug = data.nodes.find((n) => n.id === nodeId)?.definition;
+    return slug ? `gasp:${slug}` : undefined;
+  };
 
   for (const [id, d] of plan.datasets) {
     const name = plan.datasetConcept[id];
+    const entity = entityOf(data, plan, id, d);
+    const iri = (entity && glossary(`entity_${entity.id}`)) ?? (d.cel ? `cel:${d.cel.toLowerCase()}` : undefined);
     concepts.push({
       concept: name,
       type: "EntityType",
       description: datasetDescription(data, plan, id, d),
+      ...(iri ? { iri } : {}),
+      ...(entity ? { annotations: { gasp_level: entity.level } } : {}),
       identify_by: [d.key],
       relationships: [...datasetRelationships(plan, id), ...edgesFrom(name)],
     });
@@ -294,7 +334,8 @@ export function exportOntology(data: StandardData): OssieOntology {
   for (const c of data.ontology!.concepts ?? []) {
     const name = plan.gaspConcept[c.id];
     const rels = edgesFrom(name);
-    concepts.push({ concept: name, type: "EntityType", description: `${c.label}. ${c.definition}`, ...(rels.length ? { relationships: rels } : {}) });
+    const iri = glossary(`concept_${c.id}`);
+    concepts.push({ concept: name, type: "EntityType", description: `${c.label}. ${c.definition}`, ...(iri ? { iri } : {}), ...(rels.length ? { relationships: rels } : {}) });
   }
   for (const f of plan.fields) {
     if (isBuiltInRole(f.type)) continue;
@@ -304,11 +345,17 @@ export function exportOntology(data: StandardData): OssieOntology {
     concepts.push(vt);
   }
 
+  const used = new Set(concepts.flatMap((c) => (c.iri ? [c.iri.slice(0, c.iri.indexOf(":"))] : [])));
+  const prefixes = Object.fromEntries(Object.entries(ONTOLOGY_PREFIXES).filter(([p]) => used.has(p)));
+  const contentVersion = data.ontology!.version;
   return {
     version: OSSIE_VERSION,
     name: "GASP",
     description:
       "GASP Standard (Generally Accepted SaaS Principles) ontology: the datasets, fields and business concepts SaaS metrics are computed from. Generated from /standard/ontology.json; see https://gaspwiki.com.",
+    ...(used.size ? { prefixes } : {}),
+    // `version` above is the Ossie specification's; this is the ontology's own.
+    ...(contentVersion ? { annotations: { gasp_ontology_version: contentVersion } } : {}),
     ontology: concepts,
   };
 }

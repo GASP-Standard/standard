@@ -17,6 +17,7 @@ import { companyMetrics, DRIFT_PERIODS, formatDriftReport, matchMetrics, parseMa
 import { ossieYaml } from "../src/ossie/index.js";
 import { GASP_VENDOR, portable, type OssieMetric } from "../src/ossie/types.js";
 import { columnName } from "../src/synthetic.js";
+import { modelMetrics } from "../src/ossie/scope.js";
 import { adapter as fixtureAdapter } from "./fixture-db.js";
 import { acmeAdapterText } from "./ossie-helpers.js";
 
@@ -79,7 +80,7 @@ describe("Drift: the fixture adapter's own compiled metrics agree with the canon
     const compiled = compileModel(c, data);
     if ("error" in compiled) throw new Error(compiled.error);
     // The compiled gasp_ metrics as if they were the company's own: named by formula id, without the GASP extension.
-    const mine: OssieMetric[] = compiled.model.metrics!
+    const mine: OssieMetric[] = modelMetrics(compiled.model)
       .filter((m) => { const key = Object.entries(compiled.coverage).find(([, v]) => "ossieName" in v && v.ossieName === m.name)?.[0]; return key && !key.includes(":") && compiled.coverage[key].kind === "direct"; })
       .map((m) => ({ name: m.name.replace(/^gasp_/, ""), expression: m.expression, nonportable_extensions: m.nonportable_extensions?.filter((e) => e.vendor_name !== GASP_VENDOR) }));
     expect(mine.length).toBeGreaterThan(100);
@@ -179,7 +180,7 @@ describe("Drift: the Acme metrics", () => {
   it("skips the gasp_ metrics an earlier compile wrote, and refuses a document with none of its own", async () => {
     const compiled = compileModel(company(acme), data, { only: new Set(["mrr"]) });
     if ("error" in compiled) throw new Error(compiled.error);
-    const none = await scoreDrift(company(acme), compiled.model.metrics!, data, { engine });
+    const none = await scoreDrift(company(acme), modelMetrics(compiled.model), data, { engine });
     expect("error" in none && none.error).toContain("no metrics of your own");
   });
 
@@ -203,7 +204,7 @@ describe("Drift: the O/M bridges and the standard's ranges", () => {
   const exprFor = (key: string): string => {
     const cov = compiled.coverage[key];
     if (cov.kind !== "direct") throw new Error(`${key} is ${cov.kind}`);
-    return compiled.model.metrics!.find((m) => m.name === cov.ossieName)!.expression.sql!;
+    return modelMetrics(compiled.model).find((m) => m.name === cov.ossieName)!.expression.sql!;
   };
 
   it("scores a bridge from the two forms, matched by a form suffix or an explicit pair, and names a planted Durability Gap", async () => {

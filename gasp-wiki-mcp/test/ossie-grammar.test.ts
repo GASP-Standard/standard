@@ -81,7 +81,8 @@ const files = (readdirSync(published, { recursive: true }) as string[]).filter((
 const models = files.filter((f) => /semantic_model\.yaml$|model\.ossie\.yaml$/.test(f));
 const mappings = files.filter((f) => f.endsWith("mapping.yaml"));
 
-interface Model { datasets: { name: string; source: string }[]; metrics: { name: string; expression: { sql: string } }[] }
+interface ModelMetric { name: string; expression: { sql: string } }
+interface Model { datasets: { name: string; source: string; metrics?: ModelMetric[] }[]; metrics?: ModelMetric[] }
 const reference = load(join(published, "gasp.semantic_model.yaml")) as Model;
 const coverage = JSON.parse(readFileSync(join(published, "coverage.json"), "utf-8")) as {
   counts: { direct: number };
@@ -191,7 +192,8 @@ describe("the upstream expression grammar", () => {
   });
 
   it.skipIf(!available)("parses the expression of every direct metric in coverage.json", () => {
-    const metrics = new Map(reference.metrics.map((m) => [m.name, m.expression.sql]));
+    // Each expression as published: single-part names under a dataset, `dataset.field` at the model root.
+    const metrics = new Map([...reference.datasets.flatMap((d) => d.metrics ?? []), ...(reference.metrics ?? [])].map((m) => [m.name, m.expression.sql]));
     const direct = Object.values(coverage.metrics).filter((m) => m.kind === "direct");
     expect(direct).toHaveLength(coverage.counts.direct);
     for (const m of direct) {

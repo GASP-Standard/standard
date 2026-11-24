@@ -7,7 +7,9 @@ ai_context:
 datasets:
   - name: subscription
     source: gasp.subscription
-    description: "Subscription. Kind: snapshot."
+    description: Subscription.
+    ai_context:
+      instructions: "Snapshot, one row per subscription_id per snapshot_date: select one snapshot_date (the period end), since summing rows across dates double counts."
     primary_key:
       - subscription_id
       - snapshot_date
@@ -106,25 +108,25 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of active, cancelled, expired, paused
+    metrics:
+      - name: gasp_mrr
+        expression:
+          sql: COALESCE(SUM(mrr) FILTER (WHERE subscription_status = 'active'), 0)
+        description: MRR (Monthly Recurring Revenue). The total predictable revenue from active subscriptions, normalised to a monthly value.
+        datatype: Decimal
+        ai_context:
+          synonyms:
+            - MRR
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/mrr-monthly-recurring-revenue."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: mrr
+              gasp_version: "1"
+              unit: currency
+              formula: sum(field.mrr where field.subscription_status = 'active') at period_end
     nonportable_extensions:
       - vendor_name: GASP
         data:
           kind: snapshot
           activeWhen: field.subscription_status = 'active'
-metrics:
-  - name: gasp_mrr
-    expression:
-      sql: COALESCE(SUM(subscription.mrr) FILTER (WHERE subscription.subscription_status = 'active'), 0)
-    description: MRR (Monthly Recurring Revenue). The total predictable revenue from active subscriptions, normalised to a monthly value.
-    datatype: Decimal
-    ai_context:
-      synonyms:
-        - MRR
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/core/mrr-monthly-recurring-revenue. Reads the subscription snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts."
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: mrr
-          gasp_version: "1"
-          unit: currency
-          formula: sum(field.mrr where field.subscription_status = 'active') at period_end

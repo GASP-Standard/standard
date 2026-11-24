@@ -7,7 +7,7 @@ ai_context:
 datasets:
   - name: ticket
     source: gasp.ticket
-    description: "Support ticket. Kind: event."
+    description: Support ticket.
     primary_key:
       - ticket_id
     fields:
@@ -109,6 +109,22 @@ datasets:
           sql: value
         datatype: Decimal
         description: Ticket Backlog for the period
+    metrics:
+      - name: gasp_ticket_backlog
+        expression:
+          sql: SUM(value)
+        description: Ticket Backlog. Number of tickets open or pending at the end of the period.
+        datatype: Integer
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/support/ticket-backlog. Staged (to_date): gasp_staged_gasp_ticket_backlog holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: ticket_backlog
+              gasp_version: "1"
+              unit: count
+              formula: count_distinct(field.ticket_id where field.ticket_status in ('open', 'pending')) at period_end
+              staged: true
     nonportable_extensions:
       - vendor_name: GASP
         data:
@@ -120,19 +136,3 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((SELECT COUNT(DISTINCT ticket_id) FROM gasp.ticket WHERE created_at < DATEADD(day, 1, p.period_end) AND ticket_status IN ('open', 'pending'))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((SELECT COUNT(DISTINCT ticket_id) FROM gasp.ticket WHERE created_at < TIMESTAMP(DATE_ADD(p.period_end, INTERVAL 1 DAY)) AND ticket_status IN ('open', 'pending'))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((SELECT COUNT(DISTINCT ticket_id) FROM gasp.ticket WHERE created_at < DATEADD(DAY, 1, p.period_end) AND ticket_status IN ('open', 'pending'))) AS value FROM gasp.period_spine p
-metrics:
-  - name: gasp_ticket_backlog
-    expression:
-      sql: SUM(gasp_staged_gasp_ticket_backlog.value)
-    description: Ticket Backlog. Number of tickets open or pending at the end of the period.
-    datatype: Integer
-    ai_context:
-      instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/support/ticket-backlog. Staged (to_date): gasp_staged_gasp_ticket_backlog holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
-    nonportable_extensions:
-      - vendor_name: GASP
-        data:
-          gasp_id: ticket_backlog
-          gasp_version: "1"
-          unit: count
-          formula: count_distinct(field.ticket_id where field.ticket_status in ('open', 'pending')) at period_end
-          staged: true

@@ -189,6 +189,8 @@ export interface ValidationRule {
 }
 
 export interface OntologyData {
+  /** The version ontology.json declares for its own content */
+  version?: string;
   entities: OntologyEntity[];
   fields?: OntologyField[];
   datasets?: Record<string, OntologyDataset>;

@@ -22,6 +22,7 @@ import { expressionText, ossieSchemaErrors, resolveCompany, type Company, type M
 import { checkCompiledMetrics } from "./check.js";
 import { buildMetrics, PERIOD_SPINE, type ModelTarget } from "./model.js";
 import { ossieYaml } from "./index.js";
+import { placeMetrics, withMetrics } from "./scope.js";
 import { GASP_VENDOR, OSSIE_DIALECT, portable, sameName, type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField, type OssieMetric, type OssieSemanticModel, gaspExtension, readGaspExtension } from "./types.js";
 
 /** The dataset that declares the period spine the staged sources read. */
@@ -115,16 +116,22 @@ export function compileModel(company: Company, data: StandardData, opts: Compile
   for (const c of Object.values(coverage)) counts[c.kind]++;
 
   const base = company.model;
-  const datasets = [...base.datasets.filter((d) => !isGaspDataset(d)), ...(staged.length ? [spineDataset(spine)] : []), ...staged];
+  // The company's own datasets and metrics stay; what an earlier compile wrote, in either scope, is replaced.
+  const own = base.datasets.filter((d) => !isGaspDataset(d)).map((d) => (Array.isArray(d.metrics) && d.metrics.some(isGaspMetric) ? withMetrics(d, d.metrics.filter((m) => !isGaspMetric(m))) : d));
   const kept = (base.metrics ?? []).filter((m) => !isGaspMetric(m));
+  // Each compiled metric that reads one dataset is declared under it, the rest at the model root (scope.ts).
+  const placed = placeMetrics([...own, ...(staged.length ? [spineDataset(spine)] : []), ...staged], metrics);
+  const root = [...kept, ...placed.metrics];
   const compiled: OssieExtension = gaspExtension({ compiled: { gasp_version: "1", dialect: OSSIE_DIALECT_OF[chosen.dialect], period_spine: spine, metrics: metrics.length, staged: staged.length } });
+  // Spreading the base keeps each key where the company wrote it, so a compiled model recompiles to the same text.
   const model: OssieSemanticModel = {
     ...base,
-    datasets,
+    datasets: placed.datasets,
     ...(base.relationships ? { relationships: base.relationships } : {}),
-    metrics: [...kept, ...metrics],
+    metrics: root,
     nonportable_extensions: [...(base.nonportable_extensions ?? []).filter((e) => !sameName(e.vendor_name, GASP_VENDOR)), compiled],
   };
+  if (!root.length) delete model.metrics;
   const names = new Set([...metrics.map((m) => m.name)]);
   const problems = [...(ossieSchemaErrors(model, "model", data) ?? []).map((e) => `Ossie schema: ${e}`), ...checkCompiledMetrics(model, names, { extensionSchema: data.extensionSchema })];
   return { company, model, coverage, dialect: chosen.dialect, dialectNote: chosen.note, spine, counts, problems };

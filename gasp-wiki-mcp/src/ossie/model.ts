@@ -28,6 +28,7 @@ import {
   type MetricCoverage, type OssieDataset, type OssieExtension, type OssieField,
   type OssieMetric, type OssieRelationship, type OssieSemanticModel,
 } from "./types.js";
+import { placeMetrics } from "./scope.js";
 
 /** Grain table the adopter provides for staged metrics: one row per reporting period. */
 export const PERIOD_SPINE = "gasp.period_spine";
@@ -50,6 +51,12 @@ export interface ModelTarget {
   dialects: { primary: DialectName; others: DialectName[] };
   /** The `field@dataset` pairs an entry reads that the target lacks; an entry with any is left out as unmapped */
   missing?: (placeholders: string[]) => string[];
+  /**
+   * True when the model's datasets are the ones GASP writes (`datasetOf`), each
+   * snapshot stating its reading rule in its own `ai_context`. A target whose
+   * datasets are a company's gets the rule on every metric that reads a snapshot.
+   */
+  canonicalDatasets?: boolean;
 }
 
 export const REFERENCE_TARGET: ModelTarget = {
@@ -58,6 +65,7 @@ export const REFERENCE_TARGET: ModelTarget = {
   column: (_ds, f) => f,
   spine: PERIOD_SPINE,
   dialects: { primary: "postgres", others: ["snowflake", "bigquery", "databricks"] },
+  canonicalDatasets: true,
 };
 
 const sql = portable;
@@ -71,13 +79,23 @@ export function primaryKey(d: OntologyDataset): string[] {
   return d.key === d.date ? [d.date] : [d.key, d.date];
 }
 
+/**
+ * How a snapshot is read: its rows repeat per date, so a query picks one. It is
+ * a fact about the dataset, stated once there; the kind and the CEL class are in
+ * the extension and the description names neither.
+ */
+export function snapshotRule(d: Pick<OntologyDataset, "key" | "date">): string {
+  const grain = d.key === d.date ? `one row per ${d.date}` : `one row per ${d.key} per ${d.date}`;
+  return `Snapshot, ${grain}: select one ${d.date} (the period end), since summing rows across dates double counts.`;
+}
+
 function datasetOf(id: string, d: OntologyDataset, fields: OntologyField[]): OssieDataset {
   const own = fields.filter((f) => f.datasets?.includes(id));
-  const description = [d.label.replace(/\.?$/, "."), `Kind: ${d.kind}.`, d.cel ? `CEL class: ${d.cel}.` : ""].filter(Boolean).join(" ");
   return {
     name: id,
     source: physicalSource(id),
-    description,
+    description: d.label.replace(/\.?$/, "."),
+    ...(d.kind === "snapshot" ? { ai_context: { instructions: snapshotRule(d) } } : {}),
     primary_key: primaryKey(d),
     fields: own.map((f): OssieField => ({
       name: f.id,
@@ -268,7 +286,9 @@ const FORM_LABEL: Record<string, string> = { O: "Operating form", M: "Market for
 
 /**
  * Every formula entry (main formula, forms, variants, named breakdowns) as an
- * Ossie metric for the target: direct when metrics.ts can state it, else a
+ * Ossie metric for the target, in the `dataset.field` form whatever it reads
+ * (`placeMetrics` in scope.ts gives each its scope when the model is assembled):
+ * direct when metrics.ts can state it, else a
  * staged per-period dataset built from the compiled SQL. The entries a cohort
  * table serves (metrics.ts) share that one dataset, written last with the
  * columns they read. `only` restricts the formula ids; the target's `missing`
@@ -332,7 +352,7 @@ export function buildMetrics(data: StandardData, target: ModelTarget, only?: (fo
       if (emission.kind === "direct") {
         expression = emission.expression;
         coverage[e.key] = { kind: "direct", ossieName: name, ...profileExpression(expression) };
-        if (emission.snapshots.length) {
+        if (emission.snapshots.length && !target.canonicalDatasets) {
           instructions.push(`Reads the ${emission.snapshots.join(" and ")} snapshot: select one snapshot date (the period end) with the time dimension, since summing snapshot rows across dates double counts.`);
         }
       } else if (emission.table && readable(emission.table.columns, emission.table.dimensions)) {
@@ -401,14 +421,16 @@ export function exportModel(data: StandardData): { model: OssieSemanticModel; co
   const datasets = Object.entries(ont.datasets).map(([id, d]) => datasetOf(id, d, fieldList));
   const relationships = relationshipsOf(ont.datasets, fieldList);
   const { metrics, staged, coverage } = buildMetrics(data, REFERENCE_TARGET);
+  // A metric that reads one dataset is declared under it; the ones that span datasets stay at the model root (scope.ts).
+  const placed = placeMetrics([...datasets, ...staged], metrics);
 
   const model: OssieSemanticModel = {
     version: OSSIE_VERSION,
     name: "GASP reference model",
     description: "GASP Standard reference model: the canonical SaaS datasets, their joins and every computable GASP metric. Sources and columns use the canonical names; an adopter's mapping replaces them. https://gaspwiki.com",
-    datasets: [...datasets, ...staged],
+    datasets: placed.datasets,
     relationships,
-    metrics,
+    ...(placed.metrics.length ? { metrics: placed.metrics } : {}),
   };
   return { model, coverage };
 }

@@ -10,7 +10,7 @@ The Core department of the GASP Standard (Generally Accepted SaaS Principles) as
 | `gasp_saas.semantic_model.yaml` | 6 datasets (revenue_event, cost_event, customer, subscription, survey_response, financials), 5 relationships, 12 staged datasets and 39 metrics |
 | `gasp_saas.mapping.yaml` | The ontology mapped onto the model, by name and relative IRI |
 
-Every metric is an `OSSIE_SQL_2026` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see `../coverage.json` for the reason per entry and `../conformance/` for one executed case per reason). Physical sources are `gasp.<dataset>` with columns named by GASP field id; an adopter's mapping replaces both.
+Every metric is an `OSSIE_SQL_2026` expression where the language can state it; a metric that needs a cohort, a prior period, an opening snapshot or a period bound on a non-time field is staged through a dataset whose source is the compiled SQL: one row per period holding the value or, for the retention metrics, one row per customer per period that their expressions sum (see `../coverage.json` for the reason per entry and `../conformance/` for one executed case per reason). A metric that reads one dataset is declared under that dataset and names its fields directly; a metric that reads several is declared at the model root and names each field as `dataset.field`. Physical sources are `gasp.<dataset>` with columns named by GASP field id; an adopter's mapping replaces both.
 
 ## Metrics
 

@@ -20,6 +20,7 @@ import type {
   OssieSemanticModel,
 } from "./types.js";
 import { extensionData, GASP_VENDOR, OSSIE_DIALECT, portableEntries, sameName } from "./types.js";
+import { isSourceRef, refsIn, scopedMetrics, stripLiterals } from "./scope.js";
 import type { ValidateFunction } from "ajv";
 import { formatSchemaError, newAjv } from "../tools.js";
 
@@ -38,30 +39,35 @@ function dupes(names: string[]): string[] {
   return [...out];
 }
 
-/** Replace the contents of single-quoted SQL string literals so they are never scanned. */
-function stripLiterals(sql: string): string {
-  return sql.replace(/'(?:[^']|'')*'/g, "''");
-}
-
-function refsIn(sql: string): Array<[string, string]> {
-  const out: Array<[string, string]> = [];
-  const re = /(?<![\w.])([A-Za-z_]\w*)\.([A-Za-z_]\w*)\b/g;
-  let m: RegExpExecArray | null;
-  const s = stripLiterals(sql);
-  while ((m = re.exec(s))) out.push([m[1], m[2]]);
-  return out;
-}
-
 function concepts(ont: OssieOntology): Map<string, OssieConcept> {
   return new Map(ont.ontology.map((c) => [c.concept, c]));
 }
 
+/** The schemes upstream reads as a full IRI when no `//` follows (validation/validate.py, `URI_SCHEMES`). */
+const URI_SCHEMES = new Set(["http", "https", "urn", "mailto", "tel", "file", "ftp", "data", "did", "doi", "geo", "ldap", "news", "sms", "tag"]);
+
+/** The prefix of an `iri` written `prefix:local` that the ontology's `prefixes` does not declare. */
+function undeclaredPrefix(iri: unknown, prefixes: Record<string, string>): string | undefined {
+  if (typeof iri !== "string" || !iri.includes(":")) return undefined;
+  const i = iri.indexOf(":");
+  const prefix = iri.slice(0, i);
+  const local = iri.slice(i + 1);
+  if (local.startsWith("//") || local.includes(":") || URI_SCHEMES.has(prefix.toLowerCase())) return undefined;
+  return Object.hasOwn(prefixes, prefix) ? undefined : prefix;
+}
+
 function checkOntology(ont: OssieOntology, p: string[]): void {
   const byName = concepts(ont);
+  const prefixes = ont.prefixes ?? {};
+  for (const [prefix, iri] of Object.entries(prefixes)) {
+    if (typeof iri !== "string" || !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(iri) || /\s/.test(iri)) p.push(`Ontology: prefix "${prefix}" does not abbreviate an absolute IRI`);
+  }
   for (const d of dupes(ont.ontology.map((c) => c.concept))) p.push(`Ontology: concept name "${d}" is declared more than once`);
   const known = (n: string) => BUILT_INS.has(n) || byName.has(n);
 
   for (const c of ont.ontology) {
+    const undeclared = undeclaredPrefix(c.iri, prefixes);
+    if (undeclared !== undefined) p.push(`Ontology: concept "${c.concept}" iri uses undeclared prefix "${undeclared}"`);
     for (const e of c.extends ?? []) {
       if (!known(e)) {
         p.push(`Ontology: concept "${c.concept}" extends unknown concept "${e}"`);
@@ -91,6 +97,8 @@ function checkOntology(ont: OssieOntology, p: string[]): void {
     }
     for (const r of c.relationships ?? []) {
       const where = `${c.concept}.${r.name}`;
+      const relUndeclared = undeclaredPrefix(r.iri, prefixes);
+      if (relUndeclared !== undefined) p.push(`Ontology: relationship "${where}" iri uses undeclared prefix "${relUndeclared}"`);
       const roles = r.roles ?? [];
       const seen = new Set<string>([c.concept]);
       const tokens = [`{${c.concept}}`];
@@ -156,7 +164,7 @@ function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidat
     checkExt(ds.nonportable_extensions, `dataset "${ds.name}"`, p, v && { doc: "Model", validate: v.Dataset });
   }
   const fieldsOf = (n: string) => new Set((datasets.get(n)?.fields ?? []).map((f) => f.name));
-  for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
+  checkMetricNames(model, p);
 
   for (const r of model.relationships ?? []) {
     let ok = true;
@@ -176,7 +184,7 @@ function checkModel(model: OssieSemanticModel, p: string[], v?: ExtensionValidat
     checkExt(r.nonportable_extensions, `relationship "${r.name}"`, p, v && { doc: "Model", undefinedOn: "relationship" });
   }
 
-  for (const m of model.metrics ?? []) checkMetric(m, datasets, fieldsOf, p, v);
+  for (const { metric, dataset } of scopedMetrics(model)) checkMetric(metric, dataset, datasets, fieldsOf, p, v);
   checkExt(model.nonportable_extensions, "model", p, v && { doc: "Model", validate: v.Model });
 }
 
@@ -191,39 +199,66 @@ export function checkCompiledMetrics(model: OssieSemanticModel, names: Set<strin
   const datasets = new Map(model.datasets.map((d) => [d.name, d]));
   const fieldsOf = (n: string) => new Set((datasets.get(n)?.fields ?? []).map((f) => f.name));
   for (const d of dupes(model.datasets.map((d) => d.name))) p.push(`Model: dataset name "${d}" is declared more than once`);
-  for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
-  for (const m of model.metrics ?? []) if (names.has(m.name)) checkMetric(m, datasets, fieldsOf, p, v);
+  checkMetricNames(model, p);
+  for (const { metric, dataset } of scopedMetrics(model)) if (names.has(metric.name)) checkMetric(metric, dataset, datasets, fieldsOf, p, v);
   return p;
 }
 
-function checkMetric(m: OssieMetric, datasets: Map<string, OssieDataset>, fieldsOf: (n: string) => Set<string>, p: string[], v?: ExtensionValidators): void {
-  {
-    const dialects = portableEntries(m.expression);
-    if (!dialects.some((d) => d.dialect === OSSIE_DIALECT)) p.push(`Model: metric "${m.name}" has no ${OSSIE_DIALECT} expression`);
-    if (supersededDiffers(m.expression)) p.push(`Model: metric "${m.name}" has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
-    for (const d of dialects) {
-      if (d.expression.includes("{{")) p.push(`Model: metric "${m.name}" (${d.dialect}) contains a "{{" placeholder`);
-      if (d.dialect !== OSSIE_DIALECT) continue;
-      const s = stripLiterals(d.expression);
-      if (/\bSELECT\b/i.test(s)) p.push(`Model: metric "${m.name}" contains SELECT; the portable expression language forbids subqueries`);
-      if (/\bFROM\b/i.test(s)) p.push(`Model: metric "${m.name}" contains a FROM clause; the portable expression language forbids subqueries`);
-      // `FILTER (WHERE ...)` is the aggregate filter clause the expression language requires; a bare WHERE is a query.
-      if (/\bWHERE\b/i.test(s.replace(/\bFILTER\s*\(\s*WHERE\b/gi, "FILTER ("))) p.push(`Model: metric "${m.name}" contains a WHERE clause; filter the aggregate with FILTER (WHERE ...)`);
-      const bad = new Set<string>();
-      for (const [ds, f] of refsIn(d.expression)) {
-        const key = `${ds}.${f}`;
-        if (bad.has(key)) continue;
-        if (!datasets.has(ds)) {
-          bad.add(key);
-          p.push(`Model: metric "${m.name}" references "${key}" but dataset "${ds}" does not exist`);
-        } else if (!fieldsOf(ds).has(f)) {
-          bad.add(key);
-          p.push(`Model: metric "${m.name}" references "${key}" but dataset "${ds}" has no field "${f}"`);
-        }
+/**
+ * Metric names: the model-root metrics are one namespace, and within a dataset
+ * its fields and its own metrics share one (rule 4 of Metric Scoping upstream).
+ */
+function checkMetricNames(model: OssieSemanticModel, p: string[]): void {
+  for (const d of dupes((model.metrics ?? []).map((m) => m.name))) p.push(`Model: metric name "${d}" is declared more than once`);
+  for (const ds of model.datasets) {
+    if (!Array.isArray(ds.metrics)) continue;
+    const own = ds.metrics.map((m) => m.name);
+    for (const d of dupes(own)) p.push(`Model: metric name "${d}" is declared more than once in dataset "${ds.name}"`);
+    const fields = new Set((ds.fields ?? []).map((f) => f.name));
+    for (const n of new Set(own)) if (fields.has(n)) p.push(`Model: dataset "${ds.name}" declares "${n}" as a field and as a metric; the two share one namespace`);
+  }
+}
+
+/**
+ * One metric as the document writes it. `home` is the dataset that declares a
+ * dataset-scoped metric: its expression names that dataset's fields by
+ * single-part name, so a `dataset.field` reference in it is a problem (a column
+ * of the dataset's `source`, written `source.column`, is the one two-part name
+ * upstream allows there). A model-root metric names fields as `dataset.field`
+ * and each must exist. An unknown single-part name in a dataset-scoped metric
+ * is left to the upstream validator, which parses the expression.
+ */
+function checkMetric(m: OssieMetric, home: OssieDataset | undefined, datasets: Map<string, OssieDataset>, fieldsOf: (n: string) => Set<string>, p: string[], v?: ExtensionValidators): void {
+  const who = home ? `metric "${home.name}.${m.name}"` : `metric "${m.name}"`;
+  const dialects = portableEntries(m.expression);
+  if (!dialects.some((d) => d.dialect === OSSIE_DIALECT)) p.push(`Model: ${who} has no ${OSSIE_DIALECT} expression`);
+  if (supersededDiffers(m.expression)) p.push(`Model: ${who} has an ${OSSIE_DIALECT} dialect entry that differs from its sql; the sql is authoritative and the entry is dead text`);
+  for (const d of dialects) {
+    if (d.expression.includes("{{")) p.push(`Model: ${who} (${d.dialect}) contains a "{{" placeholder`);
+    if (d.dialect !== OSSIE_DIALECT) continue;
+    const s = stripLiterals(d.expression);
+    if (/\bSELECT\b/i.test(s)) p.push(`Model: ${who} contains SELECT; the portable expression language forbids subqueries`);
+    if (/\bFROM\b/i.test(s)) p.push(`Model: ${who} contains a FROM clause; the portable expression language forbids subqueries`);
+    // `FILTER (WHERE ...)` is the aggregate filter clause the expression language requires; a bare WHERE is a query.
+    if (/\bWHERE\b/i.test(s.replace(/\bFILTER\s*\(\s*WHERE\b/gi, "FILTER ("))) p.push(`Model: ${who} contains a WHERE clause; filter the aggregate with FILTER (WHERE ...)`);
+    const bad = new Set<string>();
+    for (const [ds, f] of refsIn(d.expression)) {
+      const key = `${ds}.${f}`;
+      if (bad.has(key)) continue;
+      if (home) {
+        if (isSourceRef(ds) && !fieldsOf(home.name).has(ds)) continue;
+        bad.add(key);
+        p.push(`Model: ${who} is dataset-scoped and references "${key}"; a dataset-scoped metric names the fields of its dataset by single-part name${ds === home.name ? ` ("${f}")` : " and one that reads another dataset belongs in the model-root metrics"}`);
+      } else if (!datasets.has(ds)) {
+        bad.add(key);
+        p.push(`Model: ${who} references "${key}" but dataset "${ds}" does not exist`);
+      } else if (!fieldsOf(ds).has(f)) {
+        bad.add(key);
+        p.push(`Model: ${who} references "${key}" but dataset "${ds}" has no field "${f}"`);
       }
     }
-    checkExt(m.nonportable_extensions, `metric "${m.name}"`, p, v && { doc: "Model", validate: v.Metric });
   }
+  checkExt(m.nonportable_extensions, who, p, v && { doc: "Model", validate: v.Metric });
 }
 
 /**

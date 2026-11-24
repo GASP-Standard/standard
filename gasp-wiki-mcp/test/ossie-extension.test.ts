@@ -29,6 +29,7 @@ import { compileModelFromText, fieldSql } from "../src/ossie/company.js";
 import { parseDocument } from "../src/ossie/adapt.js";
 import { validateMapping } from "../src/ossie/adapt.js";
 import { parse as parseYaml } from "yaml";
+import { modelMetrics, scopedMetrics } from "../src/ossie/scope.js";
 import type { Adapter } from "../src/tools.js";
 import { acmeAdapterText, acmeDdl, parsedSchema } from "./ossie-helpers.js";
 import { adapter as fixtureAdapter } from "./fixture-db.js";
@@ -63,7 +64,7 @@ function payloadErrors(model: OssieSemanticModel, mapping?: OssieMapping): { cou
     for (const f of d.fields ?? []) expect(f.nonportable_extensions?.some((e) => e.vendor_name === GASP_VENDOR) ?? false).toBe(false);
   }
   for (const r of model.relationships ?? []) expect(r.nonportable_extensions?.some((e) => e.vendor_name === GASP_VENDOR) ?? false).toBe(false);
-  for (const m of model.metrics ?? []) check(m.nonportable_extensions, "Metric", `metric ${m.name}`);
+  for (const { metric: m } of scopedMetrics(model)) check(m.nonportable_extensions, "Metric", `metric ${m.name}`);
   if (mapping) check(mapping.nonportable_extensions, "Mapping", "mapping");
   return { count, errors };
 }
@@ -160,7 +161,7 @@ describe("GASP Ossie extension schema", () => {
     const r = compiled(company(ossieYaml(decided.mapping), ossieYaml(decided.model)), { dialect: "snowflake" });
     expect(r.problems).toEqual([]);
     expect(payloadErrors(r.model, decided.mapping).errors).toEqual([]);
-    expect(checkCompiledMetrics(r.model, new Set((r.model.metrics ?? []).map((m) => m.name)), opts)).toEqual([]);
+    expect(checkCompiledMetrics(r.model, new Set(modelMetrics(r.model).map((m) => m.name)), opts)).toEqual([]);
   });
 
   it("names the placement and the key of a bad payload and leaves other vendors alone", () => {

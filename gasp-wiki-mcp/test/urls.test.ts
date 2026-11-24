@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadStandard, findDefinition, search } from "../src/loader.js";
-import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "../src/urls.js";
+import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink, celClassUrl } from "../src/urls.js";
 import type { StandardData } from "../src/types.js";
 
 // Regression: agents were handed definitions with no URL and guessed their
@@ -145,6 +145,18 @@ describe.skipIf(!existsSync(PAGES))("every emitted URL resolves", () => {
       return !(statics.has(path) || metricPaths.has(path) || defPaths.has(path));
     });
     expect(bad).toEqual([]);
+  });
+
+  it("a CEL class address is the CEL page with the class heading's anchor", () => {
+    expect(celClassUrl("Revenue_Event")).toBe(`${SITE}/v1/cel#revenue_event`);
+    expect(staticRoutes().has("/v1/cel")).toBe(true);
+  });
+
+  it.skipIf(!existsSync(join(DIST, "v1", "cel", "index.html")))("every CEL class anchor exists on the built CEL page", () => {
+    const html = readFileSync(join(DIST, "v1", "cel", "index.html"), "utf-8");
+    const classes = new Set(Object.values(data.ontology!.datasets ?? {}).flatMap((d) => (d.cel ? [d.cel] : [])));
+    expect(classes.size).toBe(6);
+    for (const c of classes) expect(html, c).toContain(`id="${new URL(celClassUrl(c)).hash.slice(1)}"`);
   });
 
   it.skipIf(!existsSync(DIST))("exists in the built site", () => {
