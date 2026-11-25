@@ -102,6 +102,8 @@ export const TABLES: Record<string, string> = {
   license: "gasp_licenses",
   lifecycle_event: "gasp_lifecycle_events",
   trial: "gasp_trials",
+  email_campaign: "gasp_email_campaigns",
+  sales_activity: "gasp_sales_activities",
 };
 
 /**
@@ -401,7 +403,7 @@ export interface Fixture { tables: Record<string, Row[]> }
  * stories always set them, and attrsFor never draws for them, so the PRNG
  * sequence (and every pinned value) is unchanged by their addition.
  */
-const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date", "invoice.subscription_id", "service_period_start", "service_period_end", "recurring_amount"]);
+const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date", "invoice.subscription_id", "service_period_start", "service_period_end", "recurring_amount", "brand_awareness", "partner_type", "onboarding_engagement_score", "implementation_quality_score"]);
 export const TICKET_TYPES = ["how_to", "bug", "billing", "how_to", "feature_request", "account", "how_to", "bug", "other"];
 export const HIRE_SOURCES = ["referral", "inbound", "sourced", "agency", "inbound", "internal", "campus", "referral", "other"];
 
@@ -518,7 +520,7 @@ export function generateFixture(ontology?: Pick<OntologyData, "fields" | "datase
         opportunity_amount: deal.amount, customer_id: deal.customer ?? null, revenue_type: tags.revenueType ?? "subscription",
         forecast_category: closed ? "closed" : stage === "negotiation" ? "commit" : "pipeline",
         marketing_source: tags.source ?? "sales", channel: tags.channel ?? "direct",
-        partner_sourced: tags.source === "partner", partner_id: tags.partner ?? null,
+        partner_sourced: tags.source === "partner", partner_id: tags.partner ?? null, partner_type: partnerTypeOf(tags.partner),
       }, a));
     }
   };
@@ -578,7 +580,7 @@ export function generateFixture(ontology?: Pick<OntologyData, "fields" | "datase
       t.survey_response.push(row("survey_response", `sr${sr}`, {
         response_id: `sr${pad(sr)}`, survey_date: `${month}-${pad(4 + i * 4)}`, survey_type: type,
         customer_id: type === "employee" ? null : pick(pool), employee_id: type === "employee" ? `e${int(1, 30)}` : null,
-        nps_score: int(3, 10), lead_id: null, partner_id: null, project_id: null, survey_completed: true,
+        nps_score: int(3, 10), lead_id: null, partner_id: null, project_id: null, survey_completed: true, brand_awareness: null,
       }));
     }
   }
@@ -657,7 +659,28 @@ export const PARTNERS = ids("p", 10);
 export const PROJECTS = ids("pr", 12);
 export const CONSULTANTS = ids("k", 6);
 export const FEATURES = ["f_reports", "f_dashboards", "f_alerts", "f_api", "f_sso", "f_audit"];
-const REPS = ids("rep", 5);
+export const REPS = ids("rep", 5);
+/** Partner type by position in PARTNERS: p01 referral, p02 reseller, p03 technology and so on round the five. */
+export const PARTNER_TYPES = ["referral", "reseller", "technology", "system_integrator", "managed_service_provider"];
+export const partnerTypeOf = (partner: string | undefined): string | null =>
+  partner === undefined ? null : PARTNER_TYPES[PARTNERS.indexOf(partner) % PARTNER_TYPES.length];
+/**
+ * Brand awareness answers of the two prospect surveys a month (January to June). One
+ * survey in April did not ask, so 11 of the 12 respondents answered: 7 aware, 2 of them unaided.
+ */
+export const BRAND_AWARENESS: Array<[string | null, string | null]> = [
+  ["unaided", "aided"], ["aided", "unaware"], ["unaware", "aided"], ["aided", null], ["unaided", "unaware"], ["unaware", "aided"],
+];
+/** Scores of the eight onboardings, by position: engagement through the onboarding, quality as assessed at completion. */
+export const ONBOARDING_ENGAGEMENT = [72, 85, 64, 90, 58, 77, 81, 69];
+export const IMPLEMENTATION_QUALITY = [88, 92, 75, 95, 70, 84, 90, 80];
+/** Sales activities a rep logs in a month, by rep and month position. */
+export const salesActivityCounts = (rep: number, month: number): Record<string, number> =>
+  ({ call: 6 + rep + month, email: 8 + 2 * rep, meeting_booked: 2 + ((rep + month) % 2), demo_delivered: 1 + (rep % 2) });
+/** Email results of the two campaigns that send email, by month position: cm02 grows, cm03 (event invitations) is flat. */
+export const emailCounts = (campaign: string, month: number): Record<string, number> => campaign === "cm02"
+  ? { emails_sent: 4000 + 200 * month, email_bounces: 80 + 4 * month, email_unique_opens: 1200 + 50 * month, email_unique_clicks: 120 + 10 * month, email_unsubscribes: 8 + month, email_spam_complaints: 2 + (month % 2) }
+  : { emails_sent: 1000, email_bounces: 20, email_unique_opens: 392, email_unique_clicks: 49, email_unsubscribes: 2, email_spam_complaints: 1 };
 
 /**
  * Services projects. pr07, pr08 and pr09 complete in June 2026; pr10 to pr12
@@ -783,6 +806,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
         opportunity_amount: deal.amount, customer_id: deal.customer ?? null, revenue_type: deal.revenueType ?? "subscription",
         forecast_category: closed ? "closed" : stage === "negotiation" ? "commit" : "pipeline",
         marketing_source: deal.source ?? "sales", channel: deal.channel ?? "direct", partner_sourced: deal.source === "partner", partner_id: deal.partner ?? null,
+        partner_type: partnerTypeOf(deal.partner),
       }, a));
     }
   }
@@ -843,6 +867,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
         response_id: id, survey_date: `${month}-${pad(3 + i * 4)}`, survey_type: type, customer_id: type === "project" ? pick(CUSTOMERS.slice(0, 12)) : null,
         employee_id: null, lead_id: type === "prospect" ? `l${pad(mi * 6 + i + 1)}` : null, partner_id: type === "partner" ? PARTNERS[(mi + i) % 7] : null,
         project_id: type === "project" ? PROJECTS[(mi * 2 + i) % 12] : null, nps_score: int(4, 10), satisfaction_score: int(2, 5), survey_completed: true,
+        brand_awareness: type === "prospect" ? BRAND_AWARENESS[mi][i === 2 ? 0 : 1] : null,
       }));
     }
   }
@@ -921,6 +946,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
     daily("partner", p, s.recruited, {
       partner_id: p, partner_recruited_date: s.recruited, partner_tier: (["registered", "silver", "gold", "platinum"] as const)[i % 4],
       certification_status: (["certified", "in_progress", "certified", "none", "expired"] as const)[i % 5], training_completed: i % 3 !== 1,
+      partner_type: partnerTypeOf(p),
     }, (d) => ({
       partner_status: s.churned && d >= s.churned ? "churned" : s.active && d >= s.active ? "active" : "recruited",
       partner_churn_date: s.churned && d >= s.churned ? s.churned : null,
@@ -1002,10 +1028,13 @@ function generateExtensions(t: Record<string, Row[]>): void {
     const completion = addDays(start, [24, 28, 35, 31, 26, 38, 29, 33][i]);
     daily("onboarding", id, start, {
       onboarding_id: id, customer_id: c, contract_start: start, onboarding_start_date: start, target_date: addDays(start, 30),
-      resource_id: `cs${(i % 3) + 1}`, hours: 20 + 2 * i, steps_total: 10,
+      resource_id: `cs${(i % 3) + 1}`, hours: 20 + 2 * i, steps_total: 10, onboarding_engagement_score: ONBOARDING_ENGAGEMENT[i],
     }, (d) => {
       const done = completion <= d;
-      return { onboarding_completion_date: done ? completion : null, steps_completed: done ? 10 : Math.min(9, Math.floor(daysBetween(start, d) / 4)) };
+      return {
+        onboarding_completion_date: done ? completion : null, steps_completed: done ? 10 : Math.min(9, Math.floor(daysBetween(start, d) / 4)),
+        implementation_quality_score: done ? IMPLEMENTATION_QUALITY[i] : null,
+      };
     });
     for (const [milestone, offset] of [["kickoff", 0], ["first_value", 10], ["go_live", 21], ["full_adoption", 45]] as const) {
       const d = addDays(start, offset + (i % 3));
@@ -1298,6 +1327,26 @@ function generateExtensions(t: Record<string, Row[]>): void {
         credit_balance_before: r.before, credit_balance_after: r.after, expires_on: r.type === "purchase" ? r.expires ?? null : null,
       }));
     });
+  }
+
+  // email_campaign: the email campaign (cm02) and the event invitations (cm03), one row a month.
+  // sales_activity: each rep's calls, emails, meetings booked and demos, spread over the first 28 days.
+  // Every value comes from emailCounts and salesActivityCounts, so no PRNG draw.
+  for (const [mi, month] of MONTHS.entries()) {
+    for (const cm of ["cm02", "cm03"]) {
+      const c = emailCounts(cm, mi);
+      t.email_campaign.push(row("email_campaign", `${cm}_${month}`, { campaign_id: cm, period_start: `${month}-01`, ...c, emails_delivered: c.emails_sent - c.email_bounces }));
+    }
+    for (const [ri, rep] of REPS.entries()) {
+      let n = 0;
+      for (const [type, count] of Object.entries(salesActivityCounts(ri, mi))) {
+        for (let k = 0; k < count; k++) {
+          n++;
+          const id = `sa_${rep}_${month}_${pad(n)}`;
+          t.sales_activity.push(row("sales_activity", id, { sales_activity_id: id, sales_activity_date: `${month}-${pad(1 + ((n * 3 + ri) % 28))}`, sales_activity_type: type, rep_id: rep }));
+        }
+      }
+    }
   }
 }
 

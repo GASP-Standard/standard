@@ -19,6 +19,8 @@ Active Partners = Partners with activity in trailing 12 months
 
 A partner's status moves to active when it meets one of these, so the count reads the partner status flag.
 
+Total Active Partners is reported per partner type.
+
 **What it tells you:** Size of the active partner ecosystem.
 
 ---
@@ -78,7 +80,7 @@ Partner Churn Rate = Partners active at start of period who left in the period /
 
 **Who is counted:** The partners active on the first day of the period. A partner counts when they were active on that day and their churn date falls in the period, so the rate stays between 0% and 100%. A partner activated inside the period who leaves in it sits outside this rate.
 
-Partner Churn Rate is reported per partner tier. Each partner counts in the tier held on the first day of the period.
+Partner Churn Rate is reported per partner tier and per partner type. Each partner counts in the tier and the type held on the first day of the period.
 
 **What it tells you:** Partner program health and competitiveness.
 
@@ -95,6 +97,8 @@ Partner Churn Rate is reported per partner tier. Each partner counts in the tier
 Partner-Sourced Revenue = Sum of closed revenue where partner = source
 ```
 
+Partner-Sourced Revenue is reported per partner type, read from the type of the partner on the deal.
+
 **What it tells you:** Partner contribution to new business.
 
 ---
@@ -107,6 +111,8 @@ Partner-Sourced Revenue = Sum of closed revenue where partner = source
 ```
 Partner-Influenced Revenue = Sum of closed revenue where partner = involved
 ```
+
+Partner-Influenced Revenue is reported per partner type, read from the type of the partner on the deal.
 
 **What it tells you:** Total partner impact on revenue.
 
@@ -150,6 +156,8 @@ Average Partner Revenue = Total partner revenue / Active partners
 ```
 
 Total partner revenue is Partner-Influenced Revenue: closed revenue on every deal with a partner involved, partner-sourced deals included.
+
+Average Partner Revenue is reported per partner type: the revenue on deals with a partner of the type over the active partners of the type. The reseller row is revenue per reseller.
 
 **What it tells you:** How much partner-influenced revenue each active partner brings, so adding partners who close nothing pulls it down.
 
@@ -337,7 +345,9 @@ Partner ROI = (Partner-sourced revenue - Partner program costs) / Partner progra
 
 ## Partner Types
 
-Track metrics separately by partner type:
+Track metrics separately by partner type. The `partner_type` field holds one of six values: `reseller`, `referral`, `technology`, `system_integrator`, `managed_service_provider` and `other`, which takes affiliates, OEM partners and any type a programme adds. Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate are each reported per partner type.
+
+The five types below are groupings with a focus and a key metric each. Revenue per reseller is the reseller row of Average Partner Revenue. The other four key metrics come from the partner system or the product and have no formula in the standard.
 
 ### Resellers
 - Focus: Revenue sourced, deal flow, margin

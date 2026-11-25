@@ -426,6 +426,7 @@
       "grr",
       "health_score",
       "health_score_coverage",
+      "implementation_quality_score",
       "infrastructure_cost_per_customer",
       "logo_churn_rate",
       "logo_retention_rate",
@@ -439,6 +440,7 @@
       "on_time_completion_rate",
       "onboarding_completion",
       "onboarding_duration",
+      "onboarding_engagement_score",
       "onboarding_milestone_completion_rate",
       "onboardings_per_resource",
       "order_to_activation_time",
@@ -605,6 +607,7 @@
       "tickets_per_customer"
     ],
     "employee": [
+      "activity_metrics_diagnostic",
       "average_tenure",
       "bench_rate",
       "billable_utilization",
@@ -690,6 +693,12 @@
     "product": [],
     "campaign": [
       "cac_by_channel",
+      "email_bounce_rate",
+      "email_click_rate",
+      "email_click_to_open_rate",
+      "email_open_rate",
+      "email_spam_complaint_rate",
+      "email_unsubscribe_rate",
       "paid_media_efficiency_roas"
     ],
     "contact": [
@@ -1047,7 +1056,8 @@
       "id": "campaign_id",
       "type": "string",
       "datasets": [
-        "campaign"
+        "campaign",
+        "email_campaign"
       ],
       "sources": [
         "ad_platforms",
@@ -2785,7 +2795,7 @@
         "cs_platform"
       ],
       "description": "Onboarding completion; null while open",
-      "metricCount": 8
+      "metricCount": 10
     },
     {
       "id": "onboarding_id",
@@ -3160,13 +3170,14 @@
         "revenue_schedule",
         "web_traffic",
         "brand_mention",
-        "usage_record"
+        "usage_record",
+        "email_campaign"
       ],
       "sources": [
         "derived"
       ],
       "description": "Start of the period the row describes",
-      "metricCount": 51
+      "metricCount": 57
     },
     {
       "id": "period_end",
@@ -3645,13 +3656,14 @@
       "type": "string",
       "datasets": [
         "opportunity",
-        "sales_rep"
+        "sales_rep",
+        "sales_activity"
       ],
       "sources": [
         "crm"
       ],
       "description": "Sales rep identifier",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "request_count",
@@ -3790,7 +3802,7 @@
         "survey_tool"
       ],
       "description": "Survey response identifier",
-      "metricCount": 1
+      "metricCount": 2
     },
     {
       "id": "response_time_ms",
@@ -4054,7 +4066,7 @@
         "derived"
       ],
       "description": "As-of date of the snapshot row",
-      "metricCount": 174
+      "metricCount": 176
     },
     {
       "id": "sql_date",
@@ -4222,7 +4234,7 @@
         "survey_tool"
       ],
       "description": "Response date",
-      "metricCount": 12
+      "metricCount": 13
     },
     {
       "id": "survey_type",
@@ -4242,7 +4254,7 @@
         "prospect"
       ],
       "description": "Survey programme the response belongs to",
-      "metricCount": 11
+      "metricCount": 12
     },
     {
       "id": "sync_status",
@@ -4704,6 +4716,195 @@
       ],
       "description": "On purchase events: the date the granted balance expires; empty when it does not. A balance that rolls over has no expiry event and the new term's grant carries the new date",
       "metricCount": 0
+    },
+    {
+      "id": "emails_sent",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Emails sent in the period, one per recipient address",
+      "metricCount": 1
+    },
+    {
+      "id": "emails_delivered",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Emails the receiving server accepted in the period: sent less bounced",
+      "metricCount": 4
+    },
+    {
+      "id": "email_unique_opens",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Delivered emails opened at least once, each recipient counted once per send",
+      "metricCount": 2
+    },
+    {
+      "id": "email_unique_clicks",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Delivered emails with at least one link clicked, each recipient counted once per send",
+      "metricCount": 2
+    },
+    {
+      "id": "email_unsubscribes",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Recipients who unsubscribed from an email sent in the period",
+      "metricCount": 1
+    },
+    {
+      "id": "email_bounces",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Emails the receiving server rejected, hard and soft bounces together",
+      "metricCount": 1
+    },
+    {
+      "id": "email_spam_complaints",
+      "type": "integer",
+      "datasets": [
+        "email_campaign"
+      ],
+      "sources": [
+        "marketing_automation"
+      ],
+      "description": "Recipients who marked an email sent in the period as spam",
+      "metricCount": 1
+    },
+    {
+      "id": "sales_activity_id",
+      "type": "string",
+      "datasets": [
+        "sales_activity"
+      ],
+      "sources": [
+        "crm"
+      ],
+      "description": "Sales activity identifier",
+      "metricCount": 1
+    },
+    {
+      "id": "sales_activity_date",
+      "type": "date",
+      "datasets": [
+        "sales_activity"
+      ],
+      "sources": [
+        "crm"
+      ],
+      "description": "Date the call was made, the email sent, the meeting booked or the demonstration given",
+      "metricCount": 1
+    },
+    {
+      "id": "sales_activity_type",
+      "type": "enum",
+      "datasets": [
+        "sales_activity"
+      ],
+      "sources": [
+        "crm"
+      ],
+      "values": [
+        "call",
+        "email",
+        "meeting_booked",
+        "demo_delivered"
+      ],
+      "description": "Kind of sales activity: an outbound call made, an outbound email sent to a prospect, a discovery or demonstration meeting booked (counted on the day the invitation goes out) or a product demonstration given",
+      "metricCount": 1
+    },
+    {
+      "id": "onboarding_engagement_score",
+      "type": "decimal",
+      "datasets": [
+        "onboarding"
+      ],
+      "sources": [
+        "cs_platform"
+      ],
+      "description": "Engagement score of the onboarding on a 0 to 100 scale, built upstream from session attendance, response time, task completion and login frequency",
+      "metricCount": 1
+    },
+    {
+      "id": "implementation_quality_score",
+      "type": "decimal",
+      "datasets": [
+        "onboarding"
+      ],
+      "sources": [
+        "cs_platform"
+      ],
+      "description": "Implementation quality score on a 0 to 100 scale, assessed at completion against configuration accuracy, migrated data quality, integration health and user setup",
+      "metricCount": 1
+    },
+    {
+      "id": "brand_awareness",
+      "type": "enum",
+      "datasets": [
+        "survey_response"
+      ],
+      "sources": [
+        "survey_tool"
+      ],
+      "values": [
+        "unaided",
+        "aided",
+        "unaware"
+      ],
+      "description": "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask",
+      "metricCount": 1
+    },
+    {
+      "id": "partner_type",
+      "type": "enum",
+      "datasets": [
+        "partner",
+        "opportunity"
+      ],
+      "sources": [
+        "partner_management",
+        "crm"
+      ],
+      "values": [
+        "reseller",
+        "referral",
+        "technology",
+        "system_integrator",
+        "managed_service_provider",
+        "other"
+      ],
+      "description": "Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal",
+      "metricCount": 5
     }
   ],
   "datasets": {
@@ -5181,6 +5382,24 @@
         "subscription"
       ],
       "label": "Credit event"
+    },
+    "email_campaign": {
+      "kind": "fact",
+      "date": "period_start",
+      "key": "campaign_id",
+      "entities": [
+        "campaign"
+      ],
+      "label": "Email campaign results"
+    },
+    "sales_activity": {
+      "kind": "event",
+      "date": "sales_activity_date",
+      "key": "sales_activity_id",
+      "entities": [
+        "employee"
+      ],
+      "label": "Sales activity"
     }
   },
   "temporalMapping": {
@@ -5414,7 +5633,7 @@
     "onboarding_duration": "Efficiency",
     "onboarding_completion": "Completion",
     "on_time_completion_rate": "Completion",
-    "onboarding_engagement_score": "Completion",
+    "onboarding_engagement_score": "Customer Health Score",
     "session_attendance_rate": "Completion",
     "task_completion_rate": "Completion",
     "onboarding_csat": "CSAT",
@@ -5467,9 +5686,14 @@
     "marketing_influenced_pipelinerevenue": "Sourced Pipeline",
     "organic_traffic": "Visitors",
     "paid_media_efficiency_roas": "Channel Spend",
-    "email_metrics": "Activity Metrics",
+    "email_open_rate": "Activity Metrics",
+    "email_click_rate": "Activity Metrics",
+    "email_click_to_open_rate": "Activity Metrics",
+    "email_unsubscribe_rate": "Activity Metrics",
+    "email_bounce_rate": "Activity Metrics",
+    "email_spam_complaint_rate": "Activity Metrics",
     "content_performance": "Activity Metrics",
-    "brand_awareness": "Activity Metrics",
+    "brand_awareness": "CSAT",
     "share_of_voice": "Visitors",
     "nps_marketing_context": "CSAT",
     "onboarding_milestone_completion_rate": "Milestones",

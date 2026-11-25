@@ -397,31 +397,6 @@ Express as ratio (e.g., "3:1" or "3x").
 
 ---
 
-### Email Metrics
-
-| Metric | Formula | B2B SaaS Benchmark |
-|--------|---------|-----------|
-| Open Rate | Opens / Delivered × 100 | 25-40% |
-| Click Rate (CTR) | Clicks / Delivered × 100 | 2-4% |
-| Click-to-Open Rate | Clicks / Opens × 100 | 5-7% |
-| Unsubscribe Rate | Unsubscribes / Delivered × 100 | <0.3% |
-| Bounce Rate | Bounces / Sent × 100 | <2.5% |
-| Spam Complaint Rate | Complaints / Delivered × 100 | <0.1% |
-
-**Cold email/outbound (SaaS SDRs):**
-- Open rate: 38-42%
-- Reply rate: 3-8% (good: 5-10%)
-- Meeting booked rate: 1-2%
-
-**Important:** Apple Mail Privacy Protection (46% of email clients) inflates open rates by preloading images. Treat opens as directional only; focus on replies and conversions.
-
-**Sources:**
-- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
-- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
-- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
-
----
-
 ### Content Performance
 
 | Metric | Formula |
@@ -432,13 +407,181 @@ Express as ratio (e.g., "3:1" or "3x").
 
 ---
 
+## Email Metrics
+
+Six rates read the same counts for the marketing emails sent in the period. Delivered emails are emails sent less emails bounced. Opens and clicks are unique: a recipient who opens one email four times counts once.
+
+### Email Open Rate
+
+**Definition:** The percentage of delivered emails that were opened.
+
+**Formula:**
+```
+Email Open Rate = Unique opens / Delivered emails × 100
+```
+
+**Benchmarks (B2B SaaS):**
+- Marketing email: 25-40%
+
+**Cold email/outbound (SaaS SDRs):**
+- Open rate: 38-42%
+- Reply rate: 3-8% (good: 5-10%)
+- Meeting booked rate: 1-2%
+
+**Important:** Apple Mail Privacy Protection (46% of email clients) inflates open rates by preloading images. Treat opens as directional only; focus on replies and conversions.
+
+**What it tells you:** Whether the subject line and the sender name earn a look, read as a direction because of the inflation above.
+
+**Sources:**
+- [Mailchimp: About Open and Click Rates](https://mailchimp.com/help/about-open-and-click-rates/)
+- [Campaign Monitor: How Do You Calculate Email Metrics?](https://www.campaignmonitor.com/resources/knowledge-base/how-do-you-calculate-email-metrics/)
+- [Klaviyo: Analytics glossary](https://help.klaviyo.com/hc/en-us/articles/360037957832-Analytics-Glossary)
+- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
+- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
+- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
+
+---
+
+### Email Click Rate
+
+**Definition:** The percentage of delivered emails in which the recipient clicked at least one link.
+
+**Formula:**
+```
+Email Click Rate = Unique clicks / Delivered emails × 100
+```
+
+Some email tools give the name click-through rate (CTR) to this rate and others give it to clicks over opens. GASP calls this one Email Click Rate and reports clicks over opens as [Email Click-to-Open Rate](#email-click-to-open-rate).
+
+**Benchmarks (B2B SaaS):**
+- Marketing email: 2-4%
+
+**What it tells you:** How much of the list acted on the email. It depends on no open count, so it is the steadier of the two click rates.
+
+**Sources:**
+- [Mailchimp: About Open and Click Rates](https://mailchimp.com/help/about-open-and-click-rates/)
+- [Campaign Monitor: How Do You Calculate Email Metrics?](https://www.campaignmonitor.com/resources/knowledge-base/how-do-you-calculate-email-metrics/)
+- [Klaviyo: Analytics glossary](https://help.klaviyo.com/hc/en-us/articles/360037957832-Analytics-Glossary)
+- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
+- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
+- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
+
+---
+
+### Email Click-to-Open Rate
+
+**Definition:** The percentage of opened emails in which the recipient clicked at least one link.
+
+**Formula:**
+```
+Email Click-to-Open Rate = Unique clicks / Unique opens × 100
+```
+
+**Benchmarks (B2B SaaS):**
+- Marketing email: 5-7%
+
+**What it tells you:** Whether the content of the email earns the click once it is open. Preloaded images raise the open count, so the rate reads low where they are common.
+
+**Sources:**
+- [Campaign Monitor: How Do You Calculate Email Metrics?](https://www.campaignmonitor.com/resources/knowledge-base/how-do-you-calculate-email-metrics/)
+- [Klaviyo: Analytics glossary](https://help.klaviyo.com/hc/en-us/articles/360037957832-Analytics-Glossary)
+- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
+- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
+- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
+
+---
+
+### Email Unsubscribe Rate
+
+**Definition:** The percentage of delivered emails that led the recipient to unsubscribe.
+
+**Formula:**
+```
+Email Unsubscribe Rate = Unsubscribes / Delivered emails × 100
+```
+
+**Benchmarks (B2B SaaS):**
+- Marketing email: below 0.3%
+
+**What it tells you:** Whether the list still wants the emails. A rise after one send points at that send's audience or frequency.
+
+**Sources:**
+- [Campaign Monitor: How Do You Calculate Email Metrics?](https://www.campaignmonitor.com/resources/knowledge-base/how-do-you-calculate-email-metrics/)
+- [Klaviyo: Analytics glossary](https://help.klaviyo.com/hc/en-us/articles/360037957832-Analytics-Glossary)
+- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
+- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
+- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
+
+---
+
+### Email Bounce Rate
+
+**Definition:** The percentage of sent emails that the receiving server rejected, hard and soft bounces together.
+
+**Formula:**
+```
+Email Bounce Rate = Bounced emails / Emails sent × 100
+```
+
+The denominator is emails sent, since a bounced email was never delivered.
+
+**Benchmarks (B2B SaaS):**
+- Marketing email: below 2.5%
+
+**What it tells you:** The quality of the list. Hard bounces are addresses that no longer exist, so a high rate means the list is old or was never verified.
+
+**Sources:**
+- [Campaign Monitor: How Do You Calculate Email Metrics?](https://www.campaignmonitor.com/resources/knowledge-base/how-do-you-calculate-email-metrics/)
+- [Klaviyo: Analytics glossary](https://help.klaviyo.com/hc/en-us/articles/360037957832-Analytics-Glossary)
+- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
+- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
+- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
+
+---
+
+### Email Spam Complaint Rate
+
+**Definition:** The percentage of delivered emails that the recipient marked as spam.
+
+**Formula:**
+```
+Email Spam Complaint Rate = Spam complaints / Delivered emails × 100
+```
+
+**Benchmarks (B2B SaaS):**
+- Marketing email: below 0.1%
+
+**What it tells you:** The risk to the sending domain. Mailbox providers send a domain's email to the junk folder once its complaints stay high.
+
+**Sources:**
+- [Klaviyo: Analytics glossary](https://help.klaviyo.com/hc/en-us/articles/360037957832-Analytics-Glossary)
+- [HubSpot: Email Marketing Benchmarks](https://blog.hubspot.com/sales/average-email-open-rate-benchmark)
+- [GetResponse: Email Marketing Benchmarks 2024](https://www.getresponse.com/resources/reports/email-marketing-benchmarks)
+- [SalesHive: B2B SaaS Email Benchmarks 2025](https://saleshive.com/blog/b2b-benchmarks-email-marketing-saas-you-need-know-2025/)
+
+---
+
 ## Brand Metrics
 
 ### Brand Awareness
 
-**Definition:** Percentage of target market aware of brand.
+**Definition:** The percentage of surveyed people in the target market who know the brand.
 
-**Measurement:** Survey-based or search volume proxy.
+**Formula:**
+```
+Brand Awareness = Respondents aware of the brand / Respondents asked × 100
+```
+
+**Who is counted:** The respondents of a prospect or market survey who answered the awareness question. A respondent is aware when they name the brand with no prompt (unaided awareness) or recognise it in a list of brands (aided awareness). The headline figure counts both. The unaided form counts only the respondents who named the brand with no prompt, over the same respondents asked.
+
+**Search proxy:** Share of search, the searches for the brand as a share of the searches for every brand in its category, tracks awareness between surveys. It comes from a search tool and sits outside the formula.
+
+**What it tells you:** How much of the market already knows the name before sales or marketing reaches it. Unaided awareness is the harder test and moves more slowly.
+
+**Sources:**
+- [Ipsos Encyclopedia: Awareness](https://www.ipsos.com/en/ipsos-encyclopedia-awareness)
+- [Qualtrics: Brand awareness](https://www.qualtrics.com/experience-management/brand/brand-awareness/)
+- [IPA: Share of search](https://ipa.co.uk/news/binet-presents-fast-cheap-predictive-share-of-search-metric/)
 
 ---
 

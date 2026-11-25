@@ -752,6 +752,10 @@ concept_mappings:
                   concept: UpdatedWithinSla
                   expression: opportunity.updated_within_sla
                 relationship: updated_within_sla
+              - object_mapping:
+                  concept: PartnerType
+                  expression: opportunity.partner_type
+                relationship: partner_type
       - object_mapping:
           referent_mappings:
             - relationship: opportunity_id
@@ -960,6 +964,10 @@ concept_mappings:
                   concept: TrainingCompleted
                   expression: partner.training_completed
                 relationship: training_completed
+              - object_mapping:
+                  concept: PartnerType
+                  expression: partner.partner_type
+                relationship: partner_type
       - object_mapping:
           referent_mappings:
             - relationship: partner_id
@@ -1425,6 +1433,10 @@ concept_mappings:
               concept: SurveyType
               expression: survey_response.survey_type
             relationship: survey_type
+          - object_mapping:
+              concept: BrandAwareness
+              expression: survey_response.brand_awareness
+            relationship: brand_awareness
   - concept: KbArticle
     object_mappings:
       - referent_mappings:
@@ -1891,6 +1903,14 @@ concept_mappings:
                   concept: Date
                   expression: onboarding.target_date
                 relationship: target_date
+              - object_mapping:
+                  concept: OnboardingEngagementScore
+                  expression: onboarding.onboarding_engagement_score
+                relationship: onboarding_engagement_score
+              - object_mapping:
+                  concept: ImplementationQualityScore
+                  expression: onboarding.implementation_quality_score
+                relationship: implementation_quality_score
   - concept: OnboardingMilestone
     object_mappings:
       - referent_mappings:
@@ -2366,3 +2386,71 @@ concept_mappings:
               concept: Date
               expression: credit_event.expires_on
             relationship: expires_on
+  - concept: EmailCampaign
+    object_mappings:
+      - referent_mappings:
+          - relationship: campaign_id
+            expression: email_campaign.campaign_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: campaign_id
+              expression: email_campaign.campaign_id
+        children:
+          - object_mapping:
+              concept: Date
+              expression: email_campaign.period_start
+            children:
+              - object_mapping:
+                  concept: EmailsSent
+                  expression: email_campaign.emails_sent
+                relationship: emails_sent
+              - object_mapping:
+                  concept: EmailsDelivered
+                  expression: email_campaign.emails_delivered
+                relationship: emails_delivered
+              - object_mapping:
+                  concept: EmailUniqueOpens
+                  expression: email_campaign.email_unique_opens
+                relationship: email_unique_opens
+              - object_mapping:
+                  concept: EmailUniqueClicks
+                  expression: email_campaign.email_unique_clicks
+                relationship: email_unique_clicks
+              - object_mapping:
+                  concept: EmailUnsubscribes
+                  expression: email_campaign.email_unsubscribes
+                relationship: email_unsubscribes
+              - object_mapping:
+                  concept: EmailBounces
+                  expression: email_campaign.email_bounces
+                relationship: email_bounces
+              - object_mapping:
+                  concept: EmailSpamComplaints
+                  expression: email_campaign.email_spam_complaints
+                relationship: email_spam_complaints
+  - concept: SalesActivity
+    object_mappings:
+      - referent_mappings:
+          - relationship: sales_activity_id
+            expression: sales_activity.sales_activity_id
+    link_mappings:
+      - object_mapping:
+          referent_mappings:
+            - relationship: sales_activity_id
+              expression: sales_activity.sales_activity_id
+        children:
+          - object_mapping:
+              concept: SalesRep
+              referent_mappings:
+                - relationship: rep_id
+                  expression: sales_activity.rep_id
+            relationship: rep_id
+          - object_mapping:
+              concept: Date
+              expression: sales_activity.sales_activity_date
+            relationship: sales_activity_date
+          - object_mapping:
+              concept: SalesActivityType
+              expression: sales_activity.sales_activity_type
+            relationship: sales_activity_type

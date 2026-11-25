@@ -27,6 +27,19 @@ async function runBreakdown(id: string, start: string, end: string): Promise<Rec
   return Object.fromEntries(res.rows.map((r) => [String(r[field]), r[id] === null || r[id] === undefined ? null : Number(r[id])]));
 }
 
+/** A named variant compiled straight from formulas.json and run over the fixture. */
+async function runVariant(id: string, name: string, start: string, end: string): Promise<number | null> {
+  const { compileMetric } = await import("../src/compile.js");
+  const { fillTemplate } = await import("../src/tools.js");
+  const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
+  const c = compileMetric(id, ctx, name);
+  const filled = fillTemplate({ ...data.queryTemplates[id], fields: c.fields, datasets: c.datasets, parameterizedQuery: c.sql, placeholders: c.placeholders }, adapter, data);
+  expect([...filled.missingFields, ...filled.missingTables], `${id}:${name}`).toEqual([]);
+  const res = await db.query<Record<string, unknown>>(bind(filled.sql, start, end));
+  const value = Object.values(res.rows[0])[0];
+  return value === null || value === undefined ? null : Number(value);
+}
+
 // ── independent expected values over the generated rows ──────────────────────
 
 const T = fixture.tables;
@@ -430,6 +443,69 @@ describe("hand-computed metric values, extended datasets", () => {
     expect(hires.map((r) => [r.employee_id, (Date.parse(String(r.hire_date)) - Date.parse(String(r.application_date))) / 86400000])).toEqual([["e22", 28], ["e23", 35], ["e24", 42]]);
     expect(await run("time_to_hire", ...Q2)).toBeCloseTo(35, 10);
   });
+
+  it("the six email rates, June (cm02 and cm03: 6,000 sent, 120 bounced, 5,880 delivered)", async () => {
+    const june = T.email_campaign.filter((r) => between(r.period_start, ...JUNE));
+    expect(june.map((r) => r.campaign_id).sort()).toEqual(["cm02", "cm03"]);
+    expect(["emails_sent", "email_bounces", "emails_delivered", "email_unique_opens", "email_unique_clicks", "email_unsubscribes", "email_spam_complaints"].map((f) => sum(june, f)))
+      .toEqual([6000, 120, 5880, 1842, 219, 15, 4]);
+    expect(await run("email_open_rate", ...JUNE)).toBeCloseTo(1842 / 5880, 10);
+    expect(await run("email_click_rate", ...JUNE)).toBeCloseTo(219 / 5880, 10);
+    expect(await run("email_click_to_open_rate", ...JUNE)).toBeCloseTo(219 / 1842, 10);
+    expect(await run("email_unsubscribe_rate", ...JUNE)).toBeCloseTo(15 / 5880, 10);
+    expect(await run("email_spam_complaint_rate", ...JUNE)).toBeCloseTo(4 / 5880, 10);
+    // Bounce rate alone reads emails sent: over delivered it would be 120 / 5,880.
+    expect(await run("email_bounce_rate", ...JUNE)).toBeCloseTo(120 / 6000, 10);
+  });
+
+  it("the email rates pool the campaigns: H1 open rate is total opens over total delivered, away from the mean of the campaign rates", async () => {
+    const pooled = sum(T.email_campaign, "email_unique_opens") / sum(T.email_campaign, "emails_delivered");
+    const mean = T.email_campaign.reduce((s, r) => s + Number(r.email_unique_opens) / Number(r.emails_delivered), 0) / T.email_campaign.length;
+    expect(Math.abs(pooled - mean)).toBeGreaterThan(0.01);
+    expect(await run("email_open_rate", ...H1)).toBeCloseTo(pooled, 10);
+  });
+
+  it("Brand Awareness, H1 and June (11 prospects answered: 2 unaided, 5 aided, 4 unaware) and its unaided variant", async () => {
+    const answered = (start: string, end: string) =>
+      T.survey_response.filter((r) => between(r.survey_date, start, end) && r.survey_type === "prospect" && r.brand_awareness !== null);
+    const said = (rows: Row[], value: string) => rows.filter((r) => r.brand_awareness === value).length;
+    const h1 = answered(...H1), june = answered(...JUNE);
+    expect([h1.length, said(h1, "unaided"), said(h1, "aided"), said(h1, "unaware")]).toEqual([11, 2, 5, 4]);
+    expect([june.length, said(june, "unaided"), said(june, "aided")]).toEqual([2, 0, 1]);
+    expect(await run("brand_awareness", ...H1)).toBeCloseTo(7 / 11, 10);
+    expect(await run("brand_awareness", ...JUNE)).toBeCloseTo(1 / 2, 10);
+    expect(await runVariant("brand_awareness", "unaided", ...H1)).toBeCloseTo(2 / 11, 10);
+    expect(await runVariant("brand_awareness", "unaided", ...JUNE)).toBe(0);
+    // A prospect who skipped the question (sr_2026-04_5) and every other survey type sit outside both counts.
+    const prospects = T.survey_response.filter((r) => between(r.survey_date, ...H1) && r.survey_type === "prospect");
+    expect(prospects.filter((r) => r.brand_awareness === null).map((r) => r.response_id)).toContain("sr_2026-04_5");
+    expect(T.survey_response.filter((r) => r.survey_type !== "prospect" && r.brand_awareness !== null)).toEqual([]);
+  });
+
+  it("Onboarding Engagement Score reads the onboardings in progress at period end; Implementation Quality Score the ones completed in the period", async () => {
+    const inProgress = (day: string) => snapshot("onboarding", day).filter((r) => r.onboarding_completion_date === null);
+    const completed = (start: string, end: string) => snapshot("onboarding", end).filter((r) => between(r.onboarding_completion_date, start, end));
+    const scores = (rows: Row[], f: string) => rows.map((r) => [r.onboarding_id, r[f]]);
+    expect(scores(inProgress(END), "onboarding_engagement_score")).toEqual([["ob07", 81], ["ob08", 69]]);
+    expect(await run("onboarding_engagement_score", ...JUNE)).toBeCloseTo(75, 10);
+    // 2026-03-31: ob03 and ob04 are in progress; ob01 and ob02 are complete and have left the average.
+    expect(scores(inProgress("2026-03-31"), "onboarding_engagement_score")).toEqual([["ob03", 64], ["ob04", 90]]);
+    expect(await run("onboarding_engagement_score", "2026-03-01", "2026-03-31")).toBeCloseTo(77, 10);
+    expect(scores(completed(...JUNE), "implementation_quality_score")).toEqual([["ob06", 84]]);
+    expect(await run("implementation_quality_score", ...JUNE)).toBeCloseTo(84, 10);
+    expect(scores(completed(...Q2), "implementation_quality_score")).toEqual([["ob03", 75], ["ob04", 95], ["ob05", 70], ["ob06", 84]]);
+    expect(await run("implementation_quality_score", ...Q2)).toBeCloseTo((75 + 95 + 70 + 84) / 4, 10);
+    // An onboarding still in progress has no quality score yet.
+    expect(inProgress(END).every((r) => r.implementation_quality_score === null)).toBe(true);
+  });
+
+  it("Activity Metrics, June and H1: a count of sales activities", async () => {
+    const june = T.sales_activity.filter((r) => between(r.sales_activity_date, ...JUNE));
+    expect([june.length, T.sales_activity.length]).toEqual([145, 792]);
+    expect(distinct(T.sales_activity, "sales_activity_id")).toBe(792);
+    expect(await run("activity_metrics_diagnostic", ...JUNE)).toBe(145);
+    expect(await run("activity_metrics_diagnostic", ...H1)).toBe(792);
+  });
 });
 
 // Breakdowns: one row per value of the breakdown field; total() reads the whole population.
@@ -588,6 +664,63 @@ describe("named breakdowns", () => {
     expect(rows.marketing).toBeCloseTo(3800 / 2, 6);
     expect(rows.sales).toBeCloseTo(2600 / 2, 6);
     expect((rows.marketing ?? 0) + (rows.sales ?? 0)).toBeCloseTo((await run("cac", ...JUNE))!, 6);
+  });
+
+  it("Activity Metrics by activity type and by rep, June: rows match the story rows and each set sums to the total", async () => {
+    const june = T.sales_activity.filter((r) => between(r.sales_activity_date, ...JUNE));
+    const byType = await runNamed("activity_metrics_diagnostic", "by_activity_type", ...JUNE);
+    expect(byType).toEqual({ call: 65, email: 60, meeting_booked: 13, demo_delivered: 7 });
+    for (const [type, n] of Object.entries(byType)) expect(n, type).toBe(june.filter((r) => r.sales_activity_type === type).length);
+    const byRep = await runNamed("activity_metrics_diagnostic", "by_rep", ...JUNE);
+    expect(byRep).toEqual({ rep01: 23, rep02: 26, rep03: 29, rep04: 32, rep05: 35 });
+    for (const [rep, n] of Object.entries(byRep)) expect(n, rep).toBe(june.filter((r) => r.rep_id === rep).length);
+    for (const rows of [byType, byRep]) expect(Object.values(rows).reduce((s, v) => s! + (v ?? 0), 0)).toBe(145);
+  });
+
+  it("the partner counts and revenue by partner type, June: one row per type, the reseller row of Average Partner Revenue is revenue per reseller", async () => {
+    const types = data.ontology!.fields!.find((f) => f.id === "partner_type")!.values!;
+    const active = snapshot("partner", END).filter((r) => r.partner_status === "active");
+    const count = await runNamed("total_active_partners", "by_partner_type", ...JUNE);
+    expect(count).toEqual({ reseller: 2, referral: 2, technology: 1, system_integrator: 1, managed_service_provider: 1, other: 0 });
+    for (const type of types) expect(count[type], type).toBe(active.filter((r) => r.partner_type === type).length);
+    expect(Object.values(count).reduce((s, v) => s! + (v ?? 0), 0)).toBe(await run("total_active_partners", ...JUNE));
+
+    // o08, the one partner deal won in June, was sourced by p02, a reseller.
+    const won = snapshot("opportunity", END).filter((r) => r.partner_id !== null && r.opportunity_stage === "closed_won" && between(r.close_date, ...JUNE));
+    expect(won.map((r) => [r.opportunity_id, r.partner_id, r.partner_type, r.partner_sourced, r.opportunity_amount])).toEqual([["o08", "p02", "reseller", true, 13200]]);
+    for (const id of ["partner_sourced_revenue", "partner_influenced_revenue"]) {
+      const rows = await runNamed(id, "by_partner_type", ...JUNE);
+      for (const type of types) expect(rows[type], `${id} ${type}`).toBe(type === "reseller" ? 13200 : 0);
+    }
+
+    // 13,200 over the two active resellers (p02 and p07). A type with no active partner has no value.
+    const average = await runNamed("average_partner_revenue", "by_partner_type", ...JUNE);
+    expect(average).toEqual({ reseller: 6600, referral: 0, technology: 0, system_integrator: 0, managed_service_provider: 0, other: null });
+  });
+
+  it("the type on a partner deal is the type of its partner", () => {
+    const typeOf = Object.fromEntries(snapshot("partner", END).map((r) => [r.partner_id, r.partner_type]));
+    const deals = T.opportunity.filter((r) => r.partner_id !== null);
+    expect(deals.length).toBeGreaterThan(0);
+    for (const r of deals) expect(r.partner_type, String(r.opportunity_id)).toBe(typeOf[String(r.partner_id)]);
+    expect(T.opportunity.filter((r) => r.partner_id === null && r.partner_type !== null)).toEqual([]);
+  });
+
+  it("Partner Churn Rate by partner type, June and H1: each partner counts in the type held on the first day", async () => {
+    const types = data.ontology!.fields!.find((f) => f.id === "partner_type")!.values!;
+    const expected = (start: string, end: string) => Object.fromEntries(types.map((type) => {
+      const cohort = snapshot("partner", start).filter((r) => r.partner_status === "active" && r.partner_type === type).map((r) => r.partner_id);
+      const left = snapshot("partner", end).filter((r) => cohort.includes(r.partner_id) && between(r.partner_churn_date, start, end)).length;
+      return [type, cohort.length ? left / cohort.length : null];
+    }));
+    // p09, a system integrator, leaves on 2026-06-15; p04 is the other one active on 2026-06-01.
+    const june = await runNamed("partner_churn_rate", "by_partner_type", ...JUNE);
+    expect(june).toEqual({ reseller: 0, referral: 0, technology: 0, system_integrator: 0.5, managed_service_provider: 0, other: null });
+    expect(june).toEqual(expected(...JUNE));
+    // H1 adds p10, a managed service provider that left on 2026-03-20.
+    const h1 = await runNamed("partner_churn_rate", "by_partner_type", ...H1);
+    expect(h1).toEqual({ reseller: 0, referral: 0, technology: 0, system_integrator: 0.5, managed_service_provider: 0.5, other: null });
+    expect(h1).toEqual(expected(...H1));
   });
 });
 

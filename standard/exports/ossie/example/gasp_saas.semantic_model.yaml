@@ -614,6 +614,13 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of customer, onboarding, project, partner, employee, prospect
+      - name: brand_awareness
+        expression:
+          sql: brand_awareness
+        description: "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask"
+        datatype: String
+        ai_context:
+          instructions: One of unaided, aided, unaware
     metrics:
       - name: gasp_nps
         expression:

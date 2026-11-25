@@ -141,6 +141,13 @@ datasets:
           sql: updated_within_sla
         description: Updated inside the hygiene SLA
         datatype: Boolean
+      - name: partner_type
+        expression:
+          sql: partner_type
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+        datatype: String
+        ai_context:
+          instructions: One of reseller, referral, technology, system_integrator, managed_service_provider, other
     nonportable_extensions:
       - vendor_name: GASP
         data:

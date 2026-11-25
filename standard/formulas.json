@@ -215,7 +215,10 @@
     "total_active_partners": {
       "formula": "count_distinct(field.partner_id where field.partner_status = 'active')",
       "unit": "count",
-      "notes": "Active means activity in the trailing 12 months: deals registered, deals closed, certification maintained or engagement threshold met. Encoded through the partner status flag."
+      "breakdowns": {
+        "by_partner_type": "field.partner_type"
+      },
+      "notes": "Active means activity in the trailing 12 months: deals registered, deals closed, certification maintained or engagement threshold met. Encoded through the partner status flag. by_partner_type returns one row per partner type (reseller, referral, technology, system integrator, managed service provider, other)."
     },
     "partner_tier_distribution": {
       "formula": "count_distinct(field.partner_id) / total(count_distinct(field.partner_id))",
@@ -232,18 +235,26 @@
       "formula": "count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start over cohort(field.partner_id, period_start)",
       "unit": "percent",
       "breakdowns": {
-        "by_partner_tier": "field.partner_tier"
+        "by_partner_tier": "field.partner_tier",
+        "by_partner_type": "field.partner_type"
       },
-      "notes": "Over the partners active on the first day of the period (cohort method, as Logo Churn Rate): a partner counts when they were active on that day and their churn date falls in the period, so the rate stays between 0 and 1. A partner activated inside the period who leaves in it is outside this rate. by_partner_tier returns one row per partner tier with each partner in the tier held on the first day, which tests whether tier benefits retain partners."
+      "notes": "Over the partners active on the first day of the period (cohort method, as Logo Churn Rate): a partner counts when they were active on that day and their churn date falls in the period, so the rate stays between 0 and 1. A partner activated inside the period who leaves in it is outside this rate. by_partner_tier returns one row per partner tier with each partner in the tier held on the first day, which tests whether tier benefits retain partners. by_partner_type returns one row per partner type with each partner in the type held on the first day."
     },
     "partner_sourced_revenue": {
       "formula": "sum(field.opportunity_amount where field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
-      "unit": "currency"
+      "unit": "currency",
+      "breakdowns": {
+        "by_partner_type": "field.partner_type"
+      },
+      "notes": "by_partner_type returns one row per partner type, read from the type of the partner on the deal."
     },
     "partner_influenced_revenue": {
       "formula": "sum(field.opportunity_amount where field.partner_id is not null and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
       "unit": "currency",
-      "notes": "Includes partner-sourced deals."
+      "breakdowns": {
+        "by_partner_type": "field.partner_type"
+      },
+      "notes": "Includes partner-sourced deals. by_partner_type returns one row per partner type, read from the type of the partner on the deal."
     },
     "channel_revenue_percentage": {
       "formula": "metric.partner_sourced_revenue / metric.revenue_gaap",
@@ -257,7 +268,10 @@
     "average_partner_revenue": {
       "formula": "metric.partner_influenced_revenue / metric.total_active_partners",
       "unit": "currency",
-      "notes": "Total partner revenue is partner_influenced_revenue: closed-won revenue on every deal with a partner attached, partner-sourced deals included."
+      "breakdowns": {
+        "by_partner_type": "field.partner_type"
+      },
+      "notes": "Total partner revenue is partner_influenced_revenue: closed-won revenue on every deal with a partner attached, partner-sourced deals included. by_partner_type returns one row per partner type: the closed-won revenue on deals with a partner of the type over the active partners of the type, so the reseller row is revenue per reseller."
     },
     "partner_deal_registration_volume": {
       "formula": "count_distinct(field.registration_id where in_period(field.registration_date))",
@@ -320,19 +334,19 @@
       "unit": "percent"
     },
     "resellers": {
-      "notComputable": "A partner-type grouping that applies existing metrics per type (key metric revenue per reseller), not a single formula."
+      "notComputable": "A partner type: the reseller value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, revenue per reseller, is the reseller row of Average Partner Revenue."
     },
     "referral_partners": {
-      "notComputable": "A partner-type grouping that applies existing metrics per type (key metric referrals per partner), not a single formula."
+      "notComputable": "A partner type: the referral value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, referrals per partner, is read from the partner system and has no formula in the standard."
     },
     "technology_partners_integrations": {
-      "notComputable": "A partner-type grouping that applies existing metrics per type (key metric customers using integration), not a single formula."
+      "notComputable": "A partner type: the technology value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, customers using the integration, is read from product usage and has no formula in the standard."
     },
     "system_integrators_sis": {
-      "notComputable": "A partner-type grouping that applies existing metrics per type (key metric implementations delivered), not a single formula."
+      "notComputable": "A partner type: the system_integrator value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, implementations delivered, is read from the partner system and has no formula in the standard."
     },
     "managed_service_providers_msps": {
-      "notComputable": "A partner-type grouping that applies existing metrics per type (key metric seats under management), not a single formula."
+      "notComputable": "A partner type: the managed_service_provider value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, seats under management, is read from the partner system and has no formula in the standard."
     },
     "marketplace_revenue": {
       "formula": "sum(field.opportunity_amount where field.channel = 'marketplace' and field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
@@ -418,7 +432,13 @@
       "notes": "Per rep, from start date to consistently achieving quota. Convert days to months."
     },
     "activity_metrics_diagnostic": {
-      "notComputable": "A diagnostic family of activity counts (calls, emails, meetings, demos) with no single formula."
+      "formula": "count(field.sales_activity_id)",
+      "unit": "count",
+      "breakdowns": {
+        "by_activity_type": "field.sales_activity_type",
+        "by_rep": "field.rep_id"
+      },
+      "notes": "Sales activities logged in the period. by_activity_type returns one row for each of calls, emails, meetings booked and demos delivered, which is how the entry is read; by_rep returns one row per rep. A meeting counts as booked on the day the invitation goes out and a later cancellation leaves the count, so read demos delivered beside it. Divide a row by the working days of the period for a per-day rate."
     },
     "services_revenue": {
       "formula": "sum(field.revenue where field.revenue_type = 'services')",
@@ -1258,7 +1278,9 @@
       "unit": "percent"
     },
     "onboarding_engagement_score": {
-      "notComputable": "Weighted average of engagement indicators (attendance, responsiveness, task completion, logins) whose weights the markdown does not define."
+      "formula": "avg(field.onboarding_engagement_score where field.onboarding_completion_date is null) at period_end",
+      "unit": "score",
+      "notes": "The average engagement score (0 to 100) across the onboardings in progress at period end. The score is built upstream from session attendance, response time, task completion and login frequency with weights the team sets; onboarding.md lists the components. A period that ends with no onboarding in progress has no value."
     },
     "session_attendance_rate": {
       "formula": "count(field.onboarding_session_date where field.attendees > 0) / count(field.onboarding_session_date)",
@@ -1280,7 +1302,9 @@
       "notes": "Reported as a score from -100 to 100, so the x 100 is part of the definition."
     },
     "implementation_quality_score": {
-      "notComputable": "Assessment built from qualitative components (configuration accuracy, data quality, integration health, user setup) with no stated formula or weights."
+      "formula": "avg(field.implementation_quality_score where in_period(field.onboarding_completion_date))",
+      "unit": "score",
+      "notes": "The average quality score (0 to 100) across the onboardings completed in the period, each read as assessed at completion. The score is assessed upstream against configuration accuracy, migrated data quality, integration health and user setup; onboarding.md lists the components."
     },
     "onboardings_per_resource": {
       "formula": "count_distinct(field.onboarding_id where in_period(field.onboarding_completion_date)) / count_distinct(field.resource_id where in_period(field.onboarding_completion_date))",
@@ -1528,14 +1552,46 @@
       "unit": "ratio",
       "notes": "Expressed as a ratio such as 3x."
     },
-    "email_metrics": {
-      "notComputable": "A family of six email rates (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single headline metric. The ontology has no email send dataset or fields for sends, deliveries, opens, clicks, unsubscribes, bounces or complaints, so none of the six is encoded."
+    "email_open_rate": {
+      "formula": "sum(field.email_unique_opens) / sum(field.emails_delivered)",
+      "unit": "percent",
+      "notes": "Unique opens over delivered emails for the sends of the period, each recipient counted once per send. Delivered is sent less bounced. Mail clients that load images ahead of the reader record an open nobody made, so the rate reads high and serves as a direction."
+    },
+    "email_click_rate": {
+      "formula": "sum(field.email_unique_clicks) / sum(field.emails_delivered)",
+      "unit": "percent",
+      "notes": "Unique clicks over delivered emails: the delivered emails with at least one link clicked. Some email tools give the name click-through rate to clicks over opens, which GASP reports as Email Click-to-Open Rate."
+    },
+    "email_click_to_open_rate": {
+      "formula": "sum(field.email_unique_clicks) / sum(field.email_unique_opens)",
+      "unit": "percent",
+      "notes": "Unique clicks over unique opens. It inherits the inflation of the open count, so it reads low where mail clients preload images."
+    },
+    "email_unsubscribe_rate": {
+      "formula": "sum(field.email_unsubscribes) / sum(field.emails_delivered)",
+      "unit": "percent",
+      "notes": "Recipients who unsubscribed over delivered emails."
+    },
+    "email_bounce_rate": {
+      "formula": "sum(field.email_bounces) / sum(field.emails_sent)",
+      "unit": "percent",
+      "notes": "Bounced emails over emails sent, hard and soft bounces together. The denominator is sent because a bounced email was never delivered."
+    },
+    "email_spam_complaint_rate": {
+      "formula": "sum(field.email_spam_complaints) / sum(field.emails_delivered)",
+      "unit": "percent",
+      "notes": "Recipients who marked the email as spam over delivered emails."
     },
     "content_performance": {
       "notComputable": "A family of content measures (downloads, engagement rate, content-to-MQL) with no single metric."
     },
     "brand_awareness": {
-      "notComputable": "Survey-based or search volume proxy with no defined formula."
+      "formula": "count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness in ('unaided', 'aided')) / count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness is not null)",
+      "unit": "percent",
+      "variants": {
+        "unaided": "count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness = 'unaided') / count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness is not null)"
+      },
+      "notes": "Aided awareness, the survey form: respondents of a prospect or market survey who named the brand without a prompt or recognised it in a list, over the respondents asked the awareness question. The unaided variant counts the respondents who named the brand without a prompt, over the same respondents. A respondent counts once, so the two never add up to a total above 1. Share of search (brand searches over searches for every brand in the category) is a proxy read from a search tool and stays outside the formula."
     },
     "share_of_voice": {
       "formula": "sum(field.mention_count where field.is_competitor = false) / sum(field.mention_count)",

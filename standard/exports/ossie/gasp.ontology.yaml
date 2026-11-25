@@ -1145,6 +1145,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Opportunity} on {Date} has {UpdatedWithinSla}"
+      - name: partner_type
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+        roles:
+          - concept: Date
+          - concept: PartnerType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Opportunity} on {Date} has {PartnerType}"
       - name: converts_to
         description: A won opportunity creates a new customer (closed-won). This is the SQL→Customer transition.
         roles:
@@ -1516,6 +1524,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Partner} on {Date} has {TrainingCompleted}"
+      - name: partner_type
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+        roles:
+          - concept: Date
+          - concept: PartnerType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Partner} on {Date} has {PartnerType}"
       - name: sources
         description: A channel partner sources or influences deal opportunities. Partner-sourced vs. direct pipeline is a key attribution metric.
         roles:
@@ -2210,6 +2226,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{SurveyResponse} has {SurveyType}"
+      - name: brand_awareness
+        description: "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask"
+        roles:
+          - concept: BrandAwareness
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {BrandAwareness}"
   - concept: KbArticle
     type: EntityType
     description: "Knowledge base article (fact dataset `kb_article`). A self-service help article. Ticket deflection and self-service rates are measured at this level. Also known as: Help Article, KB Article."
@@ -2916,6 +2939,22 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Onboarding} on {Date} has target date {Date:target_date}"
+      - name: onboarding_engagement_score
+        description: Engagement score of the onboarding on a 0 to 100 scale, built upstream from session attendance, response time, task completion and login frequency
+        roles:
+          - concept: Date
+          - concept: OnboardingEngagementScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has {OnboardingEngagementScore}"
+      - name: implementation_quality_score
+        description: Implementation quality score on a 0 to 100 scale, assessed at completion against configuration accuracy, migrated data quality, integration health and user setup
+        roles:
+          - concept: Date
+          - concept: ImplementationQualityScore
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Onboarding} on {Date} has {ImplementationQualityScore}"
   - concept: OnboardingMilestone
     type: EntityType
     description: Onboarding milestone (event dataset `onboarding_milestone`).
@@ -3595,6 +3634,111 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{CreditEvent} has expires on {Date}"
+  - concept: EmailCampaign
+    type: EntityType
+    description: Email campaign results (fact dataset `email_campaign`).
+    iri: dataset:email_campaign
+    identify_by:
+      - campaign_id
+    relationships:
+      - name: campaign_id
+        description: Campaign identifier
+        roles:
+          - concept: CampaignId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{EmailCampaign} is identified by {CampaignId}"
+      - name: emails_sent
+        description: Emails sent in the period, one per recipient address
+        roles:
+          - concept: Date
+          - concept: EmailsSent
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailsSent}"
+      - name: emails_delivered
+        description: "Emails the receiving server accepted in the period: sent less bounced"
+        roles:
+          - concept: Date
+          - concept: EmailsDelivered
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailsDelivered}"
+      - name: email_unique_opens
+        description: Delivered emails opened at least once, each recipient counted once per send
+        roles:
+          - concept: Date
+          - concept: EmailUniqueOpens
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailUniqueOpens}"
+      - name: email_unique_clicks
+        description: Delivered emails with at least one link clicked, each recipient counted once per send
+        roles:
+          - concept: Date
+          - concept: EmailUniqueClicks
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailUniqueClicks}"
+      - name: email_unsubscribes
+        description: Recipients who unsubscribed from an email sent in the period
+        roles:
+          - concept: Date
+          - concept: EmailUnsubscribes
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailUnsubscribes}"
+      - name: email_bounces
+        description: Emails the receiving server rejected, hard and soft bounces together
+        roles:
+          - concept: Date
+          - concept: EmailBounces
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailBounces}"
+      - name: email_spam_complaints
+        description: Recipients who marked an email sent in the period as spam
+        roles:
+          - concept: Date
+          - concept: EmailSpamComplaints
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{EmailCampaign} on {Date} has {EmailSpamComplaints}"
+  - concept: SalesActivity
+    type: EntityType
+    description: Sales activity (event dataset `sales_activity`).
+    iri: dataset:sales_activity
+    identify_by:
+      - sales_activity_id
+    relationships:
+      - name: rep_id
+        description: Sales rep identifier
+        roles:
+          - concept: SalesRep
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesActivity} belongs to {SalesRep}"
+      - name: sales_activity_id
+        description: Sales activity identifier
+        roles:
+          - concept: SalesActivityId
+        multiplicity: OneToOne
+        verbalizes:
+          - "{SalesActivity} is identified by {SalesActivityId}"
+      - name: sales_activity_date
+        description: Date the call was made, the email sent, the meeting booked or the demonstration given
+        roles:
+          - concept: Date
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesActivity} has sales activity date {Date}"
+      - name: sales_activity_type
+        description: "Kind of sales activity: an outbound call made, an outbound email sent to a prospect, a discovery or demonstration meeting booked (counted on the day the invitation goes out) or a product demonstration given"
+        roles:
+          - concept: SalesActivityType
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SalesActivity} has {SalesActivityType}"
   - concept: Revenue
     type: EntityType
     description: Revenue (GAAP). Recognized revenue under accrual accounting. The financial outcome of delivering on subscription obligations.
@@ -4795,3 +4939,74 @@ ontology:
     description: "The customer's prepaid balance after the event. With credit_balance_before it gives the ledger its identity check: before + amount = after"
     extends:
       - Decimal
+  - concept: EmailsSent
+    type: ValueType
+    description: Emails sent in the period, one per recipient address
+    extends:
+      - Integer
+  - concept: EmailsDelivered
+    type: ValueType
+    description: "Emails the receiving server accepted in the period: sent less bounced"
+    extends:
+      - Integer
+  - concept: EmailUniqueOpens
+    type: ValueType
+    description: Delivered emails opened at least once, each recipient counted once per send
+    extends:
+      - Integer
+  - concept: EmailUniqueClicks
+    type: ValueType
+    description: Delivered emails with at least one link clicked, each recipient counted once per send
+    extends:
+      - Integer
+  - concept: EmailUnsubscribes
+    type: ValueType
+    description: Recipients who unsubscribed from an email sent in the period
+    extends:
+      - Integer
+  - concept: EmailBounces
+    type: ValueType
+    description: Emails the receiving server rejected, hard and soft bounces together
+    extends:
+      - Integer
+  - concept: EmailSpamComplaints
+    type: ValueType
+    description: Recipients who marked an email sent in the period as spam
+    extends:
+      - Integer
+  - concept: SalesActivityId
+    type: ValueType
+    description: Sales activity identifier
+    extends:
+      - String
+  - concept: SalesActivityType
+    type: ValueType
+    description: "Kind of sales activity: an outbound call made, an outbound email sent to a prospect, a discovery or demonstration meeting booked (counted on the day the invitation goes out) or a product demonstration given"
+    extends:
+      - String
+    requires:
+      - SalesActivityType == 'call' OR SalesActivityType == 'email' OR SalesActivityType == 'meeting_booked' OR SalesActivityType == 'demo_delivered'
+  - concept: OnboardingEngagementScore
+    type: ValueType
+    description: Engagement score of the onboarding on a 0 to 100 scale, built upstream from session attendance, response time, task completion and login frequency
+    extends:
+      - Decimal
+  - concept: ImplementationQualityScore
+    type: ValueType
+    description: Implementation quality score on a 0 to 100 scale, assessed at completion against configuration accuracy, migrated data quality, integration health and user setup
+    extends:
+      - Decimal
+  - concept: BrandAwareness
+    type: ValueType
+    description: "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask"
+    extends:
+      - String
+    requires:
+      - BrandAwareness == 'unaided' OR BrandAwareness == 'aided' OR BrandAwareness == 'unaware'
+  - concept: PartnerType
+    type: ValueType
+    description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+    extends:
+      - String
+    requires:
+      - PartnerType == 'reseller' OR PartnerType == 'referral' OR PartnerType == 'technology' OR PartnerType == 'system_integrator' OR PartnerType == 'managed_service_provider' OR PartnerType == 'other'

@@ -64,7 +64,9 @@
     "product": "gasp_products",
     "license": "gasp_licenses",
     "lifecycle_event": "gasp_lifecycle_events",
-    "trial": "gasp_trials"
+    "trial": "gasp_trials",
+    "email_campaign": "gasp_email_campaigns",
+    "sales_activity": "gasp_sales_activities"
   },
   "mappings": [
     {
@@ -169,7 +171,13 @@
     },
     {
       "gaspField": "campaign_id",
+      "dataset": "campaign",
       "warehouseRef": "gasp_campaigns.campaign_id"
+    },
+    {
+      "gaspField": "campaign_id",
+      "dataset": "email_campaign",
+      "warehouseRef": "gasp_email_campaigns.campaign_id"
     },
     {
       "gaspField": "capital_expenditures",
@@ -1203,6 +1211,11 @@
       "warehouseRef": "gasp_usage_records.period_start"
     },
     {
+      "gaspField": "period_start",
+      "dataset": "email_campaign",
+      "warehouseRef": "gasp_email_campaigns.period_start"
+    },
+    {
       "gaspField": "period_end",
       "warehouseRef": "gasp_usage_records.period_end"
     },
@@ -1409,6 +1422,11 @@
       "gaspField": "rep_id",
       "dataset": "sales_rep",
       "warehouseRef": "gasp_sales_reps.rep_id"
+    },
+    {
+      "gaspField": "rep_id",
+      "dataset": "sales_activity",
+      "warehouseRef": "gasp_sales_activities.rep_id"
     },
     {
       "gaspField": "request_count",
@@ -1923,6 +1941,68 @@
     {
       "gaspField": "expires_on",
       "warehouseRef": "gasp_credit_events.expires_on"
+    },
+    {
+      "gaspField": "emails_sent",
+      "warehouseRef": "gasp_email_campaigns.emails_sent"
+    },
+    {
+      "gaspField": "emails_delivered",
+      "warehouseRef": "gasp_email_campaigns.emails_delivered"
+    },
+    {
+      "gaspField": "email_unique_opens",
+      "warehouseRef": "gasp_email_campaigns.email_unique_opens"
+    },
+    {
+      "gaspField": "email_unique_clicks",
+      "warehouseRef": "gasp_email_campaigns.email_unique_clicks"
+    },
+    {
+      "gaspField": "email_unsubscribes",
+      "warehouseRef": "gasp_email_campaigns.email_unsubscribes"
+    },
+    {
+      "gaspField": "email_bounces",
+      "warehouseRef": "gasp_email_campaigns.email_bounces"
+    },
+    {
+      "gaspField": "email_spam_complaints",
+      "warehouseRef": "gasp_email_campaigns.email_spam_complaints"
+    },
+    {
+      "gaspField": "sales_activity_id",
+      "warehouseRef": "gasp_sales_activities.sales_activity_id"
+    },
+    {
+      "gaspField": "sales_activity_date",
+      "warehouseRef": "gasp_sales_activities.sales_activity_date"
+    },
+    {
+      "gaspField": "sales_activity_type",
+      "warehouseRef": "gasp_sales_activities.sales_activity_type"
+    },
+    {
+      "gaspField": "onboarding_engagement_score",
+      "warehouseRef": "gasp_onboardings.onboarding_engagement_score"
+    },
+    {
+      "gaspField": "implementation_quality_score",
+      "warehouseRef": "gasp_onboardings.implementation_quality_score"
+    },
+    {
+      "gaspField": "brand_awareness",
+      "warehouseRef": "gasp_survey_responses.brand_awareness"
+    },
+    {
+      "gaspField": "partner_type",
+      "dataset": "partner",
+      "warehouseRef": "gasp_partners.partner_type"
+    },
+    {
+      "gaspField": "partner_type",
+      "dataset": "opportunity",
+      "warehouseRef": "gasp_opportunities.partner_type"
     }
   ]
 }

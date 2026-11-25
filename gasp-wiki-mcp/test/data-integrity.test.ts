@@ -11,8 +11,8 @@ beforeAll(() => {
 });
 
 describe("data integrity", () => {
-  it("loads 314 metrics", () => {
-    expect(data.metrics).toHaveLength(314);
+  it("loads 319 metrics", () => {
+    expect(data.metrics).toHaveLength(319);
   });
 
   it("loads 121 definitions (108 SaaS domain + 13 GASP framework)", () => {

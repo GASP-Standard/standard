@@ -3,8 +3,8 @@
 // Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive`
 // ═══════════════════════════════════════════════════════════════
 //
-// Nodes: 70 Metrics, 28 Entities, 7 Concepts, 54 Datasets, 280 Fields, 22 Source Categories
-// Edges: 94 metric relationships, 89 MEASURES, 30 entity/concept relationships, 418 BELONGS_TO, 372 SOURCED_FROM
+// Nodes: 70 Metrics, 28 Entities, 7 Concepts, 56 Datasets, 294 Fields, 22 Source Categories
+// Edges: 94 metric relationships, 89 MEASURES, 30 entity/concept relationships, 436 BELONGS_TO, 387 SOURCED_FROM
 //
 // Relationship types (metric signal): DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES
 // Relationship types (entity): OWNS, GRANTS, PARENT_OF, PRICED_BY, CONVERTS_TO, SUBMITS, ENGAGES_VIA, MANAGES, SOURCES, SERVES, REPRESENTED_BY, GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS, BELONGS_TO
@@ -151,7 +151,7 @@ CREATE (:SourceCategory {id: 'partner_management', name: 'Partner Management', d
 CREATE (:SourceCategory {id: 'lms', name: 'LMS', description: 'Learning management: training courses, certifications, completion tracking'});
 CREATE (:SourceCategory {id: 'derived', name: 'Derived', description: 'Calculated from other metrics: no direct data source required'});
 
-// ─── Dataset Nodes (54) ─────────────────────────────
+// ─── Dataset Nodes (56) ─────────────────────────────
 CREATE (:Dataset {id: 'revenue_event', name: 'Revenue event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Revenue_Event'});
 CREATE (:Dataset {id: 'cost_event', name: 'Cost event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Cost_Event'});
 CREATE (:Dataset {id: 'contract_event', name: 'Contract event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Contract_Event'});
@@ -206,8 +206,10 @@ CREATE (:Dataset {id: 'partner_activity', name: 'Partner activity', kind: 'event
 CREATE (:Dataset {id: 'deal_registration', name: 'Partner deal registration', kind: 'snapshot', dateField: 'snapshot_date', keyField: 'registration_id'});
 CREATE (:Dataset {id: 'forecast', name: 'Revenue forecast', kind: 'fact', dateField: 'period_start', keyField: 'period_start'});
 CREATE (:Dataset {id: 'credit_event', name: 'Credit event', kind: 'event', dateField: 'event_date', keyField: 'event_id', cel: 'Credit_Event'});
+CREATE (:Dataset {id: 'email_campaign', name: 'Email campaign results', kind: 'fact', dateField: 'period_start', keyField: 'campaign_id'});
+CREATE (:Dataset {id: 'sales_activity', name: 'Sales activity', kind: 'event', dateField: 'sales_activity_date', keyField: 'sales_activity_id'});
 
-// ─── Field Nodes (280) ─────────────────────────────
+// ─── Field Nodes (294) ─────────────────────────────
 CREATE (:Field {id: 'accounts_receivable', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'acknowledged_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'acquisition_date', type: 'date', metricCount: 1});
@@ -349,7 +351,7 @@ CREATE (:Field {id: 'new_mrr', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'new_state', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'nps_score', type: 'integer', metricCount: 6});
 CREATE (:Field {id: 'offer_status', type: 'enum', metricCount: 1, values: 'extended|accepted|declined|withdrawn'});
-CREATE (:Field {id: 'onboarding_completion_date', type: 'date', metricCount: 8});
+CREATE (:Field {id: 'onboarding_completion_date', type: 'date', metricCount: 10});
 CREATE (:Field {id: 'onboarding_id', type: 'string', metricCount: 6});
 CREATE (:Field {id: 'onboarding_milestone', type: 'enum', metricCount: 3, values: 'kickoff|first_value|go_live|full_adoption'});
 CREATE (:Field {id: 'onboarding_session_date', type: 'date', metricCount: 1});
@@ -375,7 +377,7 @@ CREATE (:Field {id: 'payment_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'payment_method', type: 'enum', metricCount: 1, values: 'credit_card|ach|wire|check|other'});
 CREATE (:Field {id: 'payment_status', type: 'enum', metricCount: 3, values: 'paid|unpaid|partial|written_off'});
 CREATE (:Field {id: 'performance_rating', type: 'decimal', metricCount: 1});
-CREATE (:Field {id: 'period_start', type: 'date', metricCount: 51});
+CREATE (:Field {id: 'period_start', type: 'date', metricCount: 57});
 CREATE (:Field {id: 'period_end', type: 'date', metricCount: 0});
 CREATE (:Field {id: 'committed_amount', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'usage_amount', type: 'decimal', metricCount: 0});
@@ -413,7 +415,7 @@ CREATE (:Field {id: 'renewal_notified_on_time', type: 'boolean', metricCount: 1}
 CREATE (:Field {id: 'renewal_trigger_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'renewed', type: 'boolean', metricCount: 3});
 CREATE (:Field {id: 'reopened', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'rep_id', type: 'string', metricCount: 1});
+CREATE (:Field {id: 'rep_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'request_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'required_field_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'required_fields_complete', type: 'boolean', metricCount: 1});
@@ -424,7 +426,7 @@ CREATE (:Field {id: 'resolution_due_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'resolved_at', type: 'timestamp', metricCount: 3});
 CREATE (:Field {id: 'resolved_first_contact', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'resource_id', type: 'string', metricCount: 1});
-CREATE (:Field {id: 'response_id', type: 'string', metricCount: 1});
+CREATE (:Field {id: 'response_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'response_time_ms', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'revenue', type: 'decimal', metricCount: 23});
 CREATE (:Field {id: 'revenue_type', type: 'enum', metricCount: 8, values: 'subscription|services|usage|other'});
@@ -442,7 +444,7 @@ CREATE (:Field {id: 'segment', type: 'string', metricCount: 21});
 CREATE (:Field {id: 'severity', type: 'enum', metricCount: 2, values: 'sev1|sev2|sev3|sev4'});
 CREATE (:Field {id: 'signup_date', type: 'date', metricCount: 4});
 CREATE (:Field {id: 'sla_met', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'snapshot_date', type: 'date', metricCount: 174});
+CREATE (:Field {id: 'snapshot_date', type: 'date', metricCount: 176});
 CREATE (:Field {id: 'sql_date', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'stage_accurate', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'stage_probability', type: 'decimal', metricCount: 1});
@@ -454,8 +456,8 @@ CREATE (:Field {id: 'steps_total', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'subscription_id', type: 'string', metricCount: 3});
 CREATE (:Field {id: 'subscription_status', type: 'enum', metricCount: 19, values: 'active|cancelled|expired|paused'});
 CREATE (:Field {id: 'survey_completed', type: 'boolean', metricCount: 1});
-CREATE (:Field {id: 'survey_date', type: 'date', metricCount: 12});
-CREATE (:Field {id: 'survey_type', type: 'enum', metricCount: 11, values: 'customer|onboarding|project|partner|employee|prospect'});
+CREATE (:Field {id: 'survey_date', type: 'date', metricCount: 13});
+CREATE (:Field {id: 'survey_type', type: 'enum', metricCount: 12, values: 'customer|onboarding|project|partner|employee|prospect'});
 CREATE (:Field {id: 'sync_status', type: 'enum', metricCount: 1, values: 'matched|mismatched|missing'});
 CREATE (:Field {id: 'target_date', type: 'date', metricCount: 3});
 CREATE (:Field {id: 'tcv', type: 'decimal', metricCount: 1});
@@ -488,6 +490,20 @@ CREATE (:Field {id: 'consumption_basis', type: 'enum', metricCount: 4, values: '
 CREATE (:Field {id: 'credit_balance_before', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'credit_balance_after', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'expires_on', type: 'date', metricCount: 0});
+CREATE (:Field {id: 'emails_sent', type: 'integer', metricCount: 1});
+CREATE (:Field {id: 'emails_delivered', type: 'integer', metricCount: 4});
+CREATE (:Field {id: 'email_unique_opens', type: 'integer', metricCount: 2});
+CREATE (:Field {id: 'email_unique_clicks', type: 'integer', metricCount: 2});
+CREATE (:Field {id: 'email_unsubscribes', type: 'integer', metricCount: 1});
+CREATE (:Field {id: 'email_bounces', type: 'integer', metricCount: 1});
+CREATE (:Field {id: 'email_spam_complaints', type: 'integer', metricCount: 1});
+CREATE (:Field {id: 'sales_activity_id', type: 'string', metricCount: 1});
+CREATE (:Field {id: 'sales_activity_date', type: 'date', metricCount: 1});
+CREATE (:Field {id: 'sales_activity_type', type: 'enum', metricCount: 1, values: 'call|email|meeting_booked|demo_delivered'});
+CREATE (:Field {id: 'onboarding_engagement_score', type: 'decimal', metricCount: 1});
+CREATE (:Field {id: 'implementation_quality_score', type: 'decimal', metricCount: 1});
+CREATE (:Field {id: 'brand_awareness', type: 'enum', metricCount: 1, values: 'unaided|aided|unaware'});
+CREATE (:Field {id: 'partner_type', type: 'enum', metricCount: 5, values: 'reseller|referral|technology|system_integrator|managed_service_provider|other'});
 
 // ─── Metric Relationships (94) ──────────────────
 MATCH (a:Metric {id: 'net_new_mrr'}), (b:Metric {id: 'mrr'})
@@ -859,7 +875,7 @@ CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'self_service_rate'}), (e:Entity {id: 'kb_article'})
 CREATE (m)-[:MEASURES]->(e);
 
-// ─── BELONGS_TO Edges (418) ─────────────────────────────
+// ─── BELONGS_TO Edges (436) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (d:Dataset {id: 'balance_sheet'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'acknowledged_at'}), (d:Dataset {id: 'incident'})
@@ -909,6 +925,8 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'billing_trigger_date'}), (d:Dataset {id: 'invoice'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'campaign_id'}), (d:Dataset {id: 'campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'campaign_id'}), (d:Dataset {id: 'email_campaign'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'capital_expenditures'}), (d:Dataset {id: 'financials'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1368,6 +1386,8 @@ MATCH (f:Field {id: 'period_start'}), (d:Dataset {id: 'brand_mention'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'period_start'}), (d:Dataset {id: 'usage_record'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'period_start'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'period_end'}), (d:Dataset {id: 'usage_record'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'committed_amount'}), (d:Dataset {id: 'usage_record'})
@@ -1463,6 +1483,8 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'rep_id'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'rep_id'}), (d:Dataset {id: 'sales_rep'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'rep_id'}), (d:Dataset {id: 'sales_activity'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'request_count'}), (d:Dataset {id: 'service_metrics'})
 CREATE (f)-[:BELONGS_TO]->(d);
@@ -1696,8 +1718,38 @@ MATCH (f:Field {id: 'credit_balance_after'}), (d:Dataset {id: 'credit_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'expires_on'}), (d:Dataset {id: 'credit_event'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'emails_sent'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'emails_delivered'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'email_unique_opens'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'email_unique_clicks'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'email_unsubscribes'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'email_bounces'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'email_spam_complaints'}), (d:Dataset {id: 'email_campaign'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'sales_activity_id'}), (d:Dataset {id: 'sales_activity'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'sales_activity_date'}), (d:Dataset {id: 'sales_activity'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'sales_activity_type'}), (d:Dataset {id: 'sales_activity'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'onboarding_engagement_score'}), (d:Dataset {id: 'onboarding'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'implementation_quality_score'}), (d:Dataset {id: 'onboarding'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'brand_awareness'}), (d:Dataset {id: 'survey_response'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'partner_type'}), (d:Dataset {id: 'partner'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'partner_type'}), (d:Dataset {id: 'opportunity'})
+CREATE (f)-[:BELONGS_TO]->(d);
 
-// ─── SOURCED_FROM Edges (372) ─────────────────────────────
+// ─── SOURCED_FROM Edges (387) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'finance'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'billing'})
@@ -2441,6 +2493,36 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'credit_balance_after'}), (s:SourceCategory {id: 'billing'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'expires_on'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'emails_sent'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'emails_delivered'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'email_unique_opens'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'email_unique_clicks'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'email_unsubscribes'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'email_bounces'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'email_spam_complaints'}), (s:SourceCategory {id: 'marketing_automation'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'sales_activity_id'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'sales_activity_date'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'sales_activity_type'}), (s:SourceCategory {id: 'crm'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'onboarding_engagement_score'}), (s:SourceCategory {id: 'cs_platform'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'implementation_quality_score'}), (s:SourceCategory {id: 'cs_platform'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'brand_awareness'}), (s:SourceCategory {id: 'survey_tool'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'partner_type'}), (s:SourceCategory {id: 'partner_management'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'partner_type'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 
 // ─── Entity Relationships (30) ──────────────

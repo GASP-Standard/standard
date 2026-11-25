@@ -1,16 +1,16 @@
 {
   "description": "How each canonical formula was exported to the Ossie reference model: direct (one portable expression, with its portability rung and constructs), staged (a dataset carrying the compiled SQL: one row per period, or the cohort table's one row per customer per period, marked cohortTable) or notComputable. Written by npm run derive.",
   "counts": {
-    "direct": 193,
-    "staged": 173,
-    "notComputable": 15
+    "direct": 206,
+    "staged": 178,
+    "notComputable": 10
   },
   "stagedReasons": {
-    "cohort": 33,
+    "cohort": 34,
     "lag": 6,
     "at period_start": 13,
     "total": 6,
-    "period bound in filter": 93,
+    "period bound in filter": 97,
     "to_date": 7,
     "period_days": 2,
     "bucket": 1,
@@ -22,22 +22,22 @@
     "description": "Direct entries by the highest rung of the upstream portability ladder (compliance/portability, M0 to M8) whose construct they use, and each construct counted per entry. An entry on a rung may use the constructs of the rungs below it: M4 is a cross-dataset metric, M5 arithmetic over aggregates (metric composition with the expressions inlined), M6 a date scalar. Each GASP aggregate reads one dataset, so a cross-dataset entry combines two aggregates and sits on M5 or above, which leaves M4 at 0. M7 and M8 are window functions, which GASP stages, so both are 0. A filtered aggregate is written FILTER (WHERE ...), the form the expression language requires and M3 carries. Every sum is COALESCE(SUM(...), 0), the null guard construct, so no entry is a bare M0 sum.",
     "rungs": {
       "M0": 0,
-      "M2": 20,
-      "M3": 43,
+      "M2": 23,
+      "M3": 45,
       "M4": 0,
-      "M5": 113,
+      "M5": 121,
       "M6": 17,
       "M7": 0,
       "M8": 0
     },
     "constructs": {
-      "filtered aggregate": 143,
-      "count distinct": 76,
-      "arithmetic over aggregates": 125,
+      "filtered aggregate": 147,
+      "count distinct": 77,
+      "arithmetic over aggregates": 133,
       "cross-dataset": 35,
       "date scalar": 17,
       "percentile": 10,
-      "null guard": 88
+      "null guard": 94
     }
   },
   "metrics": {
@@ -562,6 +562,15 @@
         "count distinct"
       ]
     },
+    "total_active_partners:by_partner_type": {
+      "kind": "direct",
+      "ossieName": "gasp_total_active_partners_by_partner_type",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate",
+        "count distinct"
+      ]
+    },
     "partner_tier_distribution": {
       "kind": "staged",
       "ossieName": "gasp_partner_tier_distribution",
@@ -586,16 +595,34 @@
       "stagedDataset": "gasp_staged_gasp_partner_churn_rate_by_partner_tier",
       "reason": "cohort"
     },
+    "partner_churn_rate:by_partner_type": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_churn_rate_by_partner_type",
+      "stagedDataset": "gasp_staged_gasp_partner_churn_rate_by_partner_type",
+      "reason": "cohort"
+    },
     "partner_sourced_revenue": {
       "kind": "staged",
       "ossieName": "gasp_partner_sourced_revenue",
       "stagedDataset": "gasp_staged_gasp_partner_sourced_revenue",
       "reason": "period bound in filter"
     },
+    "partner_sourced_revenue:by_partner_type": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_sourced_revenue_by_partner_type",
+      "stagedDataset": "gasp_staged_gasp_partner_sourced_revenue_by_partner_type",
+      "reason": "period bound in filter"
+    },
     "partner_influenced_revenue": {
       "kind": "staged",
       "ossieName": "gasp_partner_influenced_revenue",
       "stagedDataset": "gasp_staged_gasp_partner_influenced_revenue",
+      "reason": "period bound in filter"
+    },
+    "partner_influenced_revenue:by_partner_type": {
+      "kind": "staged",
+      "ossieName": "gasp_partner_influenced_revenue_by_partner_type",
+      "stagedDataset": "gasp_staged_gasp_partner_influenced_revenue_by_partner_type",
       "reason": "period bound in filter"
     },
     "channel_revenue_percentage": {
@@ -614,6 +641,12 @@
       "kind": "staged",
       "ossieName": "gasp_average_partner_revenue",
       "stagedDataset": "gasp_staged_gasp_average_partner_revenue",
+      "reason": "period bound in filter"
+    },
+    "average_partner_revenue:by_partner_type": {
+      "kind": "staged",
+      "ossieName": "gasp_average_partner_revenue_by_partner_type",
+      "stagedDataset": "gasp_staged_gasp_average_partner_revenue_by_partner_type",
       "reason": "period bound in filter"
     },
     "partner_deal_registration_volume": {
@@ -713,23 +746,23 @@
     },
     "resellers": {
       "kind": "notComputable",
-      "reason": "A partner-type grouping that applies existing metrics per type (key metric revenue per reseller), not a single formula."
+      "reason": "A partner type: the reseller value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, revenue per reseller, is the reseller row of Average Partner Revenue."
     },
     "referral_partners": {
       "kind": "notComputable",
-      "reason": "A partner-type grouping that applies existing metrics per type (key metric referrals per partner), not a single formula."
+      "reason": "A partner type: the referral value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, referrals per partner, is read from the partner system and has no formula in the standard."
     },
     "technology_partners_integrations": {
       "kind": "notComputable",
-      "reason": "A partner-type grouping that applies existing metrics per type (key metric customers using integration), not a single formula."
+      "reason": "A partner type: the technology value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, customers using the integration, is read from product usage and has no formula in the standard."
     },
     "system_integrators_sis": {
       "kind": "notComputable",
-      "reason": "A partner-type grouping that applies existing metrics per type (key metric implementations delivered), not a single formula."
+      "reason": "A partner type: the system_integrator value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, implementations delivered, is read from the partner system and has no formula in the standard."
     },
     "managed_service_providers_msps": {
       "kind": "notComputable",
-      "reason": "A partner-type grouping that applies existing metrics per type (key metric seats under management), not a single formula."
+      "reason": "A partner type: the managed_service_provider value of the partner_type field. Read it through the by_partner_type breakdown of Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate. Its key metric, seats under management, is read from the partner system and has no formula in the standard."
     },
     "marketplace_revenue": {
       "kind": "staged",
@@ -868,8 +901,22 @@
       ]
     },
     "activity_metrics_diagnostic": {
-      "kind": "notComputable",
-      "reason": "A diagnostic family of activity counts (calls, emails, meetings, demos) with no single formula."
+      "kind": "direct",
+      "ossieName": "gasp_activity_metrics_diagnostic",
+      "rung": "M2",
+      "constructs": []
+    },
+    "activity_metrics_diagnostic:by_activity_type": {
+      "kind": "direct",
+      "ossieName": "gasp_activity_metrics_diagnostic_by_activity_type",
+      "rung": "M2",
+      "constructs": []
+    },
+    "activity_metrics_diagnostic:by_rep": {
+      "kind": "direct",
+      "ossieName": "gasp_activity_metrics_diagnostic_by_rep",
+      "rung": "M2",
+      "constructs": []
     },
     "services_revenue": {
       "kind": "direct",
@@ -2370,8 +2417,12 @@
       "reason": "period bound in filter"
     },
     "onboarding_engagement_score": {
-      "kind": "notComputable",
-      "reason": "Weighted average of engagement indicators (attendance, responsiveness, task completion, logins) whose weights the markdown does not define."
+      "kind": "direct",
+      "ossieName": "gasp_onboarding_engagement_score",
+      "rung": "M3",
+      "constructs": [
+        "filtered aggregate"
+      ]
     },
     "session_attendance_rate": {
       "kind": "direct",
@@ -2410,8 +2461,10 @@
       ]
     },
     "implementation_quality_score": {
-      "kind": "notComputable",
-      "reason": "Assessment built from qualitative components (configuration accuracy, data quality, integration health, user setup) with no stated formula or weights."
+      "kind": "staged",
+      "ossieName": "gasp_implementation_quality_score",
+      "stagedDataset": "gasp_staged_gasp_implementation_quality_score",
+      "reason": "period bound in filter"
     },
     "onboardings_per_resource": {
       "kind": "staged",
@@ -2818,17 +2871,81 @@
       "stagedDataset": "gasp_staged_gasp_paid_media_efficiency_roas",
       "reason": "period bound in filter"
     },
-    "email_metrics": {
-      "kind": "notComputable",
-      "reason": "A family of six email rates (open, click, click-to-open, unsubscribe, bounce, spam complaint) with no single headline metric. The ontology has no email send dataset or fields for sends, deliveries, opens, clicks, unsubscribes, bounces or complaints, so none of the six is encoded."
+    "email_open_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_email_open_rate",
+      "rung": "M5",
+      "constructs": [
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "email_click_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_email_click_rate",
+      "rung": "M5",
+      "constructs": [
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "email_click_to_open_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_email_click_to_open_rate",
+      "rung": "M5",
+      "constructs": [
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "email_unsubscribe_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_email_unsubscribe_rate",
+      "rung": "M5",
+      "constructs": [
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "email_bounce_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_email_bounce_rate",
+      "rung": "M5",
+      "constructs": [
+        "arithmetic over aggregates",
+        "null guard"
+      ]
+    },
+    "email_spam_complaint_rate": {
+      "kind": "direct",
+      "ossieName": "gasp_email_spam_complaint_rate",
+      "rung": "M5",
+      "constructs": [
+        "arithmetic over aggregates",
+        "null guard"
+      ]
     },
     "content_performance": {
       "kind": "notComputable",
       "reason": "A family of content measures (downloads, engagement rate, content-to-MQL) with no single metric."
     },
     "brand_awareness": {
-      "kind": "notComputable",
-      "reason": "Survey-based or search volume proxy with no defined formula."
+      "kind": "direct",
+      "ossieName": "gasp_brand_awareness",
+      "rung": "M5",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
+    },
+    "brand_awareness:unaided": {
+      "kind": "direct",
+      "ossieName": "gasp_brand_awareness_unaided",
+      "rung": "M5",
+      "constructs": [
+        "filtered aggregate",
+        "arithmetic over aggregates"
+      ]
     },
     "share_of_voice": {
       "kind": "direct",

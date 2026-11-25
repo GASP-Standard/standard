@@ -1534,6 +1534,13 @@ datasets:
           sql: updated_within_sla
         description: Updated inside the hygiene SLA
         datatype: Boolean
+      - name: partner_type
+        expression:
+          sql: partner_type
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+        datatype: String
+        ai_context:
+          instructions: One of reseller, referral, technology, system_integrator, managed_service_provider, other
     metrics:
       - name: gasp_pipeline_value
         expression:
@@ -2024,6 +2031,13 @@ datasets:
           sql: training_completed
         description: Required training completed
         datatype: Boolean
+      - name: partner_type
+        expression:
+          sql: partner_type
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+        datatype: String
+        ai_context:
+          instructions: One of reseller, referral, technology, system_integrator, managed_service_provider, other
     metrics:
       - name: gasp_total_active_partners
         expression:
@@ -2039,6 +2053,22 @@ datasets:
               gasp_version: "1"
               unit: count
               formula: count_distinct(field.partner_id where field.partner_status = 'active')
+      - name: gasp_total_active_partners_by_partner_type
+        expression:
+          sql: COUNT(DISTINCT partner_id) FILTER (WHERE partner_status = 'active')
+        description: Total Active Partners, by_partner_type breakdown. Number of partners actively engaged in the program.
+        datatype: Integer
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/total-active-partners. Broken down by partner_type: report one value per partner_type by grouping on the partner_type field of each dataset the expression reads."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: total_active_partners
+              gasp_version: "1"
+              variant: by_partner_type
+              unit: count
+              formula: count_distinct(field.partner_id where field.partner_status = 'active')
+              gasp_breakdown: partner_type
       - name: gasp_certification_rate
         expression:
           sql: (CAST(COUNT(DISTINCT partner_id) FILTER (WHERE certification_status = 'certified') AS DECIMAL) / NULLIF((COUNT(DISTINCT partner_id) FILTER (WHERE partner_status = 'active')), 0))
@@ -2992,6 +3022,13 @@ datasets:
         datatype: String
         ai_context:
           instructions: One of customer, onboarding, project, partner, employee, prospect
+      - name: brand_awareness
+        expression:
+          sql: brand_awareness
+        description: "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask"
+        datatype: String
+        ai_context:
+          instructions: One of unaided, aided, unaware
     metrics:
       - name: gasp_nps
         expression:
@@ -3170,6 +3207,35 @@ datasets:
               gasp_version: "1"
               unit: percent
               formula: count(field.response_id where field.survey_type = 'employee' and field.survey_completed = true) / count(field.response_id where field.survey_type = 'employee')
+      - name: gasp_brand_awareness
+        expression:
+          sql: (CAST(COUNT(response_id) FILTER (WHERE (survey_type = 'prospect' AND brand_awareness IN ('unaided', 'aided'))) AS DECIMAL) / NULLIF(COUNT(response_id) FILTER (WHERE (survey_type = 'prospect' AND brand_awareness IS NOT NULL)), 0))
+        description: Brand Awareness. The percentage of surveyed people in the target market who know the brand.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/brand-awareness."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: brand_awareness
+              gasp_version: "1"
+              unit: percent
+              formula: count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness in ('unaided', 'aided')) / count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness is not null)
+      - name: gasp_brand_awareness_unaided
+        expression:
+          sql: (CAST(COUNT(response_id) FILTER (WHERE (survey_type = 'prospect' AND brand_awareness = 'unaided')) AS DECIMAL) / NULLIF(COUNT(response_id) FILTER (WHERE (survey_type = 'prospect' AND brand_awareness IS NOT NULL)), 0))
+        description: Brand Awareness, unaided variant. The percentage of surveyed people in the target market who know the brand.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/brand-awareness."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: brand_awareness
+              gasp_version: "1"
+              variant: unaided
+              unit: percent
+              formula: count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness = 'unaided') / count(field.response_id where field.survey_type = 'prospect' and field.brand_awareness is not null)
       - name: gasp_nps_marketing_context
         expression:
           sql: ((CAST((COUNT(nps_score) FILTER (WHERE (survey_type = 'prospect' AND nps_score >= 9)) - COUNT(nps_score) FILTER (WHERE (survey_type = 'prospect' AND nps_score <= 6))) AS DECIMAL) / NULLIF(COUNT(nps_score) FILTER (WHERE survey_type = 'prospect'), 0)) * 100)
@@ -4278,7 +4344,31 @@ datasets:
           sql: target_date
         description: Committed completion date
         datatype: Date
+      - name: onboarding_engagement_score
+        expression:
+          sql: onboarding_engagement_score
+        description: Engagement score of the onboarding on a 0 to 100 scale, built upstream from session attendance, response time, task completion and login frequency
+        datatype: Decimal
+      - name: implementation_quality_score
+        expression:
+          sql: implementation_quality_score
+        description: Implementation quality score on a 0 to 100 scale, assessed at completion against configuration accuracy, migrated data quality, integration health and user setup
+        datatype: Decimal
     metrics:
+      - name: gasp_onboarding_engagement_score
+        expression:
+          sql: AVG(onboarding_engagement_score) FILTER (WHERE onboarding_completion_date IS NULL)
+        description: Onboarding Engagement Score. Level of customer engagement during onboarding, as the average engagement score of the onboardings in progress.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/onboarding/onboarding-engagement-score."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: onboarding_engagement_score
+              gasp_version: "1"
+              unit: score
+              formula: avg(field.onboarding_engagement_score where field.onboarding_completion_date is null) at period_end
       - name: gasp_task_completion_rate
         expression:
           sql: (CAST(COALESCE(SUM(steps_completed), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(steps_total), 0), 0))
@@ -5313,6 +5403,230 @@ datasets:
         data:
           kind: event
           cel: Credit_Event
+  - name: email_campaign
+    source: gasp.email_campaign
+    description: Email campaign results.
+    primary_key:
+      - campaign_id
+      - period_start
+    fields:
+      - name: campaign_id
+        expression:
+          sql: campaign_id
+        description: Campaign identifier
+        datatype: String
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        description: Start of the period the row describes
+        datatype: Date
+      - name: emails_sent
+        expression:
+          sql: emails_sent
+        description: Emails sent in the period, one per recipient address
+        datatype: Integer
+      - name: emails_delivered
+        expression:
+          sql: emails_delivered
+        description: "Emails the receiving server accepted in the period: sent less bounced"
+        datatype: Integer
+      - name: email_unique_opens
+        expression:
+          sql: email_unique_opens
+        description: Delivered emails opened at least once, each recipient counted once per send
+        datatype: Integer
+      - name: email_unique_clicks
+        expression:
+          sql: email_unique_clicks
+        description: Delivered emails with at least one link clicked, each recipient counted once per send
+        datatype: Integer
+      - name: email_unsubscribes
+        expression:
+          sql: email_unsubscribes
+        description: Recipients who unsubscribed from an email sent in the period
+        datatype: Integer
+      - name: email_bounces
+        expression:
+          sql: email_bounces
+        description: Emails the receiving server rejected, hard and soft bounces together
+        datatype: Integer
+      - name: email_spam_complaints
+        expression:
+          sql: email_spam_complaints
+        description: Recipients who marked an email sent in the period as spam
+        datatype: Integer
+    metrics:
+      - name: gasp_email_open_rate
+        expression:
+          sql: (CAST(COALESCE(SUM(email_unique_opens), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(emails_delivered), 0), 0))
+        description: Email Open Rate. The percentage of delivered emails that were opened.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/email-open-rate."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: email_open_rate
+              gasp_version: "1"
+              unit: percent
+              formula: sum(field.email_unique_opens) / sum(field.emails_delivered)
+      - name: gasp_email_click_rate
+        expression:
+          sql: (CAST(COALESCE(SUM(email_unique_clicks), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(emails_delivered), 0), 0))
+        description: Email Click Rate. The percentage of delivered emails in which the recipient clicked at least one link.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/email-click-rate."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: email_click_rate
+              gasp_version: "1"
+              unit: percent
+              formula: sum(field.email_unique_clicks) / sum(field.emails_delivered)
+      - name: gasp_email_click_to_open_rate
+        expression:
+          sql: (CAST(COALESCE(SUM(email_unique_clicks), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(email_unique_opens), 0), 0))
+        description: Email Click-to-Open Rate. The percentage of opened emails in which the recipient clicked at least one link.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/email-click-to-open-rate."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: email_click_to_open_rate
+              gasp_version: "1"
+              unit: percent
+              formula: sum(field.email_unique_clicks) / sum(field.email_unique_opens)
+      - name: gasp_email_unsubscribe_rate
+        expression:
+          sql: (CAST(COALESCE(SUM(email_unsubscribes), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(emails_delivered), 0), 0))
+        description: Email Unsubscribe Rate. The percentage of delivered emails that led the recipient to unsubscribe.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/email-unsubscribe-rate."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: email_unsubscribe_rate
+              gasp_version: "1"
+              unit: percent
+              formula: sum(field.email_unsubscribes) / sum(field.emails_delivered)
+      - name: gasp_email_bounce_rate
+        expression:
+          sql: (CAST(COALESCE(SUM(email_bounces), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(emails_sent), 0), 0))
+        description: Email Bounce Rate. The percentage of sent emails that the receiving server rejected, hard and soft bounces together.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/email-bounce-rate."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: email_bounce_rate
+              gasp_version: "1"
+              unit: percent
+              formula: sum(field.email_bounces) / sum(field.emails_sent)
+      - name: gasp_email_spam_complaint_rate
+        expression:
+          sql: (CAST(COALESCE(SUM(email_spam_complaints), 0) AS DECIMAL) / NULLIF(COALESCE(SUM(emails_delivered), 0), 0))
+        description: Email Spam Complaint Rate. The percentage of delivered emails that the recipient marked as spam.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/marketing/email-spam-complaint-rate."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: email_spam_complaint_rate
+              gasp_version: "1"
+              unit: percent
+              formula: sum(field.email_spam_complaints) / sum(field.emails_delivered)
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          kind: fact
+  - name: sales_activity
+    source: gasp.sales_activity
+    description: Sales activity.
+    primary_key:
+      - sales_activity_id
+    fields:
+      - name: rep_id
+        expression:
+          sql: rep_id
+        description: Sales rep identifier
+        datatype: String
+      - name: sales_activity_id
+        expression:
+          sql: sales_activity_id
+        description: Sales activity identifier
+        datatype: String
+      - name: sales_activity_date
+        expression:
+          sql: sales_activity_date
+        dimension:
+          is_time: true
+        description: Date the call was made, the email sent, the meeting booked or the demonstration given
+        datatype: Date
+      - name: sales_activity_type
+        expression:
+          sql: sales_activity_type
+        description: "Kind of sales activity: an outbound call made, an outbound email sent to a prospect, a discovery or demonstration meeting booked (counted on the day the invitation goes out) or a product demonstration given"
+        datatype: String
+        ai_context:
+          instructions: One of call, email, meeting_booked, demo_delivered
+    metrics:
+      - name: gasp_activity_metrics_diagnostic
+        expression:
+          sql: COUNT(sales_activity_id)
+        description: "Activity Metrics (Diagnostic). The number of sales activities logged in the period: outbound calls, outbound emails, meetings booked and demos delivered."
+        datatype: Integer
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/activity-metrics-diagnostic."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: activity_metrics_diagnostic
+              gasp_version: "1"
+              unit: count
+              formula: count(field.sales_activity_id)
+      - name: gasp_activity_metrics_diagnostic_by_activity_type
+        expression:
+          sql: COUNT(sales_activity_id)
+        description: "Activity Metrics (Diagnostic), by_activity_type breakdown. The number of sales activities logged in the period: outbound calls, outbound emails, meetings booked and demos delivered."
+        datatype: Integer
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/activity-metrics-diagnostic. Broken down by sales_activity_type: report one value per sales_activity_type by grouping on the sales_activity_type field of each dataset the expression reads."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: activity_metrics_diagnostic
+              gasp_version: "1"
+              variant: by_activity_type
+              unit: count
+              formula: count(field.sales_activity_id)
+              gasp_breakdown: sales_activity_type
+      - name: gasp_activity_metrics_diagnostic_by_rep
+        expression:
+          sql: COUNT(sales_activity_id)
+        description: "Activity Metrics (Diagnostic), by_rep breakdown. The number of sales activities logged in the period: outbound calls, outbound emails, meetings booked and demos delivered."
+        datatype: Integer
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/sales/activity-metrics-diagnostic. Broken down by rep_id: report one value per rep_id by grouping on the rep_id field of each dataset the expression reads."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: activity_metrics_diagnostic
+              gasp_version: "1"
+              variant: by_rep
+              unit: count
+              formula: count(field.sales_activity_id)
+              gasp_breakdown: rep_id
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          kind: event
   - name: gasp_staged_gasp_arr_o
     source: SELECT p.period_start, p.period_end, (((((SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND subscription_status = 'active' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) - (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= ((p.period_end + INTERVAL '1 day') - INTERVAL '12 month') AND event_date <= p.period_end AND expansion_classification IN ('pricing_adjustment', 'recontracting') AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_end AND customer_status = 'active'))) * 12)) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_arr_o: one row per reporting period holding the metric value, computed by the GASP compiled query (needs cohort, window)."
@@ -6217,6 +6531,64 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, _d.partner_tier AS partner_tier, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_tier = _d.partner_tier)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_tier = _d.partner_tier)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'registered' AS partner_tier UNION ALL SELECT 'silver' AS partner_tier UNION ALL SELECT 'gold' AS partner_tier UNION ALL SELECT 'platinum' AS partner_tier) _d
             BIGQUERY: SELECT p.period_start, p.period_end, _d.partner_tier AS partner_tier, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_tier = _d.partner_tier)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_tier = _d.partner_tier)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'registered' AS partner_tier UNION ALL SELECT 'silver' AS partner_tier UNION ALL SELECT 'gold' AS partner_tier UNION ALL SELECT 'platinum' AS partner_tier) _d
             DATABRICKS: SELECT p.period_start, p.period_end, _d.partner_tier AS partner_tier, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_tier = _d.partner_tier)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_tier = _d.partner_tier)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'registered' AS partner_tier UNION ALL SELECT 'silver' AS partner_tier UNION ALL SELECT 'gold' AS partner_tier UNION ALL SELECT 'platinum' AS partner_tier) _d
+  - name: gasp_staged_gasp_partner_churn_rate_by_partner_type
+    source: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+    description: "Staged dataset for gasp_partner_churn_rate_by_partner_type: one row per reporting period and partner_type value holding the metric value, computed by the GASP compiled query (needs cohort, at period_start, period bound in filter)."
+    primary_key:
+      - period_start
+      - partner_type
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: partner_type
+        expression:
+          sql: partner_type
+        datatype: String
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: Partner Churn Rate, by_partner_type breakdown for the period and partner_type
+    metrics:
+      - name: gasp_partner_churn_rate_by_partner_type
+        expression:
+          sql: SUM(value)
+        description: Partner Churn Rate, by_partner_type breakdown. The percentage of partners active at period start who left the programme in the period.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/partner-churn-rate. Broken down by partner_type: report one value per partner_type. Staged (cohort): gasp_staged_gasp_partner_churn_rate_by_partner_type holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: partner_churn_rate
+              gasp_version: "1"
+              variant: by_partner_type
+              unit: percent
+              formula: count_distinct(field.partner_id where in_period(field.partner_churn_date)) / count_distinct(field.partner_id where field.partner_status = 'active') at period_start over cohort(field.partner_id, period_start)
+              gasp_breakdown: partner_type
+              staged: true
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          staged: true
+          for: gasp_partner_churn_rate_by_partner_type
+          reason: cohort
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            BIGQUERY: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            DATABRICKS: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND (partner_churn_date >= p.period_start AND partner_churn_date <= p.period_end) AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_id IN (SELECT partner_id FROM gasp.partner WHERE snapshot_date = p.period_start AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
   - name: gasp_staged_gasp_partner_sourced_revenue
     source: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_partner_sourced_revenue: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -6267,6 +6639,64 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
+  - name: gasp_staged_gasp_partner_sourced_revenue_by_partner_type
+    source: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+    description: "Staged dataset for gasp_partner_sourced_revenue_by_partner_type: one row per reporting period and partner_type value holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    primary_key:
+      - period_start
+      - partner_type
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: partner_type
+        expression:
+          sql: partner_type
+        datatype: String
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: Partner-Sourced Revenue, by_partner_type breakdown for the period and partner_type
+    metrics:
+      - name: gasp_partner_sourced_revenue_by_partner_type
+        expression:
+          sql: SUM(value)
+        description: Partner-Sourced Revenue, by_partner_type breakdown. Revenue from deals originated by partners.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/partner-sourced-revenue. Broken down by partner_type: report one value per partner_type. Staged (period bound in filter): gasp_staged_gasp_partner_sourced_revenue_by_partner_type holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: partner_sourced_revenue
+              gasp_version: "1"
+              variant: by_partner_type
+              unit: currency
+              formula: sum(field.opportunity_amount where field.partner_sourced = true and field.opportunity_stage = 'closed_won' and in_period(field.close_date))
+              gasp_breakdown: partner_type
+              staged: true
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          staged: true
+          for: gasp_partner_sourced_revenue_by_partner_type
+          reason: period bound in filter
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            BIGQUERY: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            DATABRICKS: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
   - name: gasp_staged_gasp_partner_influenced_revenue
     source: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_partner_influenced_revenue: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -6317,6 +6747,64 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS value FROM gasp.period_spine p
+  - name: gasp_staged_gasp_partner_influenced_revenue_by_partner_type
+    source: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+    description: "Staged dataset for gasp_partner_influenced_revenue_by_partner_type: one row per reporting period and partner_type value holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    primary_key:
+      - period_start
+      - partner_type
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: partner_type
+        expression:
+          sql: partner_type
+        datatype: String
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: Partner-Influenced Revenue, by_partner_type breakdown for the period and partner_type
+    metrics:
+      - name: gasp_partner_influenced_revenue_by_partner_type
+        expression:
+          sql: SUM(value)
+        description: Partner-Influenced Revenue, by_partner_type breakdown. Revenue from deals where partners were involved (but may not have originated).
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/partner-influenced-revenue. Broken down by partner_type: report one value per partner_type. Staged (period bound in filter): gasp_staged_gasp_partner_influenced_revenue_by_partner_type holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: partner_influenced_revenue
+              gasp_version: "1"
+              variant: by_partner_type
+              unit: currency
+              formula: sum(field.opportunity_amount where field.partner_id is not null and field.opportunity_stage = 'closed_won' and in_period(field.close_date))
+              gasp_breakdown: partner_type
+              staged: true
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          staged: true
+          for: gasp_partner_influenced_revenue_by_partner_type
+          reason: period bound in filter
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            BIGQUERY: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            DATABRICKS: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
   - name: gasp_staged_gasp_channel_revenue_percentage
     source: SELECT p.period_start, p.period_end, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_sourced = TRUE AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE PRECISION) / NULLIF(((SELECT COALESCE(SUM(revenue), 0) FROM gasp.financials WHERE period_start >= p.period_start AND period_start <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_channel_revenue_percentage: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -6467,6 +6955,64 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)))) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active')), 0))) AS value FROM gasp.period_spine p
+  - name: gasp_staged_gasp_average_partner_revenue_by_partner_type
+    source: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS DOUBLE PRECISION) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+    description: "Staged dataset for gasp_average_partner_revenue_by_partner_type: one row per reporting period and partner_type value holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    primary_key:
+      - period_start
+      - partner_type
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: partner_type
+        expression:
+          sql: partner_type
+        datatype: String
+        description: Partner type by the role the partner plays; on an opportunity, the type of the partner attached to the deal
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: Average Partner Revenue, by_partner_type breakdown for the period and partner_type
+    metrics:
+      - name: gasp_average_partner_revenue_by_partner_type
+        expression:
+          sql: SUM(value)
+        description: Average Partner Revenue, by_partner_type breakdown. Average revenue per active partner.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/partnerships/average-partner-revenue. Broken down by partner_type: report one value per partner_type. Staged (period bound in filter): gasp_staged_gasp_average_partner_revenue_by_partner_type holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: average_partner_revenue
+              gasp_version: "1"
+              variant: by_partner_type
+              unit: currency
+              formula: metric.partner_influenced_revenue / metric.total_active_partners
+              gasp_breakdown: partner_type
+              staged: true
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          staged: true
+          for: gasp_average_partner_revenue_by_partner_type
+          reason: period bound in filter
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            BIGQUERY: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS FLOAT64) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
+            DATABRICKS: SELECT p.period_start, p.period_end, _d.partner_type AS partner_type, ((CAST(((SELECT COALESCE(SUM(opportunity_amount), 0) FROM gasp.opportunity WHERE snapshot_date = p.period_end AND ((partner_id IS NOT NULL AND opportunity_stage = 'closed_won') AND (close_date >= p.period_start AND close_date <= p.period_end)) AND partner_type = _d.partner_type)) AS DOUBLE) / NULLIF(((SELECT COUNT(DISTINCT partner_id) FROM gasp.partner WHERE snapshot_date = p.period_end AND partner_status = 'active' AND partner_type = _d.partner_type)), 0))) AS value FROM gasp.period_spine p CROSS JOIN (SELECT 'reseller' AS partner_type UNION ALL SELECT 'referral' AS partner_type UNION ALL SELECT 'technology' AS partner_type UNION ALL SELECT 'system_integrator' AS partner_type UNION ALL SELECT 'managed_service_provider' AS partner_type UNION ALL SELECT 'other' AS partner_type) _d
   - name: gasp_staged_gasp_partner_deal_registration_volume
     source: SELECT p.period_start, p.period_end, ((SELECT COUNT(DISTINCT registration_id) FROM gasp.deal_registration WHERE snapshot_date = p.period_end AND (registration_date >= p.period_start AND registration_date <= p.period_end))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_partner_deal_registration_volume: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -11042,6 +11588,56 @@ datasets:
             SNOWFLAKE: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND ((onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end) AND onboarding_completion_date <= target_date)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
             BIGQUERY: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND ((onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end) AND onboarding_completion_date <= target_date)) AS FLOAT64) / NULLIF((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND ((onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end) AND onboarding_completion_date <= target_date)) AS DOUBLE) / NULLIF((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
+  - name: gasp_staged_gasp_implementation_quality_score
+    source: SELECT p.period_start, p.period_end, ((SELECT AVG(implementation_quality_score) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end))) AS value FROM gasp.period_spine p
+    description: "Staged dataset for gasp_implementation_quality_score: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
+    primary_key:
+      - period_start
+    fields:
+      - name: period_start
+        expression:
+          sql: period_start
+        dimension:
+          is_time: true
+        datatype: Date
+        description: First day of the reporting period
+      - name: period_end
+        expression:
+          sql: period_end
+        datatype: Date
+        description: Last day of the reporting period
+      - name: value
+        expression:
+          sql: value
+        datatype: Decimal
+        description: Implementation Quality Score for the period
+    metrics:
+      - name: gasp_implementation_quality_score
+        expression:
+          sql: SUM(value)
+        description: Implementation Quality Score. Assessment of implementation completeness and correctness, as the average quality score of the onboardings completed in the period.
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/onboarding/implementation-quality-score. Staged (period bound in filter): gasp_staged_gasp_implementation_quality_score holds one row per reporting period, so filter its period_start to one period. gasp.period_spine is a table of (period_start, period_end) rows the adopter provides."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: implementation_quality_score
+              gasp_version: "1"
+              unit: score
+              formula: avg(field.implementation_quality_score where in_period(field.onboarding_completion_date))
+              staged: true
+    nonportable_extensions:
+      - vendor_name: GASP
+        data:
+          staged: true
+          for: gasp_implementation_quality_score
+          reason: period bound in filter
+          source_dialect: POSTGRES
+          sources:
+            SNOWFLAKE: SELECT p.period_start, p.period_end, ((SELECT AVG(implementation_quality_score) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end))) AS value FROM gasp.period_spine p
+            BIGQUERY: SELECT p.period_start, p.period_end, ((SELECT AVG(implementation_quality_score) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end))) AS value FROM gasp.period_spine p
+            DATABRICKS: SELECT p.period_start, p.period_end, ((SELECT AVG(implementation_quality_score) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end))) AS value FROM gasp.period_spine p
   - name: gasp_staged_gasp_onboardings_per_resource
     source: SELECT p.period_start, p.period_end, ((CAST((SELECT COUNT(DISTINCT onboarding_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end)) AS DOUBLE PRECISION) / NULLIF((SELECT COUNT(DISTINCT resource_id) FROM gasp.onboarding WHERE snapshot_date = p.period_end AND (onboarding_completion_date >= p.period_start AND onboarding_completion_date <= p.period_end)), 0))) AS value FROM gasp.period_spine p
     description: "Staged dataset for gasp_onboardings_per_resource: one row per reporting period holding the metric value, computed by the GASP compiled query (needs period bound in filter)."
@@ -14310,6 +14906,13 @@ relationships:
     to_columns:
       - subscription_id
       - snapshot_date
+  - name: sales_activity_rep_id
+    from: sales_activity
+    to: sales_rep
+    from_columns:
+      - rep_id
+    to_columns:
+      - rep_id
 metrics:
   - name: gasp_arpa
     expression:

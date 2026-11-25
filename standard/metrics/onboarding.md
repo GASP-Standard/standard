@@ -146,7 +146,7 @@ On-Time Rate = Customers completing on time / Total customers completing × 100
 
 ### Onboarding Engagement Score
 
-**Definition:** Level of customer engagement during onboarding.
+**Definition:** Level of customer engagement during onboarding, as the average engagement score of the onboardings in progress.
 
 **Components:**
 - Attendance at scheduled sessions
@@ -156,10 +156,15 @@ On-Time Rate = Customers completing on time / Total customers completing × 100
 
 **Formula:**
 ```
-Engagement Score = Weighted average of engagement indicators (0-100)
+Engagement Score (per onboarding) = Weighted average of engagement indicators (0-100)
+Onboarding Engagement Score = Average engagement score of onboardings in progress at period end
 ```
 
-Each team sets its own weights, so the standard publishes no canonical formula for this score.
+Each team sets its own weights, so the score for one onboarding is built upstream and lands on the onboarding record as one number from 0 to 100. The Onboarding Engagement Score is the average of that number across the onboardings still in progress at period end. A period that ends with no onboarding in progress has no value.
+
+**Sources:**
+- [Gainsight: Measure weights in scorecards](https://support.gainsight.com/gainsight_nxt/05Scorecards/02Admin_Guides/Measure_Weights_in_Scorecards)
+- [Vitally: Health scores](https://docs.vitally.io/account-health-scores-and-metrics/health-scores)
 
 **What it tells you:** Customer investment in onboarding success.
 
@@ -229,7 +234,7 @@ Onboarding NPS = % Promoters - % Detractors
 
 ### Implementation Quality Score
 
-**Definition:** Assessment of implementation completeness and correctness.
+**Definition:** Assessment of implementation completeness and correctness, as the average quality score of the onboardings completed in the period.
 
 **Components:**
 - Configuration accuracy
@@ -237,7 +242,12 @@ Onboarding NPS = % Promoters - % Detractors
 - Integration health
 - User setup completeness
 
-The score is an assessment against these components. The standard gives no weights, so it has no canonical formula.
+**Formula:**
+```
+Implementation Quality Score = Average quality score of onboardings completed in period
+```
+
+Each onboarding is assessed against these components when it completes and the result lands on the onboarding record as one score from 0 to 100. Each team sets its own weights. The Implementation Quality Score is the average of that score across the onboardings completed in the period.
 
 **What it tells you:** Whether implementations are configured to work in production.
 

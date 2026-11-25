@@ -1,7 +1,7 @@
 # Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
 version: 0.3.0.dev0
 name: GASP SaaS core
-description: "The concepts behind the Core metrics of the GASP Standard: 6 entity types (one per dataset the metrics read), their relationships and 46 value types, cut from the full GASP ontology at https://gaspwiki.com/downloads/ossie/."
+description: "The concepts behind the Core metrics of the GASP Standard: 6 entity types (one per dataset the metrics read), their relationships and 47 value types, cut from the full GASP ontology at https://gaspwiki.com/downloads/ossie/."
 prefixes:
   gasp: https://gaspwiki.com/v1/definitions/
   cel: https://gaspwiki.com/v1/cel#
@@ -519,6 +519,13 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{SurveyResponse} has {SurveyType}"
+      - name: brand_awareness
+        description: "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask"
+        roles:
+          - concept: BrandAwareness
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{SurveyResponse} has {BrandAwareness}"
   - concept: Financials
     type: EntityType
     description: Income statement and cash flow (fact dataset `financials`).
@@ -834,3 +841,10 @@ ontology:
     description: Customer is on a plan with an upgrade path
     extends:
       - Boolean
+  - concept: BrandAwareness
+    type: ValueType
+    description: "Answer to the brand awareness question: the respondent named the brand without a prompt, recognised it in a list or did neither; empty when the survey did not ask"
+    extends:
+      - String
+    requires:
+      - BrandAwareness == 'unaided' OR BrandAwareness == 'aided' OR BrandAwareness == 'unaware'

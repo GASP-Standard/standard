@@ -5,6 +5,44 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-24] What gets a formula: six email rates, four formulas over data the standard can name and a partner type field
+
+**Context.** Fifteen entries in `formulas.json` carried a `notComputable` reason. The owner asked which of them should have a formula and took the recommendation as presented on 2026-11-24. The test for each entry was the bar for new metrics: the industry computes it one way and the standard can name the data it reads. Sources were read on 2026-11-24 through a summarising reader, so each is described here and none is quoted.
+
+- **Email.** Mailchimp, HubSpot, Campaign Monitor and Klaviyo divide opens and clicks by emails delivered. Campaign Monitor and Klaviyo divide unsubscribes by delivered and Klaviyo does the same for spam complaints; a Twilio SendGrid guide divides both by emails sent, so the sources split on those two. Bounce rate is over emails sent in Campaign Monitor and the SendGrid guide and over recipients in Klaviyo. Click-to-open is unique clicks over unique opens in Campaign Monitor and SendGrid. HubSpot and Klaviyo give the name "click-through rate" to clicks over opens; Campaign Monitor and Mailchimp give it to clicks over delivered.
+- **Brand awareness.** Ipsos defines spontaneous (unaided) and prompted (aided) awareness as percentages of survey respondents and Qualtrics describes the same two questions. Neither names one headline figure. Share of search (the IPA's work with Les Binet) is a proxy: searches for the brand over searches for every brand in the category.
+- **Sales activity.** Gong and Outreach count calls, emails, meetings booked and meetings held. Outreach counts a meeting as booked once the invitation is sent and keeps a cancelled one in the count; Gong drops cancelled meetings. Neither defines a demo metric or a rate per rep per day.
+- **Onboarding scores.** Gainsight and Vitally compute a health or onboarding score as a weighted average of measures, with weights the customer success team sets. No vendor publishes a fixed formula for an onboarding engagement score. None read defines an implementation quality score.
+- **Partner types.** No single taxonomy exists: a Forrester summary says the names are used inconsistently. Reseller, referral, technology partner, system integrator and managed service provider recur across Crossbeam and PartnerStack. Affiliate appears in PartnerStack, HubSpot's programme list and one Crossbeam list; OEM in Crossbeam.
+
+**Decision.**
+
+1. **Email Metrics becomes six metrics**, each with a page. Email Open Rate, Email Click Rate, Email Unsubscribe Rate and Email Spam Complaint Rate are over emails delivered, Email Click-to-Open Rate is unique clicks over unique opens and Email Bounce Rate is over emails sent. Opens and clicks are counted once per recipient. A rate over several campaigns pools them: total opens over total delivered. They read a new fact dataset, `email_campaign` (one row per campaign and period), with seven count fields. The standard has 319 metrics where it had 314.
+2. **The name is Email Click Rate.** "Click-through rate" means clicks over delivered in some tools and clicks over opens in others, so the standard uses the two names that each mean one thing and the entry notes the other usage.
+3. **Brand Awareness is a survey rate**: prospects aware of the brand, aided or unaided, over prospects asked, read from `survey_response` rows of type `prospect` through a new enum field `brand_awareness` (`unaided`, `aided`, `unaware`). The `unaided` variant counts the unprompted answers over the same denominator. Share of search stays in the entry as a proxy outside the formula, since it needs competitors' search volumes.
+4. **Activity Metrics (Diagnostic) is one count with two breakdowns.** A new event dataset `sales_activity` holds one row per call, email, meeting booked and demo delivered. The metric counts the rows; `by_activity_type` gives the four counts the entry lists and `by_rep` the count per rep. A meeting counts on the day it is booked and a cancelled one stays counted, which is Outreach's rule; the entry says tools differ. A demo delivered is a type the company marks on the activity, since no tool read defines one. A per-day rate is the count over the working days of the period, which the standard has no calendar for, so it stays arithmetic for the reader.
+5. **Onboarding Engagement Score and Implementation Quality Score average an upstream score**, as Customer Health Score does. The customer success platform computes each onboarding's score; the standard fixes the population and the day. Engagement averages the onboardings in progress at period end. Quality averages the onboardings completed in the period.
+6. **Partner type is a field and five partner metrics break down by it.** `partner_type` (`reseller`, `referral`, `technology`, `system_integrator`, `managed_service_provider`, `other`) sits on the partner snapshot and on the opportunity. Total Active Partners, Partner-Sourced Revenue, Partner-Influenced Revenue, Average Partner Revenue and Partner Churn Rate gain `by_partner_type`. The five partner type entries stay descriptive: each is a value of the field. Revenue per reseller is the reseller row of Average Partner Revenue.
+7. **Five entries stay not computable**: Content Performance, Marketplace Listings Performance and Partner Portal Engagement are lists of figures with no single formula; Bundle Pricing and MRR Allocation is an allocation method; Onboarding Cohort Churn is a cohort table.
+
+**Alternatives considered.**
+
+- *One Email Metrics entry with five variants.* Each rate has its own benchmark, its own page in every email tool and its own name in a board pack. A variant has no page, no benchmark and no node of its own.
+- *Every email rate over emails sent.* The SendGrid guide does this for unsubscribes and spam complaints. Campaign Monitor and Klaviyo use delivered for them and every source read uses delivered for opens and clicks, so one base for the five keeps them comparable.
+- *Affiliate and OEM as partner types.* The five partner type entries the standard already had name neither, so the field took their five and `other`. Affiliate is in most of the lists read and is the first candidate for a value of its own; adding one is a governed change to the enum.
+- *Formulas for the four other partner type key metrics* (referrals per partner, customers using an integration, implementations delivered, seats under management). Each needs a dataset the standard does not have and none appeared in the sources as a standard measure.
+- *A weighted formula for the two onboarding scores.* The weights are each company's own in every tool read, so a formula in the standard would be one company's choice presented as a rule.
+
+**Consequences.**
+
+- `formulas.json` has 307 entries: 297 with a formula and 10 with a reason. The ontology has 294 fields and 56 datasets. The formula id `email_metrics` is gone; `/v1/metrics/marketing/email-metrics` redirects to the Email Open Rate page.
+- `partner_type` on the opportunity repeats the type of the deal's partner, because a breakdown through a foreign key returns one row per key and a revenue breakdown needs one row per type. A mapping fills it by joining the partner.
+- Brand Awareness reads only surveys that ask the awareness question. A prospect survey without it leaves `brand_awareness` empty and sits outside both counts.
+- The Core example in `standard/exports/ossie/example/` gains the `brand_awareness` field on `survey_response`, so the copy in apache/ossie #773 is one field behind until its next refresh.
+- The synthetic dataset gains the two tables and sets the four new fields on existing tables from stories, so every value pinned before this change is unchanged.
+
+---
+
 ## [2026-11-24] Five rates follow the population of the first day of the period and a cohort condition can state the membership
 
 **Context.** The Revenue Churn Rate record of 2026-11-21 left five rates as they were: Partner Churn Rate, Cross-sell Rate, Upsell Rate, the `entered_at_risk` variant of At-Risk Rate and Resurrection Rate. Each divided every event of the period by a count taken on its first day. A partner recruited in May who left in June was in the numerator and absent from the denominator. So was a customer who signed in May and upgraded in June. A user who went dormant and came back inside one quarter made Resurrection Rate read 200% against one dormant user. The owner's rule from that record applies: where the standard has a choice of this kind it takes current industry practice. On 2026-11-24 the owner asked for no incorrect metrics to be left standing.

@@ -410,14 +410,31 @@ Measured in months.
 
 ### Activity Metrics (Diagnostic)
 
+**Definition:** The number of sales activities logged in the period: outbound calls, outbound emails, meetings booked and demos delivered.
+
+**Formula:**
+```
+Activity Metrics = Count of sales activities in period
+```
+
 These count sales inputs. Use them to diagnose a pipeline or conversion problem and keep them out of headline reporting.
 
-| Metric | Definition |
-|--------|------------|
-| Calls per day | Outbound calls made |
-| Emails per day | Outbound emails sent |
-| Meetings booked | Discovery/demo meetings scheduled |
-| Demos delivered | Product demonstrations completed |
+| Metric | Definition | `sales_activity_type` |
+|--------|------------|------------|
+| Calls per day | Outbound calls made | `call` |
+| Emails per day | Outbound emails sent | `email` |
+| Meetings booked | Discovery/demo meetings scheduled | `meeting_booked` |
+| Demos delivered | Product demonstrations completed | `demo_delivered` |
+
+Activity Metrics is reported per activity type, which gives the four counts above. It is also reported per rep. Divide a count by the working days of the period for its per-day rate.
+
+**What is counted:** A meeting counts as booked on the day the invitation goes to the prospect. A meeting cancelled later stays in the count, so read demos delivered beside meetings booked. Sales tools differ here: some count a meeting once it is on the calendar and others drop cancelled meetings.
+
+**What it tells you:** Whether a thin pipeline comes from too little activity or from activity that converts poorly.
+
+**Sources:**
+- [Outreach: Meeting Attribution Logic FAQ](https://support.outreach.io/support/solutions/articles/159000426157-meeting-attribution-logic-faq)
+- [Gong: Preset metrics for dashboards](https://help.gong.io/docs/preset-metrics-for-dashboards)
 
 ---
 

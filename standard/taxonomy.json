@@ -347,10 +347,25 @@
     "marketing::paid-media-efficiency-roas": {
       "primary": "efficiency"
     },
-    "marketing::email-metrics": {
+    "marketing::content-performance": {
       "primary": "operational"
     },
-    "marketing::content-performance": {
+    "marketing::email-open-rate": {
+      "primary": "operational"
+    },
+    "marketing::email-click-rate": {
+      "primary": "operational"
+    },
+    "marketing::email-click-to-open-rate": {
+      "primary": "operational"
+    },
+    "marketing::email-unsubscribe-rate": {
+      "primary": "operational"
+    },
+    "marketing::email-bounce-rate": {
+      "primary": "operational"
+    },
+    "marketing::email-spam-complaint-rate": {
       "primary": "operational"
     },
     "marketing::brand-awareness": {
