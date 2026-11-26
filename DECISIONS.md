@@ -27,7 +27,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 - The set grows from 63 files and 1,057 KB to 78 files and 3,701 KB. The largest script is about 420 KB (User Retention Day N) and the smallest about 4 KB (Uptime).
 - A move of the pin reruns the scripts, so a change in the expander shows as a diff in a `case.ost`.
 - Regenerating after a command changes needs `uv`. The Tests workflow has it.
-- The zero formatting was reported on 2026-11-26 as apache/ossie #826. The same day's refresh of apache/ossie #773 links the scripts from its body and leaves them in this repository (`docs/ossie-example-pr.md`, `TODO.md`).
+- The zero formatting was reported on 2026-11-26 as apache/ossie #826. The scripts and their models went into apache/ossie #773 the same day under `examples/gasp_saas_conformance/`, with a step in upstream's `ost-ci.yml` that runs them (`docs/ossie-example-pr.md`). A refresh of that pull request recopies them, so the expected output must match the runner at the branch's head as well as the vendored pin.
 
 ---
 
