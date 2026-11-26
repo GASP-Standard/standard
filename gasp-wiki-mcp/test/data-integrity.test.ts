@@ -11,12 +11,12 @@ beforeAll(() => {
 });
 
 describe("data integrity", () => {
-  it("loads 319 metrics", () => {
-    expect(data.metrics).toHaveLength(319);
+  it("loads 320 metrics", () => {
+    expect(data.metrics).toHaveLength(320);
   });
 
-  it("loads 121 definitions (108 SaaS domain + 13 GASP framework)", () => {
-    expect(data.definitions).toHaveLength(121);
+  it("loads 122 definitions (109 SaaS domain + 13 GASP framework)", () => {
+    expect(data.definitions).toHaveLength(122);
   });
 
   it("loads 105 relationship nodes (70 metrics + 28 entities + 7 concepts)", () => {

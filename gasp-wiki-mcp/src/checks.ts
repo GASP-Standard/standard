@@ -25,6 +25,9 @@
  *   cost_function_tag           cost_function, from the enum, on every cost event (ATL rule 3)
  *   customer_identity:events    every revenue event's customer_id is a known customer
  *   customer_identity:customers every customer active on the latest snapshot has a revenue event
+ *   fixed_term:subscription     no subscription row for a contract under 12 months with no renewal
+ *                               (fixed-term revenue stays out of MRR, core.md; src/recurring.ts holds the test)
+ *   fixed_term:contract_event   no acv on the new_contract event of such a contract (it stays out of CARR)
  *   freshness:<dataset>         the latest date in each mapped dataset is within the sync window
  *   range:<formulaId>           the metric's value stays inside the ontology's hard min and max
  *                               (validationRules) in every reporting period of the period spine
@@ -52,6 +55,7 @@ import { breakdownTemplate, checkAdapter, chooseDialect, fillTemplate, type Adap
 import { loadAdapter } from "./ossie/adapt.js";
 import { PERIOD_SPINE } from "./ossie/model.js";
 import { describeRange, rangeRules } from "./ranges.js";
+import { MIN_TERM_DAYS } from "./recurring.js";
 import { metricUrl, resolveDocLink } from "./urls.js";
 import type { DataRequirement, QueryTemplate, StandardData } from "./types.js";
 
@@ -267,6 +271,38 @@ WHERE previous_mrr IS NOT NULL AND ABS(COALESCE(mrr_start, 0) - previous_mrr) >=
 WHERE c.${ph("snapshot_date", "customer")} = (SELECT MAX(${ph("snapshot_date", "customer")}) FROM ${table("customer")})
   AND c.${ph("customer_status", "customer")} = 'active'
   AND NOT EXISTS (SELECT 1 FROM ${table("revenue_event")} e WHERE e.${ph("customer_id", "revenue_event")} = c.${ph("customer_id", "customer")})`),
+    });
+  }
+
+  // Fixed-term revenue (core.md, the year-or-renewal test): a contract under 12 months with no
+  // renewal has no subscription row and no ACV. A term is short when the two dates are under 364
+  // days apart, so a year counts whether contract_end is its last day or the day after.
+  const shortTerm = (ds: string, d: DialectName) =>
+    `${ph("renewable", ds)} = FALSE\n  AND ${DIALECT[d].daysBetween(`CAST(${ph("contract_end", ds)} AS DATE)`, `CAST(${ph("contract_start", ds)} AS DATE)`)} < ${MIN_TERM_DAYS - 1}`;
+  if (["renewable", "contract_start", "contract_end"].every((f) => on(f).includes("subscription"))) {
+    checks.push({
+      id: "fixed_term:subscription",
+      name: "Fixed-term revenue stays out of the subscription dataset",
+      rule: "no subscription row belongs to a contract under 12 months with no renewal",
+      source: "metrics/core.md#mrr-monthly-recurring-revenue",
+      datasets: ["subscription"],
+      placeholders: ["renewable@subscription", "contract_start@subscription", "contract_end@subscription"],
+      protects: { dataset: "subscription", field: "mrr" },
+      effort: "medium",
+      sql: (d) => count(`${table("subscription")}\nWHERE ${shortTerm("subscription", d)}`),
+    });
+  }
+  if (["renewable", "contract_start", "contract_end", "acv", "contract_event_type"].every((f) => on(f).includes("contract_event"))) {
+    checks.push({
+      id: "fixed_term:contract_event",
+      name: "Fixed-term contracts carry no ACV",
+      rule: "the new_contract event of a contract under 12 months with no renewal carries no acv",
+      source: "metrics/core.md#mrr-monthly-recurring-revenue",
+      datasets: ["contract_event"],
+      placeholders: ["renewable@contract_event", "contract_start@contract_event", "contract_end@contract_event", "acv@contract_event", "contract_event_type@contract_event"],
+      protects: { dataset: "contract_event", field: "acv" },
+      effort: "medium",
+      sql: (d) => count(`${table("contract_event")}\nWHERE ${ph("contract_event_type", "contract_event")} = 'new_contract'\n  AND ${shortTerm("contract_event", d)}\n  AND COALESCE(${ph("acv", "contract_event")}, 0) <> 0`),
     });
   }
 

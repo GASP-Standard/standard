@@ -26,7 +26,7 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 |  | Apache Ossie (incubating) | GASP |
 | --- | --- | --- |
 | What it is | Vendor-neutral spec for semantic models and ontology | Canonical SaaS metric standard |
-| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 319 metrics, 121 definitions, 294 canonical fields in 56 datasets, 28 entities, 7 concepts, 22 source categories |
+| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 320 metrics, 122 definitions, 295 canonical fields in 56 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, `OSSIE_SQL_2026`, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL and others) | GASP formula grammar (warehouse-agnostic), compiled to SQL for Postgres (which also runs on Redshift), Snowflake, BigQuery and Databricks |
 | Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 105 nodes and 213 edges across 21 edge types |
 | Spec version | 0.3.0.dev0 on main since 2026-11-09 (#691); GASP writes it since 2026-11-11, when #522 merged | v1 |
@@ -44,13 +44,13 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines six immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 319 metrics, 121 definitions, 23 MCP tools |
-| Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 319 metrics covered (297 formulas, 10 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
+| Canonical definitions agents can read | Strong | 320 metrics, 122 definitions, 24 MCP tools |
+| Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 320 metrics covered (298 formulas, 10 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Partial | `profile_schema` and `propose_mapping` take a pasted schema and statistics; the server has no warehouse access. `derive_cel` compiles the standard's derivation rules (`cel.md`) over the mapping, so a subscription ledger becomes CEL revenue events |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Freshness, row identity and unique-id checks are in `generate_checks`; value-distribution checks are still to come |
 | Ownership enforced | Strong | `validate_adapter` flags every covered metric that has no owner in `metricOwners` |
 | Definition drift | Good | `score_drift` runs a company's metrics beside the canonical ones on the synthetic dataset and explains each difference from the formula |
-| Metrics computed from CEL | Partial | The 297 query templates are compiled from formulas and read the CEL event datasets (56 datasets, each with its CEL class) wherever the formula does. Metrics whose formulas use snapshot or fact datasets still read those tables |
+| Metrics computed from CEL | Partial | The 298 query templates are compiled from formulas and read the CEL event datasets (56 datasets, each with its CEL class) wherever the formula does. Metrics whose formulas use snapshot or fact datasets still read those tables |
 | Raw source to CEL | Done | CEL is source-agnostic by design. The standard defines how a subscription ledger, an invoice ledger and usage records become Revenue_Events (`cel.md`, three rule sets executed in the test suite, 2026-11-03 and 2026-11-04); the Stripe and Salesforce worked examples (`gasp-wiki-mcp/test/fixture/`, 2026-11-04) exercise them end to end, the Stripe one from its item snapshots, its metered item's usage records and its invoices |
 | Correct multi-table SQL | Strong | `generate_query` compiles one scalar subquery per aggregate, each from the table mapped to that field's dataset, in the dialect the adapter's `warehouse` names |
 | A prioritised fix plan | Good | `plan_fixes` ranks every unmapped field and every failing readiness check by the Core metrics it unlocks, then all metrics, with an effort class shown. The value ranges are checks (`range:<formulaId>`); the O/M bridges are scored in `score_drift` |
@@ -61,7 +61,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 
 - Public source: done 2026-10-13. The standard and the MCP server are mirrored to `GASP-Standard/standard`; the npm package's `repository` field points there.
 - Site counts come from the data build and are guarded by tests (2026-10-12). This document's counts are guarded the same way.
-- Depth is uneven: 297 of 319 metrics have data requirements (compiled from formulas) and only a handful carry common-mistakes notes.
+- Depth is uneven: 298 of 320 metrics have data requirements (compiled from formulas) and only a handful carry common-mistakes notes.
 - The field vocabulary was reconciled before the ontology document was published, because Ossie `ValueType` concepts make the vocabulary public. Canon decisions on 2026-10-12 settled the naming in `ontology.json` `fields`: CEL names win (`customer_id`, `event_type`, `cost` with `cost_function` and `cost_type`, `contract_event_type`, `amendment_type`) and ATL values are lowercase snake_case.
 
 ## Goals, non-goals and success metrics
@@ -109,7 +109,7 @@ The goal is to be the SaaS answer inside Ossie, measured by merges and listings 
 | Company model | | Compiled metrics and staged datasets added to their model | Ossie semantic model |
 | Extension data | | `nonportable_extensions` under `vendor_name: GASP` | Ossie, plus a published JSON Schema |
 
-**Why generated rather than hand-edited Ossie.** The Ossie ontology spec is `0.3.0.dev0`, still a development version that may change. Generating the Ossie files keeps spec churn inside one exporter and its tests, so the authoring flow for 301 metrics is untouched when the spec moves. GASP data that Ossie cannot hold yet (metric-to-metric edges, access classifications, temporal semantics) stays in one place rather than splitting across two sources. The published files are fully native either way. Revisit when the ontology spec reaches 1.0.
+**Why generated rather than hand-edited Ossie.** The Ossie ontology spec is `0.3.0.dev0`, still a development version that may change. Generating the Ossie files keeps spec churn inside one exporter and its tests, so the authoring flow for 320 metrics is untouched when the spec moves. GASP data that Ossie cannot hold yet (metric-to-metric edges, access classifications, temporal semantics) stays in one place rather than splitting across two sources. The published files are fully native either way. Revisit when the ontology spec reaches 1.0.
 
 ## The pipeline
 
@@ -298,7 +298,7 @@ Ossie metrics are single aggregate SQL expressions. That suits ARR or win rate. 
 | P0 | Add `POSTGRES` and `REDSHIFT` to the dialect enum | Small PR | Postgres sources held in `source` with no dialect label | The compiler already emits Postgres SQL that runs on Redshift; this PR is the two enum values. A low-risk first contribution |
 | P1 | Metric relationships: typed edges between metrics (drives, reduces, predicts, component of) | Ontology WG, via GitHub Discussions | `metric_edges[]` | The GASP graph's metric edges, with `infer_drivers` and `explain_path` as the consuming use case |
 | P2 | Period-over-period and cohort metrics | Metric Language WG's work on advanced metric logic and windowing | Staged datasets | Every staged GASP formula is a conformance test with a canonical answer, executed in the GASP test suite |
-| P3 | Concept-level metrics: a metric defined against ontology concepts, resolved to SQL through any model's ontology mapping | Ontology and Metric Language WGs jointly | Metric compiler and the canonical-formula extension | 297 warehouse-agnostic formulas in a tested grammar; the clearest case for why a domain standard needs this |
+| P3 | Concept-level metrics: a metric defined against ontology concepts, resolved to SQL through any model's ontology mapping | Ontology and Metric Language WGs jointly | Metric compiler and the canonical-formula extension | 298 warehouse-agnostic formulas in a tested grammar; the clearest case for why a domain standard needs this |
 | P4 | Catalog resolution of `ontology_ref` by name and version plus converter support for standalone mapping documents | Ontology WG | Embedded-mapping fallback | The mapping document already references the ontology by name and `iri`; the missing piece is tooling that resolves it |
 
 P3 is the largest. It would let a standard like GASP live entirely inside Ossie. Because it benefits any future vertical (healthcare, retail, fintech), it is an easier sell than a SaaS-only change. The GASP formula grammar is a working prototype of what P3 would need to express.
@@ -358,7 +358,7 @@ About 16 weeks to launch from 2026-10-12, with community engagement from the int
 | Phase | Weeks | Work | Gate |
 | --- | --- | --- | --- |
 | 0. Hygiene | 1 to 2 | Done 2026-10-13: field vocabulary reconciled, npm 1.12.0 published, site deployed, secrets audit, public mirror with governance documents | Mirror public and linked from gaspwiki.com and npm (met) |
-| 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (307 formula entries, 294 fields, 56 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
+| 1. Canon | 2 to 6 | Done 2026-10-13: formulas, field vocabulary and enum values (308 formula entries, 295 fields, 56 datasets, CEL names adopted); spike and exporters (`docs/ossie-spike.md`, `gasp-wiki-mcp/src/ossie/`, output at `/downloads/ossie/`); dialect layer; CI | Ontology, model and mapping pass the upstream validator and GASP's own checks in CI (met) |
 | 2. Native model | 6 to 10 | Introduction on the Ossie lists and P0 PR (done 2026-11-02); mapping format and `validate_mapping` (done 2026-11-02); metric compiler into a company's model (done 2026-11-02, `compile_model`); reference model PR (branch `examples-gasp-saas` prepared, not yet open); DuckDB demo (done 2026-11-02); synthetic dataset grown from the test fixture (open) | Reference model PR open (prepared); compiled Core runs in DuckDB (met) |
 | 3. Drift and on-ramp | 10 to 16 | Drift scorer (done 2026-11-03, `score_drift`); profiler, proposer and Decide step (done 2026-11-03); the CEL derivation rules and `derive_cel`, the readiness checks and the fix plan (all done 2026-11-03); the Stripe and Salesforce worked examples (done 2026-11-04); P1 to P4 drafted | Drift report on a public vendor example (done 2026-11-04, the Stripe example); synthetic data reaches L4 (done 2026-11-03) |
 | Launch | 16+ | Ecosystem card, "GASP for Ossie" page, blog, community talk | Reference model merged |

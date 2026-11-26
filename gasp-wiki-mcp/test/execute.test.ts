@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
 import { buildAdapter, addDays, START, END, type Row } from "./fixture/generate.js";
-import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate, plantUsageRealisation, plantCreditEvent, plantPayAsYouGoCustomer } from "./fixture-db.js";
+import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate, plantUsageRealisation, plantCreditEvent, plantPayAsYouGoCustomer, plantFixedTermCustomer, plantRecognisedRevenue, plantContractCustomer, plantMovement } from "./fixture-db.js";
 import { TABLES, columnName } from "../src/synthetic.js";
 
 // Runs the compiled SQL. The fixture (test/fixture) is loaded into an in-process
@@ -27,15 +27,15 @@ async function runBreakdown(id: string, start: string, end: string, on: PGlite =
   return Object.fromEntries(res.rows.map((r) => [String(r[field]), r[id] === null || r[id] === undefined ? null : Number(r[id])]));
 }
 
-/** A named variant compiled straight from formulas.json and run over the fixture. */
-async function runVariant(id: string, name: string, start: string, end: string): Promise<number | null> {
+/** A named variant compiled straight from formulas.json and run over the fixture, or over a database with planted rows. */
+async function runVariant(id: string, name: string, start: string, end: string, on: PGlite = db): Promise<number | null> {
   const { compileMetric } = await import("../src/compile.js");
   const { fillTemplate } = await import("../src/tools.js");
   const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
   const c = compileMetric(id, ctx, name);
   const filled = fillTemplate({ ...data.queryTemplates[id], fields: c.fields, datasets: c.datasets, parameterizedQuery: c.sql, placeholders: c.placeholders }, adapter, data);
   expect([...filled.missingFields, ...filled.missingTables], `${id}:${name}`).toEqual([]);
-  const res = await db.query<Record<string, unknown>>(bind(filled.sql, start, end));
+  const res = await on.query<Record<string, unknown>>(bind(filled.sql, start, end));
   const value = Object.values(res.rows[0])[0];
   return value === null || value === undefined ? null : Number(value);
 }
@@ -898,6 +898,162 @@ describe("hand-computed metric values, credit ledger", () => {
   });
 });
 
+// The year-or-renewal test (core.md, MRR; src/recurring.ts; DECISIONS.md 2026-11-26). A
+// subscription counts in MRR and ARR when its contract runs 12 months or more or when a
+// shorter one renews. The rule lives in the data: fixed-term revenue has no subscription
+// row and no revenue event, so the formulas are the ones every other test runs. No
+// synthetic customer holds a contract with no renewal, so each case is planted.
+describe("the year-or-renewal test", () => {
+  const MARCH = ["2026-03-01", "2026-03-31"] as const;
+  const MAY = ["2026-05-01", "2026-05-31"] as const;
+  const Q1 = ["2026-01-01", "2026-03-31"] as const;
+
+  // f1 signs a six-month contract with no renewal on 20 March: access from 1 April to
+  // 30 September for $30,000. f2 signs a paid pilot on 5 June: three months for $9,000.
+  describe("fixed-term revenue: a contract under 12 months with no renewal", () => {
+    let fixed: PGlite;
+    const on = (id: string, start: string, end: string) => runTemplate(fixed, data, id, start, end);
+
+    beforeAll(async () => {
+      fixed = await fixtureDb();
+      await plantFixedTermCustomer(fixed, "f1", { signed: "2026-03-20", start: "2026-04-01", end: "2026-09-30", tcv: 30000 });
+      await plantFixedTermCustomer(fixed, "f2", { signed: "2026-06-05", start: "2026-06-08", end: "2026-09-07", tcv: 9000 });
+      // Recognised as the access is given: f1 at $5,000 a month from April, f2 for 23 of its 92 days in June.
+      for (const month of ["2026-04", "2026-05", "2026-06"]) await plantRecognisedRevenue(fixed, month, "fixed_term", 5000);
+      await plantRecognisedRevenue(fixed, "2026-06", "fixed_term", 2250);
+    }, 120_000);
+
+    afterAll(async () => { await fixed?.close(); });
+
+    it("adds nothing to MRR, ARR, CARR, the MRR movements, NRR or GRR", async () => {
+      // March has f1 signed and yet to start: a contract with no ACV adds nothing to CARR.
+      for (const id of ["mrr", "arr", "carr", "new_mrr", "churned_mrr", "contraction_mrr", "net_new_mrr", "nrr", "grr", "revenue_churn_rate"])
+        for (const period of [H1, MARCH, JUNE]) expect(await on(id, ...period), `${id} ${period[1]}`).toBe(await run(id, ...period));
+    });
+
+    it("leaves the customer out of the customer counts and the logo rates", async () => {
+      for (const id of ["total_customers", "new_customers", "churned_customers", "logo_churn_rate", "logo_retention_rate", "arpa"])
+        for (const period of [H1, MARCH, JUNE]) expect(await on(id, ...period), `${id} ${period[1]}`).toBe(await run(id, ...period));
+    });
+
+    it("counts in Bookings at its total contract value and leaves the ACV average where it was", async () => {
+      expect(await on("bookings", ...H1)).toBe((await run("bookings", ...H1))! + 30000 + 9000);
+      expect(await on("bookings", ...JUNE)).toBe((await run("bookings", ...JUNE))! + 9000);
+      expect(await runVariant("bookings", "new", ...MARCH, fixed)).toBe((await runVariant("bookings", "new", ...MARCH))! + 30000);
+      for (const period of [H1, MARCH, JUNE]) expect(await on("acv", ...period), period[1]).toBe(await run("acv", ...period));
+    });
+
+    it("is reported as Fixed-Term Revenue in the months it is recognised", async () => {
+      // No synthetic customer holds one, so the line is zero until the two are planted.
+      for (const period of [H1, MARCH, JUNE]) expect(await run("fixed_term_revenue", ...period), period[1]).toBe(0);
+      expect(await on("fixed_term_revenue", ...MARCH)).toBe(0);
+      expect(await on("fixed_term_revenue", "2026-04-01", "2026-04-30")).toBe(5000);
+      expect(await on("fixed_term_revenue", ...JUNE)).toBe(5000 + 2250);
+      expect(await on("fixed_term_revenue", ...H1)).toBe(3 * 5000 + 2250);
+      // It is revenue, on a line of its own: Revenue (GAAP) holds it and Services Revenue does not.
+      expect(await on("revenue_gaap", ...H1)).toBe((await run("revenue_gaap", ...H1))! + 17250);
+      expect(await on("services_revenue", ...H1)).toBe(await run("services_revenue", ...H1));
+    });
+
+    it("the contract that counts starts New MRR and the customer count on its own first day", async () => {
+      // f1 signs a renewing annual contract at $400 a month from 10 June, while the six months still run.
+      await fixed.exec(`DELETE FROM ${TABLES.customer} WHERE ${columnName("customer", "customer_id")} = 'f1' AND ${columnName("customer", "snapshot_date")} >= DATE '2026-06-10'`);
+      await plantContractCustomer(fixed, "f1", { start: "2026-06-10", end: "2027-06-10", mrr: 400, renewable: true });
+      expect(await on("new_mrr", ...JUNE)).toBe((await run("new_mrr", ...JUNE))! + 400);
+      expect(await on("new_customers", ...JUNE)).toBe((await run("new_customers", ...JUNE))! + 1);
+      expect(await on("total_customers", ...JUNE)).toBe((await run("total_customers", ...JUNE))! + 1);
+      expect(await on("mrr", ...JUNE)).toBe((await run("mrr", ...JUNE))! + 400);
+      // Nothing moves before that day and the customer joins no cohort that opened earlier.
+      for (const id of ["total_customers", "new_customers", "mrr"]) expect(await on(id, ...MAY), id).toBe(await run(id, ...MAY));
+      for (const id of ["logo_churn_rate", "nrr", "grr"]) expect(await on(id, ...JUNE), id).toBe(await run(id, ...JUNE));
+    });
+  });
+
+  // t1 holds one contract for a fixed year with no renewal, $600 a month from 15 June 2025,
+  // which ends on 15 June 2026. It counts in MRR for the whole year: its `new` event is
+  // tagged `temporary` and the `churn` event on its last day `scheduled_reversal`.
+  describe("a contract of 12 months with no renewal", () => {
+    let year: PGlite;
+    const on = (id: string, start: string, end: string) => runTemplate(year, data, id, start, end);
+    const cohort = () => new Set(activeCustomersOn(START).map((r) => r.customer_id));
+
+    beforeAll(async () => {
+      year = await fixtureDb();
+      await plantContractCustomer(year, "t1", { start: "2025-06-15", end: "2026-06-15", mrr: 600, renewable: false });
+    }, 120_000);
+
+    afterAll(async () => { await year?.close(); });
+
+    it("counts in MRR, ARR and the customer count while it runs", async () => {
+      expect(await on("mrr", ...MAY)).toBe((await run("mrr", ...MAY))! + 600);
+      expect(await on("arr", ...MAY)).toBe((await run("arr", ...MAY))! + 7200);
+      expect(await on("total_customers", ...MAY)).toBe((await run("total_customers", ...MAY))! + 1);
+    });
+
+    it("is churn on the day it ends: Churned MRR, a churned customer and both retention rates", async () => {
+      expect(await on("churned_mrr", ...JUNE)).toBe((await run("churned_mrr", ...JUNE))! + 600);
+      expect(await on("churned_customers", ...JUNE)).toBe((await run("churned_customers", ...JUNE))! + 1);
+      expect(await on("mrr", ...JUNE)).toBe(await run("mrr", ...JUNE));
+      // The half year: t1 opens in the cohort with 600 and ends with none.
+      const opening = mrrOn(START, cohort());
+      expect(await on("nrr", ...H1)).toBeCloseTo((expectedNrr(...H1) * opening) / (opening + 600), 10);
+      expect(await on("grr", ...H1)).toBeCloseTo((expectedNrr(...H1, true) * opening) / (opening + 600), 10);
+      const customers = activeCustomersOn(START).length;
+      expect(await on("logo_churn_rate", ...H1)).toBeCloseTo(((await run("churned_customers", ...H1))! + 1) / (customers + 1), 10);
+    });
+
+    it("Adjusted NRR and Adjusted GRR leave it out of the opening base and out of the movements", async () => {
+      // The fixture tags nothing temporary, so its adjusted rates are its standard ones, and
+      // the planted year changes neither. Before 2026-11-26 the base kept the 600 and the
+      // rates read a contract that ended on schedule as revenue kept.
+      for (const period of [H1, Q1, JUNE]) {
+        expect(await runVariant("nrr", "adjusted", ...period), period[1]).toBeCloseTo((await run("nrr", ...period))!, 10);
+        expect(await runVariant("nrr", "adjusted", ...period, year), period[1]).toBeCloseTo((await run("nrr", ...period))!, 10);
+        expect(await runVariant("grr", "adjusted", ...period, year), period[1]).toBeCloseTo((await run("grr", ...period))!, 10);
+      }
+      // While it runs, the standard rate holds it on both sides.
+      const opening = mrrOn(START, cohort());
+      expect(await on("nrr", ...Q1)).toBeCloseTo((expectedNrr(...Q1) * opening + 600) / (opening + 600), 10);
+    });
+  });
+
+  // t2 pays $600 a month on a plan that renews, from 20 June 2025, and adds an analytics
+  // package for one fixed year at $200 a month on 1 December 2025. It cancels everything on
+  // 20 May 2026 with the package still running: two `churn` events that day (cel.md, Change
+  // Nature), the package's reversal tagged `scheduled_reversal` and the plan's `permanent`.
+  describe("a customer who leaves with a temporary increase running", () => {
+    let leaving: PGlite;
+    const on = (id: string, start: string, end: string) => runTemplate(leaving, data, id, start, end);
+    const MAY_20 = "2026-05-20";
+
+    beforeAll(async () => {
+      leaving = await fixtureDb();
+      await plantContractCustomer(leaving, "t2", { start: "2025-06-20", end: MAY_20, mrr: 600, renewable: true });
+      await plantMovement(leaving, "t2", { id: "t2:package", date: "2025-12-01", type: "expansion", change: 200, nature: "temporary", classification: "same_product" }, MAY_20);
+      await plantMovement(leaving, "t2", { id: "t2:package:end", date: MAY_20, type: "churn", change: -200, nature: "scheduled_reversal" });
+    }, 120_000);
+
+    afterAll(async () => { await leaving?.close(); });
+
+    it("Churned MRR, NRR and GRR read the whole loss", async () => {
+      const opening = mrrOn(START, new Set(activeCustomersOn(START).map((r) => r.customer_id)));
+      expect(await on("mrr", ...Q1)).toBe((await run("mrr", ...Q1))! + 800);
+      expect(await on("churned_mrr", ...MAY)).toBe((await run("churned_mrr", ...MAY))! + 800);
+      expect(await on("churned_customers", ...MAY)).toBe((await run("churned_customers", ...MAY))! + 1);
+      expect(await on("nrr", ...H1)).toBeCloseTo((expectedNrr(...H1) * opening) / (opening + 800), 10);
+      expect(await on("grr", ...H1)).toBeCloseTo((expectedNrr(...H1, true) * opening) / (opening + 800), 10);
+    });
+
+    it("the adjusted rates open on the plan alone and count its loss alone", async () => {
+      const opening = mrrOn(START, new Set(activeCustomersOn(START).map((r) => r.customer_id)));
+      expect(await runVariant("nrr", "adjusted", ...H1, leaving)).toBeCloseTo((expectedNrr(...H1) * opening) / (opening + 600), 10);
+      expect(await runVariant("grr", "adjusted", ...H1, leaving)).toBeCloseTo((expectedNrr(...H1, true) * opening) / (opening + 600), 10);
+      // With the package running and nothing else moving, the customer is in the base at 600.
+      expect(await runVariant("nrr", "adjusted", ...Q1, leaving)).toBeCloseTo((expectedNrr(...Q1) * opening + 600) / (opening + 600), 10);
+    });
+  });
+});
+
 // Usage above a commitment reaches the revenue ledger as a pair (cel.md): an
 // expansion on the period's last day and its reversal on the next. GRR and
 // Revenue Churn Rate leave the reversal out, as the SaaS Metrics Standards
@@ -1028,8 +1184,9 @@ describe("Contracted ARR (CARR)", () => {
 
 // The two variants of CARR take churn off before it takes effect: the first reads
 // what the ledgers state as contract, the second the renewal forecast. Each planted
-// row is one a company would hold: a temporary add-on, a fixed-term project, notice
-// of an ending, a forecast below the current value.
+// row is one a company would hold: an add-on for one fixed year, an 18-month contract with
+// no renewal, notice of an ending, a forecast below the current value. Each temporary term
+// runs 12 months or more: a shorter one with no renewal is fixed-term revenue, outside MRR.
 describe("CARR net of known churn and net of forecast churn", () => {
   let known: PGlite;
   let forecast: PGlite;
@@ -1074,17 +1231,17 @@ describe("CARR net of known churn and net of forecast churn", () => {
     known = await fixtureDb();
     forecast = await fixtureDb();
 
-    // A three-month add-on from May, $200 a month, due to end on 1 August.
+    // An add-on for one fixed year from May, $200 a month, due to end on 1 May 2027.
     await plantEvent("p_addon", "c01", "2026-05-01", "expansion", 200, "temporary", "same_product");
     await addMrr("c01", 200, "2026-05-01");
-    // A six-month project from 10 April at $1,000 a month, as a subscription of its own.
+    // An 18-month contract with no renewal from 10 April at $1,000 a month, as a subscription of its own.
     await known.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${subs} WHERE ${sub("subscription_id")} = 's16' AND ${sub("snapshot_date")} >= '2026-04-10';
       UPDATE planted SET ${sub("subscription_id")} = 'p_project', ${sub("customer_id")} = 'p_customer', ${sub("mrr")} = 1000,
-        ${sub("contract_start")} = '2026-04-10', ${sub("contract_end")} = '2026-10-09';
+        ${sub("contract_start")} = '2026-04-10', ${sub("contract_end")} = '2027-10-09', ${sub("renewable")} = FALSE;
       INSERT INTO ${subs} SELECT * FROM planted;
       DROP TABLE planted;`);
     await plantEvent("p_project", "p_customer", "2026-04-10", "new", 1000, "temporary", null, "p_project");
-    // An add-on from 5 April, $300 a month, due to end in July and ended early on 20 May.
+    // An add-on from 5 April, $300 a month, due to run a year and ended early on 20 May.
     await plantEvent("p_early", "c02", "2026-04-05", "expansion", 300, "temporary", "same_product");
     await plantEvent("p_early_end", "c02", "2026-05-20", "contraction", -300, "scheduled_reversal", "same_product");
     await addMrr("c02", 300, "2026-04-05", "2026-05-20");
@@ -1121,11 +1278,11 @@ describe("CARR net of known churn and net of forecast churn", () => {
     }
   });
 
-  it("CARR holds the add-on and the project and the variant leaves both out", async () => {
-    // April: the project, the add-on that ends early and the add-on later kept.
+  it("CARR holds the add-on and the 18-month contract and the variant leaves both out", async () => {
+    // April: the 18-month contract, the add-on that ends early and the add-on later kept.
     expect(await runTemplate(known, data, "carr", ...months[0])).toBe(225600 + 12000 + 3600 + 1800);
     expect(await variant(known, "net_of_known_churn", ...months[0])).toBe(225600);
-    // May: the three-month add-on has started and the early ending has reversed.
+    // May: the one-year add-on has started and the early ending has reversed.
     expect(await runTemplate(known, data, "carr", ...months[1])).toBe(261600 + 2400 + 12000 + 1800);
     expect(await variant(known, "net_of_known_churn", ...months[1])).toBe(261600);
   });

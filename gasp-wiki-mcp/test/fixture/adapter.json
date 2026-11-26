@@ -1410,6 +1410,16 @@
       "warehouseRef": "gasp_subscriptions.renewed"
     },
     {
+      "gaspField": "renewable",
+      "dataset": "contract_event",
+      "warehouseRef": "gasp_contract_events.renewable"
+    },
+    {
+      "gaspField": "renewable",
+      "dataset": "subscription",
+      "warehouseRef": "gasp_subscriptions.renewable"
+    },
+    {
       "gaspField": "reopened",
       "warehouseRef": "gasp_tickets.reopened"
     },

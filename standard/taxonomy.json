@@ -976,6 +976,9 @@
     "finance::carr-contracted-annual-recurring-revenue": {
       "primary": "outcome"
     },
+    "finance::fixed-term-revenue": {
+      "primary": "outcome"
+    },
     "finance::credit-breakage": {
       "primary": "outcome"
     },

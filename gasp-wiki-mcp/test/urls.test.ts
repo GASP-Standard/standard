@@ -3,7 +3,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadStandard, findDefinition, search } from "../src/loader.js";
-import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink, celClassUrl, datasetUrl } from "../src/urls.js";
+import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink, celClassUrl, datasetUrl, calculatorUrl } from "../src/urls.js";
+import { PRESETS, questionToQuery } from "../src/recurring.js";
 import type { StandardData } from "../src/types.js";
 
 // Regression: agents were handed definitions with no URL and guessed their
@@ -34,6 +35,9 @@ function emittedUrls(d: StandardData): Array<{ from: string; url: string }> {
     }
   }
   for (const n of d.nodes) out.push({ from: `node ${n.id}`, url: nodeUrl(n) });
+  // classify_revenue links the calculator, opened on the question it was asked.
+  out.push({ from: "calculator", url: calculatorUrl() });
+  for (const p of PRESETS) out.push({ from: `calculator, ${p.label}`, url: calculatorUrl(questionToQuery(p.question)) });
   return out;
 }
 

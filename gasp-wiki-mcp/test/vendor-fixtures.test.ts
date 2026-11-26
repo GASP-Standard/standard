@@ -151,8 +151,8 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
 
   it("fails only the expansion tag check before classify.sql and passes every check after it", async () => {
     const compiled = compileChecks(adapter, data, "postgres", FRESH);
-    expect(compiled.length).toBe(37);
-    expect(compiled.filter((c) => c.sql).length).toBe(18); // the rest need datasets the mapping lacks (costs, contracts, amendments), mrr_start or the credit balances Stripe does not carry
+    expect(compiled.length).toBe(39);
+    expect(compiled.filter((c) => c.sql).length).toBe(18); // the rest need datasets the mapping lacks (costs, contracts, amendments), mrr_start, the contract dates and renewal flag of the year-or-renewal test or the credit balances Stripe does not carry
     before = (await db.query<CheckResult>(checksAsOneQuery(compiled))).rows;
     const failing = (rows: CheckResult[]) => rows.filter((r) => Number(r.violations) > 0).map((r) => `${r.check_id}:${r.violations}`);
     expect(failing(before)).toEqual(["expansion_tag:revenue_event:5"]);
@@ -164,7 +164,7 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
     expect(Object.fromEntries(tags.map((t) => [t.event_id, t.expansion_classification]))).toEqual(Object.fromEntries(expected.map((e) => [e.event_id, e.expansion_classification])));
     after = (await db.query<CheckResult>(checksAsOneQuery(compiled))).rows;
     expect(failing(after)).toEqual([]);
-    expect(generateChecksFromText(text, undefined, data, { ...FRESH, results: JSON.stringify(after) })).toContain("18 runnable over this mapping, 19 need fields the mapping lacks; 18 pass, 0 fail.");
+    expect(generateChecksFromText(text, undefined, data, { ...FRESH, results: JSON.stringify(after) })).toContain("18 runnable over this mapping, 21 need fields the mapping lacks; 18 pass, 0 fail.");
   });
 
   it("climbs from readiness level 2 to 4: the adapter, the check rows, the classification, the compiled model", async () => {

@@ -18,6 +18,7 @@ CREATE TABLE billing.subscriptions (
   subscription_status VARCHAR(16),
   contract_start DATE,
   contract_end DATE,
+  renewable BOOLEAN,
   renewal_trigger_date DATE,
   renewal_complete_date DATE,
   renewal_amount NUMBER(18, 2),

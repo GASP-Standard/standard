@@ -176,6 +176,11 @@
       "warehouseRef": "prior_mrr"
     },
     {
+      "gaspField": "renewable",
+      "dataset": "subscription",
+      "warehouseRef": "renewable"
+    },
+    {
       "gaspField": "renewal_amount",
       "warehouseRef": "renewal_amount"
     },

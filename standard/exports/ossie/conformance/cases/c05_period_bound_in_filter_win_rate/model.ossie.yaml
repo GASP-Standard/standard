@@ -115,10 +115,10 @@ datasets:
       - name: revenue_type
         expression:
           sql: revenue_type
-        description: Revenue line type
+        description: "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal"
         datatype: String
         ai_context:
-          instructions: One of subscription, services, usage, other
+          instructions: One of subscription, services, usage, fixed_term, other
       - name: snapshot_date
         expression:
           sql: snapshot_date

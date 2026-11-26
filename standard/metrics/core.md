@@ -23,19 +23,60 @@ MRR contribution = Annual Contract Value / 12
 ```
 
 **Include:**
-- Recurring subscription fees
+- Recurring subscription fees under a contract of 12 months or more, or a shorter plan that renews
+- Support, maintenance and managed services sold on subscription terms, by the same test
 - Expansion and upgrade revenue
 - Discounts (use discounted amount, not list price)
 
 **Exclude:**
-- One-time fees (setup, implementation, professional services)
+- One-time fees (setup, implementation)
+- Professional services at any length, even when the work repeats ([Services Revenue](professional-services.md#services-revenue))
+- Fixed-term revenue: product access sold for under 12 months with no renewal
 - Trial accounts and free users
 - Variable/usage-based fees (unless contractually guaranteed)
 - Non-recurring charges
 
 Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue). That covers a pack of credits bought once and an automatic top-up, which are [usage paid for in advance](finance.md#consumption-revenue): each is a purchase with no term and no renewal.
 
-**Fixed terms and temporary changes:** A subscription or an add-on with a set end date counts in MRR at its monthly value until the day its contract ends, whether the customer then steps down or leaves. The [Commercial Event Ledger](../cel.md#change-nature) marks its movements with `change_nature` (`temporary` when it starts, `scheduled_reversal` when it ends), so this revenue can be told apart and Adjusted NRR and Adjusted GRR leave it out.
+**The year-or-renewal test:** A subscription counts in MRR when its contract runs 12 months or more or when a shorter plan renews. A contract renews when it carries a renewal provision (it continues unless cancelled, or the customer holds an option to renew) or when it follows an earlier term with no break in access. Product access sold for under 12 months with neither is [fixed-term revenue](../definitions.md#fixed-term-revenue): it is reported on a line of its own beside MRR, it stays out of MRR and ARR and its end is neither churn nor contraction. Twelve months means 365 days of access or more. The test is applied to each subscription by its own term and its own renewal provision, so one customer can hold both kinds.
+
+| What is sold | Counts in MRR and ARR | Can churn? |
+| --- | --- | --- |
+| A monthly or quarterly plan that renews | Yes | Yes |
+| A contract of 12 months or more that renews | Yes | Yes |
+| A contract of 12 months or more with no renewal | Yes | Yes, on the day it ends |
+| A contract under 12 months with no renewal | No. Fixed-term revenue | No |
+| A second short contract that follows the first with no break | Yes | Yes |
+| An add-on under 12 months with no renewal, sold to a customer on a renewing subscription | No. Fixed-term revenue | No |
+| An add-on that ends with its parent contract and renews with it | Yes | Yes |
+| A paid pilot or proof of concept under 12 months with no renewal | No. Fixed-term revenue | No |
+| A free trial | No | No |
+| Committed usage, a contracted minimum | By its contract, like the subscriptions above | Yes, if it counts |
+| Usage above the commitment | Yes, for the period billed | No |
+| Support, maintenance or a managed service sold on subscription terms | By its contract, like the subscriptions above | Yes, if it counts |
+| Delivered work: implementation, consulting, training, a build | No, at any length. Services Revenue | No |
+| One-time fees such as setup | No | No |
+| Usage billed on demand with no commitment | No. Consumption Revenue | No |
+| A pack of credits bought once, automatic top-ups included | No. Consumption Revenue as the credits are used | No |
+| Credits billed every month until the customer cancels | Yes | Yes |
+
+The third column says whether the revenue can count against Revenue Churn Rate and GRR. Whatever counts in MRR is lost revenue on the day it ends and whatever stays outside MRR has none to lose. Usage above a commitment is the exception: it counts for the period billed and Revenue Churn Rate and GRR leave its reversal out.
+
+**When a contract starts or ends:**
+
+| What happens | How it is reported |
+| --- | --- |
+| A contract that counts in MRR expires or is cancelled | Churned MRR and a churned customer, in the month it ends |
+| It ends and the customer keeps another subscription | Contraction MRR. The customer has not churned |
+| It ends early | Churned MRR on the day it ends. Contraction MRR when another subscription stays |
+| A fixed-term contract ends, on schedule or early | Nothing in MRR, in churn or in contraction |
+| A customer with fixed-term revenue alone signs a contract that counts | New MRR from that contract's start date |
+| A second short contract follows the first with no break | New MRR from the second contract's start date. The first term stays fixed-term revenue |
+| A customer who already has MRR adds a contract that counts | Expansion MRR |
+
+In the data the `subscription` dataset and the ledger hold the contracts that count. [Fixed-Term Revenue](finance.md#fixed-term-revenue) is recognised under the `fixed_term` revenue type, its contract counts in [Bookings](finance.md#bookings) at total contract value with no ACV and a customer whose only paid contracts are fixed-term holds the status `fixed_term`, outside [Total Customers](#total-customers).
+
+**Temporary changes:** A contract of 12 months or more with no renewal counts in MRR at its monthly value until the day it ends, when it is Churned MRR, or Contraction MRR if the customer keeps another subscription. The [Commercial Event Ledger](../cel.md#change-nature) marks its movements with `change_nature` (`temporary` when it starts, `scheduled_reversal` when it ends), as it does a discount with an end date, so this revenue can be told apart and Adjusted NRR and Adjusted GRR leave it out.
 
 **Inputs:**
 - Active customer list
@@ -50,6 +91,7 @@ MRR is reported per plan (by plan id and plan name) and per customer segment.
 
 **Common mistakes:**
 - Including one-time fees (setup, professional services)
+- Including a short contract that will never renew, such as a six-month project or a paid pilot
 - Including usage/consumption revenue that isn't guaranteed
 - Double-counting customers during plan changes
 - Not normalising annual contracts to monthly
@@ -61,6 +103,9 @@ MRR is reported per plan (by plan id and plan name) and per customer segment.
 - [Baremetrics: MRR Definition](https://baremetrics.com/academy/saas-calculate-mrr)
 - [Maxio: Monthly Recurring Revenue Defined](https://www.maxio.com/saaspedia/monthly-recurring-revenue-defined-for-a-saas-business)
 - [ChurnZero: Monthly Recurring Revenue](https://churnzero.com/churnopedia/monthly-recurring-revenue-mrr/)
+- [SaaS Metrics Standards Board: ARR](https://www.saasmetricsboard.com/annual-recurring-revenue) (services stay out even when they recur; churn comes off in the month the contract ends)
+- [ChartMogul: What is ARR?](https://chartmogul.com/blog/what-is-arr/) (contracts under 12 months)
+- [Kellblog: mapping annual to monthly SaaS metrics](https://kellblog.com/2022/10/13/mapping-from-annual-to-monthly-and-usage-based-saas-metrics/) (recurring means it comes up for renewal)
 
 ---
 
@@ -79,7 +124,7 @@ Both are valid. The GASP Standard uses **MRR × 12** for consistency across busi
 ARR = MRR × 12
 ```
 
-**Include:** Same inclusions/exclusions as MRR, annualised. A fixed-term subscription or a temporary add-on is annualised like any other MRR until its contract ends. ARR is a run rate, so an ending that is known in advance comes off on the day it happens. The `change_nature` tag on the ledger marks that revenue for anyone who filters on it.
+**Include:** Same inclusions/exclusions as MRR, annualised, so the [year-or-renewal test](#mrr-monthly-recurring-revenue) decides ARR too. Fixed-term revenue stays out: annualising a contract shorter than a year would state it above its total value. A contract of 12 months or more with no renewal is annualised like any other MRR until it ends. ARR is a run rate, so an ending that is known in advance comes off on the day it happens. The `change_nature` tag on the ledger marks that revenue for anyone who filters on it.
 
 **Industry equivalents:** Consumption companies call this figure Committed ARR or Baseline ARR: GASP's ARR includes contractual commitments and leaves uncommitted usage out. Contracted ARR (CARR), which adds contracts that are signed and have not yet started, is a metric of its own: [CARR](finance.md#carr-contracted-annual-recurring-revenue). Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
 
@@ -389,7 +434,7 @@ Total Customers = Count of customers with customer_status = active at period end
 
 **Also known as:** Customer Count, Active Customers, Logos
 
-**Counting:** One customer is one billing entity, whatever its number of users, seats or subscriptions (see [Customer](../definitions.md#customer)). Trial and free accounts are not customers until they pay. A pay-as-you-go account, one that buys usage or credit packs with no subscription, holds the status `pay_as_you_go` and is counted by [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), outside this number.
+**Counting:** One customer is one billing entity, whatever its number of users, seats or subscriptions (see [Customer](../definitions.md#customer)). Trial and free accounts are not customers until they pay. A pay-as-you-go account, one that buys usage or credit packs with no subscription, holds the status `pay_as_you_go` and is counted by [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), outside this number. An account whose only paid contracts are [fixed-term revenue](../definitions.md#fixed-term-revenue) holds the status `fixed_term` and is outside it too: it has no MRR, so it joins the count on the day a contract that counts in MRR starts.
 
 Total Customers is reported per customer segment.
 
@@ -614,7 +659,7 @@ GRR measures revenue retained from existing customers and leaves expansion out. 
 Logo Churn Rate = Customers lost in period / Customers at start of period × 100
 ```
 
-**Who is counted:** The customers active on the first day of the period, the same cohort NRR and GRR follow. A customer lost in the period counts when they were a customer on that day, so the rate stays between 0% and 100%. A customer who joins and churns inside the period appears in [Churned Customers](#churned-customers) and sits outside this rate. So does a pay-as-you-go account with no subscription: it has nothing to cancel, so its loss shows in [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention) as a year at zero.
+**Who is counted:** The customers active on the first day of the period, the same cohort NRR and GRR follow. A customer lost in the period counts when they were a customer on that day, so the rate stays between 0% and 100%. A customer who joins and churns inside the period appears in [Churned Customers](#churned-customers) and sits outside this rate. So does a pay-as-you-go account with no subscription: it has nothing to cancel, so its loss shows in [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention) as a year at zero. A customer whose only contract is [fixed-term revenue](../definitions.md#fixed-term-revenue) has no MRR and sits outside the rate as well, among neither the customers of day one nor the departures.
 
 **Time period:** Monthly or annual basis. Always specify which.
 

@@ -12,7 +12,7 @@ datasets:
       - name: change_nature
         expression:
           sql: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         datatype: String
         ai_context:
           instructions: One of permanent, temporary, scheduled_reversal
@@ -320,10 +320,10 @@ datasets:
       - name: customer_status
         expression:
           sql: customer_status
-        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
+        description: Customer lifecycle status; active means at least one active subscription, pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once, and fixed_term an account whose only paid contracts are fixed-term revenue (under 12 months with no renewal) and which buys no usage
         datatype: String
         ai_context:
-          instructions: One of trial, active, pay_as_you_go, churned, dormant
+          instructions: One of trial, active, pay_as_you_go, fixed_term, churned, dormant
       - name: last_active_date
         expression:
           sql: last_active_date
@@ -423,7 +423,7 @@ datasets:
       - name: mrr
         expression:
           sql: mrr
-        description: Monthly recurring revenue of the subscription
+        description: "Monthly recurring revenue of the subscription. The dataset holds the contracts that count in MRR: a term of 12 months or more, or a shorter one that renews. A contract under 12 months with no renewal is fixed-term revenue and has no row"
         datatype: Decimal
       - name: mrr_end
         expression:
@@ -459,6 +459,11 @@ datasets:
         expression:
           sql: renewed
         description: Renewed at the most recent term end
+        datatype: Boolean
+      - name: renewable
+        expression:
+          sql: renewable
+        description: "The contract carries a renewal provision (it renews unless cancelled, or the customer holds an option to renew) or is itself the renewal of an earlier term, one that follows the term before with no break in access. A contract with neither that runs under 12 months is fixed-term revenue: it has no subscription row and its contract event carries no acv"
         datatype: Boolean
       - name: segment
         expression:
@@ -688,10 +693,10 @@ datasets:
       - name: revenue_type
         expression:
           sql: revenue_type
-        description: Revenue line type
+        description: "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal"
         datatype: String
         ai_context:
-          instructions: One of subscription, services, usage, other
+          instructions: One of subscription, services, usage, fixed_term, other
     nonportable_extensions:
       - vendor_name: GASP
         data:

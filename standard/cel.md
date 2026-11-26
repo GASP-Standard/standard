@@ -38,6 +38,8 @@ Each class is a dataset in `ontology.json`, named in lower case (`revenue_event`
 
 A change in recurring revenue. This is the primary input for MRR, ARR, NRR, GRR and revenue churn metrics.
 
+The ledger holds the contracts that count in MRR by the [year-or-renewal test](metrics/core.md#mrr-monthly-recurring-revenue): a term of 12 months or more, or a shorter one that renews. [Fixed-term revenue](definitions.md#fixed-term-revenue), product access sold for under 12 months with no renewal, has no Revenue_Event when it starts and none when it ends.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `event_id` | `string` | Unique identifier |
@@ -531,16 +533,18 @@ An optional field on `Revenue_Event` and `Amendment_Event` that captures the int
 | Value | Meaning | Example |
 |-------|---------|---------|
 | `permanent` | The change reflects a durable shift in the customer relationship. This is the default when the field is omitted. | Customer upgrades from Starter to Pro. |
-| `temporary` | The change is expected to reverse within a defined period. The underlying subscription relationship has not structurally changed. | Customer purchases a 3-month add-on for a seasonal campaign. |
-| `scheduled_reversal` | This event reverses a prior `temporary` event. It should be paired with the original event for analysis. | The 3-month add-on expires and MRR returns to its prior level. |
+| `temporary` | The change is expected to reverse within a defined period. The underlying subscription relationship has not structurally changed. | Customer adds an analytics package for one fixed year, with no renewal. |
+| `scheduled_reversal` | This event reverses a prior `temporary` event. It should be paired with the original event for analysis. | The one-year add-on reaches its end date and MRR returns to its prior level. |
 
-A subscription sold for a fixed term with no renewal clause, such as a six-month project, takes the same pair: its `new` event is `temporary` and the `churn` event on the day the term ends is a `scheduled_reversal`.
+A subscription sold for a fixed term of 12 months or more with no renewal, such as an 18-month contract, takes the same pair: its `new` event is `temporary` and the `churn` event on the day the term ends is a `scheduled_reversal`. A discount with an end date and the [usage realisation](#deriving-usage-realisation) pair carry the tags too. A term under 12 months with no renewal is [fixed-term revenue](definitions.md#fixed-term-revenue): it has no event in the ledger, so the tags never reach it.
 
 ### When a Temporary Change Ends Early or Stays
 
-The `scheduled_reversal` is dated the day the temporary change ends. An add-on due to run three months that the customer drops after two reverses on the day it is dropped, with the same tag.
+The `scheduled_reversal` is dated the day the temporary change ends. An add-on due to run 18 months that the customer drops after ten reverses on the day it is dropped, with the same tag.
 
 A temporary change the customer decides to keep is corrected on the day the contract changes. The correction is an event of the same type with the `temporary` tag and the opposite sign. The change is booked again that day as `permanent`. The two net to zero in MRR, so the standard metrics stay where they were and Adjusted NRR gains the expansion that day.
+
+A customer who leaves with a temporary increase still running has two `churn` events that day. One reverses the temporary amount and is tagged `scheduled_reversal`. The other carries the rest and is `permanent`. Churned MRR counts both, so the standard metrics read the whole loss, and Adjusted NRR and Adjusted GRR count the permanent part alone.
 
 Under both rules the temporary increases of a ledger (`new`, `expansion` and `reactivation` events tagged `temporary`) and their reversals (`contraction` and `churn` events tagged `scheduled_reversal`) sum, at any date, to the temporary revenue still running. [CARR net of known churn](metrics/finance.md#carr-contracted-annual-recurring-revenue) takes that amount off at twelve times its monthly value.
 
@@ -554,7 +558,7 @@ Under both rules the temporary increases of a ledger (`new`, `expansion` and `re
 
 ### Example: Temporary Upgrade and Reversal
 
-A customer on a $1,000/mo plan purchases a 3-month analytics add-on for $600/mo.
+A customer on a $1,000/mo plan adds an analytics package for one fixed year at $600/mo, with no renewal.
 
 **Month 1: Upgrade**
 
@@ -574,13 +578,13 @@ A customer on a $1,000/mo plan purchases a 3-month analytics add-on for $600/mo.
 }
 ```
 
-**Month 4: Add-on expires**
+**Month 13: Add-on expires**
 
 ```json
 {
   "event_class": "Revenue_Event",
   "event_id": "rev-011",
-  "event_date": "2026-07-01",
+  "event_date": "2027-04-01",
   "customer_id": "cust-0512",
   "subscription_id": "sub-0890",
   "event_type": "contraction",
@@ -592,31 +596,40 @@ A customer on a $1,000/mo plan purchases a 3-month analytics add-on for $600/mo.
 }
 ```
 
-Under standard GASP metrics this produces +$600 expansion in April and -$600 contraction in July. Both are mechanically correct. The `change_nature` field allows downstream analysis to separate this expected reversal from true contraction that signals customer health risk.
+Under standard GASP metrics this produces +$600 expansion in April 2026 and -$600 contraction in April 2027. Both are mechanically correct. The `change_nature` field allows downstream analysis to separate this expected reversal from true contraction that signals customer health risk.
 
 ### Adjusted NRR
 
-Teams that adopt `change_nature` can compute an adjusted NRR that excludes temporary movements. It sits beside standard NRR as an internal measure of revenue quality.
+Teams that adopt `change_nature` can compute an adjusted NRR that measures the revenue sold as permanent. It leaves temporary revenue out of the opening base and out of the movements, and it sits beside standard NRR as an internal measure of revenue quality.
 
 ```
-Adjusted NRR = (Beginning MRR + Permanent Expansion - Permanent Contraction - Permanent Churn) / Beginning MRR
+Permanent Beginning MRR = Beginning MRR - Temporary MRR at the start
+Adjusted NRR = (Permanent Beginning MRR + Permanent Expansion - Permanent Contraction - Permanent Churn) / Permanent Beginning MRR
 ```
 
 Where:
+- **Temporary MRR at the start** = the temporary increases still running on the first day of the period: the `new`, `expansion` and `reactivation` events tagged `temporary` up to that day less the `contraction` and `churn` events tagged `scheduled_reversal`, usage realisation events apart
 - **Permanent Expansion** = expansion events where `change_nature` is `permanent` or omitted
 - **Permanent Contraction** = contraction events where `change_nature` is `permanent` or omitted
 - **Permanent Churn** = churn events where `change_nature` is `permanent` or omitted
 
-The standard NRR (reported to investors and boards) includes all movements regardless of `change_nature`. Adjusted NRR is an internal signal. Both are computed from the same CEL events.
+The standard NRR (reported to investors and boards) includes all movements regardless of `change_nature`. Adjusted NRR is an internal signal. Both are computed from the same CEL events. Adjusted GRR takes the same base and leaves expansion out.
+
+The base matters when temporary revenue ends inside the period. A customer who opens the year on $1,000 a month with a $600 one-year add-on still running has a permanent base of $1,000. When the add-on ends on schedule the customer reads 100% in Adjusted NRR and 62.5% in standard NRR, which counts the $600 at both ends.
 
 ### SQL: Adjusted vs. Standard NRR
 
 ```sql
 -- Beginning MRR is the sum of all movements before the period; the cohort is
--- the customers with MRR at that point. :period_start and :period_end bound
--- the trailing twelve months.
+-- the customers with MRR at that point. temporary_mrr is the part of it sold
+-- as temporary and still running. :period_start and :period_end bound the
+-- trailing twelve months.
 WITH cohort AS (
-    SELECT customer_id, SUM(mrr_change) AS beginning_mrr
+    SELECT customer_id, SUM(mrr_change) AS beginning_mrr,
+           SUM(CASE WHEN ((change_nature = 'temporary' AND event_type IN ('new', 'expansion', 'reactivation'))
+                       OR (change_nature = 'scheduled_reversal' AND event_type IN ('contraction', 'churn')))
+                     AND (expansion_classification IS NULL OR expansion_classification <> 'usage_realisation')
+                    THEN mrr_change ELSE 0 END) AS temporary_mrr
     FROM cel_revenue_events
     WHERE event_date < :period_start
     GROUP BY customer_id
@@ -633,10 +646,10 @@ SELECT
   ((SELECT SUM(beginning_mrr) FROM cohort)
     + SUM(CASE WHEN event_type IN ('expansion', 'contraction', 'churn') THEN mrr_change ELSE 0 END))
   / (SELECT SUM(beginning_mrr) FROM cohort) AS nrr_standard,
-  -- Adjusted NRR (permanent movements only)
-  ((SELECT SUM(beginning_mrr) FROM cohort)
+  -- Adjusted NRR (the permanent base and permanent movements only)
+  ((SELECT SUM(beginning_mrr - temporary_mrr) FROM cohort)
     + SUM(CASE WHEN event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent' THEN mrr_change ELSE 0 END))
-  / (SELECT SUM(beginning_mrr) FROM cohort) AS nrr_adjusted
+  / NULLIF((SELECT SUM(beginning_mrr - temporary_mrr) FROM cohort), 0) AS nrr_adjusted
 FROM movements;
 ```
 
@@ -651,6 +664,8 @@ Where a billing system records amendments as events of its own, those are the be
 ### Input
 
 The GASP `subscription` dataset: `subscription_id`, `customer_id`, `snapshot_date`, `mrr`, `subscription_status` and `segment`. A snapshot table has one row per subscription per snapshot date at any cadence. A version history (one row per change, valid from a date) is the same thing with `snapshot_date` as the date each version took effect.
+
+The dataset holds the contracts that count in MRR. [Fixed-term revenue](definitions.md#fixed-term-revenue) has no row in it, so the derivation produces no event for a contract under 12 months with no renewal, when it starts or when it ends. A contract of 12 months or more with no renewal has rows like any other and rule 6 gives its events the default `permanent`: set `temporary` on its start and `scheduled_reversal` on its end from the contract record.
 
 ### Rules
 
@@ -759,7 +774,7 @@ Some billing systems keep no subscription history: what they keep is the invoice
 
 ### Input
 
-The GASP `invoice` dataset: `invoice_id`, `subscription_id`, `customer_id`, `snapshot_date`, `service_period_start`, `service_period_end` and `recurring_amount`. `recurring_amount` is the recurring part of the invoice as billed for the service period: subscription charges only, with one-off charges, usage billed beyond a commitment, credits and tax excluded. The service period is the days the recurring charge pays for, both ends inclusive. An invoice with no subscription or no service period (a one-off charge, a usage overage billed on its own) is not recurring and produces no event.
+The GASP `invoice` dataset: `invoice_id`, `subscription_id`, `customer_id`, `snapshot_date`, `service_period_start`, `service_period_end` and `recurring_amount`. `recurring_amount` is the recurring part of the invoice as billed for the service period: subscription charges only, with one-off charges, fixed-term revenue, usage billed beyond a commitment, credits and tax excluded. The service period is the days the recurring charge pays for, both ends inclusive. An invoice with no subscription or no service period (a one-off charge, a usage overage billed on its own) is not recurring and produces no event.
 
 ### Rules
 
@@ -983,7 +998,7 @@ The CEL sits beside the entity model and records *events that happen to* entitie
 - HR events (hiring, termination), unless directly costed as a `Cost_Event`
 - Infrastructure events (deployments, incidents). These belong in engineering observability
 
-The CEL is scoped to the same domain as the rest of the GASP Standard: SaaS sold by subscription, by consumption or by both. Consumption with or without a contracted commitment is covered through `Credit_Event`. MRR and ARR still exclude uncommitted usage, which [Consumption Revenue](metrics/finance.md#consumption-revenue) and [Usage Run-Rate](metrics/finance.md#usage-run-rate) report. Usage that exceeds a contracted commitment is also a `Revenue_Event` tagged `usage_realisation`, derived as [Deriving Usage Realisation](#deriving-usage-realisation) says. Marketplace transactions and services-only revenue are out of scope.
+The CEL is scoped to the same domain as the rest of the GASP Standard: SaaS sold by subscription, by consumption or by both. Consumption with or without a contracted commitment is covered through `Credit_Event`. MRR and ARR still exclude uncommitted usage, which [Consumption Revenue](metrics/finance.md#consumption-revenue) and [Usage Run-Rate](metrics/finance.md#usage-run-rate) report. Usage that exceeds a contracted commitment is also a `Revenue_Event` tagged `usage_realisation`, derived as [Deriving Usage Realisation](#deriving-usage-realisation) says. Fixed-term revenue and professional services are revenue outside MRR and have no event in the ledger. Marketplace transactions and services-only revenue are out of scope.
 
 ---
 

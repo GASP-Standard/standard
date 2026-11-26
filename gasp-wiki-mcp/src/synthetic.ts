@@ -403,7 +403,7 @@ export interface Fixture { tables: Record<string, Row[]> }
  * stories always set them, and attrsFor never draws for them, so the PRNG
  * sequence (and every pinned value) is unchanged by their addition.
  */
-const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date", "invoice.subscription_id", "service_period_start", "service_period_end", "recurring_amount", "brand_awareness", "partner_type", "onboarding_engagement_score", "implementation_quality_score"]);
+const STORY_ONLY = new Set(["ticket_type", "hire_source", "plan_id", "application_date", "invoice.subscription_id", "service_period_start", "service_period_end", "recurring_amount", "brand_awareness", "partner_type", "onboarding_engagement_score", "implementation_quality_score", "renewable"]);
 export const TICKET_TYPES = ["how_to", "bug", "billing", "how_to", "feature_request", "account", "how_to", "bug", "other"];
 export const HIRE_SOURCES = ["referral", "inbound", "sourced", "agency", "inbound", "internal", "campus", "referral", "other"];
 
@@ -478,7 +478,7 @@ export function generateFixture(ontology?: Pick<OntologyData, "fields" | "datase
         const mrr = mrrOn(c, d);
         t.subscription.push(row("subscription", c, {
           subscription_id: subscriptionOf(c), customer_id: c, plan_id: planOf(c), snapshot_date: d, mrr, subscription_status: mrr > 0 ? "active" : "cancelled",
-          contract_start: acquired, contract_end: RENEWALS[c]?.end ?? addDays(acquired, 365), mrr_start: mrrOn(c, addDays(d, -1)), mrr_end: mrr,
+          contract_start: acquired, contract_end: RENEWALS[c]?.end ?? addDays(acquired, 365), renewable: true, mrr_start: mrrOn(c, addDays(d, -1)), mrr_end: mrr,
           ...renewalState(c, d),
         }, sa));
       }
@@ -778,7 +778,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
         const mrr = mrrOn(c, d);
         t.subscription.push(row("subscription", c, {
           subscription_id: subscriptionOf(c), customer_id: c, plan_id: planOf(c), snapshot_date: d, mrr, subscription_status: mrr > 0 ? "active" : "cancelled",
-          contract_start: acquired, contract_end: addDays(acquired, 365), mrr_start: mrrOn(c, addDays(d, -1)), mrr_end: mrr, ...renewalState(c, d),
+          contract_start: acquired, contract_end: addDays(acquired, 365), renewable: true, mrr_start: mrrOn(c, addDays(d, -1)), mrr_end: mrr, ...renewalState(c, d),
         }, sa));
       }
     }
@@ -881,7 +881,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
       t.contract_event.push(row("contract_event", id, {
         event_id: id, event_date: m.date, customer_id: c, subscription_id: subscriptionOf(c), contract_event_type: type, currency: "USD",
         // A cancellation carries the day the contract ends, here the day it is made, and the annual value that ends.
-        contract_start: type === "new_contract" ? m.date : start, contract_end: type === "cancellation" ? m.date : RENEWALS[c]?.end ?? addDays(start, 365),
+        contract_start: type === "new_contract" ? m.date : start, contract_end: type === "cancellation" ? m.date : RENEWALS[c]?.end ?? addDays(start, 365), renewable: true,
         acv: Math.abs(m.change) * 12, tcv: type === "cancellation" ? 0 : Math.abs(m.change) * 12,
       }));
       if (m.type === "expansion" || m.type === "contraction") {
@@ -897,7 +897,7 @@ function generateExtensions(t: Record<string, Row[]>): void {
     if (r?.renewed && r.complete) {
       t.contract_event.push(row("contract_event", `ct_${c}_renewal`, {
         event_id: `ct_${c}_renewal`, event_date: r.complete, customer_id: c, subscription_id: subscriptionOf(c), contract_event_type: "renewal",
-        currency: "USD", contract_start: r.end, contract_end: addDays(r.end, 365), acv: r.amount, tcv: r.amount,
+        currency: "USD", contract_start: r.end, contract_end: addDays(r.end, 365), renewable: true, acv: r.amount, tcv: r.amount,
       }));
     }
   }

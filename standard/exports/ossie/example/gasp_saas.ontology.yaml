@@ -1,7 +1,7 @@
 # Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive` in gasp-wiki-mcp. Do not edit; edit /standard/ and re-run.
 version: 0.3.0.dev0
 name: GASP SaaS core
-description: "The concepts behind the Core metrics of the GASP Standard: 6 entity types (one per dataset the metrics read), their relationships and 47 value types, cut from the full GASP ontology at https://gaspwiki.com/downloads/ossie/."
+description: "The concepts behind the Core metrics of the GASP Standard: 6 entity types (one per dataset the metrics read), their relationships and 48 value types, cut from the full GASP ontology at https://gaspwiki.com/downloads/ossie/."
 prefixes:
   gasp: https://gaspwiki.com/v1/definitions/
   cel: https://gaspwiki.com/v1/cel#
@@ -17,7 +17,7 @@ ontology:
       - event_id
     relationships:
       - name: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -236,7 +236,7 @@ ontology:
         verbalizes:
           - "{Customer} is identified by {CustomerId}"
       - name: customer_status
-        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
+        description: Customer lifecycle status; active means at least one active subscription, pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once, and fixed_term an account whose only paid contracts are fixed-term revenue (under 12 months with no renewal) and which buys no usage
         roles:
           - concept: Date
           - concept: CustomerStatus
@@ -361,7 +361,7 @@ ontology:
         verbalizes:
           - "{Subscription} on {Date} has {ForecastRenewalAmount}"
       - name: mrr
-        description: Monthly recurring revenue of the subscription
+        description: "Monthly recurring revenue of the subscription. The dataset holds the contracts that count in MRR: a term of 12 months or more, or a shorter one that renews. A contract under 12 months with no renewal is fixed-term revenue and has no row"
         roles:
           - concept: Date
           - concept: Mrr
@@ -426,6 +426,14 @@ ontology:
         multiplicity: ManyToOne
         verbalizes:
           - "{Subscription} on {Date} has {Renewed}"
+      - name: renewable
+        description: "The contract carries a renewal provision (it renews unless cancelled, or the customer holds an option to renew) or is itself the renewal of an earlier term, one that follows the term before with no break in access. A contract with neither that runs under 12 months is fixed-term revenue: it has no subscription row and its contract event carries no acv"
+        roles:
+          - concept: Date
+          - concept: Renewable
+        multiplicity: ManyToOne
+        verbalizes:
+          - "{Subscription} on {Date} has {Renewable}"
       - name: segment
         description: Customer segment (SMB, Mid-Market, Enterprise or the organisation's own scheme) at the time of the event or snapshot. The field behind the Segment concept; carried on revenue tables so churn and movement metrics slice by it without a join. A metric over a cohort (NRR, GRR) reads it from the customer snapshot on the cohort's day.
         roles:
@@ -583,7 +591,7 @@ ontology:
         verbalizes:
           - "{Financials} has {RevenueValue}"
       - name: revenue_type
-        description: Revenue line type
+        description: "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal"
         roles:
           - concept: RevenueType
         multiplicity: ManyToOne
@@ -611,7 +619,7 @@ ontology:
       - Integer
   - concept: ChangeNature
     type: ValueType
-    description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
+    description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
     extends:
       - String
     requires:
@@ -669,11 +677,11 @@ ontology:
       - String
   - concept: CustomerStatus
     type: ValueType
-    description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
+    description: Customer lifecycle status; active means at least one active subscription, pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once, and fixed_term an account whose only paid contracts are fixed-term revenue (under 12 months with no renewal) and which buys no usage
     extends:
       - String
     requires:
-      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'pay_as_you_go' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
+      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'pay_as_you_go' OR CustomerStatus == 'fixed_term' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
   - concept: Ebitda
     type: ValueType
     description: EBITDA for the period
@@ -717,7 +725,7 @@ ontology:
       - LifecycleAttribution == 'acquisition' OR LifecycleAttribution == 'activation' OR LifecycleAttribution == 'retention' OR LifecycleAttribution == 'expansion' OR LifecycleAttribution == 'reactivation' OR LifecycleAttribution == 'servicing'
   - concept: Mrr
     type: ValueType
-    description: Monthly recurring revenue of the subscription
+    description: "Monthly recurring revenue of the subscription. The dataset holds the contracts that count in MRR: a term of 12 months or more, or a shorter one that renews. A contract under 12 months with no renewal is fixed-term revenue and has no row"
     extends:
       - Decimal
   - concept: MrrChange
@@ -785,6 +793,11 @@ ontology:
     description: Renewed at the most recent term end
     extends:
       - Boolean
+  - concept: Renewable
+    type: ValueType
+    description: "The contract carries a renewal provision (it renews unless cancelled, or the customer holds an option to renew) or is itself the renewal of an earlier term, one that follows the term before with no break in access. A contract with neither that runs under 12 months is fixed-term revenue: it has no subscription row and its contract event carries no acv"
+    extends:
+      - Boolean
   - concept: ResponseId
     type: ValueType
     description: Survey response identifier
@@ -797,11 +810,11 @@ ontology:
       - Decimal
   - concept: RevenueType
     type: ValueType
-    description: Revenue line type
+    description: "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal"
     extends:
       - String
     requires:
-      - RevenueType == 'subscription' OR RevenueType == 'services' OR RevenueType == 'usage' OR RevenueType == 'other'
+      - RevenueType == 'subscription' OR RevenueType == 'services' OR RevenueType == 'usage' OR RevenueType == 'fixed_term' OR RevenueType == 'other'
   - concept: SatisfactionScore
     type: ValueType
     description: 1 to 5 satisfaction score

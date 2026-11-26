@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { loadStandard, resolveNode, resolveNodeResult, findDefinition, getRelationships, search, metricFormulaId, isMetricStub, suggestNodes } from "../src/loader.js";
-import { metricUrl, nodeUrl } from "../src/urls.js";
+import { metricUrl, nodeUrl, calculatorUrl } from "../src/urls.js";
+import { REVENUE_KINDS, PRESETS, assessContract, questionToQuery } from "../src/recurring.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "../src/tools.js";
+import { formatAssessment, revenuePageUrl, REVENUE_PAGES, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatCanonicalFormula, validateAdapter, adapterSchemaErrors, checkAdapter, formatValidationReport, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "../src/tools.js";
 import { enumFilters, formatFilters } from "../src/filters.js";
 import { compileMetric, exampleSql, interval } from "../src/compile.js";
 import { adapter as fixtureAdapter } from "./fixture-db.js";
@@ -608,6 +609,80 @@ describe("data requirement entry", () => {
       }
       expect(md).toContain(`- **Staged:** ${dr.staged ? "yes" : "no"}`);
       expect(md).toContain("- **URL:** https://gaspwiki.com/v1/metrics/core/x");
+    }
+  });
+});
+
+// classify_revenue: the year-or-renewal test for one contract, as text. The answers are
+// assessContract's (test/recurring.test.ts); here the text carries them and its links resolve.
+describe("formatAssessment", () => {
+  it("resolves the page of every reporting line and MRR movement", () => {
+    for (const key of Object.keys(REVENUE_PAGES) as Array<keyof typeof REVENUE_PAGES>) expect(revenuePageUrl(data, key), key).toMatch(/^https:\/\/gaspwiki\.com\/v1\/metrics\//);
+  });
+
+  it("answers the six-month contract with no renewal: fixed-term revenue, nothing in MRR or ARR", () => {
+    const text = formatAssessment(data, { kind: "subscription", termMonths: 6, contractValue: 30000 });
+    expect(text).toContain("# Does it count? Product access for 6 months with no renewal");
+    expect(text).toContain("- **Counts in MRR and ARR:** No. Fixed-term revenue");
+    expect(text).toContain("- **Reported as:** [Fixed-Term Revenue](https://gaspwiki.com/v1/metrics/finance/fixed-term-revenue)");
+    expect(text).toContain("- **Can churn:** No");
+    expect(text).toContain("- **MRR:** $0");
+    expect(text).toContain("- **ARR:** $0");
+    expect(text).toContain("- **Fixed-Term Revenue:** $30,000, $5,000 for each month of the term");
+    expect(text).toContain("would report $60,000 of ARR for a contract worth $30,000");
+    expect(text).toContain("- **Ends:** Nothing in MRR, in churn or in contraction");
+    expect(text).toContain("https://gaspwiki.com/research/does-it-count?kind=subscription&term=6&value=30000");
+  });
+
+  it("answers a fixed year: MRR and ARR, churn on the day it ends", () => {
+    const text = formatAssessment(data, { kind: "subscription", termMonths: 12, contractValue: 60000 });
+    expect(text).toContain("- **Counts in MRR and ARR:** Yes");
+    expect(text).toContain("- **Can churn:** Yes, on the day it ends");
+    expect(text).toContain("- **MRR:** $5,000");
+    expect(text).toContain("- **ARR:** $60,000");
+    expect(text).toContain("- **Starts:** [New MRR](https://gaspwiki.com/v1/metrics/core/new-mrr) from its start date");
+    expect(text).toContain("- **Ends:** [Churned MRR](https://gaspwiki.com/v1/metrics/core/churned-mrr) and a churned customer, in the month it ends");
+    expect(text).toContain("- **When:** On the day the contract ends, a date known from the start");
+    const beside = formatAssessment(data, { kind: "subscription", termMonths: 12, contractValue: 60000, otherMrr: true });
+    expect(beside).toContain("- **Starts:** [Expansion MRR](https://gaspwiki.com/v1/metrics/core/expansion-mrr)");
+    expect(beside).toContain("- **Ends:** [Contraction MRR](https://gaspwiki.com/v1/metrics/core/contraction-mrr). The customer has not churned");
+    expect(beside).not.toContain("**Customer counts:**");
+  });
+
+  it("carries the verdict, the rule and a calculator link for every kind and every preset", () => {
+    const questions = [...REVENUE_KINDS.map((kind) => ({ kind })), ...REVENUE_KINDS.map((kind) => ({ kind, termMonths: 6, contractValue: 1200 })), ...PRESETS.map((p) => p.question)];
+    for (const q of questions) {
+      const a = assessContract(q);
+      const text = formatAssessment(data, q);
+      const label = JSON.stringify(q);
+      expect(text, label).toContain(`- **Counts in MRR and ARR:** ${a.verdict.answer}`);
+      expect(text, label).toContain(`- **Rule:** ${a.verdict.rule}`);
+      expect(text, label).toContain(calculatorUrl(questionToQuery(q)));
+      expect(text, label).not.toMatch(/undefined|null|NaN/);
+      if (a.amounts) expect(text, label).toContain("## Amounts");
+    }
+    expect(formatAssessment(data, { kind: "professional_services", contractValue: 40000 })).toContain("- **Services Revenue:** $40,000");
+    expect(formatAssessment(data, { kind: "one_time_fee", contractValue: 500 })).toContain("- **Outside MRR and ARR:** $500");
+    expect(formatAssessment(data, { kind: "free_trial" })).toContain("- **Reported as:** Nothing: a free trial carries no revenue");
+    expect(formatAssessment(data, { kind: "subscription", termMonths: 6 })).toContain("Pass `contractValue` or `monthlyValue`");
+  });
+
+  // Regression, 2026-11-26: with no figures to print the text asked for "contractValue (with termMonths)
+  // or monthlyValue" whatever the kind, so a caller who passed contractValue for credits billed every
+  // period was told to pass what they had passed.
+  it("asks for the amount this contract's figures come from, never one already passed", () => {
+    const credits = formatAssessment(data, { kind: "recurring_credits", contractValue: 600 });
+    expect(credits).toContain("_Pass `monthlyValue` for the amounts: credits billed every period have no term");
+    expect(credits).not.toContain("Pass `contractValue`");
+    const open = formatAssessment(data, { kind: "subscription", contractValue: 600 });
+    expect(open).toContain("_Pass `monthlyValue` for the amounts: a contract with no end date has no term");
+    const fee = formatAssessment(data, { kind: "one_time_fee" });
+    expect(fee).toContain("_Pass `contractValue`, the amount charged, for the amount._");
+    expect(fee).not.toContain("monthlyValue");
+    for (const kind of ["free_trial", "usage_above_commitment"] as const) expect(formatAssessment(data, { kind }), kind).not.toMatch(/_Pass `/);
+    // A question that carries the amount it was asked for never gets the request.
+    for (const q of [...PRESETS.map((p) => p.question), { kind: "recurring_credits", monthlyValue: 50 } as const, { kind: "credit_pack", contractValue: 40 } as const]) {
+      expect(formatAssessment(data, q), JSON.stringify(q)).not.toMatch(/_Pass `/);
     }
   });
 });

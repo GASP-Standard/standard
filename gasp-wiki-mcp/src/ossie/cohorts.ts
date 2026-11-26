@@ -65,6 +65,11 @@ export const ACCOUNT_COHORTS: CohortTableSpec = {
     },
     { name: "churned_mrr", formula: "metric.churned_mrr", description: "Churned MRR from the customer in the period, as a positive amount" },
     { name: "mrr_start", formula: "sum(field.mrr_start)", description: "The customer's MRR at period start as its subscription rows carry it on the last day of the period (mrr_start)" },
+    {
+      name: "temporary_opening",
+      formula: "sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start",
+      description: "The customer's temporary revenue still running on the first day of the period: the increases tagged temporary less their scheduled reversals, realised usage apart. Adjusted Net and Gross Revenue Retention take it off opening MRR",
+    },
     { name: "retained_mrr", formula: "sum(min(field.mrr_end, field.mrr_start))", description: "The lesser of opening and closing MRR on each of the customer's subscription rows, summed: what was kept, expansion left out" },
     {
       name: "permanent_change",

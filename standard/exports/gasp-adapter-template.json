@@ -1818,6 +1818,7 @@
         "trial",
         "active",
         "pay_as_you_go",
+        "fixed_term",
         "churned",
         "dormant"
       ],
@@ -3749,8 +3750,7 @@
       "warehouseRef": "",
       "source": "Billing",
       "usedBy": [
-        "Gross Revenue Retention (GRR)",
-        "Net Revenue Retention (NRR)"
+        "Gross Revenue Retention (GRR)"
       ]
     },
     {
@@ -4452,6 +4452,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4518,6 +4519,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4584,6 +4586,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4650,6 +4653,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4716,6 +4720,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4782,6 +4787,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4848,6 +4854,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4914,6 +4921,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -4980,6 +4988,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -5046,6 +5055,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -5112,6 +5122,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -5178,6 +5189,7 @@
         "Email Spam Complaint Rate",
         "Email Unsubscribe Rate",
         "Error Rate",
+        "Fixed-Term Revenue",
         "Forecast Accuracy",
         "Free Cash Flow (FCF)",
         "Free Cash Flow Margin",
@@ -5714,6 +5726,22 @@
       ]
     },
     {
+      "gaspField": "renewable",
+      "dataset": "contract_event",
+      "type": "boolean",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
+      "gaspField": "renewable",
+      "dataset": "subscription",
+      "type": "boolean",
+      "warehouseRef": "",
+      "source": "Billing",
+      "usedBy": []
+    },
+    {
       "gaspField": "reopened",
       "type": "boolean",
       "warehouseRef": "",
@@ -5896,6 +5924,7 @@
         "Channel Revenue Percentage",
         "Days Sales Outstanding (DSO)",
         "EBITDA Margin",
+        "Fixed-Term Revenue",
         "Free Cash Flow Margin",
         "G&A as % of Revenue",
         "Gross Margin",
@@ -5925,11 +5954,13 @@
         "subscription",
         "services",
         "usage",
+        "fixed_term",
         "other"
       ],
       "source": "CRM",
       "usedBy": [
         "Average Services Deal Size",
+        "Fixed-Term Revenue",
         "Revenue per Consultant",
         "Services Backlog",
         "Services Gross Margin",
@@ -5948,11 +5979,13 @@
         "subscription",
         "services",
         "usage",
+        "fixed_term",
         "other"
       ],
       "source": "CRM",
       "usedBy": [
         "Average Services Deal Size",
+        "Fixed-Term Revenue",
         "Revenue per Consultant",
         "Services Backlog",
         "Services Gross Margin",

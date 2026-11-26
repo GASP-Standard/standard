@@ -8,6 +8,10 @@
  * turn the GASP `subscription` dataset into `revenue_event` rows and are the
  * same for every source system; a vendor appears only in a mapping.
  *
+ * The dataset holds the contracts that count in MRR: fixed-term revenue (a
+ * term under 12 months with no renewal) has no row in it, so no event is
+ * derived for it (src/recurring.ts holds the test).
+ *
  *   1. A subscription's MRR on a snapshot is its `mrr` when `subscription_status`
  *      is active, else 0. A customer's MRR is the sum over its subscriptions.
  *   2. A step is a snapshot whose MRR differs from the subscription's previous

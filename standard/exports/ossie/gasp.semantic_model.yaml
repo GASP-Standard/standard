@@ -12,7 +12,7 @@ datasets:
       - name: change_nature
         expression:
           sql: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         datatype: String
         ai_context:
           instructions: One of permanent, temporary, scheduled_reversal
@@ -399,7 +399,7 @@ datasets:
       - name: acv
         expression:
           sql: acv
-        description: Annual contract value, recurring only. On a cancellation, the annual recurring value that ends
+        description: "Annual contract value, recurring only: empty on a fixed-term contract (under 12 months with no renewal), whose value is in tcv alone. On a cancellation, the annual recurring value that ends"
         datatype: Decimal
       - name: contract_end
         expression:
@@ -440,6 +440,11 @@ datasets:
           sql: event_id
         description: Unique, immutable event identifier
         datatype: String
+      - name: renewable
+        expression:
+          sql: renewable
+        description: "The contract carries a renewal provision (it renews unless cancelled, or the customer holds an option to renew) or is itself the renewal of an earlier term, one that follows the term before with no break in access. A contract with neither that runs under 12 months is fixed-term revenue: it has no subscription row and its contract event carries no acv"
+        datatype: Boolean
       - name: segment
         expression:
           sql: segment
@@ -552,7 +557,7 @@ datasets:
       - name: change_nature
         expression:
           sql: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         datatype: String
         ai_context:
           instructions: One of permanent, temporary, scheduled_reversal
@@ -749,10 +754,10 @@ datasets:
       - name: customer_status
         expression:
           sql: customer_status
-        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
+        description: Customer lifecycle status; active means at least one active subscription, pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once, and fixed_term an account whose only paid contracts are fixed-term revenue (under 12 months with no renewal) and which buys no usage
         datatype: String
         ai_context:
-          instructions: One of trial, active, pay_as_you_go, churned, dormant
+          instructions: One of trial, active, pay_as_you_go, fixed_term, churned, dormant
       - name: last_active_date
         expression:
           sql: last_active_date
@@ -1214,7 +1219,7 @@ datasets:
       - name: mrr
         expression:
           sql: mrr
-        description: Monthly recurring revenue of the subscription
+        description: "Monthly recurring revenue of the subscription. The dataset holds the contracts that count in MRR: a term of 12 months or more, or a shorter one that renews. A contract under 12 months with no renewal is fixed-term revenue and has no row"
         datatype: Decimal
       - name: mrr_end
         expression:
@@ -1250,6 +1255,11 @@ datasets:
         expression:
           sql: renewed
         description: Renewed at the most recent term end
+        datatype: Boolean
+      - name: renewable
+        expression:
+          sql: renewable
+        description: "The contract carries a renewal provision (it renews unless cancelled, or the customer holds an option to renew) or is itself the renewal of an earlier term, one that follows the term before with no break in access. A contract with neither that runs under 12 months is fixed-term revenue: it has no subscription row and its contract event carries no acv"
         datatype: Boolean
       - name: segment
         expression:
@@ -1508,10 +1518,10 @@ datasets:
       - name: revenue_type
         expression:
           sql: revenue_type
-        description: Revenue line type
+        description: "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal"
         datatype: String
         ai_context:
-          instructions: One of subscription, services, usage, other
+          instructions: One of subscription, services, usage, fixed_term, other
       - name: snapshot_date
         expression:
           sql: snapshot_date
@@ -2258,7 +2268,7 @@ datasets:
       - name: recurring_amount
         expression:
           sql: recurring_amount
-        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
+        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, with one-off charges, fixed-term revenue, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
         datatype: Decimal
       - name: invoice_corrected
         expression:
@@ -4788,10 +4798,10 @@ datasets:
       - name: revenue_type
         expression:
           sql: revenue_type
-        description: Revenue line type
+        description: "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal"
         datatype: String
         ai_context:
-          instructions: One of subscription, services, usage, other
+          instructions: One of subscription, services, usage, fixed_term, other
     metrics:
       - name: gasp_services_revenue
         expression:
@@ -4911,6 +4921,20 @@ datasets:
               gasp_version: "1"
               unit: percent
               formula: metric.fcf / metric.revenue_gaap
+      - name: gasp_fixed_term_revenue
+        expression:
+          sql: COALESCE(SUM(revenue) FILTER (WHERE revenue_type = 'fixed_term'), 0)
+        description: "Fixed-Term Revenue. Recognised revenue from product access sold for under 12 months with no renewal: a six-month project, a paid pilot, a short add-on with no renewal of its own."
+        datatype: Decimal
+        ai_context:
+          instructions: "Canonical definition: https://gaspwiki.com/v1/metrics/finance/fixed-term-revenue."
+        nonportable_extensions:
+          - vendor_name: GASP
+            data:
+              gasp_id: fixed_term_revenue
+              gasp_version: "1"
+              unit: currency
+              formula: sum(field.revenue where field.revenue_type = 'fixed_term')
     nonportable_extensions:
       - vendor_name: GASP
         data:
@@ -14137,7 +14161,7 @@ datasets:
             BIGQUERY: SELECT p.period_start, p.period_end, ((CAST(((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND credit_event_type = 'consumption' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status IN ('active', 'pay_as_you_go'))))) AS FLOAT64) / NULLIF(((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= DATE_SUB(p.period_start, INTERVAL 12 MONTH) AND event_date <= DATE_SUB(DATE_SUB(DATE_ADD(p.period_end, INTERVAL 1 DAY), INTERVAL 12 MONTH), INTERVAL 1 DAY) AND credit_event_type = 'consumption' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status IN ('active', 'pay_as_you_go'))))), 0))) AS value FROM gasp.period_spine p
             DATABRICKS: SELECT p.period_start, p.period_end, ((CAST(((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND credit_event_type = 'consumption' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status IN ('active', 'pay_as_you_go'))))) AS DOUBLE) / NULLIF(((-(SELECT COALESCE(SUM(credit_amount), 0) FROM gasp.credit_event WHERE event_date >= DATEADD(MONTH, -12, p.period_start) AND event_date <= DATEADD(DAY, -1, DATEADD(MONTH, -12, DATEADD(DAY, 1, p.period_end))) AND credit_event_type = 'consumption' AND customer_id IN (SELECT customer_id FROM gasp.customer WHERE snapshot_date = p.period_start AND customer_status IN ('active', 'pay_as_you_go'))))), 0))) AS value FROM gasp.period_spine p
   - name: gasp_account_cohorts
-    source: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
+    source: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date <= p.period_start AND (((change_nature = 'temporary' AND event_type IN ('new', 'expansion', 'reactivation')) OR (change_nature = 'scheduled_reversal' AND event_type IN ('contraction', 'churn'))) AND (expansion_classification IS NULL OR expansion_classification <> 'usage_realisation')) AND customer_id = _c.customer_id) AS temporary_opening, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
     description: "Staged cohort table: one row per customer per reporting period, the customers live on the first day of the period, holding the amounts the retention metrics sum (gasp_nrr, gasp_nrr_o, gasp_nrr_m, gasp_nrr_adjusted, gasp_nrr_by_segment, gasp_grr, gasp_grr_per_customer, gasp_grr_adjusted, gasp_grr_by_segment, gasp_revenue_churn_rate, gasp_revenue_churn_rate_by_segment, gasp_expansion_rate, gasp_expansion_rate_by_segment). Computed by the GASP compiled query over the period spine."
     primary_key:
       - period_start
@@ -14205,6 +14229,11 @@ datasets:
           sql: mrr_start
         datatype: Decimal
         description: The customer's MRR at period start as its subscription rows carry it on the last day of the period (mrr_start)
+      - name: temporary_opening
+        expression:
+          sql: temporary_opening
+        datatype: Decimal
+        description: "The customer's temporary revenue still running on the first day of the period: the increases tagged temporary less their scheduled reversals, realised usage apart. Adjusted Net and Gross Revenue Retention take it off opening MRR"
       - name: retained_mrr
         expression:
           sql: retained_mrr
@@ -14279,7 +14308,7 @@ datasets:
               staged: true
       - name: gasp_nrr_adjusted
         expression:
-          sql: (CAST((SUM(mrr_start) + SUM(permanent_change)) AS DECIMAL) / NULLIF(SUM(mrr_start), 0))
+          sql: (CAST(((SUM(opening_mrr) - SUM(temporary_opening)) + SUM(permanent_change)) AS DECIMAL) / NULLIF((SUM(opening_mrr) - SUM(temporary_opening)), 0))
         description: Net Revenue Retention (NRR), adjusted variant. The percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Also known as Net Dollar Retention (NDR).
         datatype: Decimal
         ai_context:
@@ -14294,7 +14323,7 @@ datasets:
               gasp_version: "1"
               variant: adjusted
               unit: percent
-              formula: (sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)
+              formula: (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)
               staged: true
       - name: gasp_nrr_by_segment
         expression:
@@ -14353,7 +14382,7 @@ datasets:
               staged: true
       - name: gasp_grr_adjusted
         expression:
-          sql: (CAST((SUM(mrr_start) + SUM(permanent_loss)) AS DECIMAL) / NULLIF(SUM(mrr_start), 0))
+          sql: (CAST(((SUM(opening_mrr) - SUM(temporary_opening)) + SUM(permanent_loss)) AS DECIMAL) / NULLIF((SUM(opening_mrr) - SUM(temporary_opening)), 0))
         description: Gross Revenue Retention (GRR), adjusted variant. The percentage of revenue retained from existing customers, excluding expansion revenue. Also known as Gross Dollar Retention.
         datatype: Decimal
         ai_context:
@@ -14367,7 +14396,7 @@ datasets:
               gasp_version: "1"
               variant: adjusted
               unit: percent
-              formula: (sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)
+              formula: (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)
               staged: true
       - name: gasp_grr_by_segment
         expression:
@@ -14476,9 +14505,9 @@ datasets:
             point: period_start
           source_dialect: POSTGRES
           sources:
-            SNOWFLAKE: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
-            BIGQUERY: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
-            DATABRICKS: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
+            SNOWFLAKE: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date <= p.period_start AND (((change_nature = 'temporary' AND event_type IN ('new', 'expansion', 'reactivation')) OR (change_nature = 'scheduled_reversal' AND event_type IN ('contraction', 'churn'))) AND (expansion_classification IS NULL OR expansion_classification <> 'usage_realisation')) AND customer_id = _c.customer_id) AS temporary_opening, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
+            BIGQUERY: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date <= p.period_start AND (((change_nature = 'temporary' AND event_type IN ('new', 'expansion', 'reactivation')) OR (change_nature = 'scheduled_reversal' AND event_type IN ('contraction', 'churn'))) AND (expansion_classification IS NULL OR expansion_classification <> 'usage_realisation')) AND customer_id = _c.customer_id) AS temporary_opening, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
+            DATABRICKS: SELECT p.period_start, p.period_end, _c.customer_id, _c.segment, (SELECT COALESCE(SUM(mrr), 0) FROM gasp.subscription WHERE snapshot_date = p.period_start AND subscription_status = 'active' AND customer_id = _c.customer_id) AS opening_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'expansion' AND customer_id = _c.customer_id) AS expansion_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'expansion' AND expansion_classification IN ('same_product', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_o, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'reactivation') AND expansion_classification IN ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) AND customer_id = _c.customer_id) AS expansion_mrr_m, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'contraction' AND customer_id = _c.customer_id)) AS contraction_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type = 'contraction' AND expansion_classification = 'usage_realisation') AND customer_id = _c.customer_id) AS usage_reversal, (-(SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND event_type = 'churn' AND customer_id = _c.customer_id)) AS churned_mrr, (SELECT COALESCE(SUM(mrr_start), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS mrr_start, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date <= p.period_start AND (((change_nature = 'temporary' AND event_type IN ('new', 'expansion', 'reactivation')) OR (change_nature = 'scheduled_reversal' AND event_type IN ('contraction', 'churn'))) AND (expansion_classification IS NULL OR expansion_classification <> 'usage_realisation')) AND customer_id = _c.customer_id) AS temporary_opening, (SELECT COALESCE(SUM(LEAST(mrr_end, mrr_start)), 0) FROM gasp.subscription WHERE snapshot_date = p.period_end AND customer_id = _c.customer_id) AS retained_mrr, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('expansion', 'contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_change, (SELECT COALESCE(SUM(mrr_change), 0) FROM gasp.revenue_event WHERE event_date >= p.period_start AND event_date <= p.period_end AND (event_type IN ('contraction', 'churn') AND change_nature = 'permanent') AND customer_id = _c.customer_id) AS permanent_loss FROM gasp.period_spine p JOIN (SELECT customer_id AS customer_id, snapshot_date AS _day, segment AS segment FROM gasp.customer WHERE customer_status = 'active') _c ON _c._day = p.period_start
 relationships:
   - name: revenue_event_customer_id
     from: revenue_event

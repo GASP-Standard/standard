@@ -18,7 +18,7 @@ A distinct billing entity with one or more subscriptions. The "who" of your busi
 
 ### Subscription (Contract, Agreement)
 A billable agreement between a customer and your product, with defined terms, pricing and status. The "what and when" of the relationship.
-- **Attributes:** Plan/tier, term (monthly/annual/multi-year), status, billing schedule
+- **Attributes:** Plan/tier, term (monthly/annual/multi-year), status, billing schedule, whether it renews
 - **Key metrics at this level:** MRR, ARR, Churned MRR, Revenue Churn Rate
 - **Industry equivalents:** Subscription (Stripe, Chargebee), Contract (Salesforce CPQ)
 
@@ -83,6 +83,15 @@ The net change in MRR after all movements.
 - **Canonical definition:** [Core Metrics](metrics/core.md#net-new-mrr)
 - **Used in:** Core
 
+### Fixed-Term Revenue
+Revenue from product access sold for under 12 months with no renewal: a six-month project, a paid pilot, a short add-on with no renewal of its own. It is reported on a line of its own beside MRR.
+- **The test:** A subscription counts in MRR and ARR when its contract runs 12 months or more or when a shorter one renews. A contract renews when it carries a renewal provision or follows an earlier term with no break in access
+- **Outside:** MRR, ARR, CARR, NRR, GRR and the churn rates. Its end is neither churn nor contraction
+- **In the data:** No row in the `subscription` dataset and no Revenue_Event. Recognised under the `revenue_type` `fixed_term`. Its contract event carries `tcv` and no `acv`, so it counts in Bookings
+- **Distinct from:** A contract of 12 months or more with no renewal, which counts in MRR and is churn on the day it ends. Services Revenue, which is delivered work at any length
+- **Canonical definition:** [Finance Metrics](metrics/finance.md#fixed-term-revenue)
+- **Used in:** Core, Finance
+
 ### Revenue (GAAP)
 Recognised revenue according to ASC 606 accounting standards.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#revenue-gaap)
@@ -138,12 +147,12 @@ The prepaid balance forfeited at expiry in a period. The commercial fact behind 
 Percentage of revenue retained from existing customers over a period, including expansion, contraction and churn. Two methods are widely used: cohort method (preferred) and formula method. GASP runs the formula method over the customers active at period start, which keeps new customers out as the cohort method does. Recommended: trailing 12 months, annualised if using shorter periods.
 - **Canonical definition:** [Core Metrics](metrics/core.md#net-revenue-retention-nrr)
 - **Used in:** Core, Customer Success
-- **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted NRR excluding temporary revenue movements.
+- **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted NRR, which leaves temporary revenue out of the opening base and out of the movements.
 
 ### GRR (Gross Revenue Retention)
 Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. GASP uses the formula method over the customers active at period start; the cohort method is a labelled alternative. Usage above a commitment stays out: the contraction that reverses realised usage is left out of the rate.
 - **Canonical definition:** [Core Metrics](metrics/core.md#gross-revenue-retention-grr)
-- **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted GRR excluding temporary revenue movements.
+- **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted GRR, which leaves temporary revenue out of the opening base and out of the movements.
 - **Used in:** Core, Customer Success
 
 ### Logo Churn Rate
@@ -224,6 +233,7 @@ Capital efficiency metric: Net burn divided by net new ARR. Popularised by David
 ### Customer
 An entity (company/account) with a paid subscription.
 - **Not:** Trial users, free tier users
+- **Fixed-term:** An account whose only paid contracts are [fixed-term revenue](#fixed-term-revenue) holds the `customer_status` `fixed_term`. It has no MRR, so it stays out of Total Customers and Logo Churn Rate until a contract that counts in MRR starts
 - **Pay-as-you-go:** An account that buys usage with no subscription, on demand or as credit packs, holds the `customer_status` `pay_as_you_go`. It stays out of Total Customers and Logo Churn Rate and is followed by Consumption Net Revenue Retention
 - **Counting:** One customer = one billing entity, regardless of users
 - **In formulas:** Unless otherwise specified, "Customers" means Active Customers
@@ -686,7 +696,7 @@ GASP's recommended filtering pattern for each metric. Describes whether the metr
 ### Change Nature
 Optional CEL field that captures the intent behind a revenue movement. Does not alter metric calculations. Enables downstream analysis of revenue quality (e.g. Adjusted NRR).
 - **`permanent`.** Durable shift in the customer relationship (default when omitted).
-- **`temporary`.** Expected to reverse within a defined period.
+- **`temporary`.** Expected to reverse within a defined period: a contract or an add-on of 12 months or more with no renewal, a discount with an end date. A term under 12 months with no renewal is [fixed-term revenue](#fixed-term-revenue) and has no event to tag.
 - **`scheduled_reversal`.** Reverses a prior `temporary` event.
 - **Reference:** [CEL change_nature](/v1/cel#change-nature)
 

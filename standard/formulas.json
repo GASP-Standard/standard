@@ -9,7 +9,7 @@
         "by_plan": "field.plan_name",
         "by_segment": "field.segment"
       },
-      "notes": "Annual contracts contribute annual value / 12. Excludes one-time fees, trials and non-guaranteed usage. by_plan returns one row per plan the subscriptions are priced by, with the plan id and plan name: the name lives on the plan dataset and subscriptions reach it through plan_id. by_segment returns one row per customer segment, read from the subscription snapshot at period end."
+      "notes": "Annual contracts contribute annual value / 12. A contract counts when it runs 12 months or more or when a shorter one renews; support, maintenance and managed services on subscription terms count by the same test. Excludes one-time fees, professional services, trials, non-guaranteed usage and fixed-term revenue (product access under 12 months with no renewal), which has no row in the subscription dataset. by_plan returns one row per plan the subscriptions are priced by, with the plan id and plan name: the name lives on the plan dataset and subscriptions reach it through plan_id. by_segment returns one row per customer segment, read from the subscription snapshot at period end."
     },
     "arr": {
       "formula": "metric.mrr * 12",
@@ -37,7 +37,7 @@
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Active customers at period end, one per billing entity. ARPA divides by it and Logo Churn Rate reads it at period start. by_segment returns one row per customer segment."
+      "notes": "Active customers at period end, one per billing entity. ARPA divides by it and Logo Churn Rate reads it at period start. A pay-as-you-go account and an account whose only contracts are fixed-term revenue hold their own statuses and stay outside it. by_segment returns one row per customer segment."
     },
     "new_customers": {
       "formula": "count_distinct(field.customer_id where field.event_type = 'new')",
@@ -119,24 +119,24 @@
         "M": "(metric.mrr at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'reactivation') and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation')) - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)"
       },
       "variants": {
-        "adjusted": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
+        "adjusted": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)"
       },
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
+      "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period. variants.adjusted measures the revenue sold as permanent: its base is opening MRR less the temporary increases still running on the first day (the events tagged temporary less their scheduled reversals, realised usage apart) and it counts the permanent movements alone, so a contract of 12 months or more with no renewal is left out at the start and when it ends."
     },
     "grr": {
       "formula": "(metric.mrr at period_start - (metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "variants": {
         "per_customer": "sum(min(field.mrr_end, field.mrr_start)) / sum(field.mrr_start) over cohort(field.customer_id, period_start)",
-        "adjusted": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
+        "adjusted": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)"
       },
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one. The reversal of realised usage (a contraction tagged usage_realisation) is left out: those rows carry a negative mrr_change, so adding their sum to Contraction MRR removes them. Usage above a commitment is variable revenue, which the SaaS Metrics Standards Board recommends excluding from GRR; Contraction MRR itself keeps the reversal, so the MRR movements still net. variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
+      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one. The reversal of realised usage (a contraction tagged usage_realisation) is left out: those rows carry a negative mrr_change, so adding their sum to Contraction MRR removes them. Usage above a commitment is variable revenue, which the SaaS Metrics Standards Board recommends excluding from GRR; Contraction MRR itself keeps the reversal, so the MRR movements still net. variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period. variants.adjusted measures the revenue sold as permanent: its base is opening MRR less the temporary increases still running on the first day (the events tagged temporary less their scheduled reversals, realised usage apart) and it counts the permanent movements alone, so a contract of 12 months or more with no renewal is left out at the start and when it ends."
     },
     "logo_churn_rate": {
       "formula": "metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)",
@@ -398,7 +398,7 @@
     "acv": {
       "formula": "avg(field.acv where field.contract_event_type = 'new_contract')",
       "unit": "currency",
-      "notes": "ACV is recorded on the contract event (CEL). One-time fees are excluded by definition."
+      "notes": "ACV is recorded on the contract event (CEL). One-time fees are excluded by definition and a fixed-term contract (under 12 months with no renewal) carries none."
     },
     "average_deal_size": {
       "formula": "sum(field.opportunity_amount where field.opportunity_stage = 'closed_won' and in_period(field.close_date)) / count(field.opportunity_id where field.opportunity_stage = 'closed_won' and in_period(field.close_date))",
@@ -443,7 +443,7 @@
     "services_revenue": {
       "formula": "sum(field.revenue where field.revenue_type = 'services')",
       "unit": "currency",
-      "notes": "Recognised services revenue (implementation, consulting, training)."
+      "notes": "Recognised revenue from delivered work (implementation, consulting, training), at any length and whether or not it repeats. Support, maintenance and managed services sold on subscription terms are subscription revenue and count in MRR."
     },
     "services_as_of_total_revenue": {
       "formula": "metric.services_revenue / sum(field.revenue)",
@@ -1168,7 +1168,7 @@
         "renewal": "sum(field.tcv where field.contract_event_type = 'renewal')",
         "expansion": "sum(field.tcv where field.contract_event_type = 'amendment')"
       },
-      "notes": "Contracted value signed in the period, from contract events. Amendments count as expansion bookings when positive."
+      "notes": "Contracted value signed in the period, from contract events. Amendments count as expansion bookings when positive. A fixed-term contract counts at its total contract value."
     },
     "billings": {
       "formula": "sum(field.invoice_amount where in_period(field.invoice_date))",
@@ -1665,7 +1665,12 @@
         "net_of_known_churn": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date - 12 * sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) to_date - sum(field.acv where field.contract_event_type = 'cancellation' and field.contract_end > period_end) to_date",
         "net_of_forecast_churn": "metric.arr + sum(field.acv where field.contract_event_type = 'new_contract' and field.contract_start > period_end) to_date - sum(max(field.mrr * 12 - field.forecast_renewal_amount, 0) where field.subscription_status = 'active' and field.contract_end > period_end and field.forecast_renewal_amount is not null)"
       },
-      "notes": "Contracted ARR, also called Committed ARR: ARR plus the annual contract value of each new contract signed on or before period end whose start date is later. The SaaS Metrics Standards Board formula, (MRR x 12) + contracted but not yet recognised ARR. A contract leaves the second term on its start date and enters ARR through MRR, so it is counted once. Churn and downgrades come off through ARR on the day they take effect, as the Board states, never on notice. ACV is recurring only and one year of a multi-year agreement. An upgrade or a renewal uplift signed for a later date enters when it takes effect."
+      "notes": "Contracted ARR, also called Committed ARR: ARR plus the annual contract value of each new contract signed on or before period end whose start date is later. The SaaS Metrics Standards Board formula, (MRR x 12) + contracted but not yet recognised ARR. A contract leaves the second term on its start date and enters ARR through MRR, so it is counted once. Churn and downgrades come off through ARR on the day they take effect, as the Board states, never on notice. ACV is recurring only and one year of a multi-year agreement. An upgrade or a renewal uplift signed for a later date enters when it takes effect. A fixed-term contract (under 12 months with no renewal) carries no ACV, so it adds nothing here or to ARR."
+    },
+    "fixed_term_revenue": {
+      "formula": "sum(field.revenue where field.revenue_type = 'fixed_term')",
+      "unit": "currency",
+      "notes": "Recognised revenue from product access sold for under 12 months with no renewal, which the year-or-renewal test keeps out of MRR and ARR. A contract of 12 months or more, a shorter plan that renews and a second short contract that follows the first are subscription revenue; delivered work is services revenue."
     },
     "credit_breakage": {
       "formula": "-sum(field.credit_amount where field.credit_event_type = 'expiry')",

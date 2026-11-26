@@ -42,7 +42,7 @@ datasets:
       - name: recurring_amount
         expression:
           sql: recurring_amount
-        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
+        description: "The recurring part of invoice_amount, as billed for the service period: subscription charges only, with one-off charges, fixed-term revenue, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers"
         datatype: Decimal
       - name: invoice_corrected
         expression:

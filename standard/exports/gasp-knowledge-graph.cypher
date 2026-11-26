@@ -3,8 +3,8 @@
 // Generated from the GASP Standard (https://gaspwiki.com) by `npm run derive`
 // ═══════════════════════════════════════════════════════════════
 //
-// Nodes: 70 Metrics, 28 Entities, 7 Concepts, 56 Datasets, 294 Fields, 22 Source Categories
-// Edges: 94 metric relationships, 89 MEASURES, 30 entity/concept relationships, 436 BELONGS_TO, 387 SOURCED_FROM
+// Nodes: 70 Metrics, 28 Entities, 7 Concepts, 56 Datasets, 295 Fields, 22 Source Categories
+// Edges: 94 metric relationships, 89 MEASURES, 30 entity/concept relationships, 438 BELONGS_TO, 389 SOURCED_FROM
 //
 // Relationship types (metric signal): DRIVES, REDUCES, PREDICTS, COMPONENT_OF, MEASURES
 // Relationship types (entity): OWNS, GRANTS, PARENT_OF, PRICED_BY, CONVERTS_TO, SUBMITS, ENGAGES_VIA, MANAGES, SOURCES, SERVES, REPRESENTED_BY, GENERATES, PRODUCES, CONTRIBUTES_TO, INCURS, BELONGS_TO
@@ -209,7 +209,7 @@ CREATE (:Dataset {id: 'credit_event', name: 'Credit event', kind: 'event', dateF
 CREATE (:Dataset {id: 'email_campaign', name: 'Email campaign results', kind: 'fact', dateField: 'period_start', keyField: 'campaign_id'});
 CREATE (:Dataset {id: 'sales_activity', name: 'Sales activity', kind: 'event', dateField: 'sales_activity_date', keyField: 'sales_activity_id'});
 
-// ─── Field Nodes (294) ─────────────────────────────
+// ─── Field Nodes (295) ─────────────────────────────
 CREATE (:Field {id: 'accounts_receivable', type: 'decimal', metricCount: 2});
 CREATE (:Field {id: 'acknowledged_at', type: 'timestamp', metricCount: 1});
 CREATE (:Field {id: 'acquisition_date', type: 'date', metricCount: 1});
@@ -259,7 +259,7 @@ CREATE (:Field {id: 'criteria_met', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'csm_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'currency', type: 'string', metricCount: 0});
 CREATE (:Field {id: 'customer_id', type: 'string', metricCount: 32});
-CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 23, values: 'trial|active|pay_as_you_go|churned|dormant'});
+CREATE (:Field {id: 'customer_status', type: 'enum', metricCount: 23, values: 'trial|active|pay_as_you_go|fixed_term|churned|dormant'});
 CREATE (:Field {id: 'deflections', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'deliverable_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'department', type: 'string', metricCount: 3});
@@ -345,7 +345,7 @@ CREATE (:Field {id: 'mql_date', type: 'date', metricCount: 5});
 CREATE (:Field {id: 'mrr', type: 'decimal', metricCount: 18});
 CREATE (:Field {id: 'mrr_change', type: 'decimal', metricCount: 16});
 CREATE (:Field {id: 'mrr_end', type: 'decimal', metricCount: 1});
-CREATE (:Field {id: 'mrr_start', type: 'decimal', metricCount: 2});
+CREATE (:Field {id: 'mrr_start', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'net_income', type: 'decimal', metricCount: 1});
 CREATE (:Field {id: 'new_mrr', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'new_state', type: 'string', metricCount: 0});
@@ -377,7 +377,7 @@ CREATE (:Field {id: 'payment_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'payment_method', type: 'enum', metricCount: 1, values: 'credit_card|ach|wire|check|other'});
 CREATE (:Field {id: 'payment_status', type: 'enum', metricCount: 3, values: 'paid|unpaid|partial|written_off'});
 CREATE (:Field {id: 'performance_rating', type: 'decimal', metricCount: 1});
-CREATE (:Field {id: 'period_start', type: 'date', metricCount: 57});
+CREATE (:Field {id: 'period_start', type: 'date', metricCount: 58});
 CREATE (:Field {id: 'period_end', type: 'date', metricCount: 0});
 CREATE (:Field {id: 'committed_amount', type: 'decimal', metricCount: 0});
 CREATE (:Field {id: 'usage_amount', type: 'decimal', metricCount: 0});
@@ -414,6 +414,7 @@ CREATE (:Field {id: 'renewal_complete_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'renewal_notified_on_time', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'renewal_trigger_date', type: 'date', metricCount: 1});
 CREATE (:Field {id: 'renewed', type: 'boolean', metricCount: 3});
+CREATE (:Field {id: 'renewable', type: 'boolean', metricCount: 0});
 CREATE (:Field {id: 'reopened', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'rep_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'request_count', type: 'integer', metricCount: 1});
@@ -428,8 +429,8 @@ CREATE (:Field {id: 'resolved_first_contact', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'resource_id', type: 'string', metricCount: 1});
 CREATE (:Field {id: 'response_id', type: 'string', metricCount: 2});
 CREATE (:Field {id: 'response_time_ms', type: 'integer', metricCount: 1});
-CREATE (:Field {id: 'revenue', type: 'decimal', metricCount: 23});
-CREATE (:Field {id: 'revenue_type', type: 'enum', metricCount: 8, values: 'subscription|services|usage|other'});
+CREATE (:Field {id: 'revenue', type: 'decimal', metricCount: 24});
+CREATE (:Field {id: 'revenue_type', type: 'enum', metricCount: 9, values: 'subscription|services|usage|fixed_term|other'});
 CREATE (:Field {id: 'revision_count', type: 'integer', metricCount: 1});
 CREATE (:Field {id: 'reworked', type: 'boolean', metricCount: 1});
 CREATE (:Field {id: 'roadmap_item_completed', type: 'boolean', metricCount: 1});
@@ -875,7 +876,7 @@ CREATE (m)-[:MEASURES]->(e);
 MATCH (m:Metric {id: 'self_service_rate'}), (e:Entity {id: 'kb_article'})
 CREATE (m)-[:MEASURES]->(e);
 
-// ─── BELONGS_TO Edges (436) ─────────────────────────────
+// ─── BELONGS_TO Edges (438) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (d:Dataset {id: 'balance_sheet'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'acknowledged_at'}), (d:Dataset {id: 'incident'})
@@ -1478,6 +1479,10 @@ MATCH (f:Field {id: 'renewal_trigger_date'}), (d:Dataset {id: 'subscription'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'renewed'}), (d:Dataset {id: 'subscription'})
 CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'renewable'}), (d:Dataset {id: 'contract_event'})
+CREATE (f)-[:BELONGS_TO]->(d);
+MATCH (f:Field {id: 'renewable'}), (d:Dataset {id: 'subscription'})
+CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'reopened'}), (d:Dataset {id: 'ticket'})
 CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'rep_id'}), (d:Dataset {id: 'opportunity'})
@@ -1749,7 +1754,7 @@ CREATE (f)-[:BELONGS_TO]->(d);
 MATCH (f:Field {id: 'partner_type'}), (d:Dataset {id: 'opportunity'})
 CREATE (f)-[:BELONGS_TO]->(d);
 
-// ─── SOURCED_FROM Edges (387) ─────────────────────────────
+// ─── SOURCED_FROM Edges (389) ─────────────────────────────
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'finance'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'accounts_receivable'}), (s:SourceCategory {id: 'billing'})
@@ -2313,6 +2318,10 @@ CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'renewal_trigger_date'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'renewed'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'renewable'}), (s:SourceCategory {id: 'billing'})
+CREATE (f)-[:SOURCED_FROM]->(s);
+MATCH (f:Field {id: 'renewable'}), (s:SourceCategory {id: 'crm'})
 CREATE (f)-[:SOURCED_FROM]->(s);
 MATCH (f:Field {id: 'reopened'}), (s:SourceCategory {id: 'help_desk'})
 CREATE (f)-[:SOURCED_FROM]->(s);

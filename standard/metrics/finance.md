@@ -78,7 +78,7 @@ CARR = ARR + Contracted ARR not yet started
 - The later years of a multi-year agreement: a contract adds one year of recurring value
 - A signed contract once it has started: from its start date it is in ARR and leaves the second term
 
-**When churn comes off:** A cancellation or a downgrade reduces CARR on the day it takes effect, through ARR. Notice of a future ending changes nothing until that day. This is the SaaS Metrics Standards Board's rule and the one ARR follows for a [fixed-term subscription](core.md#mrr-monthly-recurring-revenue). Bessemer's definition also nets out forecasted churn or downsell, which the two variants below compute, so a figure reported as CARR needs its churn rule stated beside it.
+**When churn comes off:** A cancellation or a downgrade reduces CARR on the day it takes effect, through ARR. Notice of a future ending changes nothing until that day. This is the SaaS Metrics Standards Board's rule and the one ARR follows for a [contract of 12 months or more with no renewal](core.md#mrr-monthly-recurring-revenue). A fixed-term contract, one under 12 months with no renewal, carries no ACV and adds nothing to CARR. Bessemer's definition also nets out forecasted churn or downsell, which the two variants below compute, so a figure reported as CARR needs its churn rule stated beside it.
 
 **Variants:** Two variants take churn off before it takes effect. Each is CARR less one amount, reported under its own name beside CARR.
 
@@ -87,7 +87,7 @@ CARR net of known churn = CARR - (Temporary MRR still running × 12) - ACV of ca
 CARR net of forecast churn = CARR - Renewal forecast shortfall
 ```
 
-- **CARR net of known churn** (`net_of_known_churn`) takes off the endings the ledgers state as contract. One is an increase tagged [`temporary`](../cel.md#change-nature) whose reversal is still ahead, such as a six-month project or a three-month add-on, at twelve times its monthly value. The other is the annual value of each cancellation made on or before period end for a contract that ends after it. Usage realisation events carry the same tags and are left out, since ARR never held them.
+- **CARR net of known churn** (`net_of_known_churn`) takes off the endings the ledgers state as contract. One is an increase tagged [`temporary`](../cel.md#change-nature) whose reversal is still ahead, such as an 18-month contract with no renewal or an add-on sold for one fixed year, at twelve times its monthly value. The other is the annual value of each cancellation made on or before period end for a contract that ends after it. Usage realisation events carry the same tags and are left out, since ARR never held them.
 - **CARR net of forecast churn** (`net_of_forecast_churn`) takes off the shortfall in the renewal forecast, which is Bessemer's reading in full. For each active subscription that carries a forecast and whose term ends after period end, the shortfall is twelve times its MRR less its forecast renewal value. A forecast above the current value adds nothing, since the uplift is yet to be signed. [Renewal Forecast Accuracy](customer-success.md#renewal-forecast-accuracy) scores the forecast this variant reads.
 
 The two are alternatives. A renewal forecast is expected to carry the known endings as well, with a subscription under notice or a project forecast at zero, so the two amounts overlap and are never added together.
@@ -115,6 +115,53 @@ The two are alternatives. A renewal forecast is expected to carry the known endi
 - [SaaS Metrics Standards Board: Annual Recurring Revenue](https://www.saasmetricsboard.com/annual-recurring-revenue)
 - [Bessemer: Scaling to $100 Million](https://www.bvp.com/atlas/scaling-to-100-million)
 - [Bessemer: Cloud computing metrics](https://www.bvp.com/atlas/cloud-computing-metrics)
+
+---
+
+### Fixed-Term Revenue
+
+**Definition:** Recognised revenue from product access sold for under 12 months with no renewal: a six-month project, a paid pilot, a short add-on with no renewal of its own.
+
+**Formula:**
+```
+Fixed-Term Revenue = Sum of recognised fixed-term revenue in period
+```
+
+Fixed-Term Revenue reads the income statement lines whose `revenue_type` is `fixed_term`.
+
+**Counting:** The [year-or-renewal test](core.md#mrr-monthly-recurring-revenue) decides which contracts these are. A subscription counts in Monthly Recurring Revenue (MRR) when its contract runs 12 months or more or when a shorter plan renews, by a renewal provision or by following an earlier term with no break in access. Product access with neither is fixed-term revenue. The test is applied to each contract by its own term, so one customer can hold a subscription that counts in MRR and a short add-on reported here.
+
+**Includes:**
+- A contract for product access under 12 months with no renewal
+- A paid pilot or proof of concept under 12 months with no renewal
+- An add-on under 12 months with no renewal of its own, whatever the subscription beside it
+- Support, maintenance or a managed service sold for under 12 months with no renewal
+- The first of two short contracts in a row, which stays here after the second starts
+
+**Excludes:**
+- A contract of 12 months or more, renewing or not, which counts in MRR until the day it ends
+- A monthly or quarterly plan that renews, which counts in MRR
+- A second short contract that follows the first with no break in access: it is a renewal and counts in MRR from its own start date
+- Delivered work (implementation, consulting, training), which is [Services Revenue](professional-services.md#services-revenue) at any length
+- Usage, which is [Consumption Revenue](#consumption-revenue)
+
+**Example:** A customer signs a six-month contract for $30,000 with no renewal. Each month $5,000 is Fixed-Term Revenue. MRR and Annual Recurring Revenue (ARR) show nothing for it, [Bookings](#bookings) show $30,000 in the month it is signed and nothing is churn when the six months end. Annualising the contract would have shown $60,000 of ARR against $30,000 of contract value.
+
+**What it tells you:** How much of the period's revenue came from contracts that end on a date already agreed. Reported beside MRR, it lets a reader see the whole of the product revenue while MRR and ARR hold only the revenue that can recur.
+
+**Common mistakes:**
+- Annualising a short contract into ARR, which states it above its contract value
+- Reporting the scheduled end of a short contract as churn
+- Leaving a short contract in fixed-term revenue after it has renewed
+- Counting delivered work here because it was billed over several months
+
+**Related metrics:** MRR, ARR, Bookings, Services Revenue, Revenue (GAAP)
+
+**Sources:**
+- [ChartMogul: What is ARR?](https://chartmogul.com/blog/what-is-arr/)
+- [SaaS Metrics Standards Board: Annual Recurring Revenue](https://www.saasmetricsboard.com/annual-recurring-revenue)
+- [Progress Software: Form 10-K, fiscal 2025](https://www.sec.gov/Archives/edgar/data/876167/000087616726000008/prgs-20251130.htm)
+- [Commvault Systems: Form 10-K, fiscal 2026](https://www.sec.gov/Archives/edgar/data/1169561/000116956126000017/cvlt-20260331.htm)
 
 ---
 
@@ -678,6 +725,7 @@ Bad Debt Rate = Bad debt expense / Revenue × 100
 |--------|------|---------------------|
 | ARR | Revenue | Business scale |
 | CARR | Revenue | Recurring revenue under contract, started or not |
+| Fixed-Term Revenue | Revenue | Product revenue that ends on an agreed date |
 | Consumption Revenue | Revenue | Usage earned |
 | Usage Run-Rate | Revenue | Scale of uncommitted usage |
 | Prepaid Credit Balance | Revenue | Prepaid consumption not yet used |

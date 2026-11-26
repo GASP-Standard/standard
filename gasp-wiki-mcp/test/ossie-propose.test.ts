@@ -166,8 +166,8 @@ describe("Propose: the Acme DDL against the Acme adapter", () => {
     const r = propose(movementValues);
     const report = formatProposalReport(r);
     expect(report).toContain("# Mapping proposal: Acme SaaS");
-    expect(report).toContain("**Proposed:** 4 of 6 tables to GASP datasets and 47 of 57 columns to GASP fields (2 with a transform); 1 candidate to review; 2 columns of the proposed tables unmatched.");
-    expect(report).toContain("### billing.subscriptions (subscriptions) → subscription (high confidence: 16 of 17 columns name GASP fields of subscription, kind snapshot matches, its key is the dataset's key subscription_id, its time field is the dataset's snapshot_date, the name matches)");
+    expect(report).toContain("**Proposed:** 4 of 6 tables to GASP datasets and 48 of 58 columns to GASP fields (2 with a transform); 1 candidate to review; 2 columns of the proposed tables unmatched.");
+    expect(report).toContain("### billing.subscriptions (subscriptions) → subscription (high confidence: 17 of 18 columns name GASP fields of subscription, kind snapshot matches, its key is the dataset's key subscription_id, its time field is the dataset's snapshot_date, the name matches)");
     expect(report).toContain("- mrr_cents → mrr (the name less its unit suffix); transform `{{value}} / 100`");
     expect(report).toContain("- movement_type → event_type (a synonym of event_type; values recoded: upgrade to expansion, downgrade to contraction, cancel to churn); transform `CASE WHEN");
     expect(report).toContain("- unmatched: updated_at");

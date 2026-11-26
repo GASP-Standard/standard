@@ -150,6 +150,44 @@ describe("readiness checks", () => {
     expect((await run(adapterOver("credit_event", "bad_credits")))["credit_balance_identity"]).toBe(3);
   });
 
+  it("checks the year-or-renewal test: a short contract with no renewal fails once in each dataset", async () => {
+    const clean = await run();
+    for (const id of ["fixed_term:subscription", "fixed_term:contract_event"]) expect(clean[id], id).toBe(0);
+    const [subs, contracts] = ["fixed_term:subscription", "fixed_term:contract_event"].map((id) => readinessChecks(data).find((c) => c.id === id)!);
+    expect(subs).toMatchObject({ source: "metrics/core.md#mrr-monthly-recurring-revenue", datasets: ["subscription"], protects: { dataset: "subscription", field: "mrr" } });
+    expect(contracts).toMatchObject({ source: "metrics/core.md#mrr-monthly-recurring-revenue", datasets: ["contract_event"], protects: { dataset: "contract_event", field: "acv" } });
+    // The subscription dataset: one day's row of a six-month contract with no renewal fails. Rows the
+    // check must pass: a six-month contract that renews, a fixed year whose end date is its last day
+    // (364 days after its start) or the day after, and a contract with no end date.
+    await db.exec(`CREATE TABLE bad_subscriptions AS SELECT * FROM gasp_subscriptions`);
+    const day = `snapshot_day = DATE '2026-03-10'`;
+    await db.exec(`UPDATE bad_subscriptions SET renewable = FALSE, contract_start = '2026-01-01', contract_end = '2026-06-30' WHERE subscription_id = 's01' AND ${day}`);
+    await db.exec(`UPDATE bad_subscriptions SET renewable = TRUE, contract_start = '2026-01-01', contract_end = '2026-06-30' WHERE subscription_id = 's02' AND ${day}`);
+    await db.exec(`UPDATE bad_subscriptions SET renewable = FALSE, contract_start = '2026-01-01', contract_end = '2026-12-31' WHERE subscription_id = 's03' AND ${day}`);
+    await db.exec(`UPDATE bad_subscriptions SET renewable = FALSE, contract_start = '2026-01-01', contract_end = '2027-01-01' WHERE subscription_id = 's04' AND ${day}`);
+    await db.exec(`UPDATE bad_subscriptions SET renewable = FALSE, contract_start = '2026-01-01', contract_end = NULL WHERE subscription_id = 's05' AND ${day}`);
+    const s = await run(adapterOver("subscription", "bad_subscriptions"));
+    expect(s["fixed_term:subscription"]).toBe(1);
+    expect(s["fixed_term:contract_event"]).toBe(0);
+    // One day short of the year fails too.
+    await db.exec(`UPDATE bad_subscriptions SET contract_end = '2026-12-30' WHERE subscription_id = 's03' AND ${day}`);
+    expect((await run(adapterOver("subscription", "bad_subscriptions")))["fixed_term:subscription"]).toBe(2);
+    // The contract ledger: a short new contract with no renewal may carry its total value and no ACV.
+    await db.exec(`CREATE TABLE bad_contracts AS SELECT * FROM gasp_contract_events`);
+    const [first, second, third] = (await db.query<{ event_id: string }>(`SELECT event_id FROM gasp_contract_events WHERE contract_event_type = 'new_contract' ORDER BY event_id LIMIT 3`)).rows.map((r) => r.event_id);
+    await db.exec(`UPDATE bad_contracts SET renewable = FALSE, contract_start = '2026-01-01', contract_end = '2026-06-30', acv = 60000, tcv = 30000 WHERE event_id = '${first}'`);
+    await db.exec(`UPDATE bad_contracts SET renewable = FALSE, contract_start = '2026-01-01', contract_end = '2026-06-30', acv = NULL, tcv = 30000 WHERE event_id = '${second}'`);
+    await db.exec(`UPDATE bad_contracts SET renewable = FALSE, contract_start = '2026-01-01', contract_end = '2027-06-30' WHERE event_id = '${third}'`);
+    const c = await run(adapterOver("contract_event", "bad_contracts"));
+    expect(c["fixed_term:contract_event"]).toBe(1);
+    expect(c["fixed_term:subscription"]).toBe(0);
+    // A mapping with no renewal field cannot run either and says what it needs.
+    const unmapped = { ...adapter, mappings: adapter.mappings.filter((m: { gaspField: string }) => m.gaspField !== "renewable") };
+    const blocked = compileChecks(unmapped, data, "postgres", FRESH).filter((x) => x.check.id.startsWith("fixed_term:"));
+    expect(blocked).toHaveLength(2);
+    for (const b of blocked) { expect(b.sql).toBeUndefined(); expect(b.missing.join(" ")).toContain("renewable@"); }
+  });
+
   it("fails the GRR range check when a contraction turns into a gain", async () => {
     // contraction_mrr is -sum(mrr_change) over contraction events: a large positive change makes it
     // negative, so the retained MRR exceeds the starting MRR in that month.

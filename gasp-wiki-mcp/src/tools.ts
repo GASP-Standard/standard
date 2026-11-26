@@ -5,7 +5,8 @@
  * templates from an adapter.
  */
 import { metricFormulaId, closestNames } from "./loader.js";
-import { metricUrl } from "./urls.js";
+import { metricUrl, calculatorUrl } from "./urls.js";
+import { amountBasis, assessContract, questionToQuery, formatMoney, type ContractQuestion, type ReportingLine, type MrrMovement } from "./recurring.js";
 import { enumFilters, formatFilters } from "./filters.js";
 import { compileMetric, exampleSql, type CompileContext } from "./compile.js";
 import { DIALECTS, dialectOfWarehouse, type DialectName } from "./dialect.js";
@@ -470,3 +471,78 @@ export function formatDataRequirement(req: DataRequirement, url?: string): strin
   return parts.join("\n");
 }
 
+
+// --- classify_revenue ---
+
+/** The metric page behind each reporting line and each MRR movement, as department and slug */
+export const REVENUE_PAGES: Record<Exclude<ReportingLine, null> | MrrMovement | "ARR", [department: string, slug: string]> = {
+  "MRR and ARR": ["Core", "mrr-monthly-recurring-revenue"],
+  ARR: ["Core", "arr-annual-recurring-revenue"],
+  "Fixed-term revenue": ["Finance", "fixed-term-revenue"],
+  "Services Revenue": ["Professional Services", "services-revenue"],
+  "Consumption Revenue": ["Finance", "consumption-revenue"],
+  "New MRR": ["Core", "new-mrr"],
+  "Expansion MRR": ["Core", "expansion-mrr"],
+  "Churned MRR": ["Core", "churned-mrr"],
+  "Contraction MRR": ["Core", "contraction-mrr"],
+};
+
+/** The address of one of those pages, undefined when the standard holds no such metric */
+export function revenuePageUrl(data: StandardData, key: keyof typeof REVENUE_PAGES): string | undefined {
+  const [department, slug] = REVENUE_PAGES[key];
+  const metric = data.metrics.find((m) => m.department === department && m.slug === slug);
+  return metric ? metricUrl(metric) : undefined;
+}
+
+/**
+ * The year-or-renewal test applied to one contract, as the text `classify_revenue`
+ * returns: whether it counts in MRR and ARR, where it is reported, what its first
+ * and last day are reported as and the amounts when a value is given. Every answer
+ * is `assessContract` in recurring.ts, the function the calculator on the site runs.
+ */
+export function formatAssessment(data: StandardData, question: ContractQuestion): string {
+  const a = assessContract(question);
+  const link = (label: string, key: keyof typeof REVENUE_PAGES) => {
+    const url = revenuePageUrl(data, key);
+    return url ? `[${label}](${url})` : label;
+  };
+  const line = a.verdict.line;
+  const reported = line === null ? "No line of its own: it is revenue outside MRR and ARR"
+    : line === "MRR and ARR" ? `${link("MRR", "MRR and ARR")} and ${link("ARR", "ARR")}`
+    : link(line === "Fixed-term revenue" ? "Fixed-Term Revenue" : line, line);
+  const parts = [
+    `# Does it count? ${a.title}`,
+    "",
+    `- **Counts in MRR and ARR:** ${a.verdict.answer}`,
+    `- **Reported as:** ${a.question.kind === "free_trial" ? "Nothing: a free trial carries no revenue" : reported}`,
+    `- **Can churn:** ${a.verdict.churnAnswer}`,
+    `- **Rule:** ${a.verdict.rule}`,
+  ];
+
+  if (a.amounts) {
+    const m = a.amounts;
+    parts.push("", "## Amounts", "", `- **MRR:** ${formatMoney(m.mrr)}`, `- **ARR:** ${formatMoney(m.arr)}`);
+    if (m.outside !== null) {
+      const name = line === "Fixed-term revenue" ? "Fixed-Term Revenue" : line ?? "Outside MRR and ARR";
+      const perMonth = m.monthly !== null && line === "Fixed-term revenue" ? `, ${formatMoney(m.monthly)} for each month of the term` : "";
+      parts.push(`- **${name}:** ${formatMoney(m.outside)}${perMonth}`);
+    }
+    if (m.annualised !== null && m.outside !== null)
+      parts.push(`- Twelve times the monthly value would report ${formatMoney(m.annualised)} of ARR for a contract worth ${formatMoney(m.outside)}.`);
+  } else {
+    // Name the argument this contract's figures come from, never one the caller has already passed.
+    const basis = amountBasis(a.question);
+    if (basis === "either") parts.push("", "_Pass `contractValue` or `monthlyValue` for the amounts._");
+    if (basis === "monthly") parts.push("", `_Pass \`monthlyValue\` for the amounts: ${a.question.kind === "recurring_credits" ? "credits billed every period have" : "a contract with no end date has"} no term to divide a contract value by._`);
+    if (basis === "charged") parts.push("", "_Pass `contractValue`, the amount charged, for the amount._");
+  }
+
+  const movementLink = (text: string, metric: MrrMovement | null) => (metric ? text.replace(metric, link(metric, metric)) : text);
+  parts.push("", "## Its first and last day", "", `- **Starts:** ${movementLink(a.startReported, a.start.metric)}`, `- **Ends:** ${movementLink(a.endReported, a.end.metric)}`);
+  if (a.endWhen) parts.push(`- **When:** ${a.endWhen}`);
+  if (a.customer) parts.push(`- **Customer counts:** ${a.customer}`);
+
+  const test = revenuePageUrl(data, "MRR and ARR");
+  parts.push("", `The year-or-renewal test is stated under MRR${test ? ` (${test})` : ""}. The same question in the calculator: ${calculatorUrl(questionToQuery(a.question))}`);
+  return parts.join("\n");
+}

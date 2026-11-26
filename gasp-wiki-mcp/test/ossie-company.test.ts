@@ -221,7 +221,7 @@ describe("Company compile: the Acme adapter", () => {
     // The cohort table holds the columns the selected metrics sum and names those metrics alone.
     const cohorts = some.model.datasets.find((d) => d.name === ACCOUNT_COHORTS.name)!;
     expect(ext(cohorts).for).toEqual(["gasp_nrr", "gasp_nrr_o", "gasp_nrr_m", "gasp_nrr_adjusted", "gasp_nrr_by_segment"]);
-    expect(cohorts.fields!.map((f) => f.name)).toEqual(["period_start", "period_end", "customer_id", "segment", "opening_mrr", "expansion_mrr", "expansion_mrr_o", "expansion_mrr_m", "contraction_mrr", "churned_mrr", "mrr_start", "permanent_change"]);
+    expect(cohorts.fields!.map((f) => f.name)).toEqual(["period_start", "period_end", "customer_id", "segment", "opening_mrr", "expansion_mrr", "expansion_mrr_o", "expansion_mrr_m", "contraction_mrr", "churned_mrr", "temporary_opening", "permanent_change"]);
     expect(cohorts.source).not.toMatch(/AS (retained_mrr|permanent_loss)\b/);
     expect(Object.keys(some.coverage).every((k) => /^(mrr|nrr)(:|$)/.test(k))).toBe(true);
     expect(selectFormulas(data, undefined, "core").only!.size).toBeGreaterThan(20);

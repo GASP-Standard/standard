@@ -1,5 +1,5 @@
 /**
- * The GASP Standard MCP server: the data load, the 23 tools and their
+ * The GASP Standard MCP server: the data load, the 24 tools and their
  * annotations. `createServer()` builds a fresh McpServer over the data loaded
  * once at import; `index.ts` serves it over stdio and `http.ts` over Streamable
  * HTTP, one server per request. Every standard tool is read-only, so each
@@ -32,8 +32,9 @@ import {
   noDriversMessage,
   type PathStep,
 } from "./traversal.js";
+import { REVENUE_KINDS, MAX_AMOUNT, MAX_TERM_MONTHS, type RevenueKind } from "./recurring.js";
 import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.js";
-import { formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
+import { formatAssessment, formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
 import { loadAdapter, validateMapping, parseDocument } from "./ossie/adapt.js";
 import { compileModelFromText } from "./ossie/company.js";
 import { compileTargetFromText, TARGETS } from "./targets/index.js";
@@ -124,6 +125,7 @@ export const TOOL_TITLES = {
   infer_drivers: "Infer a metric's drivers",
   explain_path: "Explain the path between two metrics",
   coverage_gap: "Find the coverage gap for a metric",
+  classify_revenue: "Classify a contract as recurring or not",
 } as const;
 /** The GASP Workspace tools, registered only when the server is built with `workspace`. */
 export const WORKSPACE_TOOL_TITLES = {
@@ -934,7 +936,7 @@ tool(
 // --- generate_checks ---
 tool(
   "generate_checks",
-  "The readiness checks the GASP Standard states, as SQL over the datasets your mapping covers (readiness level 3, the Check step). From cel.md and atl.md: CEL row identity (prior_mrr + mrr_change = new_mrr on every revenue event), MRR continuity (a subscription's mrr_start equals its mrr on the previous snapshot), unique event_id per event dataset, the ATL tags (one lifecycle_attribution per event, an expansion_classification on every expansion, contraction and reactivation revenue event and every amendment, a cost_function on every cost event), customer identity both ways (every revenue event's customer is a known customer, every customer active on the latest snapshot has a revenue event), the credit ledger's balance identity (credit_balance_before + credit_amount = credit_balance_after on purchase, expiry, adjustment and committed consumption rows; equal balances on overage and on-demand rows), freshness (the latest date per dataset within a window) and, for every fully mapped metric with a hard range rule in the ontology (NRR at least 0, GRR at most 100%, Gross Margin, ARR and others), its value in every reporting period of your period spine (the table compile_model reads; period_spine names another). One statement, one row per check with its violation count; output: bundle adds a schema snapshot query for a scheduled re-check. GASP has no warehouse access: run it, then pass the rows back as results to get pass or fail per check and per metric; each check names the metrics whose formulas read what it covers. Checks whose fields the mapping lacks are listed with what they need. Takes the mapping generate_query takes; the dialect is the one asked for, else the warehouse's, else postgres. Follow with plan_fixes for the ranked list.",
+  "The readiness checks the GASP Standard states, as SQL over the datasets your mapping covers (readiness level 3, the Check step). From cel.md, atl.md and the MRR definition: CEL row identity (prior_mrr + mrr_change = new_mrr on every revenue event), MRR continuity (a subscription's mrr_start equals its mrr on the previous snapshot), the year-or-renewal test (no subscription row and no contract ACV for a contract under 12 months with no renewal), unique event_id per event dataset, the ATL tags (one lifecycle_attribution per event, an expansion_classification on every expansion, contraction and reactivation revenue event and every amendment, a cost_function on every cost event), customer identity both ways (every revenue event's customer is a known customer, every customer active on the latest snapshot has a revenue event), the credit ledger's balance identity (credit_balance_before + credit_amount = credit_balance_after on purchase, expiry, adjustment and committed consumption rows; equal balances on overage and on-demand rows), freshness (the latest date per dataset within a window) and, for every fully mapped metric with a hard range rule in the ontology (NRR at least 0, GRR at most 100%, Gross Margin, ARR and others), its value in every reporting period of your period spine (the table compile_model reads; period_spine names another). One statement, one row per check with its violation count; output: bundle adds a schema snapshot query for a scheduled re-check. GASP has no warehouse access: run it, then pass the rows back as results to get pass or fail per check and per metric; each check names the metrics whose formulas read what it covers. Checks whose fields the mapping lacks are listed with what they need. Takes the mapping generate_query takes; the dialect is the one asked for, else the warehouse's, else postgres. Follow with plan_fixes for the ranked list.",
   {
     adapter: z.string().describe("Your mapping as text: a GASP adapter (JSON; schema: https://gaspwiki.com/schemas/gasp-adapter-v1.json) or an Ossie mapping document (YAML or JSON). Check it with validate_mapping first."),
     semantic_model: z.string().optional().describe("With an Ossie mapping: your semantic model document (YAML or JSON), so table names and field expressions resolve. Ignored for a GASP adapter."),
@@ -1175,6 +1177,22 @@ tool(
     }
     return { content: [{ type: "text" as const, text: formatDefinition(def) }] };
   }
+);
+
+// --- classify_revenue ---
+tool(
+  "classify_revenue",
+  "Apply the GASP year-or-renewal test to one contract or charge: does it count in MRR and ARR, where is it reported if it does not (Fixed-Term Revenue, Services Revenue, Consumption Revenue), can it churn and what are its first and last day reported as (New, Expansion, Churned or Contraction MRR, or nothing). A subscription counts when its contract runs 12 months or more or when a shorter plan renews; product access under 12 months with neither is fixed-term revenue. Pass `contractValue` or `monthlyValue` for the MRR, ARR and fixed-term amounts. Use it to settle whether a deal belongs in ARR, whether an expiry is churn or how a pilot, an add-on, a credit pack or a services engagement is reported. The answer links the metric pages and the calculator at gaspwiki.com/research/does-it-count opened on the same contract.",
+  {
+    kind: z.enum(REVENUE_KINDS as [RevenueKind, ...RevenueKind[]]).describe("What is sold: subscription (product access on a plan or contract), add_on, pilot (a paid pilot or proof of concept), support (support, maintenance or a managed service on subscription terms), committed_usage (a contracted minimum), usage_above_commitment, on_demand_usage, credit_pack (credits bought once, automatic top-ups included), recurring_credits (credits billed every period), professional_services (delivered work), one_time_fee, free_trial"),
+    termMonths: z.number().int().min(1).max(MAX_TERM_MONTHS).optional().describe("The contract's term in months. Omit it for a contract with no end date, which runs until the customer cancels. Read for subscription, add_on, pilot, support and committed_usage"),
+    renews: z.boolean().optional().describe("The contract carries a renewal provision: it continues unless cancelled or the customer holds an option to renew"),
+    followsEarlierTerm: z.boolean().optional().describe("The contract follows an earlier term with no break in access, which makes it a renewal"),
+    otherMrr: z.boolean().optional().describe("The customer holds MRR apart from this contract. It decides New against Expansion MRR at the start and Churned against Contraction MRR at the end. An add-on always sits beside a subscription"),
+    contractValue: z.number().positive().max(MAX_AMOUNT).optional().describe("The contract's value over its whole term, read with termMonths, or the amount charged for a kind sold once (professional_services, one_time_fee, credit_pack, on_demand_usage). A contract with no end date and recurring_credits take monthlyValue"),
+    monthlyValue: z.number().positive().max(MAX_AMOUNT).optional().describe("The price per month, for a contract priced by the month, one with no end date or recurring_credits. Pass one of the two amounts: where both are given, a kind priced by the month is answered from monthlyValue and a kind sold once from contractValue"),
+  },
+  async (question) => ({ content: [{ type: "text" as const, text: formatAssessment(data, question) }] }),
 );
 
 if (options.workspace) registerWorkspaceTools(options.workspace, tool);

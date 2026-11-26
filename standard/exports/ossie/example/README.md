@@ -6,7 +6,7 @@ The Core department of the GASP Standard (Generally Accepted SaaS Principles) as
 
 | File | Contents |
 | --- | --- |
-| `gasp_saas.ontology.yaml` | 6 entity types (one per dataset), their relationships and 47 value types with enum constraints |
+| `gasp_saas.ontology.yaml` | 6 entity types (one per dataset), their relationships and 48 value types with enum constraints |
 | `gasp_saas.semantic_model.yaml` | 6 datasets (revenue_event, cost_event, customer, subscription, survey_response, financials), 5 relationships, 12 staged datasets and 39 metrics |
 | `gasp_saas.mapping.yaml` | The ontology mapped onto the model, by name and relative IRI |
 

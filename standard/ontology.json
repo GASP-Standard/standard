@@ -884,7 +884,7 @@
         "billing",
         "crm"
       ],
-      "description": "Annual contract value, recurring only. On a cancellation, the annual recurring value that ends",
+      "description": "Annual contract value, recurring only: empty on a fixed-term contract (under 12 months with no renewal), whose value is in tcv alone. On a cancellation, the annual recurring value that ends",
       "metricCount": 2
     },
     {
@@ -1137,7 +1137,7 @@
         "temporary",
         "scheduled_reversal"
       ],
-      "description": "permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)",
+      "description": "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)",
       "metricCount": 3
     },
     {
@@ -1508,10 +1508,11 @@
         "trial",
         "active",
         "pay_as_you_go",
+        "fixed_term",
         "churned",
         "dormant"
       ],
-      "description": "Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once",
+      "description": "Customer lifecycle status; active means at least one active subscription, pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once, and fixed_term an account whose only paid contracts are fixed-term revenue (under 12 months with no renewal) and which buys no usage",
       "metricCount": 23
     },
     {
@@ -2267,7 +2268,7 @@
       "sources": [
         "billing"
       ],
-      "description": "The recurring part of invoice_amount, as billed for the service period: subscription charges only, one-off charges, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers",
+      "description": "The recurring part of invoice_amount, as billed for the service period: subscription charges only, with one-off charges, fixed-term revenue, usage billed beyond a commitment, credits and tax excluded. MRR is this over the months the service period covers",
       "metricCount": 0
     },
     {
@@ -2677,7 +2678,7 @@
       "sources": [
         "billing"
       ],
-      "description": "Monthly recurring revenue of the subscription",
+      "description": "Monthly recurring revenue of the subscription. The dataset holds the contracts that count in MRR: a term of 12 months or more, or a shorter one that renews. A contract under 12 months with no renewal is fixed-term revenue and has no row",
       "metricCount": 18
     },
     {
@@ -2717,7 +2718,7 @@
         "derived"
       ],
       "description": "MRR at period start (cohort form)",
-      "metricCount": 2
+      "metricCount": 1
     },
     {
       "id": "net_income",
@@ -3178,7 +3179,7 @@
         "derived"
       ],
       "description": "Start of the period the row describes",
-      "metricCount": 57
+      "metricCount": 58
     },
     {
       "id": "period_end",
@@ -3641,6 +3642,20 @@
       "metricCount": 3
     },
     {
+      "id": "renewable",
+      "type": "boolean",
+      "datasets": [
+        "contract_event",
+        "subscription"
+      ],
+      "sources": [
+        "billing",
+        "crm"
+      ],
+      "description": "The contract carries a renewal provision (it renews unless cancelled, or the customer holds an option to renew) or is itself the renewal of an earlier term, one that follows the term before with no break in access. A contract with neither that runs under 12 months is fixed-term revenue: it has no subscription row and its contract event carries no acv",
+      "metricCount": 0
+    },
+    {
       "id": "reopened",
       "type": "boolean",
       "datasets": [
@@ -3827,7 +3842,7 @@
         "finance"
       ],
       "description": "GAAP recognised revenue for the period",
-      "metricCount": 23
+      "metricCount": 24
     },
     {
       "id": "revenue_type",
@@ -3844,10 +3859,11 @@
         "subscription",
         "services",
         "usage",
+        "fixed_term",
         "other"
       ],
-      "description": "Revenue line type",
-      "metricCount": 8
+      "description": "Revenue line type: subscription is the revenue MRR counts, support, maintenance and managed services on subscription terms included; services is delivered work (implementation, consulting, training) at any length; usage is consumption; fixed_term is product access sold for under 12 months with no renewal",
+      "metricCount": 9
     },
     {
       "id": "revision_count",
@@ -5709,6 +5725,7 @@
     "prepaid_credit_balance": "Balances (to date)",
     "arr_including_usage_run_rate": "Usage Run-Rate",
     "carr": "ARR",
+    "fixed_term_revenue": "Margins",
     "credit_breakage": "Consumption Revenue",
     "consumption_revenue_growth_rate": "Consumption Revenue",
     "consumption_net_revenue_retention": "NRR / GRR (trailing 12 months)"
@@ -6868,7 +6885,7 @@
         "snapshot_date",
         "subscription_status"
       ],
-      "adjustedVariant": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
+      "adjustedVariant": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)"
     },
     "health_score": {
       "expression": "avg(field.composite_score where field.customer_status = 'active') at period_end",
@@ -7160,7 +7177,7 @@
         "snapshot_date",
         "subscription_status"
       ],
-      "adjustedVariant": "(sum(field.mrr_start) + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / sum(field.mrr_start) over cohort(field.customer_id, period_start)"
+      "adjustedVariant": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)"
     },
     "onboarding_completion": {
       "expression": "count_distinct(field.onboarding_id where in_period(field.onboarding_completion_date)) / count_distinct(field.onboarding_id where in_period(field.onboarding_start_date))",

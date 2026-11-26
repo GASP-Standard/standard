@@ -59,3 +59,8 @@ export function resolveDocLink(link: string): string | null {
   if (!anchor) return `${SITE}${base}`;
   return file.startsWith("metrics/") ? `${SITE}${base}/${anchor}` : `${SITE}${base}#${anchor}`;
 }
+
+/** The calculator at /research/does-it-count, opened on one question (a query from `questionToQuery`). */
+export function calculatorUrl(query = ""): string {
+  return `${SITE}/research/does-it-count${query ? `?${query}` : ""}`;
+}

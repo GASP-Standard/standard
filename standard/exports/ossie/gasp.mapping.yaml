@@ -171,6 +171,10 @@ concept_mappings:
               expression: contract_event.event_date
             relationship: event_date
           - object_mapping:
+              concept: Renewable
+              expression: contract_event.renewable
+            relationship: renewable
+          - object_mapping:
               concept: SegmentValue
               expression: contract_event.segment
             relationship: segment
@@ -604,6 +608,10 @@ concept_mappings:
                   concept: Renewed
                   expression: subscription.renewed
                 relationship: renewed
+              - object_mapping:
+                  concept: Renewable
+                  expression: subscription.renewable
+                relationship: renewable
               - object_mapping:
                   concept: SegmentValue
                   expression: subscription.segment

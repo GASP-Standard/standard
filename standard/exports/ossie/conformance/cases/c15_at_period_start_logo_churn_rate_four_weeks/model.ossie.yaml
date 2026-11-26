@@ -14,7 +14,7 @@ datasets:
       - name: change_nature
         expression:
           sql: change_nature
-        description: permanent, temporary or scheduled_reversal (Adjusted NRR/GRR, CARR net of known churn)
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         datatype: String
         ai_context:
           instructions: One of permanent, temporary, scheduled_reversal
@@ -133,10 +133,10 @@ datasets:
       - name: customer_status
         expression:
           sql: customer_status
-        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
+        description: Customer lifecycle status; active means at least one active subscription, pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once, and fixed_term an account whose only paid contracts are fixed-term revenue (under 12 months with no renewal) and which buys no usage
         datatype: String
         ai_context:
-          instructions: One of trial, active, pay_as_you_go, churned, dormant
+          instructions: One of trial, active, pay_as_you_go, fixed_term, churned, dormant
       - name: last_active_date
         expression:
           sql: last_active_date

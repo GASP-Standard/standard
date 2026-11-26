@@ -204,7 +204,7 @@ Average ACV = Sum of ACV for all deals / Number of deals
 
 For monthly contracts, annualize: Monthly value × 12
 
-**Excludes:** One-time fees (setup, implementation, training)
+**Excludes:** One-time fees (setup, implementation, training). A [fixed-term contract](core.md#mrr-monthly-recurring-revenue), one under 12 months with no renewal, carries no ACV: its value is in TCV and Bookings alone.
 
 **ACV vs ARR:**
 - **ACV** = Value of a single contract, annualized

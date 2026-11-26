@@ -12,6 +12,8 @@ Applicable when implementation, consulting or training are revenue-generating se
 
 **Definition:** Revenue from professional services (implementation, consulting, training).
 
+**Counting:** Delivered work is Services Revenue at any length, whether it is billed by the project or by time and even when the work repeats. Support, maintenance and managed services sold on subscription terms are recurring revenue: they count in [MRR](core.md#mrr-monthly-recurring-revenue) by the same year-or-renewal test as any subscription and stay out of this figure.
+
 **Formula:**
 ```
 Services Revenue = Sum of recognized services revenue in period
