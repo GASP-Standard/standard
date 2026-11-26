@@ -27,7 +27,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 - The set grows from 63 files and 1,057 KB to 78 files and 3,701 KB. The largest script is about 420 KB (User Retention Day N) and the smallest about 4 KB (Uptime).
 - A move of the pin reruns the scripts, so a change in the expander shows as a diff in a `case.ost`.
 - Regenerating after a command changes needs `uv`. The Tests workflow has it.
-- Taking the scripts upstream beside the example and reporting the zero formatting wait for the owner's word (`TODO.md`).
+- The zero formatting was reported on 2026-11-26 as apache/ossie #826. The same day's refresh of apache/ossie #773 links the scripts from its body and leaves them in this repository (`docs/ossie-example-pr.md`, `TODO.md`).
 
 ---
 
@@ -71,7 +71,7 @@ Testing the pack rule against the ledger found a second problem. Usage above a c
 - The cohort table `gasp_account_cohorts` gains a `usage_reversal` column, a negative amount or zero per customer per period, and both rates stay plain sums over the table. A compiled company model that selects either rate carries the column.
 - Carry MRR keeps its formula, since the waterfall reads Contraction MRR whole. Its entry now says it equals GRR's numerator where no usage was realised.
 - A reporting period that opens on the last day of a usage period has that day's realised usage in its opening MRR, as any event dated the first day of a period is. GRR for that period keeps the usage in its numerator. Calendar months and quarters open the day after.
-- The copy of the example model in apache/ossie #773 differs from the published one until its next refresh, which waits for the owner's word.
+- The copy of the example model in apache/ossie #773 differed from the published one until its refresh on 2026-11-26 (`51b5d90`).
 - The churn article gains a section on packs and its table of what is sold gains a "Can churn?" column and two entries. The change ships in 1.24.0.
 
 ---

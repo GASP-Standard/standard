@@ -50,7 +50,7 @@ Keep `--output-dir` when running inside this repository: without it the runner w
 
 `uv` builds the environment from `ost/uv.lock` into `ost/.venv` (git-ignored) on the first run; it needs Python 3.11 or later, which `uv` fetches when the machine has none. From TypeScript use `runOst(dir, scripts, outputDir)` in `src/ossie/ost.ts`. `npm run conformance` writes each `cases/<case>/case.ost` with it and `test/ossie-conformance.test.ts` holds the runner to reproducing every script byte for byte.
 
-One defect at this pin shapes the scripts. `set("doubleDigits", n)` with n of seven or more prints a zero as `0E-7` (`round_double` in `ost/src/ossie_ost/runner.py` takes the text of a quantized decimal, which Python writes in scientific notation for a zero with that exponent). The conformance scripts round to six digits, the most that prints every value in plain notation.
+One defect at this pin shapes the scripts. `set("doubleDigits", n)` with n of seven or more prints a zero as `0E-7` (`round_double` in `ost/src/ossie_ost/runner.py` takes the text of a quantized decimal, which Python writes in scientific notation for a zero with that exponent). The conformance scripts round to six digits, the most that prints every value in plain notation. Reported as apache/ossie #826.
 
 ## The expression grammar
 
