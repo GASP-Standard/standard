@@ -498,7 +498,7 @@ ontology:
         verbalizes:
           - "{Customer} is identified by {CustomerId}"
       - name: customer_status
-        description: Customer lifecycle status; active means at least one active subscription
+        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
         roles:
           - concept: Date
           - concept: CustomerStatus
@@ -3593,7 +3593,7 @@ ontology:
         verbalizes:
           - "{CreditEvent} belongs to {Subscription}"
       - name: credit_event_type
-        description: "CEL Credit_Event classifier: purchase (a prepaid commitment or block of credits paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)"
+        description: "CEL Credit_Event classifier: purchase (a prepaid commitment, a block of credits or a top-up paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)"
         roles:
           - concept: CreditEventType
         multiplicity: ManyToOne
@@ -3607,7 +3607,7 @@ ontology:
         verbalizes:
           - "{CreditEvent} has {CreditAmount}"
       - name: consumption_basis
-        description: "On consumption events: committed (drawn from a prepaid balance), overage (above an exhausted or per-period commitment), on_demand (no commitment). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand alone"
+        description: "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand and top_up"
         roles:
           - concept: ConsumptionBasis
         multiplicity: ManyToOne
@@ -3975,11 +3975,11 @@ ontology:
       - String
   - concept: CustomerStatus
     type: ValueType
-    description: Customer lifecycle status; active means at least one active subscription
+    description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
     extends:
       - String
     requires:
-      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
+      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'pay_as_you_go' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
   - concept: Deflections
     type: ValueType
     description: Sessions resolved without a ticket
@@ -4912,7 +4912,7 @@ ontology:
       - Decimal
   - concept: CreditEventType
     type: ValueType
-    description: "CEL Credit_Event classifier: purchase (a prepaid commitment or block of credits paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)"
+    description: "CEL Credit_Event classifier: purchase (a prepaid commitment, a block of credits or a top-up paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)"
     extends:
       - String
     requires:
@@ -4924,11 +4924,11 @@ ontology:
       - Decimal
   - concept: ConsumptionBasis
     type: ValueType
-    description: "On consumption events: committed (drawn from a prepaid balance), overage (above an exhausted or per-period commitment), on_demand (no commitment). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand alone"
+    description: "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand and top_up"
     extends:
       - String
     requires:
-      - ConsumptionBasis == 'committed' OR ConsumptionBasis == 'overage' OR ConsumptionBasis == 'on_demand'
+      - ConsumptionBasis == 'committed' OR ConsumptionBasis == 'overage' OR ConsumptionBasis == 'on_demand' OR ConsumptionBasis == 'top_up'
   - concept: CreditBalanceBefore
     type: ValueType
     description: "The customer's prepaid balance before the event; equal to credit_balance_after on on_demand consumption. Optional: billing systems that carry the signed amount alone leave it empty and the balance is summed"

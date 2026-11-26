@@ -135,10 +135,13 @@ Consumption Revenue = Sum of consumption drawn, billed as overage or billed on d
 
 Consumption Revenue reads the `consumption` events of the [Commercial Event Ledger (CEL)](../cel.md#credit_event) `Credit_Event` class. Those events carry a negative `credit_amount`, since they reduce what the customer has left to use, and the metric reports the positive amount.
 
-Consumption Revenue is reported per consumption basis (committed, overage, on demand) and per customer segment.
+Consumption Revenue is reported per consumption basis (committed, overage, on demand, top-up) and per customer segment.
+
+**Credit packs and top-ups:** A pack of credits bought once, with no contracted term and no renewal, is usage paid for in advance. The payment is a `purchase` event on the ledger and stays out of MRR and ARR. Each dollar drawn from the pack is Consumption Revenue with basis `top_up`. An automatic top-up, which buys more credit when the balance falls below a threshold, is the same purchase repeated: it fires on usage and carries no date or term, so it is a purchase and never a renewal. A use-by date on the credits limits when they can be spent and commits the customer to nothing, so it is an expiry date and never a term. Credits billed on a schedule until the customer cancels are a subscription: the commitment sits in MRR and what is drawn from it has basis `committed`. The SaaS Metrics Standards Board gives the rule for usage sold with no contracted minimum: "no ARR is present".
 
 **Includes:**
-- Consumption drawn from a prepaid balance (basis `committed`)
+- Consumption drawn from the balance of a commitment that sits in MRR (basis `committed`)
+- Consumption drawn from credits bought once, an automatic top-up included (basis `top_up`)
 - Consumption above an exhausted or per-period commitment (basis `overage`)
 - Consumption billed with no commitment (basis `on_demand`)
 
@@ -147,13 +150,14 @@ Consumption Revenue is reported per consumption basis (committed, overage, on de
 - Credit purchases: a prepayment is a contract liability until it is consumed, so it counts in bookings and billings
 - Expired credits, which [Credit Breakage](#credit-breakage) reports
 
-**What it tells you:** How much revenue usage earned in the period, whichever way the customer bought it. The breakdown by basis shows how much came from prepaid commitments, how much ran past them and how much arrived with no commitment at all.
+**What it tells you:** How much revenue usage earned in the period, whichever way the customer bought it. The breakdown by basis shows how much came from prepaid commitments, how much ran past them and how much arrived with no commitment at all, billed on demand or drawn from credits bought once.
 
 **Note:** Under ASC 606 and IFRS 15 a SaaS usage fee is variable consideration, recognised as the usage occurs. Consumption Revenue is the commercial figure read from the credit ledger; [Revenue (GAAP)](#revenue-gaap) remains the accounting figure.
 
 **Common mistakes:**
 - Counting credit purchases as consumption revenue
 - Adding consumption revenue to MRR, which excludes uncommitted usage
+- Counting a one-off credit pack or an automatic top-up as MRR because the card is charged often
 - Counting usage within a ratable commitment a second time beside the commitment
 
 **Related metrics:** Usage Run-Rate, Prepaid Credit Balance, Credit Breakage, Consumption Revenue Growth Rate, Consumption Net Revenue Retention, Revenue (GAAP)
@@ -165,23 +169,26 @@ Consumption Revenue is reported per consumption basis (committed, overage, on de
 - [Snowflake: Form 10-K, fiscal 2026](https://www.sec.gov/Archives/edgar/data/1640147/000164014726000008/snow-20260131.htm)
 - [Stripe: Billing credits](https://docs.stripe.com/billing/subscriptions/usage-based/billing-credits)
 - [Metronome: Glossary](https://metronome.com/glossary)
+- [SaaS Metrics Standards Board: Annual Recurring Revenue](https://www.saasmetricsboard.com/annual-recurring-revenue)
+- [OpenAI: Prepaid billing](https://help.openai.com/en/articles/8264644-how-can-i-set-up-prepaid-billing)
+- [Anthropic: Paying for Claude API usage](https://support.claude.com/en/articles/8977456-how-do-i-pay-for-my-claude-api-usage)
 
 ---
 
 ### Usage Run-Rate
 
-**Definition:** On-demand consumption revenue over the trailing three months, annualised. Also called Usage ARR.
+**Definition:** The consumption revenue no commitment covers, billed on demand or drawn from credits bought once, over the trailing three months, annualised. Also called Usage ARR.
 
 **Formula:**
 ```
-Usage Run-Rate = On-demand Consumption Revenue in the three months ending at period end × 4
+Usage Run-Rate = On-demand and top-up Consumption Revenue in the three months ending at period end × 4
 ```
 
-**Window:** The GASP Standard fixes the window at three months × 4, the basis of MongoDB's 90 days and Confluent's three months. Companies also use one month × 12 (Datadog), which moves with every unusual month, and a six-month average × 12 (Metronome's guidance), which is slower to show a trend; daily × 365 appears too. The standard picks one window so two companies' figures compare. A company that reports on another window states it beside the GASP figure.
+**Window:** The GASP Standard fixes the window at three months × 4, the basis of MongoDB's 90 days and Confluent's three months. Companies also use one month × 12 (Datadog) and 28 days × 13 (Anthropic), which move with every unusual month, and a six-month average × 12 (Metronome's guidance), which is slower to show a trend; daily × 365 appears too. The standard picks one window so two companies' figures compare. A company that reports on another window states it beside the GASP figure.
 
-**Base:** Only on-demand consumption enters. Committed consumption is already in ARR through the commitment, and overage is already in MRR through the `usage_realisation` expansion the [CEL](../cel.md#deriving-usage-realisation) derives. With the base held to on-demand consumption, ARR plus Usage Run-Rate counts each dollar once.
+**Base:** Consumption billed on demand and consumption drawn from credits bought once enter. Committed consumption is already in ARR through the commitment, and overage is already in MRR through the `usage_realisation` expansion the [CEL](../cel.md#deriving-usage-realisation) derives. With the base held to the usage no commitment covers, ARR plus Usage Run-Rate counts each dollar once. Anthropic, whose API customers mostly pay with prepaid credits, reports its Run-Rate Revenue in the same two parts: annualised consumption fees added to annualised subscription fees.
 
-**Includes:** Consumption with basis `on_demand`.
+**Includes:** Consumption with basis `on_demand` or `top_up`.
 
 **Excludes:** Committed consumption and overage, which ARR already carries.
 
@@ -200,6 +207,7 @@ Usage Run-Rate = On-demand Consumption Revenue in the three months ending at per
 - [MongoDB: Form 10-K, fiscal 2026](https://www.sec.gov/Archives/edgar/data/1441816/000162828026016799/mdb-20260131.htm)
 - [Confluent: Form 10-K, 2025](https://www.sec.gov/Archives/edgar/data/1699838/000169983826000006/cflt-20251231.htm)
 - [Datadog: Form 10-K, 2025](https://www.sec.gov/Archives/edgar/data/1561550/000162828026008819/ddog-20251231.htm)
+- [Anthropic: Form S-1, October 2026](https://www.sec.gov/Archives/edgar/data/2130357/000162828026067168/anthropicpbc-sx1.htm)
 - [Ordway: Cloud usage-based pricing ARR study](https://ordwaylabs.com/blog/cloud-usage-based-pricing-report-arr/)
 - [Metronome: ARR for usage-heavy SaaS](https://metronome.com/blog/arr-usage-heavy-saas)
 - [m3ter: SaaS usage metrics](https://www.m3ter.com/guides/saas-usage-metrics)
@@ -208,16 +216,16 @@ Usage Run-Rate = On-demand Consumption Revenue in the three months ending at per
 
 ### Prepaid Credit Balance
 
-**Definition:** The prepaid commitment customers have paid for and not yet consumed or forfeited, as of period end. Also called Remaining Commitment.
+**Definition:** The prepaid commitments and credits customers have paid for and not yet consumed or forfeited, as of period end. Also called Remaining Commitment.
 
 **Formula:**
 ```
-Prepaid Credit Balance = Purchases + granting adjustments - committed consumption - expiries - reducing adjustments, cumulative to period end
+Prepaid Credit Balance = Purchases + granting adjustments - consumption drawn from a balance - expiries - reducing adjustments, cumulative to period end
 ```
 
-Every `purchase`, `expiry` and `adjustment` event and every consumption with basis `committed` is summed from the start of the ledger to period end, each with the sign it carries.
+Every `purchase`, `expiry` and `adjustment` event and every consumption with basis `committed` or `top_up` is summed from the start of the ledger to period end, each with the sign it carries.
 
-**Includes:** Prepaid commitments and blocks of credits, rollover grants and promotional grants, less what has been drawn down, forfeited or reduced.
+**Includes:** Prepaid commitments, credit packs and top-ups, rollover grants and promotional grants, less what has been drawn down, forfeited or reduced.
 
 **Excludes:** Overage and on-demand consumption, which draw no balance.
 
@@ -228,7 +236,7 @@ Every `purchase`, `expiry` and `adjustment` event and every consumption with bas
 **Common mistakes:**
 - Drawing on-demand or overage consumption against the balance
 - Reading the balance as a revenue forecast: rollover and consumption timing move it, and Snowflake states its deferred revenue "is not a meaningful indicator of future revenue"
-- Letting the balance go negative: consumption beyond the balance is overage
+- Letting the balance go negative: consumption beyond the balance is overage, or on demand where no commitment stands behind it
 
 **Related metrics:** Consumption Revenue, Credit Breakage, Deferred Revenue Balance
 
@@ -246,14 +254,14 @@ Every `purchase`, `expiry` and `adjustment` event and every consumption with bas
 
 ### ARR Including Usage Run-Rate
 
-**Definition:** Annual Recurring Revenue (ARR) plus Usage Run-Rate: committed recurring revenue and annualised on-demand usage together. It is the figure Datadog, MongoDB and Confluent report as ARR.
+**Definition:** Annual Recurring Revenue (ARR) plus Usage Run-Rate: committed recurring revenue and the annualised usage no commitment covers together. It is the figure Datadog, MongoDB and Confluent report as ARR.
 
 **Formula:**
 ```
 ARR Including Usage Run-Rate = ARR + Usage Run-Rate
 ```
 
-**No double counting:** ARR carries commitments and the overage realised above them; Usage Run-Rate carries on-demand consumption alone. Each dollar of usage sits in exactly one of the two.
+**No double counting:** ARR carries commitments and the overage realised above them; Usage Run-Rate carries on-demand and top-up consumption alone. Each dollar of usage sits in exactly one of the two.
 
 **Relation to ARR:** The GASP Standard keeps [ARR](core.md#arr-annual-recurring-revenue) committed: commitments in and uncommitted usage out, which consumption companies call Committed ARR or Baseline ARR. Public consumption companies split between that policy and a usage-inclusive ARR, so the combined figure carries its own name and the two stay distinct.
 
@@ -335,14 +343,14 @@ Consumption Revenue Growth Rate = (Consumption Revenue this month - Consumption 
 
 ### Consumption Net Revenue Retention
 
-**Definition:** The consumption revenue of the customers active at period start, over a twelve-month period, divided by the same customers' consumption revenue over the twelve months before. Consumption Net Revenue Retention (Consumption NRR) reads year two over year one, Snowflake's basis.
+**Definition:** The consumption revenue of the customers and pay-as-you-go accounts held at period start, over a twelve-month period, divided by the same accounts' consumption revenue over the twelve months before. Consumption Net Revenue Retention (Consumption NRR) reads year two over year one, Snowflake's basis.
 
 **Formula:**
 ```
 Consumption NRR = Consumption Revenue of the period-start cohort in the twelve-month period / Consumption Revenue of the same cohort in the prior twelve months × 100
 ```
 
-**Cohort:** The customers on the customer snapshot at period start. A customer in the cohort that consumed nothing in the period counts at zero; customers acquired during the period stay out. A pay-as-you-go customer enters the cohort once the company's customer status marks it active.
+**Cohort:** The accounts whose `customer_status` on the customer snapshot at period start is `active` or `pay_as_you_go`. A customer in the cohort that consumed nothing in the period counts at zero; customers acquired during the period stay out. A pay-as-you-go customer buys usage with no subscription, on demand or as credit packs, and holds the status `pay_as_you_go` for as long as the account is open. Such a customer has no subscription to cancel and leaves by letting the balance run out, which this metric reads as a year at zero. The status keeps them out of [Total Customers](core.md#total-customers) and [Logo Churn Rate](core.md#logo-churn-rate-customer-churn), which count subscriptions.
 
 **Two bases:** [Net Revenue Retention (NRR)](core.md#net-revenue-retention-nrr) reads MRR movements and already includes realised usage through the `usage_realisation` expansion, so it stays the main retention figure. Consumption NRR is a second basis, on recognised consumption: Snowflake reports on it, Twilio on recognised revenue, and Ordway finds public companies split between a revenue basis and an ARR basis. A company reporting this figure names it Consumption NRR rather than NRR.
 

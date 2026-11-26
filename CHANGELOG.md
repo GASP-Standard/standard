@@ -4,6 +4,13 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+### Added
+- **A fourth consumption basis, `top_up`** (`DECISIONS.md` 2026-11-26): consumption drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them. The purchase of a pack stays out of MRR, ARR, NRR and GRR. Consumption Revenue counts each dollar as it is drawn and its `by_basis` breakdown gains a `top_up` row. Usage Run-Rate reads `on_demand` and `top_up` consumption, where it read `on_demand` alone, so it is the annualised usage no commitment covers. Prepaid Credit Balance subtracts `committed` and `top_up` consumption, so it carries what is left of a pack. The `credit_balance_identity` check holds a top-up drawdown to the same rule as a committed one. `cel.md` gains example 12, a pack and its automatic top-up. No value over data without the new basis moves.
+- **A customer status for pay-as-you-go accounts, `pay_as_you_go`** (`DECISIONS.md` 2026-11-26): an open account with no active subscription that buys usage, on demand or as credits bought once. Total Customers, Logo Churn Rate, NRR and GRR read `active` and leave the account out. Consumption Net Revenue Retention takes `active` and `pay_as_you_go` into its cohort, so an account that let its balance run out counts at zero. No value over data without the new status moves.
+
+### Changed
+- **Breaking: Gross Revenue Retention (GRR) and Revenue Churn Rate leave out the reversal of realised usage** (`DECISIONS.md` 2026-11-26). Usage above a commitment enters the revenue ledger as an expansion and a contraction that reverses it the next day. Both rates counted that contraction as revenue lost, so a customer who used more than they committed to lowered GRR. Both now add the reversal back to Contraction MRR, which follows the SaaS Metrics Standards Board's recommendation to exclude variable usage revenue from GRR. A company with no realised usage in its ledger sees the same values. Contraction MRR, Carry MRR, Net New MRR, NRR and Expansion Rate keep their formulas. The cohort table `gasp_account_cohorts` gains a `usage_reversal` column and both rates stay plain sums over it.
+
 ## [1.23.0] - 2026-11-24
 
 ### Added

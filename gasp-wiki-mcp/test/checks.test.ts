@@ -144,6 +144,10 @@ describe("readiness checks", () => {
     // An overage row whose balances differ breaks the rule too: it draws no balance.
     await db.exec(`UPDATE bad_credits SET credit_balance_after = 10 WHERE event_id = 's11:credit:5'`);
     expect((await run(adapterOver("credit_event", "bad_credits")))["credit_balance_identity"]).toBe(2);
+    // A drawdown from a pack or a top-up moves its balance as a committed one does: an on-demand
+    // row relabelled top_up keeps its equal balances and fails.
+    await db.exec(`UPDATE bad_credits SET consumption_basis = 'top_up' WHERE event_id = 's01:credit:1'`);
+    expect((await run(adapterOver("credit_event", "bad_credits")))["credit_balance_identity"]).toBe(3);
   });
 
   it("fails the GRR range check when a contraction turns into a gain", async () => {

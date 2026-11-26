@@ -33,7 +33,7 @@ MRR contribution = Annual Contract Value / 12
 - Variable/usage-based fees (unless contractually guaranteed)
 - Non-recurring charges
 
-Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue).
+Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue). That covers a pack of credits bought once and an automatic top-up, which are [usage paid for in advance](finance.md#consumption-revenue): each is a purchase with no term and no renewal.
 
 **Fixed terms and temporary changes:** A subscription or an add-on with a set end date counts in MRR at its monthly value until the day its contract ends, whether the customer then steps down or leaves. The [Commercial Event Ledger](../cel.md#change-nature) marks its movements with `change_nature` (`temporary` when it starts, `scheduled_reversal` when it ends), so this revenue can be told apart and Adjusted NRR and Adjusted GRR leave it out.
 
@@ -287,7 +287,9 @@ Carry MRR = Beginning MRR - Churned MRR - Contraction MRR
 
 **Also known as:** Base MRR, Retained MRR, Renewal MRR
 
-**What it tells you:** How much of last period's revenue base is still in place. Carry MRR is Gross Revenue Retention (GRR) in dollar terms: divide it by beginning MRR and you get GRR.
+**What it tells you:** How much of last period's revenue base is still in place. Carry MRR is close to Gross Revenue Retention (GRR) in dollar terms: taken over the customers active at period start and divided by their beginning MRR, it equals GRR wherever no usage was realised above a commitment.
+
+**Realised usage:** Carry MRR subtracts all of Contraction MRR, the reversal of realised usage included, because Expansion MRR adds the realisation and the movements have to net to ending MRR. GRR leaves that reversal out, so GRR reads higher than Carry MRR over beginning MRR by the usage reversed in the period.
 
 A falling Carry MRR beside rising Expansion MRR means retention is weakening under the growth.
 
@@ -387,7 +389,7 @@ Total Customers = Count of customers with customer_status = active at period end
 
 **Also known as:** Customer Count, Active Customers, Logos
 
-**Counting:** One customer is one billing entity, whatever its number of users, seats or subscriptions (see [Customer](../definitions.md#customer)). Trial and free accounts are not customers until they pay.
+**Counting:** One customer is one billing entity, whatever its number of users, seats or subscriptions (see [Customer](../definitions.md#customer)). Trial and free accounts are not customers until they pay. A pay-as-you-go account, one that buys usage or credit packs with no subscription, holds the status `pay_as_you_go` and is counted by [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), outside this number.
 
 Total Customers is reported per customer segment.
 
@@ -477,7 +479,7 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 
 NRR is reported per customer segment. Each customer counts in the segment held on the first day of the period, with every snapshot and event of theirs in the period.
 
-**Usage and consumption:** NRR already includes realised usage: overage above a commitment is expansion tagged `usage_realisation`, and for a customer on a prepaid commitment the commitment sits in the MRR base. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The retention of consumption revenue itself is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), a separate basis reported under its own name.
+**Usage and consumption:** NRR already includes realised usage: overage above a commitment is expansion tagged `usage_realisation`, and for a customer on a prepaid commitment the commitment sits in the MRR base. The contraction that reverses the overage counts too, so a month of overage nets to zero once it has passed. A pack of credits bought once or an automatic top-up adds no MRR and moves NRR in neither direction. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The retention of consumption revenue itself is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), a separate basis reported under its own name.
 
 **What it tells you:** Whether the customers you had a year ago are paying you more or less today. Above 100%, the existing base grows on its own and new customers add on top; below it, new sales first have to replace what the base lost.
 
@@ -555,6 +557,8 @@ Two methods are widely used. The GASP Standard uses the **formula method** as ca
 GRR = (Beginning MRR - Contraction MRR - Churned MRR) / Beginning MRR × 100
 ```
 
+Contraction MRR enters this formula without the reversal of realised usage, as [Usage and consumption](#gross-revenue-retention-grr) below sets out.
+
 **2. Cohort Method (Alternative):**
 Compare the MRR of a cohort, using the lesser of beginning MRR or current MRR for each customer (this mathematically eliminates expansion while capturing shrinkage and churn).
 
@@ -562,7 +566,7 @@ Compare the MRR of a cohort, using the lesser of beginning MRR or current MRR fo
 GRR = Sum of min(Beginning MRR, Current MRR) per customer / Beginning MRR × 100
 ```
 
-**Why they differ:** The cohort method nets each customer's movements within the period, so a customer who contracts and then expands back to their starting MRR shows no loss. The formula method counts every contraction and churn event as it happens, so it is equal to or lower than the cohort method. The formula method is canonical because it reads the same contraction and churn events as Net Revenue Retention (NRR), keeping the two retention rates on one basis. It also needs no per-customer end-of-period snapshot. Report the cohort method as a labelled alternative.
+**Why they differ:** The cohort method nets each customer's movements within the period, so a customer who contracts and then expands back to their starting MRR shows no loss. The formula method counts every contraction and churn event as it happens, so it is equal to or lower than the cohort method. The formula method is canonical because it reads the contraction and churn events Net Revenue Retention (NRR) reads, less the reversal of realised usage, keeping the two retention rates on one basis. It also needs no per-customer end-of-period snapshot. Report the cohort method as a labelled alternative.
 
 **Time period:** Typically measured annually.
 
@@ -586,7 +590,7 @@ GRR tops out at 100%, reached with zero churn and zero contraction, because it l
 
 GRR is reported per customer segment. Each customer counts in the segment held on the first day of the period, with every snapshot and event of theirs in the period.
 
-**Usage and consumption:** GRR runs on the same MRR base as NRR, so a prepaid commitment counts in it. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The consumption-revenue basis is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention).
+**Usage and consumption:** GRR runs on the same MRR base as NRR, so a prepaid commitment counts in it. Usage above a commitment stays out of GRR in both directions. The expansion that realises it is expansion, which GRR never reads. The contraction that reverses it the next day, tagged `usage_realisation` by the [Commercial Event Ledger](../cel.md#deriving-usage-realisation), is left out of the formula, so a customer who runs over a commitment every month reads 100% for as long as the commitment holds. The SaaS Metrics Standards Board recommends "excluding variable revenue from usage-based pricing in the GRR calculation". [Contraction MRR](#contraction-mrr) and NRR keep the reversal, where it nets against the expansion before it. A pack of credits bought once or an automatic top-up is never in MRR and so never in GRR. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The consumption-revenue basis is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention).
 
 **What it tells you:** The baseline health of your customer relationships, independent of upsell. Investors examine GRR alongside NRR because strong expansion can mask high churn.
 
@@ -610,7 +614,7 @@ GRR measures revenue retained from existing customers and leaves expansion out. 
 Logo Churn Rate = Customers lost in period / Customers at start of period × 100
 ```
 
-**Who is counted:** The customers active on the first day of the period, the same cohort NRR and GRR follow. A customer lost in the period counts when they were a customer on that day, so the rate stays between 0% and 100%. A customer who joins and churns inside the period appears in [Churned Customers](#churned-customers) and sits outside this rate.
+**Who is counted:** The customers active on the first day of the period, the same cohort NRR and GRR follow. A customer lost in the period counts when they were a customer on that day, so the rate stays between 0% and 100%. A customer who joins and churns inside the period appears in [Churned Customers](#churned-customers) and sits outside this rate. So does a pay-as-you-go account with no subscription: it has nothing to cancel, so its loss shows in [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention) as a year at zero.
 
 **Time period:** Monthly or annual basis. Always specify which.
 
@@ -654,6 +658,8 @@ Revenue Churn Rate = (Churned MRR + Contraction MRR) / Beginning MRR × 100
 ```
 
 **Who is counted:** The customers active on the first day of the period, the same cohort NRR, GRR and Logo Churn Rate follow. Churned MRR and Contraction MRR count when the customer was active on that day and Beginning MRR is the MRR those customers held on it, so the rate equals 100% less GRR over the same period and stays between 0% and 100%. MRR lost by a customer who joins inside the period appears in [Churned MRR](#churned-mrr) and [Contraction MRR](#contraction-mrr) and sits outside this rate.
+
+**Realised usage:** As in [GRR](#gross-revenue-retention-grr), Contraction MRR enters this rate without the contraction that reverses realised usage. Overage that falls back to the commitment was variable revenue, so it is no loss of recurring revenue, and the rate stays equal to 100% less GRR.
 
 This is gross revenue churn: it measures losses only, without netting against expansion. It is the canonical formula because it isolates the leakage.
 

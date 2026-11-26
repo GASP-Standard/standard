@@ -58,6 +58,11 @@ export const ACCOUNT_COHORTS: CohortTableSpec = {
       description: "Expansion and reactivation MRR in the period that the Market form of Net Revenue Retention counts",
     },
     { name: "contraction_mrr", formula: "metric.contraction_mrr", description: "Contraction MRR from the customer in the period, as a positive amount" },
+    {
+      name: "usage_reversal",
+      formula: "sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')",
+      description: "The contraction that reverses the customer's realised usage in the period, a negative amount or zero. Gross Revenue Retention and Revenue Churn Rate add it to Contraction MRR, which leaves usage above a commitment out of both",
+    },
     { name: "churned_mrr", formula: "metric.churned_mrr", description: "Churned MRR from the customer in the period, as a positive amount" },
     { name: "mrr_start", formula: "sum(field.mrr_start)", description: "The customer's MRR at period start as its subscription rows carry it on the last day of the period (mrr_start)" },
     { name: "retained_mrr", formula: "sum(min(field.mrr_end, field.mrr_start))", description: "The lesser of opening and closing MRR on each of the customer's subscription rows, summed: what was kept, expansion left out" },

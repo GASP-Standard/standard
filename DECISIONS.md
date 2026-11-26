@@ -5,6 +5,51 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-26] A credit pack is usage paid for in advance and GRR leaves out the reversal of realised usage
+
+**Context.** The owner asked on 2026-11-26 whether a company that sells token packs for an AI tool counts them in MRR, ARR, GRR or NRR, and asked for an opinion in the standard. The standard had three consumption bases (`committed`, `overage`, `on_demand`) and said nothing about credits bought once. The sources below were read on 2026-11-26 and each quotation was checked against the saved page.
+
+- **SaaS Metrics Standards Board.** On ARR: "If there is no contracted recurring revenue minimum commitment (subscription agreement) for Usage-Based pricing utilization models, no ARR is present". On GRR, Nuance #6: "We recommend excluding variable revenue from usage-based pricing in the GRR calculation."
+- **Anthropic.** The prospectus filed on 2026-10-26 defines Run-Rate Revenue as consumption-based fees for the trailing 28 days multiplied by 13, plus aggregate monthly subscription fees multiplied by 12. Its support page says "Most organizations pay with prepaid usage credits." and "Credits expire one year from the purchase date, and the expiration date can't be extended."
+- **OpenAI.** "Auto recharge adds credits when your balance falls below the threshold you set." and "Purchased credits expire after one year."
+- **Twilio** (10-K for 2025). An active customer account is one "for which we have recognized at least $5 of revenue in the last month of the period" and most usage customers start with "an upfront prepayment via credit card that is drawn down as they use our products."
+- **Snowflake** (10-K for fiscal 2026). In its net revenue retention rate a customer "that did not use our platform in the second year remains in the calculation and contributes zero product revenue in the second year."
+- **Jamin Ball** (Clouded Judgement, 2024-03-22). "Let's look at consumption revenue - this is also not technically recurring! It's probably better described as re-occurring vs recurring."
+
+Testing the pack rule against the ledger found a second problem. Usage above a commitment enters the revenue ledger as an `expansion` on the period's last day and a `contraction` the next day, both tagged `usage_realisation` (`cel.md`). GRR and Revenue Churn Rate read Contraction MRR whole, so they counted every reversal as revenue lost. On the synthetic data, three months of $200 above a commitment for one customer of the opening cohort moved the half-year GRR from 0.8013 to 0.7616 while NRR stayed at 0.9868.
+
+**Decision.** The owner took each point as presented on 2026-11-26, the two edge cases (4 and 5) included.
+
+1. **A pack bought once is usage paid for in advance.** Its purchase is a `purchase` credit event and stays out of MRR, ARR, CARR, NRR and GRR. Each dollar drawn is Consumption Revenue with `consumption_basis` `top_up`, a fourth value of the field.
+2. **Usage Run-Rate reads `on_demand` and `top_up` consumption**: the usage no commitment covers, over three months, times four. ARR Including Usage Run-Rate carries it beside ARR. These are the two parts of Anthropic's Run-Rate Revenue; the window stays the standard's three months.
+3. **Prepaid Credit Balance counts packs.** It subtracts consumption on the `committed` and `top_up` bases, both of which draw a balance. Pack credits that pass their use-by date are an `expiry` event and reach Credit Breakage like any other.
+4. **An automatic top-up is a purchase and never a renewal.** It fires when the balance falls, so it has no date and no term and its frequency follows usage.
+5. **A use-by date is an expiry date and never a term.** It limits when the credits can be spent and commits the customer to nothing.
+6. **Credits billed on a schedule until the customer cancels are a subscription.** They count in MRR by their contract and their consumption is on the `committed` basis.
+7. **A customer who buys only packs has no MRR and holds a status of their own.** `customer_status` gains `pay_as_you_go`: an open account with no active subscription that buys usage, on demand or as credits bought once. Total Customers, Logo Churn Rate, NRR and GRR read `active`, which means at least one active subscription, so they leave the account out. Consumption Net Revenue Retention takes both statuses into its cohort (`over cohort(field.customer_id, period_start where field.customer_status in ('active', 'pay_as_you_go'))`) and keeps an account that stopped at zero, which is Snowflake's rule. Before this the snapshot had no value for such an account. Marked `active` it entered the Logo Churn Rate denominator with no churn event that could ever take it out and failed the readiness check that every active customer has a revenue event. Left unmarked it sat outside the one retention rate written for it.
+8. **GRR and Revenue Churn Rate leave out the reversal of realised usage.** Each adds `sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')`, a negative amount, to Contraction MRR. This follows the Board's Nuance #6 and is a governed breaking change to both values for a company with realised usage.
+
+**Alternatives considered.**
+
+- *Count a pack in MRR, at its price or spread over its use-by year.* No source read does. The Board's rule for usage with no contracted minimum is that no ARR is present.
+- *Read an automatic top-up as a renewal.* A renewal has a date and a term. A top-up has neither: a customer in a busy month is charged four times and in a quiet month not at all.
+- *Fold packs into `on_demand`.* The two differ in the ledger: a top-up draws a balance, which the balance identity check and Prepaid Credit Balance read, and on-demand usage is billed in arrears with no balance. A company also wants the prepaid share of its uncommitted usage in view.
+- *A metric of its own for pack revenue.* Consumption Revenue by basis gives the figure, so a new metric would repeat it.
+- *Take the reversal out of Contraction MRR itself.* Net New MRR would then keep every month of realised usage and stop reconciling with the change in MRR, and NRR would count usage that had ended. The reversal is a real movement of MRR; it is only the two gross rates that should not read it as a loss.
+- *Twilio's threshold for consumption retention*, an account active above $5 in the last month. It drops the customer who stopped from the base. Snowflake keeps them at zero and the standard's Consumption NRR already did.
+
+**Consequences.**
+
+- `consumption_basis` has four values and `customer_status` five. The counts stand: 319 metrics, 307 formula entries, 294 fields, 56 datasets, 105 nodes and 213 edges.
+- GRR and Revenue Churn Rate still sum to 1 over the same period and cohort. The `adjusted` variant of GRR already left the reversal out through `change_nature`. A ledger with no realised usage gives the values it gave before, so no fixture value, drift baseline or conformance expectation moved; the example demo's `metrics.sql` was regenerated.
+- The cohort table `gasp_account_cohorts` gains a `usage_reversal` column, a negative amount or zero per customer per period, and both rates stay plain sums over the table. A compiled company model that selects either rate carries the column.
+- Carry MRR keeps its formula, since the waterfall reads Contraction MRR whole. Its entry now says it equals GRR's numerator where no usage was realised.
+- A reporting period that opens on the last day of a usage period has that day's realised usage in its opening MRR, as any event dated the first day of a period is. GRR for that period keeps the usage in its numerator. Calendar months and quarters open the day after.
+- The copy of the example model in apache/ossie #773 differs from the published one until its next refresh, which waits for the owner's word.
+- The churn article gains a section on packs and its table of what is sold gains a "Can churn?" column and two entries. The change ships in 1.24.0.
+
+---
+
 ## [2026-11-24] What gets a formula: six email rates, four formulas over data the standard can name and a partner type field
 
 **Context.** Fifteen entries in `formulas.json` carried a `notComputable` reason. The owner asked which of them should have a formula and took the recommendation as presented on 2026-11-24. The test for each entry was the bar for new metrics: the industry computes it one way and the standard can name the data it reads. Sources were read on 2026-11-24 through a summarising reader, so each is described here and none is quoted.

@@ -127,7 +127,7 @@
       "notes": "Period is trailing 12 months, over the customers active at period start (cohort method, the investor-comparable basis). NRR-O counts expansion tagged same_product or usage_realisation. NRR-M counts every expansion classification plus reactivation of cohort customers; customers who churned before the period and return are new business. The main formula is core.md's formula method. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
     },
     "grr": {
-      "formula": "(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "formula": "(metric.mrr at period_start - (metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "variants": {
         "per_customer": "sum(min(field.mrr_end, field.mrr_start)) / sum(field.mrr_start) over cohort(field.customer_id, period_start)",
@@ -136,7 +136,7 @@
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one; variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
+      "notes": "Period is trailing 12 months. The main formula is core.md's formula method, the canonical one. The reversal of realised usage (a contraction tagged usage_realisation) is left out: those rows carry a negative mrr_change, so adding their sum to Contraction MRR removes them. Usage above a commitment is variable revenue, which the SaaS Metrics Standards Board recommends excluding from GRR; Contraction MRR itself keeps the reversal, so the MRR movements still net. variants.per_customer is the cohort method, which nets each customer's movements within the period and so reads equal to or higher than the main formula. Capped at 100% by construction. by_segment returns one row per customer segment, because retention differs most between SMB and enterprise; each customer counts in the segment held on the first day of the period, read from the customer snapshot, and so does every snapshot and event of theirs in the period."
     },
     "logo_churn_rate": {
       "formula": "metric.churned_customers / metric.total_customers at period_start over cohort(field.customer_id, period_start)",
@@ -147,12 +147,12 @@
       "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): a churned customer counts when they were a customer on that day, so the rate stays between 0 and 1. A customer who joins and churns inside the period shows in Churned Customers and is outside this rate. by_segment returns one row per customer segment with each customer in the segment held on the first day, since SMB logos usually churn at several times the enterprise rate."
     },
     "revenue_churn_rate": {
-      "formula": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "formula": "(metric.churned_mrr + metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "unit": "percent",
       "breakdowns": {
         "by_segment": "field.segment"
       },
-      "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): the churned and contracted MRR of those customers over their MRR on that day, so the rate equals 1 less GRR over the same period and stays between 0 and 1. The MRR lost by a customer who joins inside the period shows in Churned MRR and Contraction MRR and is outside this rate. by_segment returns one row per customer segment, so churn concentrated in one segment is visible; each customer counts in the segment held on the first day of the period."
+      "notes": "Over the customers active on the first day of the period (cohort method, as NRR and GRR): the churned and contracted MRR of those customers over their MRR on that day, so the rate equals 1 less GRR over the same period and stays between 0 and 1. As in GRR, the reversal of realised usage (a contraction tagged usage_realisation) is left out: its mrr_change is negative, so adding the sum removes it. The MRR lost by a customer who joins inside the period shows in Churned MRR and Contraction MRR and is outside this rate. by_segment returns one row per customer segment, so churn concentrated in one segment is visible; each customer counts in the segment held on the first day of the period."
     },
     "nps": {
       "formula": "(count(field.nps_score where field.survey_type = 'customer' and field.nps_score >= 9) - count(field.nps_score where field.survey_type = 'customer' and field.nps_score <= 6)) / count(field.nps_score where field.survey_type = 'customer') * 100",
@@ -1641,17 +1641,17 @@
         "by_basis": "field.consumption_basis",
         "by_segment": "field.segment"
       },
-      "notes": "Consumption events carry a negative credit_amount; the metric reports a positive amount. Revenue recognised as usage occurs: drawn from a prepaid balance (committed), above a commitment (overage) or with no commitment (on_demand). Usage within a ratable commitment is no event; that revenue is the commitment, in MRR. by_basis returns one row per consumption basis."
+      "notes": "Consumption events carry a negative credit_amount; the metric reports a positive amount. Revenue recognised as usage occurs: drawn from a commitment's balance (committed), drawn from credits bought once (top_up), above a commitment (overage) or billed with no commitment (on_demand). Usage within a ratable commitment is no event; that revenue is the commitment, in MRR. by_basis returns one row per consumption basis."
     },
     "usage_run_rate": {
-      "formula": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis = 'on_demand'), 3 month) * 4",
+      "formula": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis in ('on_demand', 'top_up')), 3 month) * 4",
       "unit": "currency",
-      "notes": "Also called Usage ARR. The trailing three months of on-demand consumption, annualised. Committed consumption is already in ARR through the commitment and overage through the usage_realisation pair, so only on-demand consumption enters, and ARR + Usage Run-Rate counts nothing twice. GASP fixes the window at three months (MongoDB's 90 days, Confluent's three months) so two companies' figures compare."
+      "notes": "Also called Usage ARR. The trailing three months of the consumption no commitment covers, annualised: consumption billed on demand and consumption drawn from credits bought once (top_up). Committed consumption is already in ARR through the commitment and overage through the usage_realisation pair, so neither enters, and ARR + Usage Run-Rate counts nothing twice. GASP fixes the window at three months (MongoDB's 90 days, Confluent's three months) so two companies' figures compare."
     },
     "prepaid_credit_balance": {
-      "formula": "sum(field.credit_amount where field.credit_event_type in ('purchase', 'expiry', 'adjustment') or field.consumption_basis = 'committed') to_date",
+      "formula": "sum(field.credit_amount where field.credit_event_type in ('purchase', 'expiry', 'adjustment') or field.consumption_basis in ('committed', 'top_up')) to_date",
       "unit": "currency",
-      "notes": "Also called Remaining Commitment. Purchases and granting adjustments less committed consumption, expiries and reducing adjustments, cumulative to period end. On-demand and overage consumption draw no balance and are left out. The part of the deferred revenue balance that is prepaid consumption."
+      "notes": "Also called Remaining Commitment. Purchases and granting adjustments less the consumption drawn from a balance (committed and top_up), expiries and reducing adjustments, cumulative to period end. On-demand and overage consumption draw no balance and are left out. The part of the deferred revenue balance that is prepaid consumption."
     },
     "arr_including_usage_run_rate": {
       "formula": "metric.arr + metric.usage_run_rate",
@@ -1677,9 +1677,9 @@
       "unit": "percent"
     },
     "consumption_net_revenue_retention": {
-      "formula": "metric.consumption_revenue / lag(metric.consumption_revenue, 12 month) over cohort(field.customer_id, period_start)",
+      "formula": "metric.consumption_revenue / lag(metric.consumption_revenue, 12 month) over cohort(field.customer_id, period_start where field.customer_status in ('active', 'pay_as_you_go'))",
       "unit": "percent",
-      "notes": "The cohort's consumption revenue over the period divided by the same cohort's consumption revenue in the twelve months before, on a twelve-month period: year two over year one, Snowflake's basis. A customer in the cohort that consumed nothing in the period counts at zero. A second basis beside NRR, which reads MRR movements; a company reporting this figure names it as such rather than as NRR."
+      "notes": "The cohort's consumption revenue over the period divided by the same cohort's consumption revenue in the twelve months before, on a twelve-month period: year two over year one, Snowflake's basis. The cohort is the customers with an active subscription at period start and the pay-as-you-go accounts open then, which the MRR metrics leave out. A customer in the cohort that consumed nothing in the period counts at zero. A second basis beside NRR, which reads MRR movements; a company reporting this figure names it as such rather than as NRR."
     }
   }
 }

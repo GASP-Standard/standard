@@ -1817,6 +1817,7 @@
       "values": [
         "trial",
         "active",
+        "pay_as_you_go",
         "churned",
         "dormant"
       ],
@@ -2746,7 +2747,11 @@
       "usedBy": [
         "ARR (Annual Recurring Revenue)",
         "CARR (Contracted Annual Recurring Revenue)",
-        "Net Revenue Retention (NRR)"
+        "Gross Revenue Retention (GRR)",
+        "LTV (Customer Lifetime Value)",
+        "LTV:CAC Ratio",
+        "Net Revenue Retention (NRR)",
+        "Revenue Churn Rate"
       ]
     },
     {
@@ -2766,7 +2771,11 @@
       "usedBy": [
         "ARR (Annual Recurring Revenue)",
         "CARR (Contracted Annual Recurring Revenue)",
-        "Net Revenue Retention (NRR)"
+        "Gross Revenue Retention (GRR)",
+        "LTV (Customer Lifetime Value)",
+        "LTV:CAC Ratio",
+        "Net Revenue Retention (NRR)",
+        "Revenue Churn Rate"
       ]
     },
     {
@@ -11604,7 +11613,8 @@
       "values": [
         "committed",
         "overage",
-        "on_demand"
+        "on_demand",
+        "top_up"
       ],
       "source": "Billing",
       "usedBy": [

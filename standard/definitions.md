@@ -111,17 +111,17 @@ Average monthly recurring revenue per customer account.
 - **Used in:** Core (LTV, CAC Payback), Finance
 
 ### Consumption Revenue
-Revenue earned as customers use the product: consumption drawn from a prepaid balance, billed as overage above a commitment or billed on demand with no commitment.
+Revenue earned as customers use the product: consumption drawn from a prepaid balance, billed as overage above a commitment or billed on demand with no commitment. A credit pack bought once and an automatic top-up count here as they are drawn down and stay out of MRR and ARR.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#consumption-revenue)
 - **Used in:** Finance
 
 ### Usage Run-Rate (Usage ARR)
-On-demand consumption revenue over the trailing three months, annualised. Added to ARR it gives ARR Including Usage Run-Rate without counting any usage twice.
+The consumption revenue no commitment covers, billed on demand or drawn from credits bought once, over the trailing three months, annualised. Added to ARR it gives ARR Including Usage Run-Rate without counting any usage twice.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#usage-run-rate)
 - **Used in:** Finance
 
 ### Prepaid Credit Balance (Remaining Commitment)
-The prepaid commitment customers have paid for and not yet consumed or forfeited: the part of the deferred revenue balance that is prepaid consumption.
+The prepaid commitments and credits customers have paid for and not yet consumed or forfeited: the part of the deferred revenue balance that is prepaid consumption.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#prepaid-credit-balance)
 - **Used in:** Finance
 
@@ -141,7 +141,7 @@ Percentage of revenue retained from existing customers over a period, including 
 - **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted NRR excluding temporary revenue movements.
 
 ### GRR (Gross Revenue Retention)
-Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. GASP uses the formula method over the customers active at period start; the cohort method is a labelled alternative.
+Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. GASP uses the formula method over the customers active at period start; the cohort method is a labelled alternative. Usage above a commitment stays out: the contraction that reverses realised usage is left out of the rate.
 - **Canonical definition:** [Core Metrics](metrics/core.md#gross-revenue-retention-grr)
 - **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted GRR excluding temporary revenue movements.
 - **Used in:** Core, Customer Success
@@ -152,7 +152,7 @@ Percentage of customers lost in a period.
 - **Used in:** Core, Customer Success
 
 ### Revenue Churn Rate
-Percentage of MRR lost to churn and contraction in a period. Gross (losses only, not netted against expansion).
+Percentage of MRR lost to churn and contraction in a period. Gross (losses only, not netted against expansion). The contraction that reverses realised usage is left out, as in GRR.
 - **Formula:** (Churned MRR + Contraction MRR) / Beginning MRR × 100
 - **Canonical definition:** [Core Metrics](metrics/core.md#revenue-churn-rate)
 - **Used in:** Core
@@ -224,6 +224,7 @@ Capital efficiency metric: Net burn divided by net new ARR. Popularised by David
 ### Customer
 An entity (company/account) with a paid subscription.
 - **Not:** Trial users, free tier users
+- **Pay-as-you-go:** An account that buys usage with no subscription, on demand or as credit packs, holds the `customer_status` `pay_as_you_go`. It stays out of Total Customers and Logo Churn Rate and is followed by Consumption Net Revenue Retention
 - **Counting:** One customer = one billing entity, regardless of users
 - **In formulas:** Unless otherwise specified, "Customers" means Active Customers
 

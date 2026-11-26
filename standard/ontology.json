@@ -1507,10 +1507,11 @@
       "values": [
         "trial",
         "active",
+        "pay_as_you_go",
         "churned",
         "dormant"
       ],
-      "description": "Customer lifecycle status; active means at least one active subscription",
+      "description": "Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once",
       "metricCount": 23
     },
     {
@@ -1797,7 +1798,7 @@
         "usage_realisation"
       ],
       "description": "ATL expansion tag; read by ARR-O, NRR-O and NRR-M",
-      "metricCount": 3
+      "metricCount": 7
     },
     {
       "id": "feature_created_date",
@@ -4648,7 +4649,7 @@
         "expiry",
         "adjustment"
       ],
-      "description": "CEL Credit_Event classifier: purchase (a prepaid commitment or block of credits paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)",
+      "description": "CEL Credit_Event classifier: purchase (a prepaid commitment, a block of credits or a top-up paid for, a rollover grant included), consumption (usage drawn down or billed), expiry (unused balance forfeited at its expiry date), adjustment (promotional grants, refunds, reversals, corrections)",
       "metricCount": 7
     },
     {
@@ -4675,10 +4676,11 @@
       "values": [
         "committed",
         "overage",
-        "on_demand"
+        "on_demand",
+        "top_up"
       ],
       "dimension": true,
-      "description": "On consumption events: committed (drawn from a prepaid balance), overage (above an exhausted or per-period commitment), on_demand (no commitment). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand alone",
+      "description": "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand and top_up",
       "metricCount": 4
     },
     {
@@ -6167,7 +6169,7 @@
       "period": "month"
     },
     "Usage Run-Rate": {
-      "grain": "On-demand consumption in the trailing 3 months ending at period end, annualised",
+      "grain": "On-demand and top-up consumption in the trailing 3 months ending at period end, annualised",
       "frequency": "Monthly",
       "aggregation": "window",
       "period": "month"
@@ -6836,7 +6838,7 @@
       ]
     },
     "grr": {
-      "expression": "(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "expression": "(metric.mrr at period_start - (metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "churned_mrr",
@@ -6860,6 +6862,7 @@
         "customer_status",
         "event_date",
         "event_type",
+        "expansion_classification",
         "mrr",
         "mrr_change",
         "snapshot_date",
@@ -6925,6 +6928,7 @@
         "customer_status",
         "event_date",
         "event_type",
+        "expansion_classification",
         "mrr",
         "mrr_change",
         "period_start",
@@ -6954,6 +6958,7 @@
         "customer_status",
         "event_date",
         "event_type",
+        "expansion_classification",
         "mrr",
         "mrr_change",
         "period_start",
@@ -7231,7 +7236,7 @@
       ]
     },
     "prepaid_credit_balance": {
-      "expression": "sum(field.credit_amount where field.credit_event_type in ('purchase', 'expiry', 'adjustment') or field.consumption_basis = 'committed') to_date",
+      "expression": "sum(field.credit_amount where field.credit_event_type in ('purchase', 'expiry', 'adjustment') or field.consumption_basis in ('committed', 'top_up')) to_date",
       "inputs": [],
       "fields": [
         "consumption_basis",
@@ -7279,7 +7284,7 @@
       ]
     },
     "revenue_churn_rate": {
-      "expression": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "expression": "(metric.churned_mrr + metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "churned_mrr",
@@ -7303,6 +7308,7 @@
         "customer_status",
         "event_date",
         "event_type",
+        "expansion_classification",
         "mrr",
         "mrr_change",
         "snapshot_date",
@@ -7433,7 +7439,7 @@
       ]
     },
     "usage_run_rate": {
-      "expression": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis = 'on_demand'), 3 month) * 4",
+      "expression": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis in ('on_demand', 'top_up')), 3 month) * 4",
       "inputs": [],
       "fields": [
         "consumption_basis",

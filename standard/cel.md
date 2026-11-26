@@ -147,10 +147,10 @@ A movement on a prepaid credit balance, or consumption billed with no balance be
 | `event_id` | `string` | Unique identifier |
 | `event_date` | `date` | Date the event occurred: the day or the billing period end the source records, never a single product usage event |
 | `customer_id` | `string` | [Customer](definitions.md#customer-account-organization) identifier |
-| `subscription_id` | `string` | [Subscription](definitions.md#subscription-contract-agreement) or commitment the balance belongs to |
-| `credit_event_type` | `enum` | `purchase` (a prepaid commitment or block of credits paid for, a rollover grant included), `consumption` (usage drawn down or billed), `expiry` (unused balance forfeited at its expiry date), `adjustment` (promotional grants, refunds, reversals, corrections) |
+| `subscription_id` | `string` | [Subscription](definitions.md#subscription-contract-agreement), commitment or prepaid account the balance belongs to |
+| `credit_event_type` | `enum` | `purchase` (a prepaid commitment, a block of credits or a top-up paid for, a rollover grant included), `consumption` (usage drawn down or billed), `expiry` (unused balance forfeited at its expiry date), `adjustment` (promotional grants, refunds, reversals, corrections) |
 | `credit_amount` | `decimal` | Signed amount in currency at the contract's rates: positive for `purchase` and a granting `adjustment`, negative for `consumption`, `expiry` and a reducing `adjustment`. The sign convention mirrors `mrr_change` |
-| `consumption_basis` | `enum` (consumption only) | `committed` (drawn from a prepaid balance), `overage` (above an exhausted or per-period commitment), `on_demand` (no commitment) |
+| `consumption_basis` | `enum` (consumption only) | `committed` (drawn from the balance of a commitment that sits in MRR), `overage` (above an exhausted or per-period commitment), `on_demand` (billed in arrears with no balance and no commitment), `top_up` (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them) |
 | `credit_balance_before` | `decimal` (optional) | The customer's prepaid balance before the event; equal to `credit_balance_after` on `overage` and `on_demand` consumption, which draw no balance |
 | `credit_balance_after` | `decimal` (optional) | The customer's prepaid balance after the event. Where both balances are mapped, `credit_balance_before + credit_amount = credit_balance_after` on every row that moves the balance |
 | `expires_on` | `date` (purchase only) | When the granted balance expires; empty when it does not |
@@ -425,6 +425,44 @@ A customer on a $120,000 annual prepaid commitment consumes $9,400 of it in Marc
   "credit_balance_after": 91800.00,
   "currency": "USD",
   "segment": "Enterprise"
+}
+```
+
+### 12. Credit Pack and Automatic Top-Up
+
+A developer with no subscription buys $50 of credit and turns on the automatic top-up, which buys another $50 when the balance falls below $10. Each top-up is a `purchase` and the usage drawn from the balance is `consumption` with basis `top_up`. Neither is a `Revenue_Event`: the purchases have no term and no renewal, so the customer's MRR stays at zero.
+
+```json
+{
+  "event_class": "Credit_Event",
+  "event_id": "cre-014",
+  "event_date": "2026-03-09",
+  "customer_id": "cust-2204",
+  "subscription_id": "wallet-2204",
+  "credit_event_type": "purchase",
+  "credit_amount": 50.00,
+  "credit_balance_before": 8.40,
+  "credit_balance_after": 58.40,
+  "expires_on": "2027-03-09",
+  "currency": "USD",
+  "segment": "SMB"
+}
+```
+
+```json
+{
+  "event_class": "Credit_Event",
+  "event_id": "cre-015",
+  "event_date": "2026-03-31",
+  "customer_id": "cust-2204",
+  "subscription_id": "wallet-2204",
+  "credit_event_type": "consumption",
+  "credit_amount": -36.10,
+  "consumption_basis": "top_up",
+  "credit_balance_before": 58.40,
+  "credit_balance_after": 22.30,
+  "currency": "USD",
+  "segment": "SMB"
 }
 ```
 
@@ -832,7 +870,7 @@ The [Credit_Event](#credit_event) ledger and the usage records describe the same
 
 #### Input
 
-The GASP `credit_event` dataset: `subscription_id`, `customer_id`, `event_date`, `credit_event_type`, `consumption_basis` and `credit_amount`. Only `consumption` rows with basis `overage` are read. Consumption drawn from a prepaid balance (basis `committed`) is already in the subscription's MRR through the commitment, and pay-as-you-go consumption (basis `on_demand`) has no commitment to exceed, so neither realises usage.
+The GASP `credit_event` dataset: `subscription_id`, `customer_id`, `event_date`, `credit_event_type`, `consumption_basis` and `credit_amount`. Only `consumption` rows with basis `overage` are read. Consumption drawn from a commitment's balance (basis `committed`) is already in the subscription's MRR through the commitment. Pay-as-you-go consumption, billed on demand or drawn from credits bought once (basis `on_demand` or `top_up`), has no commitment to exceed. None of the three realises usage.
 
 #### Rules
 

@@ -236,7 +236,7 @@ ontology:
         verbalizes:
           - "{Customer} is identified by {CustomerId}"
       - name: customer_status
-        description: Customer lifecycle status; active means at least one active subscription
+        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
         roles:
           - concept: Date
           - concept: CustomerStatus
@@ -669,11 +669,11 @@ ontology:
       - String
   - concept: CustomerStatus
     type: ValueType
-    description: Customer lifecycle status; active means at least one active subscription
+    description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
     extends:
       - String
     requires:
-      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
+      - CustomerStatus == 'trial' OR CustomerStatus == 'active' OR CustomerStatus == 'pay_as_you_go' OR CustomerStatus == 'churned' OR CustomerStatus == 'dormant'
   - concept: Ebitda
     type: ValueType
     description: EBITDA for the period

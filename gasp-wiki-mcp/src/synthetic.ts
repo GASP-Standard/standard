@@ -278,7 +278,7 @@ export interface CreditStory {
   type: "purchase" | "consumption" | "expiry" | "adjustment";
   date: string;
   amount: number;
-  basis?: "committed" | "overage" | "on_demand";
+  basis?: "committed" | "overage" | "on_demand" | "top_up";
   before: number;
   after: number;
   expires?: string;

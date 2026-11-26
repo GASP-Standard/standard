@@ -14,7 +14,8 @@
  * The checks (decided 2026-11-03, DECISIONS.md):
  *   revenue_event_identity      prior_mrr + mrr_change = new_mrr on every revenue event (cel.md)
  *   credit_balance_identity     credit_balance_before + credit_amount = credit_balance_after on every
- *                               purchase, expiry, adjustment and committed consumption, and equal
+ *                               purchase, expiry, adjustment and consumption drawn from a balance
+ *                               (committed or top_up), and equal
  *                               balances on overage and on-demand consumption (cel.md)
  *   mrr_continuity              a subscription's mrr_start equals its mrr on the previous snapshot
  *   unique_event_id:<dataset>   event_id unique within each event dataset that carries one
@@ -151,7 +152,7 @@ export function readinessChecks(data: StandardData, opts: CheckOptions = {}): Re
   checks.push({
     id: "credit_balance_identity",
     name: "Credit ledger balance identity",
-    rule: "where both balances are present, credit_balance_before + credit_amount = credit_balance_after on every purchase, expiry, adjustment and committed consumption, to the cent; an overage or on-demand consumption draws no balance, so its two balances are equal; rows with either balance null are skipped",
+    rule: "where both balances are present, credit_balance_before + credit_amount = credit_balance_after on every purchase, expiry, adjustment and consumption drawn from a balance (committed or top-up), to the cent; an overage or on-demand consumption draws no balance, so its two balances are equal; rows with either balance null are skipped",
     source: "cel.md#credit_event",
     datasets: ["credit_event"],
     placeholders: ["credit_event_type@credit_event", "consumption_basis@credit_event", "credit_amount@credit_event", "credit_balance_before@credit_event", "credit_balance_after@credit_event"],

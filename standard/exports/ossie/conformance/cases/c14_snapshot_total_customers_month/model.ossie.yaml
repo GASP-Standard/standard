@@ -47,10 +47,10 @@ datasets:
       - name: customer_status
         expression:
           sql: customer_status
-        description: Customer lifecycle status; active means at least one active subscription
+        description: Customer lifecycle status; active means at least one active subscription and pay_as_you_go an open account with no active subscription that buys usage, on demand or as credits bought once
         datatype: String
         ai_context:
-          instructions: One of trial, active, churned, dormant
+          instructions: One of trial, active, pay_as_you_go, churned, dormant
       - name: last_active_date
         expression:
           sql: last_active_date
