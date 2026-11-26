@@ -5,6 +5,32 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-26] Each conformance case is an ost script and the upstream runner writes its expected output
+
+**Context.** apache/ossie #769 (merged 2026-11-21) made each upstream query compliance case one `.ost` script: SQL and commands with the expected output under each, run on DuckDB by `ost`, the test runner in the Apache Ossie repository. GASP's conformance set has its own layout: a manifest, shared table files and a model, `expected.sql` and `readings.sql` per case. The spike of 2026-11-23 (`docs/ossie-ost-spike.md`) ran the 15 cases through the upstream view expander with a harness of its own. #812 (`7fb92a7`, 2026-11-25) then removed the one defect in the way, a query as a dataset `source`. A reader with an Apache Ossie checkout still had to write the script for a case themselves.
+
+**Decision.**
+- Each case gains `cases/<case>/case.ost` beside its model. The script creates the tables the case reads, loads the model with `modelFile` and asks for the metric with one `executeExpand` over the case's period. The manifest, `expected.sql` and `readings.sql` stay: the script is a second way to run the same case.
+- The generator writes the commands and `ost` writes the output. `npm run conformance` runs the vendored runner in a temporary directory and stores what it printed, the expanded SQL and the result table. A script therefore matches the runner character for character and shows what the expander makes of GASP's model. Every result table is then held to the values computed on PGlite, within the rounding. Under `conformance:check` or on a machine without `uv` the generator keeps the output on disk and fails when a command changed.
+- The runner is vendored at the validator's pin (`gasp-wiki-mcp/ossie-validator/ost/`, with the `apache-ossie` package under `python/` that it installs). The pin moved from `4a315fa` to `7fb92a7` for it. A test that runs when `uv` is on PATH puts all 15 scripts through the runner and compares the result byte for byte.
+- The tables are inline. `ost` has no command that runs a SQL file, so each script copies the statements of the `data/` files its case reads.
+- A double prints with six digits after the point. At `7fb92a7` the runner prints a zero as `0E-7` from seven digits up. The generator's comparison allows for the rounding.
+- A direct snapshot case also asks for each reading a filter can state, under a comment that carries its grade, so the script shows the wrong value an engine would return. A reading that changes the SQL of the model, four of the ten, is named in a comment and stays in `readings.sql`.
+
+**Alternatives considered.**
+- *Write the expected output in TypeScript.* The spike's harness shows the format can be reproduced. That copy would follow the runner's formatting rules by hand and would say nothing about the expanded SQL. A run of the runner is the definition of its own format.
+- *Keep the tables in `data/` for the reader to load first.* A script that fails when `ost` runs it alone is not a case in upstream's shape.
+- *Replace `expected.sql` and `readings.sql` with the scripts.* Those two run on any engine with no Ossie tooling and `readings.sql` carries the four readings a script cannot ask.
+- *Nine digits, the precision `expected.sql` compares at.* The zero formatting rules it out today. Worth another look once the runner prints a zero in plain notation.
+
+**Consequences.**
+- The set grows from 63 files and 1,057 KB to 78 files and 3,701 KB. The largest script is about 420 KB (User Retention Day N) and the smallest about 4 KB (Uptime).
+- A move of the pin reruns the scripts, so a change in the expander shows as a diff in a `case.ost`.
+- Regenerating after a command changes needs `uv`. The Tests workflow has it.
+- Taking the scripts upstream beside the example and reporting the zero formatting wait for the owner's word (`TODO.md`).
+
+---
+
 ## [2026-11-26] A credit pack is usage paid for in advance and GRR leaves out the reversal of realised usage
 
 **Context.** The owner asked on 2026-11-26 whether a company that sells token packs for an AI tool counts them in MRR, ARR, GRR or NRR, and asked for an opinion in the standard. The standard had three consumption bases (`committed`, `overage`, `on_demand`) and said nothing about credits bought once. The sources below were read on 2026-11-26 and each quotation was checked against the saved page.

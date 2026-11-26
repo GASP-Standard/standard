@@ -3,3 +3,5 @@ build/
 .DS_Store
 __pycache__/
 *.pyc
+# uv writes the environment of the vendored ost runner beside its pyproject.toml
+.venv/

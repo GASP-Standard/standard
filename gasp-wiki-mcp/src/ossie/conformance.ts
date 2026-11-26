@@ -15,12 +15,12 @@
  * A case directory holds `model.ossie.yaml` (one model per case, as
  * compliance/portability upstream keeps one per rung), `reference.postgres.sql`
  * and `expected.sql`, a VALUES list in standard SQL that needs no runner to
- * read. Upstream's compliance/query held the same pair until apache/ossie #769
- * (2026-11-21) made each of its cases one ost script; docs/ossie-ost-spike.md
- * records the GASP cases run through that tool. The shared `data/` directory
- * holds one `CREATE TABLE` + `INSERT` script per dataset plus the period spine. A case passes when an implementation loads the
- * data and the model, evaluates the metric for the period and returns the rows
- * of expected.sql.
+ * read, and `case.ost`, the same case as a script for upstream's ost runner
+ * (conformance-ost.ts): upstream's compliance/query has been one ost script per
+ * case since apache/ossie #769 (2026-11-21). The shared `data/` directory holds
+ * one `CREATE TABLE` + `INSERT` script per dataset plus the period spine. A case
+ * passes when an implementation loads the data and the model, evaluates the
+ * metric for the period and returns the rows of expected.sql.
  *
  * This module is pure: it picks the cases and shapes every file from the
  * export and from values the runner (scripts/ossie-conformance.ts) computes by
@@ -32,6 +32,7 @@ import { cohortTableFor, stagedReasonsOf } from "./model.js";
 import type { OssieDataset, OssieExport, OssieMetric, OssieSemanticModel } from "./types.js";
 import { modelMetrics, placeMetrics, withoutMetrics } from "./scope.js";
 import { OSSIE_VERSION, expressionText } from "./types.js";
+import { OST_DOUBLE_DIGITS } from "./conformance-ost.js";
 
 export interface ConformancePeriod { start: string; end: string }
 
@@ -50,6 +51,8 @@ export interface Reading {
   description: string;
   /** A scalar query in parentheses over the tables in data/ (Postgres dialect). */
   query: string;
+  /** The filter that returns this reading when the metric is asked of its dataset in the model. Absent when the reading changes the SQL of the model. */
+  where?: string;
 }
 
 /** The four grades of a result, as the README and the manifest state them. */
@@ -150,6 +153,8 @@ export interface ConformanceCase {
   model: OssieSemanticModel;
   /** The reference query as one statement, without its header or semicolon. */
   sql: string;
+  /** The filter that selects the case's period when the metric is asked of its dataset in the model (`SELECT AGG(metric) FROM model.dataset WHERE ...`). */
+  where: string;
   /** The other values a query returns for the case, by name. */
   readings: Reading[];
   /** Snapshot rows on every date of this range are kept in the data, since a reading sums across them. */
@@ -215,7 +220,7 @@ export function buildConformanceCases(data: StandardData, exp: OssieExport, spec
       const source = staged.source.split(r.find).join(r.replace);
       return { grade: r.grade, name: r.name, description: r.description, query: c.cohortTable ? `(${cohortSelect(expression, staged.name, source, period).replace(/\n/g, " ")})` : stagedScalar(source, period) };
     });
-    return { id, kind: "staged" as const, group, reason, construct, period, entry, formulaId, variant, formula, unit: f?.unit, metric: metric.name, stagedDataset: staged.name, ...(c.cohortTable ? { cohortTable: true as const } : {}), datasets, dimensions, canonicalUrl, model, sql, readings };
+    return { id, kind: "staged" as const, group, reason, construct, period, entry, formulaId, variant, formula, unit: f?.unit, metric: metric.name, stagedDataset: staged.name, ...(c.cohortTable ? { cohortTable: true as const } : {}), datasets, dimensions, canonicalUrl, model, sql, where: `period_start = DATE '${period.start}' AND period_end = DATE '${period.end}'`, readings };
   });
 }
 
@@ -355,7 +360,7 @@ export function manifest(cases: ConformanceCase[], expected: Record<string, Arra
   };
 }
 
-export function readme(cases: ConformanceCase[], data: ConformanceManifest["data"], expected: Record<string, Array<Record<string, unknown>>>, readings: ReadingValues): string {
+export function readme(cases: ConformanceCase[], data: ConformanceManifest["data"], expected: Record<string, Array<Record<string, unknown>>>, readings: ReadingValues, ostCommit: string): string {
   const constructs = cases.filter((c) => c.group === "construct");
   const snapshots = cases.filter((c) => c.group === "snapshot");
   const direct = snapshots.filter((c) => c.kind === "direct");
@@ -389,9 +394,22 @@ ${count(snapshots.length, "case")} cover which rows of a snapshot dataset a repo
 | \`cases/<case>/reference.postgres.sql\` | The staged dataset's source read for the period, or the direct expression read on the period's last snapshot date, as a query over \`data/\` (Postgres dialect) |
 | \`cases/<case>/expected.sql\` | The expected result as a \`VALUES\` list in standard SQL |
 | \`cases/<case>/readings.sql\` | On the cases listed under Grading: one row per named mistake or alternative reading with the value it returns (Postgres dialect) |
+| \`cases/<case>/case.ost\` | The case as a script for \`ost\`, the SQL test runner in the Apache Ossie repository, with the expanded SQL and the result under each command |
 | \`manifest.json\` | Every case with its reason, formula, period, datasets, columns, expected rows and readings |
 
 A case passes when an implementation loads \`data/period_spine.sql\` and the \`data/<dataset>.sql\` files the case names, loads \`model.ossie.yaml\`, evaluates the metric for the case's period and returns the rows of \`expected.sql\` (columns by position, exact numerics equal, approximate numerics within a relative 1e-9). \`reference.postgres.sql\` is the non-normative derivation: run it on Postgres over the same data and it returns \`expected.sql\`. The test suite does exactly that on PGlite for every case.
+
+## Running a case with ost
+
+\`ost\` is the SQL test runner in the Apache Ossie repository (\`ost/\`, the format in \`ost/docs/ost.md\`). The cases under \`compliance/query\` there are scripts for it. \`case.ost\` creates the tables the case reads, loads \`model.ossie.yaml\` from its own directory and asks for the metric with \`executeExpand\`, which expands \`AGG(metric)\` through the upstream view expander into SQL over those tables and runs it on DuckDB. From this directory, with a checkout of \`apache/ossie\`:
+
+\`\`\`bash
+uv run --project <apache/ossie checkout>/ost ost -d . cases/<case>/case.ost
+\`\`\`
+
+The text under each command is the expected output, the expanded SQL followed by the result table. A run passes when the runner writes the same text (it leaves the script it regenerated under \`target/ost/\` here, or under the directory \`--output-dir\` names). It was written by the runner at \`apache/ossie\` \`${ostCommit}\`. The table is the conformance result: each one was held to \`expected.sql\` and to the reading values before it was published. The expansion above it is that expander's text, so another expander may write other SQL for the same table.
+
+On a snapshot case with a direct expression the script also asks for each listed reading that keeps the expression and reads other snapshot dates, under a comment naming its grade. A reading that changes the SQL of the model (the expression, or the source of a staged dataset) is in \`readings.sql\` only. A double is written with ${OST_DOUBLE_DIGITS} digits after the point. The tables are copied into each script because \`ost\` has no command that runs a SQL file, so the scripts are most of the size of this directory.
 
 ## Cases
 

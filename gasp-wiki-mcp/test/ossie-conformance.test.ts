@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { PGlite } from "@electric-sql/pglite";
 import { buildConformance, readConformance, CONFORMANCE_DIR } from "../scripts/ossie-conformance.js";
 import { CONFORMANCE_CASES, type ConformanceManifest } from "../src/ossie/conformance.js";
 import { SNAPSHOT_CASE_COUNT } from "../src/ossie/conformance-snapshot.js";
+import { OST_DOUBLE_DIGITS, OST_FILE, ostJoin, ostOutputs } from "../src/ossie/conformance-ost.js";
+import { runOst } from "../src/ossie/ost.js";
 import { STAGED_REASONS } from "../src/ossie/metrics.js";
 import { modelMetrics } from "../src/ossie/scope.js";
 import { validateUpstream, uvAvailable } from "../src/ossie/validate.js";
@@ -115,6 +119,73 @@ describe("Ossie conformance set", async () => {
     }
     await db.close();
   }, 120_000);
+
+  // The ost scripts. The output under each command is the upstream runner's, so these two tests hold it from both
+  // sides: read as text it gives the manifest's values, and run through the vendored runner it comes out the same.
+  it("every case script gives the manifest's expected rows and the readings it asks for", () => {
+    const m: ConformanceManifest = JSON.parse(files["manifest.json"]);
+    const close = (cell: string, want: number) => expect(Math.abs(Number(cell) - want)).toBeLessThanOrEqual(0.5 * 10 ** -OST_DOUBLE_DIGITS + 1e-9 * Math.abs(want));
+    let asked = 0;
+    for (const c of m.cases) {
+      const text = files[`cases/${c.id}/${OST_FILE}`];
+      expect(text, c.id).toBeTruthy();
+      // ost refuses a tab, a space at the end of a line and a carriage return.
+      expect(text.split("\n").filter((l) => /\t|\s$|\r/.test(l)), c.id).toEqual([]);
+      expect(text, c.id).not.toContain("> error");
+      expect(text, c.id).toContain(`modelFile("gasp_conformance_${c.id}", "model.ossie.yaml");`);
+      // Each command: the comment above it, then the table under its expansion.
+      const results = text.split("\nexecuteExpand(\n").slice(1).map((block, i, all) => {
+        const before = i === 0 ? text.slice(0, text.indexOf("\nexecuteExpand(\n")) : all[i - 1];
+        const label = before.slice(before.lastIndexOf("\n\n# Grade ")).replace(/\n# /g, " ").trim();
+        const table = block.slice(block.indexOf("\n|_} : string\n")).split("\n").filter((l) => l.startsWith("|") && !l.startsWith("|_}"));
+        return { label, rows: table.slice(1).map((l) => l.slice(1, -1).split("|").map((x) => x.trim())), columns: table[0].slice(1, -1).split("|").map((x) => x.trim()) };
+      });
+      const [right, ...readings] = results;
+      expect(right.label, c.id).toMatch(/^Grade right\./);
+      expect(right.columns, c.id).toEqual(c.columns);
+      expect(right.rows, c.id).toHaveLength(c.expected.length);
+      right.rows.forEach((row, r) => c.columns.forEach((col, k) => {
+        const want = c.expected[r][col];
+        if (typeof want === "number") close(row[k], want); else expect(row[k], `${c.id} ${col}`).toBe(String(want));
+      }));
+      for (const got of readings) {
+        const reading = (c.readings ?? []).find((r) => got.label.startsWith(`Grade ${r.grade}, reading ${r.name}: `));
+        expect(reading, `${c.id}: ${got.label}`).toBeTruthy();
+        expect(got.rows, `${c.id} ${reading!.name}`).toHaveLength(1);
+        close(got.rows[0][0], reading!.value!);
+        asked++;
+      }
+      // A script asks for no reading twice, and a reading it leaves out is named in its comment.
+      expect(new Set(readings.map((r) => r.label)).size, c.id).toBe(readings.length);
+      for (const r of c.readings ?? []) expect(text.includes(`reading ${r.name}: `) || new RegExp(`readings\\.sql also lists[^.]*\\b${r.name}\\b`).test(text.replace(/\n# /g, " ")), `${c.id} ${r.name}`).toBe(true);
+    }
+    // The direct cases ask for the readings that keep the model's expression: six of them on the fixture.
+    expect(asked).toBeGreaterThanOrEqual(6);
+  });
+
+  it("a case script whose commands changed has no output to keep", () => {
+    const parts = ["# a\nexecuteExpand(\n  SELECT 1 AS value);\n", "\n# b\nexecuteExpand(\n  SELECT 2 AS value);\n"];
+    const out = (n: number) => `> {_|\nSELECT\n  ${n} AS value\n|_} : string\n+-------+\n| value |\n+-------+\n|     ${n} |\n+-------+\n`;
+    const text = ostJoin(parts, [out(1), out(2)]);
+    expect(ostOutputs(parts, text)).toEqual([out(1), out(2)]);
+    // A changed command, a script with no output yet and an error in place of a table all mean a run of ost is needed.
+    expect(ostOutputs([parts[0], parts[1].replace("2 AS", "3 AS")], text)).toBeUndefined();
+    expect(ostOutputs(parts, ostJoin(parts, []))).toBeUndefined();
+    expect(ostOutputs(parts, ostJoin(parts, [out(1), "> error: cannot evaluate AGG(x)\n"]))).toBeUndefined();
+  });
+
+  it.skipIf(!uvAvailable())("the upstream ost runner reproduces every case script byte for byte", async () => {
+    const scripts = Object.keys(files).filter((k) => k.endsWith(`/${OST_FILE}`)).sort();
+    expect(scripts).toHaveLength(CONFORMANCE_CASES.length + SNAPSHOT_CASE_COUNT);
+    const out = mkdtempSync(join(tmpdir(), "gasp-ost-test-"));
+    try {
+      const run = await runOst(CONFORMANCE_DIR, scripts, out);
+      expect(run.passed, run.output.slice(-2000)).toBe(true);
+      for (const k of scripts) expect(readFileSync(join(out, k), "utf-8"), k).toBe(files[k]);
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  }, 300_000);
 
   it.skipIf(!uvAvailable())("every case model passes the upstream validator", async () => {
     const models = Object.keys(files).filter((k) => /^cases\/[^/]+\/model\.ossie\.yaml$/.test(k)).sort();

@@ -145,7 +145,8 @@ export function buildSnapshotCases(data: StandardData, exp: OssieExport, offset:
     const readings: Reading[] = spec.readings.map((r) => {
       if (r.rewrite && !expression.includes(r.rewrite.find)) throw new Error(`Snapshot case ${entry}: the reading ${r.name} rewrites "${r.rewrite.find}", which the expression no longer holds`);
       const text = r.rewrite ? expression.split(r.rewrite.find).join(r.rewrite.replace) : expression;
-      return { grade: r.grade, name: r.name, description: r.description, query: scalar(r.rows, text) };
+      // A reading that keeps the expression is the same metric over other rows, which a query over the model can ask for.
+      return { grade: r.grade, name: r.name, description: r.description, query: scalar(r.rows, text), ...(r.rewrite || names.length !== 1 ? {} : { where: rowFilter(r.rows, datasets[names[0]].date, period) }) };
     });
     // The case's one metric, declared in its scope: under the snapshot dataset when it reads one.
     const placed = placeMetrics(names.map((n) => withoutMetrics(byName.get(n)!)), [metric]);
@@ -162,7 +163,7 @@ export function buildSnapshotCases(data: StandardData, exp: OssieExport, offset:
     return {
       id, kind: "direct", group: "snapshot", reason: SNAPSHOT_REASON, construct, period, entry, formulaId, variant, formula, unit: f?.unit,
       metric: metric.name, datasets: names, dimensions: [], canonicalUrl: canonicalUrlOf(metric), model,
-      sql: `SELECT ${scalar("last_date")} AS value`, readings, ...(everyDate ? { daily: period } : {}),
+      sql: `SELECT ${scalar("last_date")} AS value`, where: rowFilter("last_date", datasets[names[0]].date, period), readings, ...(everyDate ? { daily: period } : {}),
     };
   });
   return [...direct, ...buildConformanceCases(data, exp, OPENING_CASES, offset + direct.length)];

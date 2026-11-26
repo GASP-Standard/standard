@@ -18,9 +18,22 @@ This directory holds two groups of case.
 | `cases/<case>/reference.postgres.sql` | The staged dataset's source read for the period, or the direct expression read on the period's last snapshot date, as a query over `data/` (Postgres dialect) |
 | `cases/<case>/expected.sql` | The expected result as a `VALUES` list in standard SQL |
 | `cases/<case>/readings.sql` | On the cases listed under Grading: one row per named mistake or alternative reading with the value it returns (Postgres dialect) |
+| `cases/<case>/case.ost` | The case as a script for `ost`, the SQL test runner in the Apache Ossie repository, with the expanded SQL and the result under each command |
 | `manifest.json` | Every case with its reason, formula, period, datasets, columns, expected rows and readings |
 
 A case passes when an implementation loads `data/period_spine.sql` and the `data/<dataset>.sql` files the case names, loads `model.ossie.yaml`, evaluates the metric for the case's period and returns the rows of `expected.sql` (columns by position, exact numerics equal, approximate numerics within a relative 1e-9). `reference.postgres.sql` is the non-normative derivation: run it on Postgres over the same data and it returns `expected.sql`. The test suite does exactly that on PGlite for every case.
+
+## Running a case with ost
+
+`ost` is the SQL test runner in the Apache Ossie repository (`ost/`, the format in `ost/docs/ost.md`). The cases under `compliance/query` there are scripts for it. `case.ost` creates the tables the case reads, loads `model.ossie.yaml` from its own directory and asks for the metric with `executeExpand`, which expands `AGG(metric)` through the upstream view expander into SQL over those tables and runs it on DuckDB. From this directory, with a checkout of `apache/ossie`:
+
+```bash
+uv run --project <apache/ossie checkout>/ost ost -d . cases/<case>/case.ost
+```
+
+The text under each command is the expected output, the expanded SQL followed by the result table. A run passes when the runner writes the same text (it leaves the script it regenerated under `target/ost/` here, or under the directory `--output-dir` names). It was written by the runner at `apache/ossie` `7fb92a7`. The table is the conformance result: each one was held to `expected.sql` and to the reading values before it was published. The expansion above it is that expander's text, so another expander may write other SQL for the same table.
+
+On a snapshot case with a direct expression the script also asks for each listed reading that keeps the expression and reads other snapshot dates, under a comment naming its grade. A reading that changes the SQL of the model (the expression, or the source of a staged dataset) is in `readings.sql` only. A double is written with 6 digits after the point. The tables are copied into each script because `ost` has no command that runs a SQL file, so the scripts are most of the size of this directory.
 
 ## Cases
 

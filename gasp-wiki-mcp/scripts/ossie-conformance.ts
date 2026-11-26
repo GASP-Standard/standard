@@ -10,8 +10,17 @@
  * results and verifies the slice before writing. `--check` compares the files that would
  * be written with the files on disk and exits 1 on a difference, as
  * `npm run derive:check` does for the other derived artefacts.
+ *
+ * Each case also gets `case.ost`, a script for upstream's ost runner
+ * (src/ossie/conformance-ost.ts). Its commands are written here and the output
+ * under each command by ost: with `uv` on PATH a write runs every script
+ * through the vendored runner and takes the output from that run; without it,
+ * and under `--check`, the output already on disk is kept, which works as long
+ * as the commands have not changed. Either way each result table is held to the
+ * values computed on PGlite.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
@@ -25,6 +34,9 @@ import {
   type ConformanceCase, type ConformancePeriod, type ReadingValues,
 } from "../src/ossie/conformance.js";
 import { buildSnapshotCases } from "../src/ossie/conformance-snapshot.js";
+import { OST_FILE, ostJoin, ostOutputs, ostParts, ostProblems } from "../src/ossie/conformance-ost.js";
+import { ostCommit, runOst } from "../src/ossie/ost.js";
+import { uvAvailable } from "../src/ossie/validate.js";
 import type { OntologyDataset, OntologyField } from "../src/types.js";
 import { addOssieViews, fixture, fixtureDb, scalar } from "../test/fixture-db.js";
 
@@ -113,8 +125,47 @@ async function runReadings(db: PGlite, c: ConformanceCase): Promise<Record<strin
   return out;
 }
 
-/** Every file of the conformance set, keyed by path relative to CONFORMANCE_DIR. */
-export async function buildConformance(): Promise<Record<string, string>> {
+/** Each case script's commands (`ostParts`) and the model it loads, by case id. */
+type OstScripts = Record<string, { parts: string[]; model: string }>;
+
+/** The output of every command, from the scripts on disk. A script whose commands changed has no output to keep. */
+function ostKept(scripts: OstScripts): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(scripts).map(([id, s]) => {
+    const file = join(CONFORMANCE_DIR, "cases", id, OST_FILE);
+    const outputs = existsSync(file) ? ostOutputs(s.parts, readFileSync(file, "utf-8")) : undefined;
+    if (!outputs) throw new Error(`cases/${id}/${OST_FILE} is ${existsSync(file) ? "out of date: its commands changed" : "missing"}, and the output under each command is written by the upstream ost runner. Run npm run conformance with uv on PATH.`);
+    return [id, outputs];
+  }));
+}
+
+/** The output of every command, from a run of the scripts without output through the vendored ost runner. */
+async function ostRun(scripts: OstScripts): Promise<Record<string, string[]>> {
+  const dir = mkdtempSync(join(tmpdir(), "gasp-ost-"));
+  try {
+    for (const [id, s] of Object.entries(scripts)) {
+      mkdirSync(join(dir, "cases", id), { recursive: true });
+      writeFileSync(join(dir, "cases", id, "model.ossie.yaml"), s.model);
+      writeFileSync(join(dir, "cases", id, OST_FILE), ostJoin(s.parts, []));
+    }
+    const paths = Object.keys(scripts).map((id) => join("cases", id, OST_FILE));
+    const run = await runOst(dir, paths, join(dir, "target"));
+    return Object.fromEntries(Object.entries(scripts).map(([id, s]) => {
+      const file = join(dir, "target", "cases", id, OST_FILE);
+      const outputs = existsSync(file) ? ostOutputs(s.parts, readFileSync(file, "utf-8")) : undefined;
+      if (!outputs) throw new Error(`ost gave no result for cases/${id}/${OST_FILE}:\n${run.output.split("\n").filter((l) => /error|malformed|^ost:/i.test(l)).slice(0, 12).join("\n")}`);
+      return [id, outputs];
+    }));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Every file of the conformance set, keyed by path relative to CONFORMANCE_DIR.
+ * `ost: "run"` takes the output in each case script from a run of the vendored
+ * ost runner (needs uv); the default keeps the output on disk.
+ */
+export async function buildConformance(opts: { ost?: "keep" | "run" } = {}): Promise<Record<string, string>> {
   const data = loadStandard();
   const exp = exportOssie(data);
   const cases = [...buildConformanceCases(data, exp), ...buildSnapshotCases(data, exp, CONFORMANCE_CASES.length)];
@@ -174,8 +225,19 @@ export async function buildConformance(): Promise<Record<string, string>> {
     files[`cases/${c.id}/expected.sql`] = expectedSql(c, expected[c.id]);
     if (c.readings.length) files[`cases/${c.id}/readings.sql`] = readingsSql(c, readings[c.id]);
   }
+  // The ost scripts: the commands from here, the output under each from ost, each table held to the values above.
+  const scripts: OstScripts = Object.fromEntries(cases.map((c) => [c.id, {
+    parts: ostParts(c, [spine, ...c.datasets.map((ds) => files[`data/${ds}.sql`])]),
+    model: files[`cases/${c.id}/model.ossie.yaml`],
+  }]));
+  const outputs = opts.ost === "run" ? await ostRun(scripts) : ostKept(scripts);
+  for (const c of cases) {
+    const problems = ostProblems(c, outputs[c.id], expected[c.id], readings[c.id]);
+    if (problems.length) throw new Error(`cases/${c.id}/${OST_FILE} disagrees with the values computed on PGlite: ${problems.join("; ")}`);
+    files[`cases/${c.id}/${OST_FILE}`] = ostJoin(scripts[c.id].parts, outputs[c.id]);
+  }
   files["manifest.json"] = JSON.stringify(manifest(cases, expected, readings, dataIndex), null, 2) + "\n";
-  files["README.md"] = readme(cases, dataIndex, expected, readings);
+  files["README.md"] = readme(cases, dataIndex, expected, readings, ostCommit());
   return files;
 }
 
@@ -275,7 +337,8 @@ function sync(label: string, dir: string, files: Record<string, string>, current
 const isMain = process.argv[1]?.endsWith("ossie-conformance.ts") || process.argv[1]?.endsWith("ossie-conformance.js");
 if (isMain) {
   const check = process.argv.includes("--check");
-  const stale = sync("Conformance set", CONFORMANCE_DIR, await buildConformance(), readConformance(), check)
+  // A write takes the case scripts' output from ost when uv is there to run it; a check holds what is on disk.
+  const stale = sync("Conformance set", CONFORMANCE_DIR, await buildConformance({ ost: !check && uvAvailable() ? "run" : "keep" }), readConformance(), check)
     + sync("Example demo", EXAMPLE_DEMO_DIR, await buildExampleDemo(), readExampleDemo(), check);
   if (check && stale) process.exit(1);
 }
