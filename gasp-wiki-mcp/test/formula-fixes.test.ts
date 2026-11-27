@@ -5,14 +5,16 @@ import { compileMetric } from "../src/compile.js";
 import { fillTemplate } from "../src/tools.js";
 import { TABLES, columnName } from "../src/synthetic.js";
 import type { QueryTemplate } from "../src/types.js";
-import { adapter, fixtureDb, bind, scalar, runTemplate, moveSegment } from "./fixture-db.js";
+import { ACCOUNT_COHORTS } from "../src/ossie/cohorts.js";
+import { adapter, fixtureDb, bind, scalar, runTemplate, moveSegment, plantMovement } from "./fixture-db.js";
 
 // Regression tests for the formula corrections of 2026-11-10 (four),
 // 2026-11-19 (90-Day Turnover again and Commit Accuracy) and 2026-11-21 (NRR
 // and GRR by segment, a change to how a breakdown reads a cohort, and Logo
 // Churn Rate, Revenue Churn Rate and Expansion Rate, which became cohort
 // formulas) and 2026-11-24 (five rates that divided the period's events by an
-// opening count, now cohort formulas too). Each metric's
+// opening count, now cohort formulas too) and 2026-11-27 (NRR-M, which dropped
+// an expansion or reactivation that carried no tag). Each metric's
 // compiled template is checked against a value computed in plain SQL over the
 // fixture, and the formula it replaced is compiled and run on the same rows to
 // show it gives a different answer. Rows the synthetic data lacks are planted in
@@ -35,7 +37,7 @@ async function plant(ds: string, where: string, set: string) {
 const run = (id: string, start: string, end: string) => runTemplate(db, data, id, start, end);
 
 /** A formula compiled in place of the canonical one and run over the fixture. */
-async function runFormula(id: string, formula: string, start: string, end: string): Promise<number | null> {
+async function runFormula(id: string, formula: string, start: string, end: string, on: PGlite = db): Promise<number | null> {
   const ctx = {
     fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])),
     datasets: data.ontology!.datasets!,
@@ -43,7 +45,7 @@ async function runFormula(id: string, formula: string, start: string, end: strin
   };
   const compiled = compileMetric(id, ctx);
   const template = { ...data.queryTemplates[id], parameterizedQuery: compiled.sql, placeholders: compiled.placeholders } as QueryTemplate;
-  return scalar(db, bind(fillTemplate(template, adapter, data).sql, start, end));
+  return scalar(on, bind(fillTemplate(template, adapter, data).sql, start, end));
 }
 
 const value = (sql: string) => scalar(db, sql);
@@ -593,5 +595,51 @@ describe("Five rates follow the population of the first day of the period (2026-
     for (const id of ["partner_churn_rate", "cross_sell_rate", "at_risk_rate", "resurrection_rate"] as const) {
       expect(await rate(db, id), id).toBeCloseTo((await rate(db, id, true))!, 12);
     }
+  });
+});
+
+describe("NRR-M counts every expansion and reactivation, with a tag or without (2026-11-27)", () => {
+  // The Market form filtered expansion_classification on all six of its values. On tagged rows
+  // that leaves out nothing; a row with no tag fails it, and the ledger derive_cel writes carries
+  // none (cel.md, step 6). c07 and c14 are in the cohort of 1 April; each gets one untagged event.
+  const Q2 = ["2026-04-01", "2026-06-30"] as const;
+  const M = data.formulas!.nrr.forms!.M!, O = data.formulas!.nrr.forms!.O!;
+  const EVERY = "sum(field.mrr_change where field.event_type in ('expansion', 'reactivation'))";
+  const FILTERED = EVERY.replace(/\)\)$/, ") and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation'))");
+  const WAS = M.replace(EVERY, FILTERED);
+  let untagged: PGlite;
+
+  beforeAll(async () => {
+    untagged = await fixtureDb();
+    await plantMovement(untagged, "c07", { id: "ev_untagged_expansion", date: "2026-05-20", type: "expansion", change: 700, nature: "permanent" });
+    await plantMovement(untagged, "c14", { id: "ev_untagged_reactivation", date: "2026-06-15", type: "reactivation", change: 400, nature: "permanent" });
+  }, 120_000);
+  afterAll(async () => { await untagged?.close(); });
+
+  const opening = (on: PGlite) => scalar(on, `SELECT SUM(${c("subscription", "mrr")}) FROM ${t("subscription")} WHERE ${c("subscription", "snapshot_date")} = DATE '${Q2[0]}'
+    AND ${c("subscription", "subscription_status")} = 'active' AND ${c("subscription", "customer_id")} IN (SELECT ${c("customer", "customer_id")} FROM ${t("customer")}
+      WHERE ${c("customer", "snapshot_date")} = DATE '${Q2[0]}' AND ${c("customer", "customer_status")} = 'active')`);
+
+  it("the form reads event_type alone, in the formula, its data requirement and the cohort table's column", () => {
+    expect(M).toContain(EVERY);
+    expect(WAS).not.toBe(M);
+    const forms = data.dataRequirements.find((d) => d.formulaId === "nrr")!.forms!;
+    expect(forms.M!.fields).not.toContain("expansion_classification");
+    expect(forms.O!.fields).toContain("expansion_classification");
+    expect(ACCOUNT_COHORTS.columns.find((col) => col.name === "expansion_mrr_m")!.formula).toBe(EVERY);
+  });
+
+  it("gives the number the filter gave where every event carries a tag", async () => {
+    expect(await scalar(db, `SELECT COUNT(*) FROM ${t("revenue_event")} WHERE ${c("revenue_event", "event_type")} IN ('expansion', 'reactivation') AND ${c("revenue_event", "expansion_classification")} IS NULL`)).toBe(0);
+    expect(await runFormula("nrr", M, ...Q2)).toBeCloseTo((await runFormula("nrr", WAS, ...Q2))!, 12);
+  });
+
+  it("counts an expansion and a reactivation that carry no tag, which the filter dropped and the Operating form still leaves out", async () => {
+    const open = (await opening(untagged))!;
+    expect(open).toBeGreaterThan(0);
+    expect(open).toBe(await opening(db));
+    expect((await runFormula("nrr", M, ...Q2, untagged))! - (await runFormula("nrr", M, ...Q2))!).toBeCloseTo((700 + 400) / open, 10);
+    expect(await runFormula("nrr", WAS, ...Q2, untagged)).toBeCloseTo((await runFormula("nrr", WAS, ...Q2))!, 12);
+    expect(await runFormula("nrr", O, ...Q2, untagged)).toBeCloseTo((await runFormula("nrr", O, ...Q2))!, 12);
   });
 });

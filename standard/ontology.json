@@ -1798,7 +1798,7 @@
         "recontracting",
         "usage_realisation"
       ],
-      "description": "ATL expansion tag; read by ARR-O, NRR-O and NRR-M",
+      "description": "ATL expansion tag; read by ARR-O and NRR-O",
       "metricCount": 7
     },
     {

@@ -577,11 +577,11 @@ NRR-O = MRR of cohort today (organic only) / MRR of same cohort 12 months ago ×
 
 #### Market Form: Account NRR (NRR-M)
 
-NRR-M uses the cohort method over the customers active at period start, the same construction public SaaS companies report and investors benchmark (Bessemer, KeyBanc). It includes all six `expansion_classification` values plus reactivation of cohort customers. A customer who churned before the window and returns inside it is new business, not retention. A customer who churns and returns inside the window is in the cohort, so that reactivation counts.
+NRR-M uses the cohort method over the customers active at period start, the same construction public SaaS companies report and investors benchmark (Bessemer, KeyBanc). It counts every expansion plus reactivation of cohort customers and reads no `expansion_classification`, so an event with no tag counts in it. A customer who churned before the window and returns inside it is new business, not retention. A customer who churns and returns inside the window is in the cohort, so that reactivation counts.
 
 **CEL Source:** `Revenue_Event`
 **ATL Inclusion:**
-- All `expansion_classification` values included (`same_product`, `new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`, `usage_realisation`)
+- `event_type` = `expansion` included whatever its `expansion_classification`, an event with no tag among them
 - `event_type` = `reactivation` included for customers in the period-start cohort
 - Excluded: `lifecycle_attribution` = `acquisition`; reactivation of customers who had already churned before period start (new business)
 

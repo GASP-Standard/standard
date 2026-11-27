@@ -70,7 +70,7 @@ Applies to: `Revenue_Event` where `event_type` is `expansion`, `contraction` or 
 Expansion classification separates the Operating form of Net Revenue Retention (NRR-O) from its Market form (NRR-M).
 
 - **NRR-O (Operating)** focuses on organic, durable expansion: `same_product` and `usage_realisation`. These signal product-market fit and natural customer growth.
-- **NRR-M (Market)** includes all expansion types because investor-comparable NRR counts everything that is not net-new logo acquisition.
+- **NRR-M (Market)** includes all expansion types because investor-comparable NRR counts everything that is not net-new logo acquisition. It reads no tag, so an expansion with none counts in it.
 
 With expansion classification the same ledger reports organic growth apart from growth that came through new modules, new buying centres or pricing actions.
 
@@ -326,7 +326,7 @@ ATL tags are the mechanism that distinguishes Operating (O) from Market (M) metr
 | Metric | Operating (O) Includes | Market (M) Includes |
 |--------|----------------------|-------------------|
 | **CAC** | `cost_function` ∈ (gtm, implementation, onboarding) | `cost_function` = gtm |
-| **NRR** | `expansion_classification` ∈ (same_product, usage_realisation) | All six `expansion_classification` values, on expansion and on reactivation of cohort customers |
+| **NRR** | `expansion_classification` ∈ (same_product, usage_realisation) | Every expansion and every reactivation of cohort customers, whatever the `expansion_classification` |
 | **LTV** | Contribution margin (includes implementation, onboarding costs) | Gross margin (COGS only) |
 | **Churn** | Revenue churn: MRR-weighted churned and contraction MRR | Logo-based: binary churned/active |
 | **ARR** | Durable ARR: excludes recontracting, pricing_adjustment (trailing 12 months, customers active at period end) | Contracted ARR: all recurring revenue |

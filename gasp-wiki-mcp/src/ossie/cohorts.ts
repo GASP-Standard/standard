@@ -54,8 +54,8 @@ export const ACCOUNT_COHORTS: CohortTableSpec = {
     },
     {
       name: "expansion_mrr_m",
-      formula: "sum(field.mrr_change where field.event_type in ('expansion', 'reactivation') and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation'))",
-      description: "Expansion and reactivation MRR in the period that the Market form of Net Revenue Retention counts",
+      formula: "sum(field.mrr_change where field.event_type in ('expansion', 'reactivation'))",
+      description: "Expansion and reactivation MRR in the period that the Market form of Net Revenue Retention counts: every such event, whatever its classification",
     },
     { name: "contraction_mrr", formula: "metric.contraction_mrr", description: "Contraction MRR from the customer in the period, as a positive amount" },
     {

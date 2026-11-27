@@ -59,7 +59,7 @@ ontology:
         verbalizes:
           - "{RevenueEvent} has {EventType}"
       - name: expansion_classification
-        description: ATL expansion tag; read by ARR-O, NRR-O and NRR-M
+        description: ATL expansion tag; read by ARR-O and NRR-O
         roles:
           - concept: ExpansionClassification
         multiplicity: ManyToOne
@@ -706,7 +706,7 @@ ontology:
       - EventType == 'new' OR EventType == 'expansion' OR EventType == 'contraction' OR EventType == 'churn' OR EventType == 'reactivation' OR EventType == 'renewal'
   - concept: ExpansionClassification
     type: ValueType
-    description: ATL expansion tag; read by ARR-O, NRR-O and NRR-M
+    description: ATL expansion tag; read by ARR-O and NRR-O
     extends:
       - String
     requires:

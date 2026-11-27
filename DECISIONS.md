@@ -5,6 +5,30 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-27] NRR-M counts every expansion and reactivation and reads no tag
+
+**Context.** The Market form of Net Revenue Retention (NRR-M) summed the expansion and reactivation events of cohort customers whose `expansion_classification` was one of six listed values. The enum has six values, so on tagged data the filter left out nothing. An event with no tag failed it, since a null is in no list. `derive_cel` writes the ledger with an empty tag (`cel.md`, step 6): a subscription ledger shows that MRR moved, not what was bought. A company on a derived ledger therefore reported an NRR-M with no expansion in it until every event was tagged. With an opening cohort of $100,000, $10,000 of expansion, $3,000 of contraction and $2,000 of churn the main formula gives 105% and NRR-M gave 95%. The record of 2026-11-26 below left the question open and called the filter the way the M form leaves out expansion a market reader would not count. That reading was wrong: the form's own note says it counts every classification and the Operating form is the one that selects. The owner's rule of agreed practice or silence does not reach the point, because the tag is the Attribution Taxonomy Layer's own and no filer or vendor publishes a rule for an event that lacks one. Shown the choice, the owner took the recommendation: "Yes, your recommendation".
+
+**Decision.**
+- `nrr.forms.M` in `standard/formulas.json` sums `field.mrr_change where field.event_type in ('expansion', 'reactivation')` with no condition on `expansion_classification`. The cohort, Contraction MRR and Churned MRR are as they were.
+- The column `expansion_mrr_m` of the cohort table in `gasp-wiki-mcp/src/ossie/cohorts.ts` carries the same sum, so the Ossie export serves NRR-M from that column as before.
+- ATL Rule 2 stands. Every expansion, contraction and reactivation event carries one tag and the readiness check `expansion_tag:revenue_event` fails on an event without one. NRR-O and ARR-O read the tag, so the check still names NRR and ARR.
+- `core.md`, `atl.md`, `cel.md` and the description of the field say that NRR-M reads no tag.
+
+**Alternatives considered.**
+- *Have `derive_cel` write a default tag.* A default states something the ledger does not know. `same_product` would put every price rise and cross-sell into NRR-O and keep them in ARR-O, the two forms that exist to take them out.
+- *Admit a null beside the six values.* The same number as no filter from a longer formula. A seventh value added to the enum would fall outside the form again.
+- *Leave the formula and rely on the readiness check.* The check tells a company its tags are missing. A form that counts everything has no use for them.
+
+**Consequences.**
+- A governed breaking change to one formula, released in 1.24.0. Where every expansion and reactivation event carries a tag NRR-M is the number it was: the fixture gives the same value under both formulas and no expected value in the conformance set moved. Where events are untagged NRR-M rises by their sum over the opening MRR.
+- On untagged data the Expansion Integrity Gap (NRR-M less NRR-O) is the whole of expansion and reactivation, which is what the data supports: none of it is shown to be organic.
+- NRR-M's data requirement loses `expansion_classification`. The field's `metricCount` stays at 7, since NRR reads it through the Operating form.
+- Regenerated: the Ossie ontology and model, the example with its README and demo SQL and three conformance models that carry the cohort table.
+- `gasp-wiki-mcp/test/formula-fixes.test.ts` plants an untagged expansion and an untagged reactivation on two cohort customers: the form counts both, the formula it replaced drops both and the Operating form leaves both out.
+
+---
+
 ## [2026-11-26] The open cases of the year-or-renewal test are decided by industry practice: licences and hardware, notice, late payment and stepped prices
 
 **Context.** The comprehensive calculator (record below) left a list for the owner in `docs/year-or-renewal-open-cases.md`: six situations sorted into three tiers by how far listed companies, the SaaS Metrics Standards Board (SMSB) and the billing vendors agree, eleven smaller gaps and two places where the standard's text disagreed with itself. Asked which rules to write and which side to take on each, the owner gave one rule for all of them: "The industry standard is my answer always." Where an agreed practice exists the standard adopts it. Where practice splits or the record is thin the standard stays silent and the calculator says nothing.
@@ -17,7 +41,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 - **The two Exclude lists say what the table says.** The MRR list read "Variable/usage-based fees (unless contractually guaranteed)" and the CARR list left out "usage above a commitment, as in ARR", while the table under MRR counts usage above a commitment for the period billed. The table stands and both lines now agree with it.
 - **In code.** `recurring.ts` gains three kinds (`term_licence`, `perpetual_licence`, `hardware`: 15), five rows in the table of what is sold (22), four in the table of what happens (12: notice, a late payment, a cancellation for non-payment, a contracted step), two changes for `assessChange` (`notice` and `late_payment`: 11) and the events `notice`, `late_payment` and `step_up` on `movement`. The calculator and `classify_revenue` answer each, and the churn article defends each new row with the quotations above.
 - **What stays open.** A paused subscription and sales through resellers or marketplaces (three vendor answers for the first, one filer for the second). Free months at the start of a contract, the reversal of a churn when a cancelled customer pays and a tag for involuntary churn. Whether maintenance on a perpetual licence is disclosed apart from subscription ARR, which filers split on and the standard leaves to the reporter. The eleven smaller gaps: a second research pass on five of them (trial conversion into usage, TCV with no end date, ACV for a monthly plan, Bookings on a change, the Bookings type of a returning customer) found no agreed practice.
-- **Not decided here: NRR-M and an untagged expansion.** The M form filters on `expansion_classification`, so an event with no tag falls outside it. The filter is how the M form leaves out expansion a market reader would not count, and admitting a null changes a published number. That is a governed breaking change and the industry rule does not settle it.
+- **Not decided here: NRR-M and an untagged expansion.** The M form filters on `expansion_classification`, so an event with no tag falls outside it. The filter is how the M form leaves out expansion a market reader would not count, and admitting a null changes a published number. That is a governed breaking change and the industry rule does not settle it. (Decided 2026-11-27, record above, which also corrects this reading of the filter.)
 
 **Alternatives considered.**
 - *Churn after a declared number of days past due.* The number differs from one company to the next, so none is a standard. The day the subscription is cancelled is the trigger the vendors' reports share.
