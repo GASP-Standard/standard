@@ -46,34 +46,21 @@
  * a reactivation inside one interval leaves no event. Where amendment events
  * exist they are the better source and the pairing rule in cel.md applies.
  *
- * Three more sources feed the same rules (cel.md, "Deriving Revenue Events from
- * an Invoice Ledger", "Deriving Usage Realisation" and "Deriving Credit Events"):
+ * An invoice ledger feeds the same rules (cel.md, "Deriving Revenue Events from
+ * an Invoice Ledger"). With `source: "invoice"` it is a subscription ledger
+ * with one row per service period: an invoice's MRR is its `recurring_amount`
+ * over the months its service period covers, a subscription's MRR on a date is
+ * the sum over the invoices covering it, and its ledger dates are the starts of
+ * its service periods and the day after each end, up to the ledger's horizon
+ * (the latest service period start). Rules 2 to 7 then apply unchanged. The
+ * invoice dataset carries no segment.
  *
- *   - An invoice ledger (`source: "invoice"`) is a subscription ledger with one
- *     row per service period: an invoice's MRR is its `recurring_amount` over
- *     the months its service period covers, a subscription's MRR on a date is
- *     the sum over the invoices covering it, and its ledger dates are the
- *     starts of its service periods and the day after each end, up to the
- *     ledger's horizon (the latest service period start). Rules 2 to 7 then
- *     apply unchanged. The invoice dataset carries no segment.
- *   - Usage records (`usage: true`) add one pair of events per period in which
- *     `usage_amount` exceeds `committed_amount`: an `expansion` dated the
- *     period's end for the overage over the months the period covers, tagged
- *     `usage_realisation` with `change_nature` `temporary`, and its
- *     `scheduled_reversal`, a `contraction` dated the next day. The commitment
- *     is already in the subscription's MRR, so usage within it is no event. The
- *     pairs chain with the ledger's steps, so prior_mrr and new_mrr hold.
- *   - A credit ledger (`usage: true, usageSource: "credit_event"`) gives the
- *     same pairs from its `consumption` events with basis `overage`: a month's
- *     overage for a subscription is the sum of their amounts, negated, and the
- *     pair is dated the month's last day and the next day (cel.md, "Deriving
- *     Credit Events", "Realisation from the Credit Ledger"). Where the usage
- *     records exist they are the source, so the overage is never derived twice.
- *
- * The other way round, `creditEventDerivation` writes `credit_event` rows from
- * the usage records: one `consumption` with basis `overage` per period over its
- * commitment, for the amount the period bills beyond it (cel.md, "Consumption
- * Events from Usage Records").
+ * Usage above a commitment is no Revenue_Event. It is Consumption Revenue,
+ * outside MRR (cel.md, "Usage Above a Commitment"), so the ledger derivations
+ * never read the usage records. `creditEventDerivation` writes it as
+ * `credit_event` rows instead: one `consumption` with basis `overage` per usage
+ * period over its commitment, for the amount the period bills beyond it
+ * (cel.md, "Consumption Events from Usage Records").
  *
  * The template uses the compiler's placeholders ({{field@dataset}},
  * {{_table:dataset}}), so `fillTemplate` compiles it over any adapter or Ossie
@@ -91,10 +78,6 @@ export const DERIVATION_DATASET = "subscription";
 export const DERIVATION_FIELDS = ["subscription_id", "customer_id", "snapshot_date", "mrr", "subscription_status", "segment"] as const;
 /** The invoice fields the invoice source reads. */
 export const INVOICE_FIELDS = ["invoice_id", "subscription_id", "customer_id", "snapshot_date", "service_period_start", "service_period_end", "recurring_amount"] as const;
-/** The usage_record fields the usage branch reads. */
-export const USAGE_FIELDS = ["subscription_id", "customer_id", "period_start", "period_end", "committed_amount", "usage_amount"] as const;
-/** The credit_event fields the credit-ledger usage branch reads. */
-export const CREDIT_USAGE_FIELDS = ["subscription_id", "customer_id", "event_date", "credit_event_type", "consumption_basis", "credit_amount"] as const;
 /** The usage_record fields the credit event derivation reads. */
 export const CREDIT_SOURCE_FIELDS = ["subscription_id", "customer_id", "period_end", "committed_amount", "usage_amount"] as const;
 /** The credit_event fields the credit event derivation writes, in column order. */
@@ -104,9 +87,6 @@ export const DERIVED_FIELDS = ["event_id", "event_date", "customer_id", "subscri
 
 export type DerivationSource = "subscription" | "invoice";
 export const DERIVATION_SOURCES: readonly DerivationSource[] = ["subscription", "invoice"];
-/** Where the usage realisation pairs come from: the usage records or the credit ledger's overage consumption. */
-export type UsageSource = "usage_record" | "credit_event";
-export const USAGE_SOURCES: readonly UsageSource[] = ["usage_record", "credit_event"];
 /** What derive_cel writes: revenue events (the default) or credit events from the usage records. */
 export type DerivationTarget = "revenue_event" | "credit_event";
 export const DERIVATION_TARGETS: readonly DerivationTarget[] = ["revenue_event", "credit_event"];
@@ -123,14 +103,6 @@ export interface DerivationOptions {
   firstSnapshot?: "opening" | "steps";
   /** The ledger: the `subscription` dataset (the default) or the `invoice` dataset read as one row per service period. */
   source?: DerivationSource;
-  /** Add the usage realisation pairs, read from `usageSource`. */
-  usage?: boolean;
-  /**
-   * With `usage`: the `usage_record` dataset (the default) or the `credit_event` dataset's `consumption`
-   * events with basis `overage`, summed per subscription and calendar month. One source only, so the
-   * overage is never derived twice.
-   */
-  usageSource?: UsageSource;
 }
 
 const ph = (field: string, dataset: string = DERIVATION_DATASET) => `{{${field}@${dataset}}}`;
@@ -209,98 +181,28 @@ ledger AS (
 )`;
 }
 
-/**
- * The usage CTEs: each period whose usage exceeds its commitment, the overage
- * over the months the period covers, and the pair of changes it adds to the
- * customer's steps, a `usage` increase on the period's end and a
- * `usage_reversal` decrease the day after.
- */
-export function usageChangesSql(dialect: DialectName = "postgres"): string {
-  const d = DIALECT[dialect];
-  const u = (f: string) => ph(f, "usage_record");
-  return `usage_periods AS (
-  SELECT subscription_id, customer_id, period_end,
-         ROUND(overage / (${MONTHS_COVERED}), 2) AS overage
-  FROM (
-    SELECT ${u("subscription_id")} AS subscription_id,
-           ${u("customer_id")} AS customer_id,
-           ${u("period_end")} AS period_end,
-           ${u("usage_amount")} - ${u("committed_amount")} AS overage,
-           ${monthsExpr(d, u("period_start"), u("period_end"))} AS months
-    FROM {{_table:usage_record}}
-    WHERE ${u("period_start")} IS NOT NULL AND ${u("period_end")} IS NOT NULL
-      AND ${u("usage_amount")} > ${u("committed_amount")}
-  ) u
-),
-${usagePairsSql(d)}`;
-}
-
-/** The `usage_changes` CTE both usage sources end in: the pair of changes each row of `usage_periods` adds. */
-function usagePairsSql(d: Dialect): string {
-  return `usage_changes AS (
-  SELECT subscription_id, customer_id, period_end AS snapshot_date, ${d.toText("NULL")} AS segment, 0 AS opening, overage AS mrr_change, 'usage' AS kind
-  FROM usage_periods WHERE overage >= 0.01
-  UNION ALL
-  SELECT subscription_id, customer_id, CAST(${d.plus("period_end", 1, "day")} AS DATE), ${d.toText("NULL")}, 0, -overage, 'usage_reversal'
-  FROM usage_periods WHERE overage >= 0.01
-)`;
-}
-
-/**
- * The usage CTEs read from a credit ledger: each subscription's `consumption`
- * events with basis `overage`, their amounts negated and summed per calendar
- * month into the month's overage, dated the month's last day, and the same pair
- * of changes the usage records give.
- */
-export function creditUsageChangesSql(dialect: DialectName = "postgres"): string {
-  const d = DIALECT[dialect];
-  const c = (f: string) => ph(f, "credit_event");
-  return `usage_periods AS (
-  SELECT subscription_id, customer_id, period_end,
-         ROUND(SUM(overage), 2) AS overage
-  FROM (
-    SELECT ${c("subscription_id")} AS subscription_id,
-           ${c("customer_id")} AS customer_id,
-           ${d.monthEnd(c("event_date"))} AS period_end,
-           -(${c("credit_amount")}) AS overage
-    FROM {{_table:credit_event}}
-    WHERE ${c("subscription_id")} IS NOT NULL AND ${c("event_date")} IS NOT NULL
-      AND ${c("credit_event_type")} = 'consumption' AND ${c("consumption_basis")} = 'overage'
-  ) c
-  GROUP BY subscription_id, customer_id, period_end
-),
-${usagePairsSql(d)}`;
-}
-
-/** The SQL that derives revenue events from the ledger (and the usage records), with compiler placeholders. */
+/** The SQL that derives revenue events from the ledger, with compiler placeholders. */
 export function revenueEventDerivationSql(opts: DerivationOptions): string {
   const d = DIALECT[opts.dialect ?? "postgres"];
   if (!/^[A-Z]{3}$/.test(opts.currency)) throw new Error(`currency must be an ISO 4217 code, got ${JSON.stringify(opts.currency)}`);
   const source = opts.source ?? "subscription";
   if (!DERIVATION_SOURCES.includes(source)) throw new Error(`source must be one of ${DERIVATION_SOURCES.join(", ")}, got ${JSON.stringify(source)}`);
   const opening = opts.firstSnapshot === "steps" ? "0" : "CASE WHEN snapshot_date = MIN(snapshot_date) OVER () THEN 1 ELSE 0 END";
-  // Within a date a customer's increases come before its decreases, then subscription id and kind, so the chained MRR is deterministic.
-  const chain = "PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id, c.kind";
-  const usageSource = opts.usageSource ?? "usage_record";
-  if (!USAGE_SOURCES.includes(usageSource)) throw new Error(`usageSource must be one of ${USAGE_SOURCES.join(", ")}, got ${JSON.stringify(usageSource)}`);
+  // Within a date a customer's increases come before its decreases, then subscription id, so the chained MRR is deterministic.
+  const chain = "PARTITION BY c.customer_id ORDER BY c.snapshot_date, CASE WHEN c.mrr_change > 0 THEN 0 ELSE 1 END, c.subscription_id";
   const ledger = source === "invoice" ? invoiceLedgerSql(d.name) : subscriptionLedgerSql();
-  const usage = opts.usage ? `,
-${usageSource === "credit_event" ? creditUsageChangesSql(d.name) : usageChangesSql(d.name)}` : "";
-  const union = opts.usage ? `
-  UNION ALL
-  SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, kind FROM usage_changes` : "";
   return `WITH ${ledger},
 steps AS (
   SELECT subscription_id, customer_id, snapshot_date, segment, mrr,
          COALESCE(LAG(mrr) OVER (PARTITION BY subscription_id ORDER BY snapshot_date), 0) AS prior_sub_mrr,
          ${opening} AS opening
   FROM ledger
-)${usage},
+),
 changes AS (
   SELECT subscription_id, customer_id, snapshot_date, segment, opening,
-         mrr - prior_sub_mrr AS mrr_change, 'ledger' AS kind
+         mrr - prior_sub_mrr AS mrr_change
   FROM steps
-  WHERE mrr <> prior_sub_mrr${union}
+  WHERE mrr <> prior_sub_mrr
 ),
 day_changes AS (
   SELECT customer_id, snapshot_date, SUM(mrr_change) AS day_change
@@ -318,7 +220,7 @@ day_state AS (
   FROM days
 ),
 chained AS (
-  SELECT c.subscription_id, c.customer_id, c.snapshot_date, c.segment, c.opening, c.mrr_change, c.kind,
+  SELECT c.subscription_id, c.customer_id, c.snapshot_date, c.segment, c.opening, c.mrr_change,
          COALESCE(SUM(c.mrr_change) OVER (${chain} ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior_mrr,
          SUM(c.mrr_change) OVER (${chain} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS new_mrr,
          s.day_start, s.day_end, s.active_before
@@ -326,10 +228,8 @@ chained AS (
   JOIN day_state s ON s.customer_id = c.customer_id AND s.snapshot_date = c.snapshot_date
 ),
 typed AS (
-  SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, prior_mrr, new_mrr, kind,
+  SELECT subscription_id, customer_id, snapshot_date, segment, opening, mrr_change, prior_mrr, new_mrr,
          CASE
-           WHEN kind = 'usage' THEN 'expansion'
-           WHEN kind = 'usage_reversal' THEN 'contraction'
            WHEN mrr_change > 0 AND ABS(day_start) < ${ZERO} AND active_before = 1 THEN 'reactivation'
            WHEN mrr_change > 0 AND ABS(day_start) < ${ZERO} THEN 'new'
            WHEN mrr_change < 0 AND ABS(day_end) < ${ZERO} THEN 'churn'
@@ -338,7 +238,7 @@ typed AS (
          END AS event_type
   FROM chained
 )
-SELECT ${d.toText("subscription_id")} || CASE WHEN kind = 'ledger' THEN ':' ELSE ':usage:' END || ${d.toText("snapshot_date")} AS event_id,
+SELECT ${d.toText("subscription_id")} || ':' || ${d.toText("snapshot_date")} AS event_id,
        snapshot_date AS event_date,
        customer_id,
        subscription_id,
@@ -347,8 +247,8 @@ SELECT ${d.toText("subscription_id")} || CASE WHEN kind = 'ledger' THEN ':' ELSE
        '${opts.currency}' AS currency,
        prior_mrr,
        new_mrr,
-       CASE WHEN kind = 'ledger' THEN ${d.toText("NULL")} ELSE 'usage_realisation' END AS expansion_classification,
-       CASE kind WHEN 'usage' THEN 'temporary' WHEN 'usage_reversal' THEN 'scheduled_reversal' ELSE 'permanent' END AS change_nature,
+       ${d.toText("NULL")} AS expansion_classification,
+       'permanent' AS change_nature,
        CASE event_type
          WHEN 'new' THEN 'acquisition'
          WHEN 'expansion' THEN 'expansion'
@@ -358,18 +258,13 @@ SELECT ${d.toText("subscription_id")} || CASE WHEN kind = 'ledger' THEN ':' ELSE
        segment
 FROM typed
 WHERE opening = 0
-ORDER BY snapshot_date, customer_id, CASE WHEN mrr_change > 0 THEN 0 ELSE 1 END, subscription_id, kind`;
+ORDER BY snapshot_date, customer_id, CASE WHEN mrr_change > 0 THEN 0 ELSE 1 END, subscription_id`;
 }
 
-/** The (field, dataset) pairs the derivation reads for the given source and usage setting. */
-export function derivationPairs(opts: Pick<DerivationOptions, "source" | "usage" | "usageSource">): Array<[field: string, dataset: string]> {
+/** The (field, dataset) pairs the derivation reads for the given source. */
+export function derivationPairs(opts: Pick<DerivationOptions, "source">): Array<[field: string, dataset: string]> {
   const source = opts.source ?? "subscription";
-  const ledger: Array<[string, string]> = source === "invoice" ? INVOICE_FIELDS.map((f) => [f, "invoice"]) : DERIVATION_FIELDS.map((f) => [f, DERIVATION_DATASET]);
-  if (!opts.usage) return ledger;
-  const usage = opts.usageSource === "credit_event"
-    ? CREDIT_USAGE_FIELDS.map((f): [string, string] => [f, "credit_event"])
-    : USAGE_FIELDS.map((f): [string, string] => [f, "usage_record"]);
-  return [...ledger, ...usage];
+  return source === "invoice" ? INVOICE_FIELDS.map((f) => [f, "invoice"]) : DERIVATION_FIELDS.map((f) => [f, DERIVATION_DATASET]);
 }
 
 /** The derivation as a query template, so `fillTemplate` resolves it over an adapter or Ossie mapping like a metric's. */
@@ -455,16 +350,6 @@ export function referenceInvoiceLedgerSql(): string {
   return exampleSql(invoiceLedgerSql("postgres"));
 }
 
-/** The usage CTEs over the GASP field names, as cel.md prints them. */
-export function referenceUsageSql(): string {
-  return exampleSql(usageChangesSql("postgres"));
-}
-
-/** The credit ledger's usage CTEs over the GASP field names, as cel.md prints them. */
-export function referenceCreditUsageSql(): string {
-  return exampleSql(creditUsageChangesSql("postgres"));
-}
-
 /** The credit event derivation over the GASP field names, as cel.md prints it. */
 export function referenceCreditEventSql(currency = "USD"): string {
   return exampleSql(creditEventDerivationSql({ dialect: "postgres", currency }));
@@ -477,9 +362,6 @@ export interface DeriveCelOptions {
   currency?: string;
   firstSnapshot?: "opening" | "steps";
   source?: string;
-  usage?: boolean;
-  /** Where the usage realisation pairs come from; default the usage records when mapped, else the credit ledger when mapped. */
-  usageSource?: string;
   /** What to derive: revenue events (the default) or credit events from the usage records. */
   target?: string;
   output?: "report" | "sql";
@@ -488,10 +370,10 @@ export interface DeriveCelOptions {
 /**
  * The derive_cel tool: the derivation compiled over a company's mapping (a GASP
  * adapter or an Ossie mapping with its model), from the subscription or the
- * invoice dataset, with the usage records (or else the credit ledger's overage)
- * when the mapping covers them, in the dialect asked for or the one the
- * adapter's warehouse names, as a report or the SQL alone. With target
- * credit_event, the credit events the usage records give instead.
+ * invoice dataset, in the dialect asked for or the one the adapter's warehouse
+ * names, as a report or the SQL alone. With target credit_event, the credit
+ * events the usage records give instead: usage above a commitment is
+ * Consumption Revenue and never a revenue event.
  */
 export function deriveCelFromText(documentText: string | undefined, modelText: string | undefined, data: StandardData, opts: DeriveCelOptions = {}): string {
   if (!documentText?.trim()) return "Pass adapter: your mapping as text, a GASP adapter (JSON) or an Ossie mapping document (YAML or JSON) with its semantic_model. Check it with validate_mapping first.";
@@ -502,8 +384,6 @@ export function deriveCelFromText(documentText: string | undefined, modelText: s
   if (!DERIVATION_SOURCES.includes(source)) return `source must be one of ${DERIVATION_SOURCES.join(", ")}, got ${JSON.stringify(opts.source)}.`;
   const target = (opts.target?.trim().toLowerCase() || "revenue_event") as DerivationTarget;
   if (!DERIVATION_TARGETS.includes(target)) return `target must be one of ${DERIVATION_TARGETS.join(", ")}, got ${JSON.stringify(opts.target)}.`;
-  const askedUsageSource = opts.usageSource?.trim().toLowerCase() as UsageSource | undefined;
-  if (askedUsageSource && !USAGE_SOURCES.includes(askedUsageSource)) return `usage_source must be one of ${USAGE_SOURCES.join(", ")}, got ${JSON.stringify(opts.usageSource)}.`;
   const loaded = loadAdapter(documentText, modelText, data);
   if (!loaded.adapter) return loaded.error!;
   const chosen = chooseDialect(opts.dialect, loaded.adapter.warehouse);
@@ -543,7 +423,7 @@ export function deriveCelFromText(documentText: string | undefined, modelText: s
       "",
       "**What the usage records can and cannot say for the credit ledger.** Each usage period whose `usage_amount` exceeds its `committed_amount` is one `consumption` event with `consumption_basis` `overage`, dated the period's end, for the amount the period bills beyond the commitment (negative, as consumption is; the whole period's charge, not stated as MRR). Its id is `<subscription_id>:overage:<period_end>`. Usage within a ratable commitment is no event: the commitment is already in the subscription's MRR. The records hold no prepaid balance, so `credit_balance_before`, `credit_balance_after` and `expires_on` are empty. They carry no segment. A prepaid balance, its purchases, committed drawdowns and expiries come from the billing system's credit ledger, not from usage records.",
       "",
-      "Run the query to build (or rebuild) the `credit_event` table from the usage records; it reads every period and carries no period parameters. Map the result as the `credit_event` dataset and Consumption Revenue compiles over it with generate_query or compile_model. Do not also derive the usage realisation from it: derive_cel reads the usage records for that.",
+      "Run the query to build (or rebuild) the `credit_event` table from the usage records; it reads every period and carries no period parameters. Map the result as the `credit_event` dataset and Consumption Revenue compiles over it with generate_query or compile_model.",
       "",
       "\`\`\`sql\n" + r.sql + "\n\`\`\`",
       ...mappingUsed(r),
@@ -551,24 +431,14 @@ export function deriveCelFromText(documentText: string | undefined, modelText: s
     return p.join("\n");
   }
 
-  const usageSource: UsageSource = askedUsageSource ?? (usageMapped || !creditMapped ? "usage_record" : "credit_event");
-  const usage = opts.usage ?? (askedUsageSource ? true : usageSource === "usage_record" ? usageMapped : creditMapped);
-  const template = revenueEventDerivation({ dialect: chosen.dialect, currency, firstSnapshot: opts.firstSnapshot, source, usage, usageSource });
+  const template = revenueEventDerivation({ dialect: chosen.dialect, currency, firstSnapshot: opts.firstSnapshot, source });
   const r = fillTemplate(template, loaded.adapter, data);
   if (opts.output === "sql") return r.sql;
   const ledgerName = source === "invoice" ? "invoice ledger" : "subscription ledger";
   const rulesAnchor = source === "invoice" ? "cel.md#deriving-revenue-events-from-an-invoice-ledger" : "cel.md#deriving-revenue-events-from-a-subscription-ledger";
-  const usageDataset = usageSource;
-  const ledgerPairs = template.placeholders.filter((p) => !p.endsWith(`@${usageDataset}`));
-  const usagePairs = template.placeholders.filter((p) => p.endsWith(`@${usageDataset}`));
-  const credit = usage && usageSource === "credit_event";
-  const usageRules = credit ? "cel.md#realisation-from-the-credit-ledger" : "cel.md#deriving-usage-realisation";
-  const reads = usage
-    ? `; the \`${usageDataset}\` dataset${credit ? " (its overage consumption)" : ""}, ${mappedOf(r, usagePairs)} / ${usagePairs.length} fields mapped${opts.usage === undefined && !askedUsageSource ? " (read because the mapping covers it; pass usage: false to leave it out)" : ""}${usageSource === "usage_record" && creditMapped ? "; the `credit_event` dataset is mapped too and not read, so the overage is not derived twice (usage_source: credit_event reads it instead)" : ""}`
-    : usageMapped || creditMapped ? "" : "; no usage records (map the `usage_record` dataset, or a credit ledger as the `credit_event` dataset, or pass usage: true, for the usage realisation events)";
   const p: string[] = [
-    ...header(`# CEL Revenue_Events derived from your ${ledgerName}${usage ? (credit ? " and credit ledger" : " and usage records") : ""}`, `${resolveDocLink(rulesAnchor)}${usage ? ` and ${resolveDocLink(usageRules)}` : ""}`),
-    `**Reads:** the \`${source}\` dataset, ${mappedOf(r, ledgerPairs)} / ${ledgerPairs.length} fields mapped${reads}`,
+    ...header(`# CEL Revenue_Events derived from your ${ledgerName}`, resolveDocLink(rulesAnchor)!),
+    `**Reads:** the \`${source}\` dataset, ${mappedOf(r, template.placeholders)} / ${template.placeholders.length} fields mapped`,
     `**Writes:** one \`revenue_event\` row per movement (${DERIVED_FIELDS.join(", ")}), currency \`${currency}\``,
     ...problems(r),
   ];
@@ -579,8 +449,13 @@ export function deriveCelFromText(documentText: string | undefined, modelText: s
     ? `**What the invoices can and cannot say.** Each invoice is read at its latest snapshot as one service period: its MRR is \`recurring_amount\` over the months the period covers (whole months for monthly, quarterly and annual billing; a prorated invoice for part of a period is approximate). A subscription's MRR on a date is the sum over the invoices covering it, its ledger dates are the starts of its service periods and the day after each end. A date after the ledger's horizon (the latest service period start) is not read, so a subscription whose last invoice is still current does not churn. Invoices with no subscription or no service period (one-off charges) produce no event. ${firstRows} Each movement is dated the service period that first bills it, so a change agreed mid-period shows on the next period's start unless a prorated invoice was issued. The invoice dataset carries no segment, so \`segment\` is empty; fill it from the customer snapshot. \`expansion_classification\` is empty: the invoices show that MRR rose, not what was bought, while the Operating forms of ARR and NRR read that tag; fill it from your amendment records or record the classification as a decision. Where a subscription ledger exists it is the better source (source: subscription).`
     : `**What the ledger can and cannot say.** Each movement is dated the snapshot that first shows it, so the ledger's cadence is the grain of the events: daily snapshots show every movement on its day, month-end snapshots net a month's movements into one event dated the month end. ${firstRows} The ledger needs one row per subscription per snapshot date and must keep a cancelled subscription's row; a subscription that stops appearing produces no churn. A null MRR on an active row counts as 0. \`expansion_classification\` is empty: the ledger shows that MRR rose, not what was bought, while the Operating forms of ARR and NRR read that tag; fill it from your amendment records or record the classification as a decision. Renewals change no MRR and are not derived here.`;
   p.push("", limits);
-  if (credit) p.push("", "**Usage realisation from the credit ledger.** A subscription's `consumption` events with `consumption_basis` `overage` in a calendar month sum, negated, to the month's realised usage. Each month with an overage adds a pair of events: an `expansion` dated the month's last day for that sum, tagged `usage_realisation` with `change_nature` `temporary`, then a `contraction` the next day with `change_nature` `scheduled_reversal`. Consumption drawn from a prepaid balance (basis `committed`) and pay-as-you-go consumption (`on_demand` or `top_up`) are no event here: the commitment is in the subscription's MRR and usage with no commitment is outside it. The pairs chain with the ledger's steps, so `prior_mrr` and `new_mrr` hold across both. Their ids are `<subscription_id>:usage:<date>`. Where the usage records are mapped they are the source instead; the credit ledger's overage is not derived twice.");
-  else if (usage) p.push("", "**Usage realisation.** Each usage period whose `usage_amount` exceeds its `committed_amount` adds a pair of events: an `expansion` dated the period's end for the overage over the months the period covers, tagged `usage_realisation` with `change_nature` `temporary`, then a `contraction` the next day with `change_nature` `scheduled_reversal`. The commitment is already in the subscription's MRR, so usage within it is no event. A commitment raised to cover the usage shows on the ledger as a permanent expansion. The pairs chain with the ledger's steps, so `prior_mrr` and `new_mrr` hold across both. Their ids are `<subscription_id>:usage:<date>`.");
+  if (usageMapped || creditMapped)
+    p.push(
+      "",
+      "**Usage above a commitment is no Revenue_Event.** It is Consumption Revenue with `consumption_basis` `overage`, outside MRR, ARR, Net Revenue Retention and Gross Revenue Retention, so this query never reads it." +
+        (creditMapped ? " Your credit ledger already carries it." : " Run derive_cel with target: credit_event to write it from your usage records.") +
+        " A commitment raised to cover the usage shows on the ledger as a permanent expansion.",
+    );
   p.push(
     "",
     `Run the query to build (or rebuild) the \`revenue_event\` table; it reads the whole ledger and carries no period parameters. Map the result as the \`revenue_event\` dataset and the MRR movement metrics, NRR and GRR compile over it with generate_query or compile_model.`,

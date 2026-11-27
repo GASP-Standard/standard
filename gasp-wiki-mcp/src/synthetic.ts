@@ -253,8 +253,8 @@ const subscriptionOf = (c: string) => "s" + c.slice(1);
 /**
  * Usage against a commitment, by month: c02, c07 and c10 commit their MRR on the
  * 1st and record the usage listed, at the contract's rates. Usage above the
- * commitment is realised as a temporary expansion in the CEL (the usage
- * derivation in cel.md); the rest of the months sit within it.
+ * commitment is Consumption Revenue on the basis overage, a Credit_Event and no
+ * Revenue_Event (cel.md); the rest of the months sit within the commitment.
  */
 export const USAGE: Record<string, Record<string, number>> = {
   c02: { "2026-01": 1800, "2026-02": 2300, "2026-03": 1550, "2026-04": 1750, "2026-05": 1600, "2026-06": 1600 },
@@ -272,7 +272,7 @@ export const USAGE: Record<string, Record<string, number>> = {
  *   then buys 6,000 more on 2026-04-01 expiring 2026-09-30; 100 is left at 2026-06-30.
  * - c01 and c06 consume on demand, no balance.
  * The USAGE customers also get one overage consumption row per month their usage
- * passes the commitment, so the credit ledger and usage_record realise the same overage.
+ * passes the commitment, so the credit ledger and usage_record state the same overage.
  */
 export interface CreditStory {
   type: "purchase" | "consumption" | "expiry" | "adjustment";

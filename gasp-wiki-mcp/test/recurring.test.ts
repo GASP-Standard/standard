@@ -139,17 +139,23 @@ describe("the year-or-renewal test", () => {
   it("states the usage lines of the Exclude lists as the table decides them", () => {
     const core = standard("metrics/core.md");
     expect(core).not.toContain("unless contractually guaranteed");
-    expect(core).toContain("- Usage billed on demand with no commitment behind it. Committed usage counts by the same test and usage above a commitment counts for the period billed");
+    expect(core).toContain("- Usage no commitment covers: usage billed above a commitment and usage billed on demand. Committed usage counts by the same test");
+    expect(core).not.toContain("counts for the period billed");
     expect(classifyRevenue({ kind: "on_demand_usage" }).counts).toBe("no");
     expect(classifyRevenue({ kind: "committed_usage", termMonths: 12 }).counts).toBe("yes");
-    expect(classifyRevenue({ kind: "usage_above_commitment" }).counts).toBe("period");
+    expect(classifyRevenue({ kind: "usage_above_commitment" }).counts).toBe("no");
     const finance = standard("metrics/finance.md");
     expect(finance).not.toContain("usage above a commitment, as in ARR");
     expect(finance).toContain("- One-time fees and professional services, as in ARR");
   });
 
-  it("counts usage above a commitment for the billed period and recurring credits as a subscription", () => {
-    expect(classifyRevenue({ kind: "usage_above_commitment" })).toMatchObject({ counts: "period", canChurn: false, changeNature: "temporary" });
+  // Regression (2026-11-27): the row read "Yes, for the period billed", a temporary expansion, against the
+  // SaaS Metrics Standards Board, which keeps overage out of ARR whether or not it is invoiced.
+  it("keeps usage above a commitment out of MRR as Consumption Revenue and counts recurring credits as a subscription", () => {
+    expect(classifyRevenue({ kind: "usage_above_commitment" })).toMatchObject({ counts: "no", line: "Consumption Revenue", answer: "No. Consumption Revenue", canChurn: false, changeNature: null });
+    // No kind counts for part of a period: every answer is yes or no.
+    for (const kind of REVENUE_KINDS)
+      for (const termMonths of [1, 6, 12, 36]) expect(["yes", "no"], `${kind} ${termMonths}`).toContain(classifyRevenue({ kind, termMonths }).counts);
     expect(classifyRevenue({ kind: "recurring_credits" })).toMatchObject({ counts: "yes", canChurn: true, changeNature: "permanent" });
   });
 
@@ -416,10 +422,10 @@ describe("assessContract", () => {
         expect(m.annualised !== null, label).toBe(a.verdict.line === "Fixed-term revenue");
       }
     }
-    // A question with a value and a way to a monthly figure always has amounts; a free trial and usage above a commitment never do.
+    // A question with a value and a way to a monthly figure always has amounts; a free trial never does.
     for (const q of questions.filter((x) => x.monthlyValue !== undefined || (x.contractValue !== undefined && x.termMonths !== undefined && TERM_KINDS.includes(x.kind)))) {
       const a = assessContract(q);
-      expect(a.amounts === null, JSON.stringify(q)).toBe(q.kind === "free_trial" || a.verdict.counts === "period");
+      expect(a.amounts === null, JSON.stringify(q)).toBe(q.kind === "free_trial");
     }
   });
 
@@ -466,7 +472,8 @@ describe("assessContract", () => {
     expect(assessContract({ kind: "on_demand_usage" }).verdict.line).toBe("Consumption Revenue");
     expect(assessContract({ kind: "credit_pack" }).verdict.counts).toBe("no");
     expect(assessContract({ kind: "recurring_credits" }).verdict.counts).toBe("yes");
-    expect(assessContract({ kind: "usage_above_commitment" }).verdict.counts).toBe("period");
+    expect(assessContract({ kind: "usage_above_commitment" }).verdict.line).toBe("Consumption Revenue");
+    expect(assessContract({ kind: "usage_above_commitment", contractValue: 400 }).amounts).toMatchObject({ mrr: 0, arr: 0, outside: 400 });
     expect(assessContract({ kind: "one_time_fee" }).verdict.line).toBeNull();
     expect(assessContract({ kind: "free_trial" }).verdict.counts).toBe("no");
   });
@@ -742,7 +749,7 @@ describe("every metric a contract reaches", () => {
       const a = assessContract(q);
       const label = JSON.stringify(q);
       const counts = a.verdict.counts;
-      const tri = counts === "yes" ? "yes" : counts === "period" ? "part" : "no";
+      const tri = counts === "yes" ? "yes" : "no";
       for (const id of ["mrr", "arr", "carr"] as const) expect(by(a, id)!.counts, `${label} ${id}`).toBe(tri);
       expect(by(a, "mrr")!.amount, label).toBe(counts === "yes" ? a.amounts?.mrr ?? null : null);
       expect(by(a, "arr")!.amount, label).toBe(counts === "yes" ? a.amounts?.arr ?? null : null);
@@ -807,13 +814,15 @@ describe("every metric a contract reaches", () => {
     expect(describeContract(licence.question)).toContain("A term licence");
   });
 
-  it("keeps usage above a commitment in NRR and out of GRR, and a temporary contract out of the adjusted variants", () => {
-    const over = assessContract({ kind: "usage_above_commitment" });
-    expect(by(over, "nrr")!.counts).toBe("yes");
-    expect(by(over, "grr")!.counts).toBe("no");
-    expect(by(over, "adjusted_retention")!.counts).toBe("no");
+  it("keeps usage above a commitment out of every MRR metric and in Usage Run-Rate, and a temporary contract out of the adjusted variants", () => {
+    const over = assessContract({ kind: "usage_above_commitment", contractValue: 400 });
+    for (const id of ["mrr", "arr", "carr", "nrr", "grr", "adjusted_retention", "total_customers", "new_customers", "logo_churn_rate"] as const) expect(by(over, id)!.counts, id).toBe("no");
+    expect(over.start.metric).toBeNull();
+    expect(over.end.metric).toBeNull();
+    expect(by(over, "consumption_revenue")).toMatchObject({ counts: "yes", amount: 400 });
     expect(by(over, "consumption_revenue")!.answer).toContain("overage");
-    expect(by(over, "usage_run_rate")!.counts).toBe("no");
+    // Usage Run-Rate read on-demand and top-up consumption alone while overage sat in MRR.
+    expect(by(over, "usage_run_rate")!.counts).toBe("yes");
     const eighteen = assessContract({ kind: "subscription", termMonths: 18 });
     expect(by(eighteen, "adjusted_retention")!.counts).toBe("no");
     expect(by(eighteen, "carr")!.answer).toContain("CARR net of known churn takes it off");
@@ -854,7 +863,7 @@ describe("every metric a contract reaches", () => {
       "expansion of an existing customer, however large",
       "which draw no balance",
       "Usage within a ratable commitment: that revenue is the commitment itself, already in MRR",
-      "Committed consumption is already in ARR through the commitment, and overage is already in MRR through the `usage_realisation` expansion",
+      "Usage Run-Rate carries the usage billed above them, on-demand consumption and top-up consumption",
       "counts in bookings and billings",
       "Notice of a future ending changes nothing until that day",
       "has no event in the ledger, so the tags never reach it",
@@ -940,10 +949,15 @@ describe("assessDeal", () => {
     // A fixed-term line is no anchor: it holds no MRR.
     const short = assessDeal({ lines: [{ kind: "subscription", termMonths: 6 }, { kind: "usage_above_commitment" }] });
     expect(short.question.otherMrr).toBe(true);
-    const anchored = assessDeal({ lines: [sub, { kind: "usage_above_commitment" }] });
+    const anchored = assessDeal({ lines: [sub, { kind: "usage_above_commitment", contractValue: 400 }] });
     expect(anchored.question.otherMrr).toBeUndefined();
-    expect(anchored.lines[1].start.metric).toBe("Expansion MRR");
+    // The usage is no movement of MRR: the subscription's line carries the deal's and the usage is Consumption Revenue.
+    expect(anchored.lines[1].start.metric).toBeNull();
+    expect(anchored.lines[1].end.metric).toBeNull();
+    expect(anchored.lines[0].start.metric).toBe("New MRR");
     expect(anchored.lines[0].end.metric).toBe("Churned MRR");
+    expect(anchored.totals.find((x) => x.id === "mrr")!.amount).toBe(5000);
+    expect(anchored.totals.find((x) => x.id === "consumption_revenue")!.amount).toBe(400);
   });
 
   it("names the customer status of a contract with no line that counts", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { derivationPairs } from "../src/cel.js";
+import { derivationPairs, CREDIT_SOURCE_FIELDS } from "../src/cel.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadStandard, metricFormulaId, isMetricStub } from "../src/loader.js";
@@ -126,8 +126,9 @@ describe("formulas.json", () => {
       }
     }
     const ds = data.ontology!.datasets!;
-    // The fields the CEL derivations read (src/cel.ts) exist for the derivations, not for a formula.
-    const derivation = new Set(derivationPairs({ source: "invoice", usage: true }).map(([f]) => f));
+    // The fields the CEL derivations read (src/cel.ts) exist for the derivations, not for a formula:
+    // the invoice ledger for Revenue_Events and the usage records for the overage Credit_Events.
+    const derivation = new Set<string>([...derivationPairs({ source: "invoice" }).map(([f]) => f), ...CREDIT_SOURCE_FIELDS]);
     const structural = (f: NonNullable<OntologyData["fields"]>[number]) =>
       f.dimension || f.id === "currency" || derivation.has(f.id) || (f.datasets ?? []).some((d) => ds[d]?.key === f.id || ds[d]?.date === f.id || !!ds[d]?.cel);
     const unused = data.ontology!.fields!.filter((f) => !used.has(f.id) && !structural(f)).map((f) => f.id);

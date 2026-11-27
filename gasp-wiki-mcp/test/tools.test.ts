@@ -161,7 +161,10 @@ describe("resolveNode", () => {
 
 describe("findDefinition", () => {
   it("never returns a substring match", () => {
-    expect(findDefinition(data, "tier")).toBeUndefined();
+    expect(findDefinition(data, "sensitivity")).toBeUndefined();
+    expect(findDefinition(data, "run rate")).toBeUndefined();
+    // "Tier" is a name the glossary gives Plan on its Also called line, an exact match and never a part of "Sensitivity Tier"
+    expect(findDefinition(data, "tier")?.term).toBe("Plan");
     expect(findDefinition(data, "Churn")?.term ?? "").not.toBe("Churned MRR");
   });
 });
@@ -688,7 +691,12 @@ describe("formatAssessment", () => {
     const fee = formatAssessment(data, { kind: "one_time_fee" });
     expect(fee).toContain("_Pass `contractValue`, the amount charged, for the amount._");
     expect(fee).not.toContain("monthlyValue");
-    for (const kind of ["free_trial", "usage_above_commitment"] as const) expect(formatAssessment(data, { kind }), kind).not.toMatch(/_Pass `/);
+    expect(formatAssessment(data, { kind: "free_trial" })).not.toMatch(/_Pass `/);
+    // Usage above a commitment is priced like any consumption: the amount charged is its Consumption Revenue.
+    const over = formatAssessment(data, { kind: "usage_above_commitment" });
+    expect(over).toContain("_Pass `contractValue`, the amount charged, for the amount._");
+    expect(over).not.toContain("monthlyValue");
+    expect(formatAssessment(data, { kind: "usage_above_commitment", contractValue: 200 })).toContain("- **Consumption Revenue:** $200");
     // A question that carries the amount it was asked for never gets the request.
     for (const q of [...PRESETS.map((p) => p.question), { kind: "recurring_credits", monthlyValue: 50 } as const, { kind: "credit_pack", contractValue: 40 } as const]) {
       expect(formatAssessment(data, q), JSON.stringify(q)).not.toMatch(/_Pass `/);
@@ -864,5 +872,60 @@ describe("formatChange", () => {
       expect(text, label).not.toMatch(/undefined|null|NaN/);
       expect(text.includes("## Amounts"), label).toBe(c.amounts !== null);
     }
+  });
+});
+
+describe("the glossary's other names", () => {
+  it("reads each Also called line into the term's aliases", () => {
+    const runRate = findDefinition(data, "Run-Rate Revenue")!;
+    expect(runRate.aliases).toEqual(["Annualised Run Rate", "Annualized Run Rate", "Annual Run Rate", "Revenue Run Rate", "Annual Run-Rate Revenue"]);
+    expect(findDefinition(data, "Campaign")!.aliases).toEqual(["Marketing Campaign", "Initiative"]);
+    expect(findDefinition(data, "MRR")!.aliases).toEqual([]);
+  });
+
+  it("finds a term by any of them, ignoring case", () => {
+    for (const q of ["annualised run rate", "Annualized Run Rate", "annual run rate", "REVENUE RUN RATE", "annual run-rate revenue", "run-rate-revenue"]) {
+      expect(findDefinition(data, q)?.term, q).toBe("Run-Rate Revenue");
+    }
+    expect(findDefinition(data, "support case")?.term).toBe("Ticket");
+  });
+
+  // 2026-11-27: every one of these resolved to nothing, so a company reporting a run rate as ARR had no term to map to
+  it("answers a run rate with the glossary term, never with the ARR metric", () => {
+    for (const q of ["annualised run rate", "annualized run rate", "revenue run rate", "run-rate revenue"]) {
+      const r = resolveMetric(data, q);
+      expect(r.kind, q).toBe("definition");
+      if (r.kind === "definition") expect(r.definition.term).toBe("Run-Rate Revenue");
+    }
+    const arr = resolveMetric(data, "ARR");
+    expect(arr.kind === "metric" && arr.metric.name).toBe("ARR (Annual Recurring Revenue)");
+    expect(search(data, "annualized run rate")[0]).toMatchObject({ type: "definition", name: "Run-Rate Revenue" });
+    expect(search(data, "run rate revenue")[0]).toMatchObject({ type: "definition", name: "Run-Rate Revenue" });
+  });
+
+  it("gives no alias to two terms, and none that is another term's or a metric's own name", () => {
+    const own = new Map<string, string>();
+    for (const d of data.definitions) for (const n of [d.term.toLowerCase(), d.slug]) own.set(n, d.term);
+    const metricNames = new Set(data.metrics.flatMap((m) => [m.name.toLowerCase(), ...m.aliases.map((a) => a.toLowerCase())]));
+    const seen = new Map<string, string>();
+    for (const d of data.definitions) {
+      for (const a of d.aliases ?? []) {
+        const k = a.toLowerCase();
+        expect(own.get(k), `${d.term}: "${a}" is the term ${own.get(k)}`).toBeUndefined();
+        expect(seen.get(k), `${d.term} and ${seen.get(k)} both claim "${a}"`).toBeUndefined();
+        expect(metricNames.has(k), `${d.term}: "${a}" is a metric's name`).toBe(false);
+        seen.set(k, d.term);
+      }
+    }
+    expect(seen.size).toBeGreaterThan(30);
+  });
+
+  it("keeps the two readings of ARR apart in the standard's text", () => {
+    const core = readFileSync(join(new URL(".", import.meta.url).pathname, "..", "..", "standard", "metrics", "core.md"), "utf-8");
+    const arr = core.slice(core.indexOf("### ARR (Annual Recurring Revenue)"), core.indexOf("### ARPA"));
+    expect(arr).toContain("[Run-Rate Revenue](../definitions.md#run-rate-revenue)");
+    expect(arr).not.toMatch(/Annualised Run Rate\*\* = MRR/);
+    expect(arr).not.toMatch(/ARR is a run rate|yearly run rate/);
+    expect(findDefinition(data, "Run-Rate Revenue")!.definition).toContain("a different measure from ARR");
   });
 });

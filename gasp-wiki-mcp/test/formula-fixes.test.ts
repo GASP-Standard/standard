@@ -599,13 +599,13 @@ describe("Five rates follow the population of the first day of the period (2026-
 });
 
 describe("NRR-M counts every expansion and reactivation, with a tag or without (2026-11-27)", () => {
-  // The Market form filtered expansion_classification on all six of its values. On tagged rows
+  // The Market form filtered expansion_classification on every value the field takes. On tagged rows
   // that leaves out nothing; a row with no tag fails it, and the ledger derive_cel writes carries
   // none (cel.md, step 6). c07 and c14 are in the cohort of 1 April; each gets one untagged event.
   const Q2 = ["2026-04-01", "2026-06-30"] as const;
   const M = data.formulas!.nrr.forms!.M!, O = data.formulas!.nrr.forms!.O!;
   const EVERY = "sum(field.mrr_change where field.event_type in ('expansion', 'reactivation'))";
-  const FILTERED = EVERY.replace(/\)\)$/, ") and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting', 'usage_realisation'))");
+  const FILTERED = EVERY.replace(/\)\)$/, ") and field.expansion_classification in ('same_product', 'new_module', 'new_buying_centre', 'pricing_adjustment', 'recontracting'))");
   const WAS = M.replace(EVERY, FILTERED);
   let untagged: PGlite;
 

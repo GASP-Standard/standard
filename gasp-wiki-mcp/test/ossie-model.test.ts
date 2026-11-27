@@ -17,7 +17,7 @@ import { DIALECT, type DialectName } from "../src/dialect.js";
 import { stagedSource } from "../src/ossie/model.js";
 import { modelMetrics } from "../src/ossie/scope.js";
 import { GASP_VENDOR, type OssieDataset } from "../src/ossie/types.js";
-import { fixtureDb, addOssieViews, scalar, runTemplate, moveSegment, plantUsageRealisation } from "./fixture-db.js";
+import { fixtureDb, addOssieViews, scalar, runTemplate, moveSegment } from "./fixture-db.js";
 
 // The Ossie semantic model exporter: every GASP dataset, field and formula
 // expression lands in the model, direct metrics are plain OSSIE_SQL_2026
@@ -548,9 +548,6 @@ describe("Ossie model: the cohort table gives the values the per-period sources 
   let db: PGlite;
   beforeAll(async () => {
     db = await fixtureDb();
-    // c07's three months above its commitment as usage realisation pairs, so the usage_reversal
-    // column holds an amount where GRR and Revenue Churn Rate read it.
-    for (const [day, amount] of [["2026-03-31", 400], ["2026-05-31", 900], ["2026-06-30", 500]] as const) await plantUsageRealisation(db, "c07", day, amount);
     // Two customers change segment part way through, so a period that spans the change tells the
     // segment a customer held on its first day from the segment their later rows carry.
     await moveSegment(db, "c07", "2026-05-01", "enterprise");
@@ -571,12 +568,15 @@ describe("Ossie model: the cohort table gives the values the per-period sources 
     }
   });
 
-  it("carries the reversal of realised usage as a column of its own, a negative amount beside the contraction that holds it", async () => {
-    const rows = (await db.query<{ e: string; reversal: unknown; contraction: unknown }>(
-      `SELECT CAST(period_end AS TEXT) e, usage_reversal AS reversal, contraction_mrr AS contraction FROM ${ACCOUNT_COHORTS.name} WHERE ${ACCOUNT_COHORTS.cohort.key} = 'c07' AND period_start = DATE '2026-01-01'`)).rows;
-    expect(Object.fromEntries(rows.map((r) => [r.e, [Number(r.reversal), Number(r.contraction)]]))).toEqual({
-      "2026-01-31": [0, 0], "2026-03-31": [0, 0], "2026-06-30": [-1300, 1300],
-    });
+  // Regression (2026-11-27): the table carried usage_reversal, the contraction tagged usage_realisation,
+  // for GRR and Revenue Churn Rate to add back. Usage above a commitment writes no Revenue_Event now.
+  it("carries no column for usage: the cohort's contraction is the ledger's own", async () => {
+    const source = byName.get(ACCOUNT_COHORTS.name)!.source;
+    expect(source).not.toContain("usage_reversal");
+    expect(source).not.toContain("usage_realisation");
+    const columns = (await db.query<Record<string, unknown>>(`SELECT * FROM ${ACCOUNT_COHORTS.name} LIMIT 1`)).fields.map((f) => f.name);
+    expect(columns).toContain("contraction_mrr");
+    expect(columns.filter((c) => c.includes("usage"))).toEqual([]);
   });
 
   for (const [entry, c] of Object.entries(coverage)) {

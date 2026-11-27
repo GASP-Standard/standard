@@ -48,6 +48,7 @@ The total predictable revenue from active subscriptions, normalised to a monthly
 
 ### ARR (Annual Recurring Revenue)
 MRR × 12. The annualised value of recurring revenue.
+- **The abbreviation:** An annualised run rate is often called ARR too. It is [Run-Rate Revenue](#run-rate-revenue), a different measure
 - **Canonical definition:** [Core Metrics](metrics/core.md#arr-annual-recurring-revenue)
 - **Used in:** Core, Finance, Sales, Customer Success, People
 
@@ -92,6 +93,15 @@ Revenue from product access sold for under 12 months with no renewal: a six-mont
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#fixed-term-revenue)
 - **Used in:** Core, Finance
 
+### Run-Rate Revenue
+The revenue of a recent period, most often a month or a quarter, multiplied up to a year. It counts all the revenue of that period, recurring or not, which makes it a different measure from ARR, whose abbreviation it often carries.
+- **Also called:** Annualised Run Rate, Annualized Run Rate, Annual Run Rate, Revenue Run Rate, Annual Run-Rate Revenue
+- **Beside ARR:** [ARR](#arr-annual-recurring-revenue) counts the subscriptions and commitments that pass the year-or-renewal test, as they stand on one day. Run-rate revenue takes the revenue a period recognised, which also holds usage no commitment covers, fixed-term revenue, credits bought once and services
+- **The period:** Companies annualise a month or a quarter and the two give different figures for the same company, so the period is stated beside the number
+- **Reporting:** Reported under this name, apart from ARR. A company that wants usage beside its recurring revenue reports [ARR Including Usage Run-Rate](metrics/finance.md#arr-including-usage-run-rate)
+- **Canonical definition:** [Core Metrics](metrics/core.md#arr-annual-recurring-revenue)
+- **Used in:** Finance
+
 ### Revenue (GAAP)
 Recognised revenue according to ASC 606 accounting standards.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#revenue-gaap)
@@ -125,7 +135,7 @@ Revenue earned as customers use the product: consumption drawn from a prepaid ba
 - **Used in:** Finance
 
 ### Usage Run-Rate (Usage ARR)
-The consumption revenue no commitment covers, billed on demand or drawn from credits bought once, over the trailing three months, annualised. Added to ARR it gives ARR Including Usage Run-Rate without counting any usage twice.
+The consumption revenue no commitment covers, billed above a commitment, billed on demand or drawn from credits bought once, over the trailing three months, annualised. Added to ARR it gives ARR Including Usage Run-Rate without counting any usage twice.
 - **Canonical definition:** [Finance Metrics](metrics/finance.md#usage-run-rate)
 - **Used in:** Finance
 
@@ -150,7 +160,7 @@ Percentage of revenue retained from existing customers over a period, including 
 - **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted NRR, which leaves temporary revenue out of the opening base and out of the movements.
 
 ### GRR (Gross Revenue Retention)
-Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. GASP uses the formula method over the customers active at period start; the cohort method is a labelled alternative. Usage above a commitment stays out: the contraction that reverses realised usage is left out of the rate.
+Percentage of revenue retained from existing customers, excluding expansion. Cannot exceed 100%. GASP uses the formula method over the customers active at period start; the cohort method is a labelled alternative. Usage above a commitment is Consumption Revenue and stays out.
 - **Canonical definition:** [Core Metrics](metrics/core.md#gross-revenue-retention-grr)
 - **Adjusted variant:** Filter CEL events by [`change_nature`](cel.md#change-nature) to compute Adjusted GRR, which leaves temporary revenue out of the opening base and out of the movements.
 - **Used in:** Core, Customer Success
@@ -161,7 +171,7 @@ Percentage of customers lost in a period.
 - **Used in:** Core, Customer Success
 
 ### Revenue Churn Rate
-Percentage of MRR lost to churn and contraction in a period. Gross (losses only, not netted against expansion). The contraction that reverses realised usage is left out, as in GRR.
+Percentage of MRR lost to churn and contraction in a period. Gross (losses only, not netted against expansion).
 - **Formula:** (Churned MRR + Contraction MRR) / Beginning MRR × 100
 - **Canonical definition:** [Core Metrics](metrics/core.md#revenue-churn-rate)
 - **Used in:** Core

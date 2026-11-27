@@ -1137,7 +1137,7 @@
         "temporary",
         "scheduled_reversal"
       ],
-      "description": "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)",
+      "description": "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)",
       "metricCount": 3
     },
     {
@@ -1795,11 +1795,10 @@
         "new_module",
         "new_buying_centre",
         "pricing_adjustment",
-        "recontracting",
-        "usage_realisation"
+        "recontracting"
       ],
       "description": "ATL expansion tag; read by ARR-O and NRR-O",
-      "metricCount": 7
+      "metricCount": 2
     },
     {
       "id": "feature_created_date",
@@ -3214,7 +3213,7 @@
       "sources": [
         "billing"
       ],
-      "description": "The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment",
+      "description": "The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage, which is Consumption Revenue on the basis overage and stays out of MRR",
       "metricCount": 0
     },
     {
@@ -4696,7 +4695,7 @@
         "top_up"
       ],
       "dimension": true,
-      "description": "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand and top_up",
+      "description": "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads overage, on_demand and top_up",
       "metricCount": 4
     },
     {
@@ -6855,7 +6854,7 @@
       ]
     },
     "grr": {
-      "expression": "(metric.mrr at period_start - (metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "expression": "(metric.mrr at period_start - metric.contraction_mrr - metric.churned_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "churned_mrr",
@@ -6879,13 +6878,12 @@
         "customer_status",
         "event_date",
         "event_type",
-        "expansion_classification",
         "mrr",
         "mrr_change",
         "snapshot_date",
         "subscription_status"
       ],
-      "adjustedVariant": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)"
+      "adjustedVariant": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn')))) at period_start + sum(field.mrr_change where field.event_type in ('contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn')))) at period_start) over cohort(field.customer_id, period_start)"
     },
     "health_score": {
       "expression": "avg(field.composite_score where field.customer_status = 'active') at period_end",
@@ -6945,7 +6943,6 @@
         "customer_status",
         "event_date",
         "event_type",
-        "expansion_classification",
         "mrr",
         "mrr_change",
         "period_start",
@@ -6975,7 +6972,6 @@
         "customer_status",
         "event_date",
         "event_type",
-        "expansion_classification",
         "mrr",
         "mrr_change",
         "period_start",
@@ -7177,7 +7173,7 @@
         "snapshot_date",
         "subscription_status"
       ],
-      "adjustedVariant": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn'))) and (field.expansion_classification is null or field.expansion_classification != 'usage_realisation')) at period_start) over cohort(field.customer_id, period_start)"
+      "adjustedVariant": "(metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn')))) at period_start + sum(field.mrr_change where field.event_type in ('expansion', 'contraction', 'churn') and field.change_nature = 'permanent')) / (metric.mrr at period_start - sum(field.mrr_change where ((field.change_nature = 'temporary' and field.event_type in ('new', 'expansion', 'reactivation')) or (field.change_nature = 'scheduled_reversal' and field.event_type in ('contraction', 'churn')))) at period_start) over cohort(field.customer_id, period_start)"
     },
     "onboarding_completion": {
       "expression": "count_distinct(field.onboarding_id where in_period(field.onboarding_completion_date)) / count_distinct(field.onboarding_id where in_period(field.onboarding_start_date))",
@@ -7301,7 +7297,7 @@
       ]
     },
     "revenue_churn_rate": {
-      "expression": "(metric.churned_mrr + metric.contraction_mrr + sum(field.mrr_change where field.event_type = 'contraction' and field.expansion_classification = 'usage_realisation')) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
+      "expression": "(metric.churned_mrr + metric.contraction_mrr) / metric.mrr at period_start over cohort(field.customer_id, period_start)",
       "inputs": [
         {
           "ref": "churned_mrr",
@@ -7325,7 +7321,6 @@
         "customer_status",
         "event_date",
         "event_type",
-        "expansion_classification",
         "mrr",
         "mrr_change",
         "snapshot_date",
@@ -7456,7 +7451,7 @@
       ]
     },
     "usage_run_rate": {
-      "expression": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis in ('on_demand', 'top_up')), 3 month) * 4",
+      "expression": "-window(sum(field.credit_amount where field.credit_event_type = 'consumption' and field.consumption_basis in ('overage', 'on_demand', 'top_up')), 3 month) * 4",
       "inputs": [],
       "fields": [
         "consumption_basis",

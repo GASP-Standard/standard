@@ -496,7 +496,7 @@ export function search(
 
   for (const d of data.definitions) {
     const k = best([
-      ["term", same(d.term) || d.slug === q || termParts(d.term).some(same)],
+      ["term", same(d.term) || d.slug === q || otherNames(d).some(same)],
       ["termWord", hit(d.term)],
       ["definition", hit(d.definition)],
       ["section", hit(d.section)],
@@ -532,7 +532,7 @@ export function closestNames(data: StandardData, query: string, limit = 6): Arra
   }
   const candidates: Array<{ item: { metric?: Metric; definition?: Definition }; names: string[] }> = [
     ...[...canonical.values()].map((m) => ({ item: { metric: m }, names: [m.name, baseName(m.name), ...m.aliases] })),
-    ...data.definitions.map((d) => ({ item: { definition: d }, names: [d.term, ...termParts(d.term)] })),
+    ...data.definitions.map((d) => ({ item: { definition: d }, names: [d.term, ...otherNames(d)] })),
   ];
   return closest(query, candidates, limit).map(({ item, score }) => ({ ...item, score }));
 }
@@ -558,6 +558,14 @@ export function baseName(name: string): string {
 function termParts(term: string): string[] {
   const m = term.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
   return m ? [m[1].toLowerCase().trim(), m[2].toLowerCase().trim()] : [];
+}
+/** The glossary's "Also called" names, lowercased */
+function alsoCalled(d: Definition): string[] {
+  return (d.aliases ?? []).map((a) => a.toLowerCase());
+}
+/** Every name a glossary term answers to besides its heading: both parts of "Term (Abbreviation)" and the "Also called" names */
+function otherNames(d: Definition): string[] {
+  return [...termParts(d.term), ...alsoCalled(d)];
 }
 
 /** Tier 1 of resolveMetric: the full name, the name without its abbreviation, the abbreviation or the graph node label. */
@@ -622,7 +630,7 @@ export function resolveMetric(data: StandardData, name: string): Resolved {
     const hit = stubs.find(tier);
     if (hit) return { kind: "metric", metric: hit };
   }
-  const def = data.definitions.find((d) => d.term.toLowerCase() === q || d.slug === q || termParts(d.term).includes(q));
+  const def = findDefinition(data, q);
   if (def) return { kind: "definition", definition: def };
   return { kind: "none" };
 }
@@ -649,7 +657,8 @@ export function findDefinition(
   return (
     data.definitions.find((d) => d.term.toLowerCase() === q) ||
     data.definitions.find((d) => d.slug === q) ||
-    data.definitions.find((d) => termParts(d.term).includes(q))
+    data.definitions.find((d) => termParts(d.term).includes(q)) ||
+    data.definitions.find((d) => alsoCalled(d).includes(q))
   );
 }
 

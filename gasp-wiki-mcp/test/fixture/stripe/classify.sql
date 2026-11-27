@@ -12,8 +12,7 @@
 --   an item added to a customer that already has an active item   -> new_module
 --   a reactivation (the customer returns on a new item)           -> same_product when it is the product they had, else new_module
 -- Churn and `new` events carry no classification (the ATL applies the tag to
--- expansion, contraction and reactivation). The usage realisation pairs arrive
--- tagged from the derivation and are left as they are.
+-- expansion, contraction and reactivation).
 
 UPDATE gasp.revenue_events
 SET expansion_classification = x.classification

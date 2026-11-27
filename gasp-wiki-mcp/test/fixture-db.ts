@@ -60,18 +60,6 @@ async function plant(db: PGlite, ds: string, customer: string, values: Record<st
 }
 
 /**
- * The pair the usage realisation rule of cel.md writes for a period above its
- * commitment: an expansion on the period's last day and its reversal on the
- * next. The synthetic revenue events hold no realised usage, so a test of what
- * a metric does with it plants the pairs.
- */
-export async function plantUsageRealisation(db: PGlite, customer: string, periodEnd: string, amount: number): Promise<void> {
-  const tags = { expansion_classification: "usage_realisation" };
-  await plant(db, "revenue_event", customer, { ...tags, event_id: `usage:${customer}:${periodEnd}`, event_date: periodEnd, event_type: "expansion", mrr_change: amount, change_nature: "temporary" });
-  await plant(db, "revenue_event", customer, { ...tags, event_id: `usage:${customer}:${periodEnd}:reversal`, event_date: addDays(periodEnd, 1), event_type: "contraction", mrr_change: -amount, change_nature: "scheduled_reversal" });
-}
-
-/**
  * Add a pay-as-you-go account: a customer snapshot row for every day the
  * template customer has one, with the status `pay_as_you_go` and no
  * subscription or revenue event. No synthetic customer is one.

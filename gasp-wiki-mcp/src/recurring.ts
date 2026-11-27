@@ -70,8 +70,8 @@ export interface RevenueItem {
 export type ReportingLine = "MRR and ARR" | "Fixed-term revenue" | "Services Revenue" | "Consumption Revenue" | null;
 
 export interface RecurringVerdict {
-  /** In MRR and ARR: yes, for the billed period alone (usage above a commitment) or no */
-  counts: "yes" | "period" | "no";
+  /** In MRR and ARR: yes or no */
+  counts: "yes" | "no";
   /** Where the revenue is reported; null for a one-time fee and a free trial, which have no line of their own here */
   line: ReportingLine;
   /** Whether its end can count against Revenue Churn Rate and Gross Revenue Retention */
@@ -153,15 +153,11 @@ export function classifyRevenue(item: RevenueItem): RecurringVerdict {
     case "recurring_credits":
       return counted("permanent", "Credits billed every period until the customer cancels are a subscription, so they count in MRR and ARR.");
     case "usage_above_commitment":
-      return {
-        counts: "period",
-        line: "MRR and ARR",
-        canChurn: false,
-        changeNature: "temporary",
-        answer: "Yes, for the period billed",
-        churnAnswer: "No",
-        rule: "Usage above a commitment counts in MRR for the period it is billed and comes out the next day. Revenue Churn Rate and Gross Revenue Retention leave that reversal out.",
-      };
+      return outside(
+        "Consumption Revenue",
+        "No. Consumption Revenue",
+        "The commitment counts in MRR and ARR. Usage billed above it is variable, so it is Consumption Revenue and Usage Run-Rate annualises it beside ARR.",
+      );
     case "on_demand_usage":
       return outside("Consumption Revenue", "No. Consumption Revenue", "Usage with no commitment behind it is Consumption Revenue and Usage Run-Rate annualises it beside ARR.");
     case "credit_pack":
@@ -265,7 +261,6 @@ export function movement(item: RevenueItem, event: MovementEvent, otherMrr: bool
   const verdict = classifyRevenue(item);
   if (verdict.counts === "no" || event === "notice" || event === "late_payment") return { metric: null, churnedCustomer: false };
   if (event === "step_up") return { metric: verdict.counts === "yes" ? "Expansion MRR" : null, churnedCustomer: false };
-  if (verdict.counts === "period") return { metric: event === "start" ? "Expansion MRR" : "Contraction MRR", churnedCustomer: false };
   if (event === "start") return { metric: otherMrr ? "Expansion MRR" : returning ? "Reactivation MRR" : "New MRR", churnedCustomer: false };
   return otherMrr ? { metric: "Contraction MRR", churnedCustomer: false } : { metric: "Churned MRR", churnedCustomer: true };
 }
@@ -359,8 +354,8 @@ export const BESIDE_KINDS: readonly RevenueKind[] = ["add_on", "usage_above_comm
 /** The kinds charged once, outside MRR with no reporting line of their own here */
 export const ONE_TIME_KINDS: readonly RevenueKind[] = ["one_time_fee", "perpetual_licence", "hardware"];
 
-/** The kinds whose answer carries no amounts: nothing is charged, or the amount is known only once the period is billed */
-export const UNPRICED_KINDS: readonly RevenueKind[] = ["free_trial", "usage_above_commitment"];
+/** The kinds whose answer carries no amounts: nothing is charged */
+export const UNPRICED_KINDS: readonly RevenueKind[] = ["free_trial"];
 
 export interface ContractQuestion extends RevenueItem {
   /** Whether the customer holds MRR apart from this contract. An add-on always sits beside a subscription */
@@ -589,6 +584,7 @@ interface Beside {
 
 /** Why each kind outside MRR holds none */
 const NO_MRR: Partial<Record<RevenueKind, string>> = {
+  usage_above_commitment: "No. Usage above a commitment is Consumption Revenue. The commitment itself counts",
   on_demand_usage: "No. Usage with no commitment behind it is Consumption Revenue",
   credit_pack: "No. A pack of credits bought once adds no MRR",
   professional_services: "No, at any length. Delivered work is Services Revenue",
@@ -602,10 +598,10 @@ const NO_MRR: Partial<Record<RevenueKind, string>> = {
 function placesFor(q: ContractQuestion, verdict: RecurringVerdict, amounts: Amounts | null, ctx: Beside, end: Movement): Place[] {
   const kind = q.kind;
   const counts = verdict.counts === "yes";
-  const period = verdict.counts === "period";
   const fixed = verdict.line === "Fixed-term revenue";
   const temporary = counts && verdict.changeNature === "temporary";
-  const consumption = kind === "on_demand_usage" || kind === "credit_pack";
+  const overage = kind === "usage_above_commitment";
+  const consumption = overage || kind === "on_demand_usage" || kind === "credit_pack";
   const delivered = kind === "professional_services" || ONE_TIME_KINDS.includes(kind);
   const trialKind = kind === "free_trial";
   const held = ctx.other || ctx.siblings;
@@ -627,10 +623,6 @@ function placesFor(q: ContractQuestion, verdict: RecurringVerdict, amounts: Amou
         amounts?.arr ?? null,
       ),
     );
-  } else if (period) {
-    out.push(place("mrr", "part", "For the period billed. It enters on the period's last day and comes out the next day"));
-    out.push(place("arr", "part", "For the period billed, through MRR"));
-    out.push(place("carr", "part", "Through ARR alone, for the period billed. A signed contract adds its ACV, which holds no usage above a commitment"));
   } else {
     out.push(place("mrr", "no", fixed ? "No. It runs under 12 months with no renewal, so it is fixed-term revenue" : NO_MRR[kind]!));
     out.push(place("arr", "no", "No. ARR is 12 times MRR and it holds none"));
@@ -665,7 +657,7 @@ function placesFor(q: ContractQuestion, verdict: RecurringVerdict, amounts: Amou
   out.push(
     trialKind ? place("billings", "no", "No. Nothing is invoiced")
     : kind === "credit_pack" ? place("billings", "yes", "Yes, when the purchase is invoiced")
-    : period || kind === "on_demand_usage" ? place("billings", "yes", "Yes, when the usage is invoiced")
+    : overage || kind === "on_demand_usage" ? place("billings", "yes", "Yes, when the usage is invoiced")
     : place("billings", "yes", "Yes, as each invoice is issued"),
   );
 
@@ -679,13 +671,9 @@ function placesFor(q: ContractQuestion, verdict: RecurringVerdict, amounts: Amou
   );
 
   // Retention
-  if (period) {
-    out.push(place("nrr", "yes", "Yes. The realisation is expansion tagged usage_realisation, which both forms of NRR count. Its reversal the next day is contraction"));
-    out.push(place("grr", "no", "No. Both leave out the contraction tagged usage_realisation and neither counts expansion"));
-    out.push(place("adjusted_retention", "no", "No. The realisation is temporary and its reversal scheduled. The adjusted variants count permanent changes alone"));
-  } else if (counts) {
+  if (counts) {
     out.push(
-      ctx.other ? place("nrr", "yes", "Yes. Its start is expansion: the Market form (NRR-M) counts every expansion and the Operating form (NRR-O) counts expansion tagged same_product or usage_realisation. Its end is contraction, which lowers both forms")
+      ctx.other ? place("nrr", "yes", "Yes. Its start is expansion: the Market form (NRR-M) counts every expansion and the Operating form (NRR-O) counts expansion tagged same_product. Its end is contraction, which lowers both forms")
       : reactivated ? place("nrr", "part", "Its start is a reactivation. NRR follows the customers with MRR at period start, so a customer who churned before the period returns as new business. For one who churned and came back inside the period, the Market form (NRR-M) counts the reactivation and the Operating form (NRR-O) leaves it out. Its end lowers both forms")
       : place("nrr", "part", "Its start stays out: NRR follows the customers with MRR at period start. Once a period opens with it running, it is in that opening MRR and its end lowers NRR"),
     );
@@ -704,8 +692,8 @@ function placesFor(q: ContractQuestion, verdict: RecurringVerdict, amounts: Amou
   const beside = counts ? ctx.other : held;
   if (beside) {
     out.push(place("total_customers", "no", "No change. One customer is one billing entity, whatever its number of subscriptions"));
-    out.push(place("new_customers", "no", "No. Growth from an existing customer is expansion, however large"));
-    out.push(place("logo_churn_rate", "no", counts || period ? "No. The customer keeps other MRR when this ends, so it has not churned" : "No. Its end changes no customer count"));
+    out.push(place("new_customers", "no", counts ? "No. Growth from an existing customer is expansion, however large" : "No. The customer already counts through the MRR it holds"));
+    out.push(place("logo_churn_rate", "no", counts ? "No. The customer keeps other MRR when this ends, so it has not churned" : "No. Its end changes no customer count"));
   } else if (counts) {
     out.push(place("total_customers", "yes", `Yes, ${reactivated ? "again " : ""}from the contract's first day${converted ? ", the day the trial converts" : ""}`));
     out.push(
@@ -737,15 +725,14 @@ function placesFor(q: ContractQuestion, verdict: RecurringVerdict, amounts: Amou
   if (kind === "professional_services") out.push(place("services_revenue", "yes", "Yes, as recognised, whether billed by the project or by time", charged));
   if (kind === "on_demand_usage") out.push(place("consumption_revenue", "yes", "Yes, on the basis on_demand", charged));
   else if (kind === "credit_pack") out.push(place("consumption_revenue", "yes", "Yes, as the credits are used, on the basis top_up. The purchase itself is a prepayment", charged));
-  else if (period) out.push(place("consumption_revenue", "yes", "Yes, on the basis overage"));
+  else if (overage) out.push(place("consumption_revenue", "yes", "Yes, on the basis overage", charged));
   else if (counts && (kind === "committed_usage" || kind === "recurring_credits"))
     out.push(place("consumption_revenue", "part", "As the balance is drawn, on the basis committed. Usage within a ratable commitment is the commitment itself, already in MRR"));
   if (consumption) out.push(place("usage_run_rate", "yes", "Yes. Usage Run-Rate annualises the trailing three months of this consumption and ARR Including Usage Run-Rate adds it to ARR"));
-  else if (period) out.push(place("usage_run_rate", "no", "No. Overage is already in MRR through its usage realisation"));
   else if (counts && (kind === "committed_usage" || kind === "recurring_credits")) out.push(place("usage_run_rate", "no", "No. Committed consumption is already in ARR through the commitment"));
   if (kind === "credit_pack" || kind === "recurring_credits") out.push(place("prepaid_credit_balance", "yes", "Yes: the credits paid for and not yet used or forfeited"));
   else if (counts && kind === "committed_usage") out.push(place("prepaid_credit_balance", "part", "When the commitment is paid in advance: what is paid for and not yet used"));
-  else if (period || kind === "on_demand_usage") out.push(place("prepaid_credit_balance", "no", "No. Overage and on-demand consumption draw no balance"));
+  else if (overage || kind === "on_demand_usage") out.push(place("prepaid_credit_balance", "no", "No. Overage and on-demand consumption draw no balance"));
 
   return ordered(out);
 }
@@ -761,14 +748,12 @@ function answer(question: ContractQuestion, ctx: Beside): Assessment {
   const trial = ctx.afterTrial && start.metric === "New MRR" ? ", the day the trial converts" : "";
 
   const startReported =
-    verdict.counts === "period" ? "Expansion MRR on the last day of the period billed"
-    : start.metric === "New MRR" ? `New MRR from its start date${trial}`
+    start.metric === "New MRR" ? `New MRR from its start date${trial}`
     : start.metric === "Reactivation MRR" ? "Reactivation MRR from its start date, counted apart from New MRR"
     : start.metric === "Expansion MRR" ? "Expansion MRR from its start date"
     : "Nothing in MRR";
   const endReported =
-    verdict.counts === "period" ? "Contraction MRR the next day, a scheduled reversal that Revenue Churn Rate and Gross Revenue Retention leave out"
-    : end.metric === "Churned MRR" ? "Churned MRR and a churned customer, in the month it ends"
+    end.metric === "Churned MRR" ? "Churned MRR and a churned customer, in the month it ends"
     : end.metric === "Contraction MRR" && ctx.siblings ? "Contraction MRR while another line that counts runs on. The last of those lines to end is Churned MRR, as each is when they end on one day"
     : end.metric === "Contraction MRR" ? "Contraction MRR. The customer has not churned"
     : "Nothing in MRR, in churn or in contraction";
@@ -886,7 +871,7 @@ export const PRESETS: { label: string; question: ContractQuestion }[] = [
   { label: "Implementation project", question: { kind: "professional_services", contractValue: 40000 } },
   { label: "Customer who comes back", question: { kind: "subscription", termMonths: 12, renews: true, returning: true, contractValue: 24000 } },
   { label: "Trial that converts", question: { kind: "subscription", termMonths: 1, renews: true, afterTrial: true, monthlyValue: 99 } },
-  { label: "Usage above a commitment", question: { kind: "usage_above_commitment" } },
+  { label: "Usage above a commitment", question: { kind: "usage_above_commitment", contractValue: 400 } },
   { label: "Term licence on premises", question: { kind: "term_licence", termMonths: 36, renews: true, contractValue: 180000 } },
   { label: "Perpetual licence", question: { kind: "perpetual_licence", contractValue: 100000 } },
 ];
@@ -1343,7 +1328,7 @@ export function assessChange(input: ChangeQuestion): ChangeAssessment {
     out.push(
       down ? place("nrr", "yes", "Yes. Every contraction lowers NRR in both forms, whatever its tag")
       : classification === "same_product" ? place("nrr", "yes", "Yes. Both forms count expansion tagged same_product")
-      : place("nrr", "part", `The Market form (NRR-M) counts every expansion. The Operating form (NRR-O) counts expansion tagged same_product or usage_realisation, so it leaves ${classification} out`),
+      : place("nrr", "part", `The Market form (NRR-M) counts every expansion. The Operating form (NRR-O) counts expansion tagged same_product, so it leaves ${classification} out`),
     );
     out.push(down ? place("grr", "yes", "Yes. The contraction lowers GRR and raises Revenue Churn Rate") : place("grr", "no", "No. GRR and Revenue Churn Rate count no expansion"));
     out.push(

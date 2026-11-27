@@ -17,7 +17,7 @@ ontology:
       - event_id
     relationships:
       - name: change_nature
-        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -619,7 +619,7 @@ ontology:
       - Integer
   - concept: ChangeNature
     type: ValueType
-    description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
+    description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
     extends:
       - String
     requires:
@@ -710,7 +710,7 @@ ontology:
     extends:
       - String
     requires:
-      - ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting' OR ExpansionClassification == 'usage_realisation'
+      - ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting'
   - concept: ForecastRenewalAmount
     type: ValueType
     description: Forecast annual recurring value of the subscription after its current term, zero when it is expected to end

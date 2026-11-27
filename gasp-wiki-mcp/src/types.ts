@@ -70,6 +70,8 @@ export interface Definition {
   definition: string;
   /** Section it belongs to (e.g. "Revenue Terms") */
   section: string;
+  /** Other names the term answers to, from its "Also called" line. Absent in a bundle written before 1.26.0 */
+  aliases?: string[];
   /** Canonical definition link, if present */
   canonicalLink: string | null;
   /** **Reference:** link for terms without a canonical definition (site path, e.g. "/v1/taxonomy") */

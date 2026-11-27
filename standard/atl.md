@@ -63,13 +63,12 @@ Applies to: `Revenue_Event` where `event_type` is `expansion`, `contraction` or 
 | `new_buying_centre` | A different department or division within the same legal entity starts purchasing. | Engineering team adopts the product already used by Marketing. |
 | `pricing_adjustment` | MRR change driven by pricing action, not usage or scope change. | Annual price increase of 5% on renewal. |
 | `recontracting` | MRR change driven by contract restructuring (e.g., monthly → annual, co-terming). | Customer consolidates three monthly subscriptions into one annual contract. |
-| `usage_realisation` | MRR change from usage commitments being met or exceeded. | Customer exceeds their committed API call volume, triggering overage billing. |
 
 ### Why This Matters
 
 Expansion classification separates the Operating form of Net Revenue Retention (NRR-O) from its Market form (NRR-M).
 
-- **NRR-O (Operating)** focuses on organic, durable expansion: `same_product` and `usage_realisation`. These signal product-market fit and natural customer growth.
+- **NRR-O (Operating)** focuses on organic, durable expansion: `same_product`. It signals product-market fit and natural customer growth.
 - **NRR-M (Market)** includes all expansion types because investor-comparable NRR counts everything that is not net-new logo acquisition. It reads no tag, so an expansion with none counts in it.
 
 With expansion classification the same ledger reports organic growth apart from growth that came through new modules, new buying centres or pricing actions.
@@ -121,7 +120,7 @@ Every CEL event is tagged according to these rules.
 
 Every `Revenue_Event`, `Cost_Event` and `Amendment_Event` receives exactly one `lifecycle_attribution` tag. The other three classes carry none: a `Contract_Event` is tagged through the `Revenue_Event` it generates, a `Lifecycle_State_Change` is itself the lifecycle transition, and a `Credit_Event` records a movement on a prepaid balance.
 
-A `Credit_Event` carries no `expansion_classification` and no `cost_function` tag either. The realised usage it feeds is tagged on the `Revenue_Event` the derivation writes, as [Deriving Usage Realisation](cel.md#deriving-usage-realisation) says.
+A `Credit_Event` carries no `expansion_classification` and no `cost_function` tag either. Usage is Consumption Revenue, read from the `Credit_Event` by its `consumption_basis`, and usage above a commitment writes no `Revenue_Event` for a tag to sit on.
 
 ### Rule 2: Revenue growth and amendments get an Expansion tag
 
@@ -289,7 +288,7 @@ SELECT
 
 ### NRR-O (Operating): Organic Retention
 
-NRR-O counts the expansion tagged `same_product` or `usage_realisation` and every contraction and churn of the customers with MRR at period start. This matches the `nrr` operating form in `formulas.json`.
+NRR-O counts the expansion tagged `same_product` and every contraction and churn of the customers with MRR at period start. This matches the `nrr` operating form in `formulas.json`.
 
 ```sql
 -- Beginning MRR is the sum of all movements before the period; :period_start
@@ -310,7 +309,7 @@ movements AS (
 SELECT
   ((SELECT SUM(beginning_mrr) FROM cohort)
     + SUM(CASE WHEN event_type = 'expansion'
-                AND expansion_classification IN ('same_product', 'usage_realisation')
+                AND expansion_classification = 'same_product'
                THEN mrr_change ELSE 0 END)
     + SUM(CASE WHEN event_type IN ('contraction', 'churn') THEN mrr_change ELSE 0 END))
   / (SELECT SUM(beginning_mrr) FROM cohort) AS nrr_o
@@ -326,7 +325,7 @@ ATL tags are the mechanism that distinguishes Operating (O) from Market (M) metr
 | Metric | Operating (O) Includes | Market (M) Includes |
 |--------|----------------------|-------------------|
 | **CAC** | `cost_function` ∈ (gtm, implementation, onboarding) | `cost_function` = gtm |
-| **NRR** | `expansion_classification` ∈ (same_product, usage_realisation) | Every expansion and every reactivation of cohort customers, whatever the `expansion_classification` |
+| **NRR** | `expansion_classification` = same_product | Every expansion and every reactivation of cohort customers, whatever the `expansion_classification` |
 | **LTV** | Contribution margin (includes implementation, onboarding costs) | Gross margin (COGS only) |
 | **Churn** | Revenue churn: MRR-weighted churned and contraction MRR | Logo-based: binary churned/active |
 | **ARR** | Durable ARR: excludes recontracting, pricing_adjustment (trailing 12 months, customers active at period end) | Contracted ARR: all recurring revenue |

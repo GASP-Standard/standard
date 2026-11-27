@@ -109,7 +109,8 @@ describe("Ossie ontology export", () => {
     const ec = rel("RevenueEvent", "expansion_classification")!;
     expect(ec.roles).toHaveLength(1);
     const ecType = concepts.get(ec.roles![0].concept)!;
-    expect(ecType.requires![0].split(" OR ")).toHaveLength(6);
+    expect(ecType.requires![0].split(" OR ")).toHaveLength(5);
+    expect(ecType.requires![0]).not.toContain("usage_realisation");
     expect(rel("RevenueEvent", "event_date")!.roles).toEqual([{ concept: "Date" }]);
     // financials and forecast are keyed by their own period date
     expect(rel("Financials", "period_start")!.roles).toEqual([{ concept: "Date" }]);

@@ -17,7 +17,7 @@ ontology:
       - event_id
     relationships:
       - name: change_nature
-        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -297,7 +297,7 @@ ontology:
         verbalizes:
           - "{AmendmentEvent} has {AmendmentType}"
       - name: change_nature
-        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
+        description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
         roles:
           - concept: ChangeNature
         multiplicity: ManyToOne
@@ -3236,7 +3236,7 @@ ontology:
         verbalizes:
           - "{UsageRecord} on {Date} has {CommittedAmount}"
       - name: usage_amount
-        description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment
+        description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage, which is Consumption Revenue on the basis overage and stays out of MRR
         roles:
           - concept: Date
           - concept: UsageAmount
@@ -3622,7 +3622,7 @@ ontology:
         verbalizes:
           - "{CreditEvent} has {CreditAmount}"
       - name: consumption_basis
-        description: "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand and top_up"
+        description: "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads overage, on_demand and top_up"
         roles:
           - concept: ConsumptionBasis
         multiplicity: ManyToOne
@@ -3893,7 +3893,7 @@ ontology:
       - Integer
   - concept: ChangeNature
     type: ValueType
-    description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date, the usage realisation pair. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
+    description: "permanent, temporary or scheduled_reversal. temporary marks revenue with an end date the contract states and no renewal: a contract or add-on of 12 months or more with no renewal, a discount with an end date. scheduled_reversal marks its end (Adjusted NRR/GRR, CARR net of known churn)"
     extends:
       - String
     requires:
@@ -4075,7 +4075,7 @@ ontology:
     extends:
       - String
     requires:
-      - ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting' OR ExpansionClassification == 'usage_realisation'
+      - ExpansionClassification == 'same_product' OR ExpansionClassification == 'new_module' OR ExpansionClassification == 'new_buying_centre' OR ExpansionClassification == 'pricing_adjustment' OR ExpansionClassification == 'recontracting'
   - concept: FeatureId
     type: ValueType
     description: Feature identifier
@@ -4485,7 +4485,7 @@ ontology:
       - Decimal
   - concept: UsageAmount
     type: ValueType
-    description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage and is the usage realised beyond the commitment
+    description: The charge for the usage recorded in the period at the contract's rates, before the commitment is applied. The part above committed_amount is billed as overage, which is Consumption Revenue on the basis overage and stays out of MRR
     extends:
       - Decimal
   - concept: PopulatedFieldCount
@@ -4944,7 +4944,7 @@ ontology:
       - Decimal
   - concept: ConsumptionBasis
     type: ValueType
-    description: "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads on_demand and top_up"
+    description: "On consumption events: committed (drawn from the balance of a commitment that sits in MRR), overage (above an exhausted or per-period commitment), on_demand (billed in arrears with no balance and no commitment), top_up (drawn from credits bought once, an automatic top-up included, with no commitment in MRR behind them). Consumption Revenue breaks down by it; Usage Run-Rate reads overage, on_demand and top_up"
     extends:
       - String
     requires:

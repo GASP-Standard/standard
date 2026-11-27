@@ -26,7 +26,7 @@ Ossie and GASP sit at different layers, so the fit is additive. Ossie says how a
 |  | Apache Ossie (incubating) | GASP |
 | --- | --- | --- |
 | What it is | Vendor-neutral spec for semantic models and ontology | Canonical SaaS metric standard |
-| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 320 metrics, 122 definitions, 295 canonical fields in 56 datasets, 28 entities, 7 concepts, 22 source categories |
+| Core objects | Datasets, fields, FK relationships, metrics, `ai_context`, `nonportable_extensions` | 320 metrics, 123 definitions, 295 canonical fields in 56 datasets, 28 entities, 7 concepts, 22 source categories |
 | Expressions | SQL strings per dialect (ANSI, `OSSIE_SQL_2026`, Snowflake, BigQuery, Databricks, MDX, Tableau, MAQL and others) | GASP formula grammar (warehouse-agnostic), compiled to SQL for Postgres (which also runs on Redshift), Snowflake, BigQuery and Databricks |
 | Ontology | Separate doc: `EntityType` / `ValueType` concepts, relationships with roles, `verbalizes`, mappings to semantic models | `ontology.json` plus a relationship graph of 105 nodes and 213 edges across 21 edge types |
 | Spec version | 0.3.0.dev0 on main since 2026-11-09 (#691); GASP writes it since 2026-11-11, when #522 merged | v1 |
@@ -44,7 +44,7 @@ GASP serves a company that already has a clean, modelled warehouse and wants con
 | Capability the persona needs | Status today | Evidence |
 | --- | --- | --- |
 | A target shape for clean data | Strong | CEL defines six immutable event classes; ATL defines strict tagging rules |
-| Canonical definitions agents can read | Strong | 320 metrics, 122 definitions, 24 MCP tools |
+| Canonical definitions agents can read | Strong | 320 metrics, 123 definitions, 24 MCP tools |
 | Machine-readable formulas | Strong | `standard/formulas.json` in the GASP formula grammar: all 320 metrics covered (298 formulas, 10 marked not computable with reasons). The test suite parses and resolves every formula and executes every compiled template against a seeded Postgres fixture |
 | Starting from raw data | Partial | `profile_schema` and `propose_mapping` take a pasted schema and statistics; the server has no warehouse access. `derive_cel` compiles the standard's derivation rules (`cel.md`) over the mapping, so a subscription ledger becomes CEL revenue events |
 | Coverage assessment | Good | `validate_adapter` (adapter schema 1.1) checks schema validity, unknown fields and datasets, table conflicts and enum fields without a transform. It scores coverage per metric against the fields its formula needs. Freshness, row identity and unique-id checks are in `generate_checks`; value-distribution checks are still to come |

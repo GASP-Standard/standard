@@ -80,33 +80,40 @@ describe("Stripe on Redshift: a subscription ledger to readiness level 4", () =>
     expect(report).not.toContain("Invalid document");
   });
 
-  it("derives the revenue events stated in events.json from the item snapshots and the usage records, with the ledger starting with the business", async () => {
-    const template = revenueEventDerivation({ dialect: "postgres", currency: "USD", firstSnapshot: "steps", usage: true });
+  it("derives the revenue events stated in events.json from the item snapshots alone, with the ledger starting with the business", async () => {
+    const template = revenueEventDerivation({ dialect: "postgres", currency: "USD", firstSnapshot: "steps" });
     const filled = fillTemplate(template, adapter, data);
     expect(filled.missingFields).toEqual([]);
     expect(filled.missingTables).toEqual([]);
     expect(filled.sql).toContain("unit_amount * quantity / 100.0"); // the MRR transform inlined
-    expect(filled.sql).toContain("(usage_amount / 100.0) - (committed_amount / 100.0)"); // the cents transforms on the usage records
+    // Regression (2026-11-27): the derivation read the usage records and added a pair of events for each month over the commitment.
+    expect(filled.sql).not.toContain("usage_records");
     const rows = (await db.query<Record<string, unknown>>(filled.sql)).rows;
     const seen = rows.map((r) => ({ event_id: r.event_id, event_date: day(r.event_date), customer_id: r.customer_id, subscription_id: r.subscription_id, event_type: r.event_type, mrr_change: Number(r.mrr_change), prior_mrr: Number(r.prior_mrr), new_mrr: Number(r.new_mrr), lifecycle_attribution: r.lifecycle_attribution, expansion_classification: r.expansion_classification, segment: r.segment, change_nature: r.change_nature }));
-    // The ledger's events arrive untagged; the usage pairs arrive tagged usage_realisation.
-    expect(seen).toEqual(expected.map((e) => ({ ...e, expansion_classification: e.change_nature === "permanent" ? null : e.expansion_classification })));
+    // The events arrive untagged and classify.sql fills the tag.
+    expect(seen).toEqual(expected.map((e) => ({ ...e, expansion_classification: null })));
+    expect(seen).toHaveLength(12);
     expect(rows.every((r) => r.currency === "USD")).toBe(true);
-    // The metered item carries no MRR of its own (no unit_amount), so it adds no ledger step; its usage adds the four tagged events.
-    expect(seen.filter((e) => e.subscription_id === "si_B3").map((e) => e.change_nature)).toEqual(["temporary", "scheduled_reversal", "temporary", "scheduled_reversal"]);
-    expect(seen.filter((e) => e.change_nature === "permanent").reduce((s, e) => s + e.mrr_change, 0)).toBe(1349);
+    // The metered item carries no MRR of its own (no unit_amount), so it adds no ledger step, and the $60 and $25
+    // cus_B's usage ran over the included volume are no Revenue_Event: every event is a permanent change of the ledger.
+    expect(seen.filter((e) => e.subscription_id === "si_B3")).toEqual([]);
+    expect(seen.every((e) => e.change_nature === "permanent")).toBe(true);
+    expect(seen.reduce((s, e) => s + e.mrr_change, 0)).toBe(1349);
     await db.exec(`INSERT INTO gasp.revenue_events ${filled.sql}`);
   });
 
-  it("the derive_cel tool compiles it in the postgres dialect Redshift reads, with every field mapped and the usage records read unasked", () => {
+  it("the derive_cel tool compiles it in the postgres dialect Redshift reads, with every field mapped, and says where the usage goes", () => {
     const report = deriveCelFromText(text, undefined, data, { currency: "usd", firstSnapshot: "steps" });
     expect(report).toContain("**Dialect:** postgres (from the adapter's warehouse `redshift`)");
-    expect(report).toContain("the `subscription` dataset, 6 / 6 fields mapped; the `usage_record` dataset, 6 / 6 fields mapped (read because the mapping covers it");
+    expect(report).toContain("the `subscription` dataset, 6 / 6 fields mapped");
+    expect(report).not.toContain("the `usage_record` dataset");
+    expect(report).toContain("**Usage above a commitment is no Revenue_Event.** It is Consumption Revenue with `consumption_basis` `overage`");
+    expect(report).toContain("Your credit ledger already carries it.");
     expect(report).not.toContain("Unmapped fields");
   });
 
   it("derives from the invoices too, at subscription grain, and shows what an invoice ledger cannot say", async () => {
-    const sql = deriveCelFromText(text, undefined, data, { currency: "USD", source: "invoice", usage: false, firstSnapshot: "steps", output: "sql" });
+    const sql = deriveCelFromText(text, undefined, data, { currency: "USD", source: "invoice", firstSnapshot: "steps", output: "sql" });
     expect(sql).toContain("(licensed_amount / 100.0)");
     expect(sql).not.toContain("subscription_items");
     const rows = (await db.query<Record<string, unknown>>(sql)).rows.map((r) => [day(r.event_date), r.subscription_id, r.event_type, Number(r.mrr_change), Number(r.new_mrr)].join(" "));

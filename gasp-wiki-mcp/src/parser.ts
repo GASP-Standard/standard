@@ -466,6 +466,10 @@ export function parseDefinitions(content: string): Definition[] {
         .join("\n")
         .trim();
 
+      // Other names the term answers to
+      const alsoMatch = raw.match(/\*\*Also called:\*\*\s*(.+)/);
+      const aliases = alsoMatch ? alsoMatch[1].split(",").map((s) => s.trim()).filter(Boolean) : [];
+
       // Extract "Used in" departments
       const usedInMatch = raw.match(/\*\*Used in:\*\*\s*(.+)/);
       const usedIn = usedInMatch
@@ -477,6 +481,7 @@ export function parseDefinitions(content: string): Definition[] {
         slug,
         definition,
         section: currentSection,
+        aliases,
         canonicalLink,
         referenceLink,
         body: body || null,

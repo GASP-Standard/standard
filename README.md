@@ -1,6 +1,6 @@
 # GASP Standard
 
-**Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 320 metrics across 13 departments, 122 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 295 fields across 56 datasets, a relationship graph of 105 nodes and 213 edges plus an MCP server that gives AI agents all of it as structured tools.
+**Generally Accepted SaaS Principles.** An open standard for SaaS metrics: 320 metrics across 13 departments, 123 glossary definitions, a canonical formula for every computable metric in a small tested grammar, one vocabulary of 295 fields across 56 datasets, a relationship graph of 105 nodes and 213 edges plus an MCP server that gives AI agents all of it as structured tools.
 
 The standard is published at **https://gaspwiki.com**. This repository holds its source and the tooling that compiles it. It works with Apache Ossie (incubating): `npm run derive` writes the standard out as Ossie files, which pass the upstream validator.
 

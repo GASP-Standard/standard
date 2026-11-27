@@ -75,7 +75,7 @@ CARR = ARR + Contracted ARR not yet started
 
 **Exclude:**
 - One-time fees and professional services, as in ARR
-- Usage above a commitment beyond what ARR holds for the period billed: the ACV of a signed contract carries none
+- Usage above a commitment: it is Consumption Revenue, outside ARR, and the ACV of a signed contract carries none
 - The later years of a multi-year agreement: a contract adds one year of recurring value
 - A signed contract once it has started: from its start date it is in ARR and leaves the second term
 
@@ -88,7 +88,7 @@ CARR net of known churn = CARR - (Temporary MRR still running × 12) - ACV of ca
 CARR net of forecast churn = CARR - Renewal forecast shortfall
 ```
 
-- **CARR net of known churn** (`net_of_known_churn`) takes off the endings the ledgers state as contract. One is an increase tagged [`temporary`](../cel.md#change-nature) whose reversal is still ahead, such as an 18-month contract with no renewal or an add-on sold for one fixed year, at twelve times its monthly value. The other is the annual value of each cancellation made on or before period end for a contract that ends after it. Usage realisation events carry the same tags and are left out, since ARR never held them.
+- **CARR net of known churn** (`net_of_known_churn`) takes off the endings the ledgers state as contract. One is an increase tagged [`temporary`](../cel.md#change-nature) whose reversal is still ahead, such as an 18-month contract with no renewal or an add-on sold for one fixed year, at twelve times its monthly value. The other is the annual value of each cancellation made on or before period end for a contract that ends after it.
 - **CARR net of forecast churn** (`net_of_forecast_churn`) takes off the shortfall in the renewal forecast, which is Bessemer's reading in full. For each active subscription that carries a forecast and whose term ends after period end, the shortfall is twelve times its MRR less its forecast renewal value. A forecast above the current value adds nothing, since the uplift is yet to be signed. [Renewal Forecast Accuracy](customer-success.md#renewal-forecast-accuracy) scores the forecast this variant reads.
 
 The two are alternatives. A renewal forecast is expected to carry the known endings as well, with a subscription under notice or a project forecast at zero, so the two amounts overlap and are never added together.
@@ -225,27 +225,27 @@ Consumption Revenue is reported per consumption basis (committed, overage, on de
 
 ### Usage Run-Rate
 
-**Definition:** The consumption revenue no commitment covers, billed on demand or drawn from credits bought once, over the trailing three months, annualised. Also called Usage ARR.
+**Definition:** The consumption revenue no commitment covers, billed above a commitment, billed on demand or drawn from credits bought once, over the trailing three months, annualised. Also called Usage ARR.
 
 **Formula:**
 ```
-Usage Run-Rate = On-demand and top-up Consumption Revenue in the three months ending at period end × 4
+Usage Run-Rate = Overage, on-demand and top-up Consumption Revenue in the three months ending at period end × 4
 ```
 
 **Window:** The GASP Standard fixes the window at three months × 4, the basis of MongoDB's 90 days and Confluent's three months. Companies also use one month × 12 (Datadog) and 28 days × 13 (Anthropic), which move with every unusual month, and a six-month average × 12 (Metronome's guidance), which is slower to show a trend; daily × 365 appears too. The standard picks one window so two companies' figures compare. A company that reports on another window states it beside the GASP figure.
 
-**Base:** Consumption billed on demand and consumption drawn from credits bought once enter. Committed consumption is already in ARR through the commitment, and overage is already in MRR through the `usage_realisation` expansion the [CEL](../cel.md#deriving-usage-realisation) derives. With the base held to the usage no commitment covers, ARR plus Usage Run-Rate counts each dollar once. Anthropic, whose API customers mostly pay with prepaid credits, reports its Run-Rate Revenue in the same two parts: annualised consumption fees added to annualised subscription fees.
+**Base:** Usage billed above a commitment, consumption billed on demand and consumption drawn from credits bought once enter. Committed consumption is already in ARR through the commitment, so it stays out. With the base held to the usage no commitment covers, ARR plus Usage Run-Rate counts each dollar once. Anthropic, whose API customers mostly pay with prepaid credits, reports its Run-Rate Revenue in the same two parts: annualised consumption fees added to annualised subscription fees.
 
-**Includes:** Consumption with basis `on_demand` or `top_up`.
+**Includes:** Consumption with basis `overage`, `on_demand` or `top_up`.
 
-**Excludes:** Committed consumption and overage, which ARR already carries.
+**Excludes:** Committed consumption, which ARR already carries.
 
 **What it tells you:** The annual scale of the usage that no contract guarantees. Set beside ARR it shows how much of the business runs on commitments and how much on customers who could stop tomorrow.
 
 **Note:** A run-rate, not a forecast. Datadog describes its usage-inclusive figures as "not intended to be replacements or forecasts of revenue".
 
 **Common mistakes:**
-- Annualising all consumption and adding it to ARR, which counts commitments and overage twice
+- Annualising all consumption and adding it to ARR, which counts commitments twice
 - Changing the window from one period to the next
 - Comparing two companies' usage figures without checking their windows
 
@@ -309,15 +309,15 @@ Every `purchase`, `expiry` and `adjustment` event and every consumption with bas
 ARR Including Usage Run-Rate = ARR + Usage Run-Rate
 ```
 
-**No double counting:** ARR carries commitments and the overage realised above them; Usage Run-Rate carries on-demand and top-up consumption alone. Each dollar of usage sits in exactly one of the two.
+**No double counting:** ARR carries commitments. Usage Run-Rate carries the usage billed above them, on-demand consumption and top-up consumption. Each dollar of usage sits in exactly one of the two.
 
-**Relation to ARR:** The GASP Standard keeps [ARR](core.md#arr-annual-recurring-revenue) committed: commitments in and uncommitted usage out, which consumption companies call Committed ARR or Baseline ARR. Public consumption companies split between that policy and a usage-inclusive ARR, so the combined figure carries its own name and the two stay distinct.
+**Relation to ARR:** The GASP Standard keeps [ARR](core.md#arr-annual-recurring-revenue) committed: commitments in and uncommitted usage out, which consumption companies call Committed ARR or Baseline ARR. Public consumption companies split between that policy and a usage-inclusive ARR, so the combined figure carries its own name and the two stay distinct. It is narrower than [Run-Rate Revenue](../definitions.md#run-rate-revenue), which annualises all the revenue of a recent period: fixed-term revenue, services and one-off sales stay out of this figure.
 
 **What it tells you:** The annual scale of the business with usage included, on a basis comparable to the ARR consumption companies report. The gap to ARR is the share of scale that no contract guarantees.
 
 **Common mistakes:**
 - Reporting this figure as ARR
-- Adding a run-rate over all consumption, which counts commitments and overage twice
+- Adding a run-rate over all consumption, which counts commitments twice
 
 **Related metrics:** ARR, Usage Run-Rate, Consumption Revenue
 
@@ -400,7 +400,7 @@ Consumption NRR = Consumption Revenue of the period-start cohort in the twelve-m
 
 **Cohort:** The accounts whose `customer_status` on the customer snapshot at period start is `active` or `pay_as_you_go`. A customer in the cohort that consumed nothing in the period counts at zero; customers acquired during the period stay out. A pay-as-you-go customer buys usage with no subscription, on demand or as credit packs, and holds the status `pay_as_you_go` for as long as the account is open. Such a customer has no subscription to cancel and leaves by letting the balance run out, which this metric reads as a year at zero. The status keeps them out of [Total Customers](core.md#total-customers) and [Logo Churn Rate](core.md#logo-churn-rate-customer-churn), which count subscriptions.
 
-**Two bases:** [Net Revenue Retention (NRR)](core.md#net-revenue-retention-nrr) reads MRR movements and already includes realised usage through the `usage_realisation` expansion, so it stays the main retention figure. Consumption NRR is a second basis, on recognised consumption: Snowflake reports on it, Twilio on recognised revenue, and Ordway finds public companies split between a revenue basis and an ARR basis. A company reporting this figure names it Consumption NRR rather than NRR.
+**Two bases:** [Net Revenue Retention (NRR)](core.md#net-revenue-retention-nrr) reads MRR movements: subscriptions and commitments, with the usage billed above a commitment left out. It stays the main retention figure for recurring revenue. Consumption NRR is a second basis, on recognised consumption: Snowflake reports on it, Twilio on recognised revenue, and Ordway finds public companies split between a revenue basis and an ARR basis. A company reporting this figure names it Consumption NRR rather than NRR.
 
 **What it tells you:** Whether the customers you had a year ago consume more or less today, including the pay-as-you-go customers whom NRR leaves outside its cohort.
 

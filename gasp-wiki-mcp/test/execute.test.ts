@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { loadStandard } from "../src/loader.js";
 import { buildAdapter, addDays, START, END, type Row } from "./fixture/generate.js";
-import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate, plantUsageRealisation, plantCreditEvent, plantPayAsYouGoCustomer, plantFixedTermCustomer, plantRecognisedRevenue, plantContractCustomer, plantMovement } from "./fixture-db.js";
+import { fixture, adapter, fixtureDb, fill as fillFor, bind, runTemplate, plantCreditEvent, plantPayAsYouGoCustomer, plantFixedTermCustomer, plantRecognisedRevenue, plantContractCustomer, plantMovement } from "./fixture-db.js";
 import { TABLES, columnName } from "../src/synthetic.js";
 
 // Runs the compiled SQL. The fixture (test/fixture) is loaded into an in-process
@@ -777,12 +777,19 @@ describe("hand-computed metric values, credit ledger", () => {
     for (const basis of ["committed", "overage", "on_demand", "top_up"]) expect(march[basis], basis).toBe(consumed("2026-03-01", "2026-03-31", basis));
   });
 
-  it("Usage Run-Rate at 2026-06: on-demand consumption April to June, times four", async () => {
-    // c01 520 + 610 + 700, c06 300 + 400 + 380.
-    const expected = (520 + 610 + 700 + 300 + 400 + 380) * 4;
-    expect(expected).toBe(11640);
-    expect(consumed(...Q2, "on_demand") * 4).toBe(expected);
+  it("Usage Run-Rate at 2026-06: overage and on-demand consumption April to June, times four", async () => {
+    // On demand: c01 520 + 610 + 700, c06 300 + 400 + 380. Overage: c02 150 in April, c07 900 in May and 500 in June, c10 200 in May.
+    const onDemand = 520 + 610 + 700 + 300 + 400 + 380;
+    const overage = 150 + 900 + 500 + 200;
+    const expected = (onDemand + overage) * 4;
+    expect(expected).toBe(18640);
+    expect(consumed(...Q2, "on_demand")).toBe(onDemand);
+    expect(consumed(...Q2, "overage")).toBe(overage);
     expect(await runFormula("usage_run_rate", ...JUNE)).toBe(expected);
+    // Regression (2026-11-27): the formula read on_demand and top_up alone and gave 11,640, so once
+    // overage left MRR no annualised figure carried it. Committed consumption stays out: ARR holds the commitment.
+    expect(expected - onDemand * 4).toBe(7000);
+    expect(consumed(...Q2, "committed")).toBeGreaterThan(0);
   });
 
   it("Prepaid Credit Balance at the end of March and June", async () => {
@@ -801,7 +808,7 @@ describe("hand-computed metric values, credit ledger", () => {
   });
 
   it("ARR including Usage Run-Rate at 2026-06: the pinned ARR plus the run-rate", async () => {
-    expect(await runFormula("arr_including_usage_run_rate", ...JUNE)).toBe(290400 + 11640);
+    expect(await runFormula("arr_including_usage_run_rate", ...JUNE)).toBe(290400 + 18640);
   });
 
   it("Consumption Revenue Growth Rate, March over February and February over January", async () => {
@@ -849,10 +856,10 @@ describe("hand-computed metric values, credit ledger", () => {
       expect(await runFormula("consumption_revenue", ...H1, undefined, packs)).toBe(CONSUMPTION.reduce((a, b) => a + b, 0) + 620);
     });
 
-    it("Usage Run-Rate reads the draws beside on-demand usage and ARR Including Usage Run-Rate carries them", async () => {
-      // April to June: on demand 2,910 and 120 + 300 + 200 drawn from the pack, times four.
-      expect(await runFormula("usage_run_rate", ...JUNE, undefined, packs)).toBe((2910 + 620) * 4);
-      expect(await runFormula("arr_including_usage_run_rate", ...JUNE, undefined, packs)).toBe(290400 + 14120);
+    it("Usage Run-Rate reads the draws beside overage and on-demand usage and ARR Including Usage Run-Rate carries them", async () => {
+      // April to June: on demand 2,910, overage 1,750 and 120 + 300 + 200 drawn from the pack, times four.
+      expect(await runFormula("usage_run_rate", ...JUNE, undefined, packs)).toBe((2910 + 1750 + 620) * 4);
+      expect(await runFormula("arr_including_usage_run_rate", ...JUNE, undefined, packs)).toBe(290400 + 21120);
     });
 
     it("Prepaid Credit Balance carries what is left of the pack", async () => {
@@ -860,6 +867,65 @@ describe("hand-computed metric values, credit ledger", () => {
       expect(await runFormula("prepaid_credit_balance", ...APRIL, undefined, packs)).toBe((await runFormula("prepaid_credit_balance", ...APRIL) as number) + 380);
       expect(await runFormula("prepaid_credit_balance", ...JUNE, undefined, packs)).toBe(100 + 380);
       expect(await runFormula("credit_breakage", ...JUNE, undefined, packs)).toBe(300);
+    });
+  });
+
+  // Usage above a commitment is Consumption Revenue (2026-11-27, DECISIONS.md). Until 1.26.0 the
+  // revenue ledger carried it as a pair of events tagged usage_realisation, which put it in
+  // Expansion MRR, Net New MRR and NRR, and GRR and Revenue Churn Rate each took the reversal
+  // back out. The SaaS Metrics Standards Board keeps overage out of ARR, invoiced or not, so it
+  // writes no Revenue_Event. The fixture puts c07 above its commitment by 400 in March, 900 in
+  // May and 500 in June; this block's own database adds 1,200 in April.
+  describe("usage above a commitment", () => {
+    let heavy: PGlite;
+    const APRIL = ["2026-04-01", "2026-04-30"] as const;
+    const MRR_METRICS = ["mrr", "arr", "new_mrr", "expansion_mrr", "contraction_mrr", "churned_mrr", "reactivation_mrr", "net_new_mrr", "nrr", "grr", "revenue_churn_rate", "carr"];
+
+    beforeAll(async () => {
+      heavy = await fixtureDb();
+      await plantCreditEvent(heavy, "c07", { id: "p_overage_april", date: "2026-04-30", type: "consumption", amount: -1200, basis: "overage", before: 0, after: 0 });
+    }, 120_000);
+
+    afterAll(async () => { await heavy?.close(); });
+
+    it("the credit ledger holds the months the usage records put c07 above its commitment and the revenue ledger holds none of them", () => {
+      const over = T.usage_record.filter((r) => r.customer_id === "c07" && Number(r.usage_amount) > Number(r.committed_amount));
+      const months = [["2026-03-31", 400], ["2026-05-31", 900], ["2026-06-30", 500]];
+      expect(over.map((r) => [r.period_end, Number(r.usage_amount) - Number(r.committed_amount)])).toEqual(months);
+      expect(T.credit_event.filter((r) => r.customer_id === "c07").map((r) => [r.event_date, r.consumption_basis, 0 - Number(r.credit_amount)])).toEqual(months.map(([day, amount]) => [day, "overage", amount]));
+      expect(T.revenue_event.filter((r) => r.expansion_classification === "usage_realisation" || r.change_nature !== "permanent")).toEqual([]);
+      // c07's one expansion in the window is the commitment raised on 6 May, a permanent change.
+      expect(T.revenue_event.filter((r) => r.customer_id === "c07" && r.event_type === "expansion").map((r) => [r.event_date, Number(r.mrr_change)])).toEqual([["2026-05-06", 1000]]);
+    });
+
+    it("no MRR metric reads the credit ledger or the usage records, and no formula names the retired tag", () => {
+      for (const id of MRR_METRICS) {
+        expect(data.queryTemplates[id].datasets, id).not.toContain("credit_event");
+        expect(data.queryTemplates[id].datasets, id).not.toContain("usage_record");
+        expect(data.queryTemplates[id].parameterizedQuery, id).not.toContain("usage_realisation");
+      }
+      expect(JSON.stringify(data.formulas)).not.toContain("usage_realisation");
+      expect(data.ontology!.fields!.find((f) => f.id === "expansion_classification")!.values).toEqual(["same_product", "new_module", "new_buying_centre", "pricing_adjustment", "recontracting"]);
+    });
+
+    it("a further month of overage moves no MRR metric in the month, the quarter or the half year", async () => {
+      for (const id of MRR_METRICS)
+        for (const period of [APRIL, Q2, H1]) expect(await runTemplate(heavy, data, id, ...period), `${id} ${period.join(" ")}`).toBe(await run(id, ...period));
+    });
+
+    it("the same month is Consumption Revenue on the basis overage and four times its amount in Usage Run-Rate", async () => {
+      expect(await runFormula("consumption_revenue", ...APRIL, undefined, heavy)).toBe(CONSUMPTION[3] + 1200);
+      expect((await runFormula("consumption_revenue", ...APRIL, "by_basis", heavy) as Record<string, number>).overage).toBe(150 + 1200);
+      expect(await runFormula("usage_run_rate", ...JUNE, undefined, heavy)).toBe(18640 + 4800);
+      expect(await runFormula("arr_including_usage_run_rate", ...JUNE, undefined, heavy)).toBe(290400 + 18640 + 4800);
+    });
+
+    it("GRR is one minus Revenue Churn Rate, with no term for usage in either", async () => {
+      for (const period of [APRIL, JUNE, Q2, H1]) {
+        expect((await run("revenue_churn_rate", ...period))! + (await run("grr", ...period))!, period.join(" ")).toBeCloseTo(1, 12);
+        expect(await run("grr", ...period), period.join(" ")).toBeLessThanOrEqual(1);
+      }
+      expect(await run("grr", ...H1)).toBeCloseTo(expectedNrr(...H1, true), 12);
     });
   });
 
@@ -1054,86 +1120,6 @@ describe("the year-or-renewal test", () => {
   });
 });
 
-// Usage above a commitment reaches the revenue ledger as a pair (cel.md): an
-// expansion on the period's last day and its reversal on the next. GRR and
-// Revenue Churn Rate leave the reversal out, as the SaaS Metrics Standards
-// Board recommends for GRR, so a customer who used more than they committed to
-// is never read as a downgrade. Contraction MRR and NRR keep both rows. The
-// synthetic revenue events hold no realised usage, so the three months c07
-// spends above its commitment (400 in March, 900 in May, 500 in June, the
-// usage records of the fixture) are planted in this block's own database.
-describe("realised usage: GRR and Revenue Churn Rate leave the reversal out", () => {
-  let usage: PGlite;
-  const APRIL = ["2026-04-01", "2026-04-30"] as const;
-  const on = (id: string, start: string, end: string) => runTemplate(usage, data, id, start, end);
-
-  beforeAll(async () => {
-    usage = await fixtureDb();
-    await plantUsageRealisation(usage, "c07", "2026-03-31", 400);
-    await plantUsageRealisation(usage, "c07", "2026-05-31", 900);
-    await plantUsageRealisation(usage, "c07", "2026-06-30", 500);
-  }, 120_000);
-
-  afterAll(async () => { await usage?.close(); });
-
-  it("the planted pairs are the months the usage records put c07 above its commitment", () => {
-    const over = T.usage_record.filter((r) => r.customer_id === "c07" && Number(r.usage_amount) > Number(r.committed_amount));
-    expect(over.map((r) => [r.period_end, Number(r.usage_amount) - Number(r.committed_amount)])).toEqual([["2026-03-31", 400], ["2026-05-31", 900], ["2026-06-30", 500]]);
-    expect(T.revenue_event.filter((r) => r.expansion_classification === "usage_realisation")).toEqual([]);
-  });
-
-  it("GRR is the value the ledger gives without the pairs, in the half year and in each month a reversal lands", async () => {
-    expect(await on("grr", ...H1)).toBeCloseTo(expectedNrr(...H1, true), 12);
-    // April holds the reversal of March's usage alone; June holds May's reversal and its own expansion.
-    for (const period of [H1, Q2, APRIL, JUNE]) {
-      expect(await on("grr", ...period), period.join(" ")).toBe(await run("grr", ...period));
-      expect(await on("grr", ...period), period.join(" ")).toBeLessThanOrEqual(1);
-    }
-  });
-
-  it("Revenue Churn Rate is one minus GRR with the pairs in the ledger", async () => {
-    for (const period of [H1, Q2, APRIL, JUNE]) {
-      expect(await on("revenue_churn_rate", ...period), period.join(" ")).toBe(await run("revenue_churn_rate", ...period));
-      expect((await on("revenue_churn_rate", ...period))! + (await on("grr", ...period))!, period.join(" ")).toBeCloseTo(1, 12);
-    }
-  });
-
-  it("Contraction MRR keeps the reversals, so the old reading of GRR would have fallen", async () => {
-    // The reversals dated 1 April and 1 June fall in the half year; the one dated 1 July falls after it.
-    expect(await on("contraction_mrr", ...H1)).toBe((await run("contraction_mrr", ...H1))! + 400 + 900);
-    expect(await on("contraction_mrr", ...APRIL)).toBe((await run("contraction_mrr", ...APRIL))! + 400);
-    const cohort = new Set(activeCustomersOn(START).map((r) => r.customer_id));
-    expect(cohort.has("c07")).toBe(true);
-    const opening = mrrOn(START, cohort);
-    const withReversals = expectedNrr(...H1, true) - 1300 / opening;
-    expect((await on("grr", ...H1))! - withReversals).toBeCloseTo(1300 / opening, 12);
-  });
-
-  it("NRR counts the realised usage and nets each reversal against it", async () => {
-    // Three expansions of 400, 900 and 500 less the two reversals inside the half year: June's usage is still in at period end.
-    const cohort = new Set(activeCustomersOn(START).map((r) => r.customer_id));
-    expect(await on("nrr", ...H1)).toBeCloseTo(expectedNrr(...H1) + 500 / mrrOn(START, cohort), 12);
-    // April: the reversal of March's usage, with nothing realised in the month.
-    const april = new Set(activeCustomersOn(APRIL[0]).map((r) => r.customer_id));
-    expect(await on("nrr", ...APRIL)).toBeCloseTo(expectedNrr(...APRIL) - 400 / mrrOn(APRIL[0], april), 12);
-  });
-
-  it("the breakdown by segment leaves the reversal out in c07's segment", async () => {
-    for (const id of ["grr", "revenue_churn_rate"]) {
-      const { compileMetric } = await import("../src/compile.js");
-      const { fillTemplate } = await import("../src/tools.js");
-      const ctx = { fields: Object.fromEntries(data.ontology!.fields!.map((f) => [f.id, f])), datasets: data.ontology!.datasets!, formulas: data.formulas! };
-      const c = compileMetric(id, ctx, "by_segment");
-      const filled = fillTemplate({ ...data.queryTemplates[id], fields: c.fields, datasets: c.datasets, parameterizedQuery: c.sql, placeholders: c.placeholders, breakdown: c.breakdown }, adapter, data);
-      expect([...filled.missingFields, ...filled.missingTables], id).toEqual([]);
-      const rows = async (db2: PGlite) => Object.fromEntries((await db2.query<Record<string, unknown>>(bind(filled.sql, ...H1))).rows.map((r) => [String(r.segment), r[id] === null ? null : Number(r[id])]));
-      const planted = await rows(usage);
-      expect(Object.keys(planted).length, id).toBeGreaterThan(1);
-      expect(planted, id).toEqual(await rows(db));
-    }
-  });
-});
-
 // CARR (Contracted ARR) is ARR plus the annual value of new contracts signed by
 // period end that start later (finance.md, the SaaS Metrics Standards Board
 // formula). Every contract in the synthetic data starts on the day it is signed,
@@ -1251,9 +1237,6 @@ describe("CARR net of known churn and net of forecast churn", () => {
     await plantEvent("p_kept_correction", "c09", "2026-06-10", "expansion", -150, "temporary", "same_product");
     await plantEvent("p_kept_permanent", "c09", "2026-06-10", "expansion", 150, "permanent", "same_product");
     await addMrr("c09", 150, "2026-04-12");
-    // A month of usage over the commitment: the realisation pair, which MRR never held.
-    await plantEvent("p_usage", "c15", "2026-06-30", "expansion", 500, "temporary", "usage_realisation");
-    await plantEvent("p_usage_reversal", "c15", "2026-07-01", "contraction", -500, "scheduled_reversal", "usage_realisation");
     // Notice given on 25 June that a $500 a month subscription ends on 30 September.
     await known.exec(`CREATE TEMP TABLE planted AS SELECT * FROM ${contracts} WHERE ${con("contract_event_type")} = 'cancellation' LIMIT 1;
       UPDATE planted SET ${con("event_id")} = 'p_notice', ${con("event_date")} = '2026-06-25', ${con("contract_end")} = '2026-09-30', ${con("acv")} = 6000;
@@ -1294,10 +1277,8 @@ describe("CARR net of known churn and net of forecast churn", () => {
     expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800 - 6000);
   });
 
-  it("a usage realisation pair moves neither figure and notice of a later ending comes off the variant alone", async () => {
+  it("notice of a later ending comes off the variant alone", async () => {
     await known.exec(`DELETE FROM ${contracts} WHERE ${con("event_id")} = 'p_notice'`);
-    expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800);
-    await known.exec(`DELETE FROM ${events} WHERE ${ev("event_id")} IN ('p_usage', 'p_usage_reversal')`);
     expect(await variant(known, "net_of_known_churn", ...months[2])).toBe(290400 + 1800);
     expect(await runTemplate(known, data, "carr", ...months[2])).toBe(290400 + 2400 + 12000 + 1800);
   });

@@ -56,7 +56,7 @@ Both forms come from the same events, so nobody has to keep a spreadsheet reconc
 
 ## Scope
 
-**This standard covers:** SaaS sold by subscription, by consumption or by both. It defines the building blocks every SaaS business shares. Consumption pricing with or without a contracted commitment is covered through the CEL's [Credit_Event](cel.md#credit_event) class. MRR and ARR still exclude usage fees that are not contractually guaranteed, and usage above a contracted commitment counts as expansion (the ATL `usage_realisation` tag). Uncommitted usage, credit packs bought once included, is reported by [Consumption Revenue](metrics/finance.md#consumption-revenue) and [Usage Run-Rate](metrics/finance.md#usage-run-rate).
+**This standard covers:** SaaS sold by subscription, by consumption or by both. It defines the building blocks every SaaS business shares. Consumption pricing with or without a contracted commitment is covered through the CEL's [Credit_Event](cel.md#credit_event) class. MRR and ARR exclude usage fees that are not contractually guaranteed: a commitment counts and the usage billed above it stays out. Uncommitted usage, overage and credit packs bought once included, is reported by [Consumption Revenue](metrics/finance.md#consumption-revenue) and [Usage Run-Rate](metrics/finance.md#usage-run-rate).
 
 **This standard does not cover:**
 - **Implementation edge cases**: downstream concerns for individual businesses

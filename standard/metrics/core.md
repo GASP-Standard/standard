@@ -34,10 +34,10 @@ MRR contribution = Annual Contract Value / 12
 - Professional services at any length, even when the work repeats ([Services Revenue](professional-services.md#services-revenue))
 - Fixed-term revenue: product access sold for under 12 months with no renewal
 - Trial accounts and free users
-- Usage billed on demand with no commitment behind it. Committed usage counts by the same test and usage above a commitment counts for the period billed
+- Usage no commitment covers: usage billed above a commitment and usage billed on demand. Committed usage counts by the same test
 - Non-recurring charges
 
-Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue). That covers a pack of credits bought once and an automatic top-up, which are [usage paid for in advance](finance.md#consumption-revenue): each is a purchase with no term and no renewal.
+Usage no commitment covers is reported as [Consumption Revenue](finance.md#consumption-revenue). That is usage billed above a commitment and usage billed on demand. The commitment itself counts and the usage beyond it stays out, invoiced or not: the SaaS Metrics Standards Board holds that "the revenue associated with usage based pricing that exceeds committed minimums (overages) should not be part of ARR - regardless of the overage being invoiced". A pack of credits bought once and an automatic top-up are [usage paid for in advance](finance.md#consumption-revenue), reported the same way: each is a purchase with no term and no renewal. [Usage Run-Rate](finance.md#usage-run-rate) annualises all of it beside ARR.
 
 **The year-or-renewal test:** A subscription counts in MRR when its contract runs 12 months or more or when a shorter plan renews. A contract renews when it carries a renewal provision (it continues unless cancelled, or the customer holds an option to renew) or when it follows an earlier term with no break in access. Product access sold for under 12 months with neither is [fixed-term revenue](../definitions.md#fixed-term-revenue): it is reported on a line of its own beside MRR, it stays out of MRR and ARR and its end is neither churn nor contraction. Twelve months means 365 days of access or more. The test is applied to each subscription by its own term and its own renewal provision, so one customer can hold both kinds.
 
@@ -53,7 +53,7 @@ Usage with no commitment behind it is reported as [Consumption Revenue](finance.
 | A paid pilot or proof of concept under 12 months with no renewal | No. Fixed-term revenue | No |
 | A free trial | No | No |
 | Committed usage, a contracted minimum | By its contract, like the subscriptions above | Yes, if it counts |
-| Usage above the commitment | Yes, for the period billed | No |
+| Usage above the commitment | No. Consumption Revenue | No |
 | Support, maintenance or a managed service sold on subscription terms | By its contract, like the subscriptions above | Yes, if it counts |
 | A term licence, on-premises software included | By its contract, like the subscriptions above | Yes, if it counts |
 | A perpetual licence fee | No | No |
@@ -66,7 +66,7 @@ Usage with no commitment behind it is reported as [Consumption Revenue](finance.
 | A pack of credits bought once, automatic top-ups included | No. Consumption Revenue as the credits are used | No |
 | Credits billed every month until the customer cancels | Yes | Yes |
 
-The third column says whether the revenue can count against Revenue Churn Rate and GRR. Whatever counts in MRR is lost revenue on the day it ends and whatever stays outside MRR has none to lose. Usage above a commitment is the exception: it counts for the period billed and Revenue Churn Rate and GRR leave its reversal out.
+The third column says whether the revenue can count against Revenue Churn Rate and GRR. Whatever counts in MRR is lost revenue on the day it ends and whatever stays outside MRR has none to lose.
 
 **Licences and hardware:** A term licence counts by the same test as a subscription, whether the software runs in the vendor's cloud or on the customer's premises. A perpetual licence fee and hardware sold outright are charged once and stay out of MRR and ARR. Maintenance on a perpetual licence counts by its own term and renewal. Hardware that a subscription's price includes, with no separate charge, is part of that subscription.
 
@@ -105,7 +105,7 @@ In the data the `subscription` dataset and the ledger hold the contracts that co
 
 MRR is reported per plan (by plan id and plan name) and per customer segment.
 
-**What it tells you:** The current run rate of your recurring revenue engine.
+**What it tells you:** The current monthly size of your recurring revenue base.
 
 **Important:** MRR is a business insights metric, not a GAAP/FASB accounting term. It is representative of, but not identical to, recognised revenue.
 
@@ -123,7 +123,7 @@ MRR is reported per plan (by plan id and plan name) and per customer segment.
 - [Baremetrics: MRR Definition](https://baremetrics.com/academy/saas-calculate-mrr)
 - [Maxio: Monthly Recurring Revenue Defined](https://www.maxio.com/saaspedia/monthly-recurring-revenue-defined-for-a-saas-business)
 - [ChurnZero: Monthly Recurring Revenue](https://churnzero.com/churnopedia/monthly-recurring-revenue-mrr/)
-- [SaaS Metrics Standards Board: ARR](https://www.saasmetricsboard.com/annual-recurring-revenue) (services stay out even when they recur; churn comes off in the month the contract ends)
+- [SaaS Metrics Standards Board: ARR](https://www.saasmetricsboard.com/annual-recurring-revenue) (services stay out even when they recur; overage stays out, invoiced or not; churn comes off in the month the contract ends)
 - [ChartMogul: What is ARR?](https://chartmogul.com/blog/what-is-arr/) (contracts under 12 months)
 - [Kellblog: mapping annual to monthly SaaS metrics](https://kellblog.com/2022/10/13/mapping-from-annual-to-monthly-and-usage-based-saas-metrics/) (recurring means it comes up for renewal)
 
@@ -131,20 +131,22 @@ MRR is reported per plan (by plan id and plan name) and per customer segment.
 
 ### ARR (Annual Recurring Revenue)
 
-**Definition:** The annualised value of recurring revenue. ARR represents the yearly run rate of subscription revenue.
+**Definition:** The annualised value of recurring revenue. ARR states the recurring revenue in place on one day as a yearly figure.
 
-**Note:** ARR is used to mean two things in the industry:
-1. **Annualised Run Rate** = MRR × 12 (common for monthly-billing companies)
-2. **Annual Recurring Revenue** = Sum of annualised contract values (common for annual-contract companies)
+**Note:** The abbreviation is read two ways in the industry:
+1. **Annual Recurring Revenue**: recurring revenue from subscriptions and commitments, annualised. This is ARR in the GASP Standard.
+2. **Annualised run rate**: the revenue of a recent period multiplied up to a year, whatever its kind. This is [Run-Rate Revenue](../definitions.md#run-rate-revenue), a measure of its own.
 
-Both are valid. The GASP Standard uses **MRR × 12** for consistency across business models.
+Stripe draws the line: "Annualised run rate deals with all kinds of revenue, while annual recurring revenue looks only at recurring revenue from established contracts and subscriptions." The SaaS Metrics Standards Board holds that ARR "should not include one-time fees or professional services even if they are recurring". Run-rate revenue takes in usage no commitment covers, fixed-term contracts, credits bought once and services, each of which stays out of ARR. DigitalOcean reports annual run-rate revenue under the abbreviation and annualises its revenue: the last month multiplied by 12 until the fourth quarter of 2024 and the most recent quarter multiplied by four since. A company that reports a run rate names it Run-Rate Revenue and states the period it annualised.
+
+ARR itself is computed two ways: MRR × 12 or the sum of annualised contract values. The GASP Standard uses **MRR × 12**, the Board's formula, for consistency across business models.
 
 **Formula:**
 ```
 ARR = MRR × 12
 ```
 
-**Include:** Same inclusions/exclusions as MRR, annualised, so the [year-or-renewal test](#mrr-monthly-recurring-revenue) decides ARR too. Fixed-term revenue stays out: annualising a contract shorter than a year would state it above its total value. A contract of 12 months or more with no renewal is annualised like any other MRR until it ends. ARR is a run rate, so an ending that is known in advance comes off on the day it happens. The `change_nature` tag on the ledger marks that revenue for anyone who filters on it.
+**Include:** Same inclusions/exclusions as MRR, annualised, so the [year-or-renewal test](#mrr-monthly-recurring-revenue) decides ARR too. Fixed-term revenue stays out: annualising a contract shorter than a year would state it above its total value. A contract of 12 months or more with no renewal is annualised like any other MRR until it ends. ARR is a measure at a point in time, so an ending that is known in advance comes off on the day it happens. The `change_nature` tag on the ledger marks that revenue for anyone who filters on it.
 
 **Industry equivalents:** Consumption companies call this figure Committed ARR or Baseline ARR: GASP's ARR includes contractual commitments and leaves uncommitted usage out. Contracted ARR (CARR), which adds contracts that are signed and have not yet started, is a metric of its own: [CARR](finance.md#carr-contracted-annual-recurring-revenue). Consumption companies that report usage inside ARR are reporting [ARR Including Usage Run-Rate](finance.md#arr-including-usage-run-rate), which the GASP Standard names separately.
 
@@ -154,13 +156,15 @@ ARR is reported per customer segment.
 
 **Common mistakes:**
 - Calculating from annual contracts directly without normalising (leads to timing mismatches)
-- Treating ARR as cash (it's a run rate, not collected revenue)
-- Mixing definitions without declaring which one you're using
+- Treating ARR as cash (it measures recurring revenue at a point in time, not collected revenue)
+- Reporting Run-Rate Revenue, a recent period's total revenue annualised, under the name ARR
 
 **Sources:**
 - [SaaS Metrics Standards Board: ARR](https://www.saasmetricsboard.com/annual-recurring-revenue)
 - [ChartMogul: ARR Definition](https://chartmogul.com/saas-metrics/arr/)
 - [Maxio: Annual Recurring Revenue](https://www.maxio.com/saaspedia/arr)
+- [Stripe: Annualised run rate and annual recurring revenue](https://stripe.com/gb/resources/more/what-is-annualized-run-rate-arr-how-to-calculate-arr-and-use-it-strategically)
+- [DigitalOcean: Form 10-K, 2024](https://www.sec.gov/Archives/edgar/data/1582961/000158296125000035/docn-20241231.htm)
 
 #### Operating Form: ARR-O
 
@@ -175,7 +179,7 @@ ARR-O = (MRR - TTM_Pricing_Adjustment_MRR - TTM_Recontracting_MRR) × 12
 ```
 Where TTM_Pricing_Adjustment_MRR and TTM_Recontracting_MRR are the MRR changes tagged with `expansion_classification` `pricing_adjustment` or `recontracting` in the trailing 12 months, counted for customers active at period end. MRR is the period-end MRR used by ARR-M. ARR-O is therefore a trailing twelve month measure. Stripping price rises out of ARR is a GASP construct rather than an industry convention; where price and volume are separated elsewhere, it is a growth decomposition over the period.
 
-**What it tells you:** The run rate of revenue that customers created by adopting and expanding, with price rises and recontracting taken out. It is the part of ARR most likely to last.
+**What it tells you:** The recurring revenue that customers created by adopting and expanding, annualised, with price rises and recontracting taken out. It is the part of ARR most likely to last.
 
 #### Market Form: ARR-M
 
@@ -352,9 +356,7 @@ Carry MRR = Beginning MRR - Churned MRR - Contraction MRR
 
 **Also known as:** Base MRR, Retained MRR, Renewal MRR
 
-**What it tells you:** How much of last period's revenue base is still in place. Carry MRR is close to Gross Revenue Retention (GRR) in dollar terms: taken over the customers active at period start and divided by their beginning MRR, it equals GRR wherever no usage was realised above a commitment.
-
-**Realised usage:** Carry MRR subtracts all of Contraction MRR, the reversal of realised usage included, because Expansion MRR adds the realisation and the movements have to net to ending MRR. GRR leaves that reversal out, so GRR reads higher than Carry MRR over beginning MRR by the usage reversed in the period.
+**What it tells you:** How much of last period's revenue base is still in place. Carry MRR is close to Gross Revenue Retention (GRR) in dollar terms: taken over the customers active at period start and divided by their beginning MRR, it equals GRR.
 
 A falling Carry MRR beside rising Expansion MRR means retention is weakening under the growth.
 
@@ -544,7 +546,7 @@ NRR = (Beginning MRR + Expansion MRR - Contraction MRR - Churned MRR) / Beginnin
 
 NRR is reported per customer segment. Each customer counts in the segment held on the first day of the period, with every snapshot and event of theirs in the period.
 
-**Usage and consumption:** NRR already includes realised usage: overage above a commitment is expansion tagged `usage_realisation`, and for a customer on a prepaid commitment the commitment sits in the MRR base. The contraction that reverses the overage counts too, so a month of overage nets to zero once it has passed. A pack of credits bought once or an automatic top-up adds no MRR and moves NRR in neither direction. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The retention of consumption revenue itself is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), a separate basis reported under its own name.
+**Usage and consumption:** For a customer on a commitment the commitment sits in the MRR base: a commitment raised is expansion and one lowered is contraction. Usage above a commitment is [Consumption Revenue](finance.md#consumption-revenue). It has no Revenue_Event and moves NRR in neither direction, as a pack of credits bought once or an automatic top-up moves none. The SaaS Metrics Standards Board records a debate over counting overage in NRR and asks that variable revenue, where a company includes it, "be clearly highlighted and consistently applied in all revenue based retention metrics". GASP keeps it out of NRR and GRR alike. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The retention of consumption revenue itself is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention), a separate basis reported under its own name.
 
 **What it tells you:** Whether the customers you had a year ago are paying you more or less today. Above 100%, the existing base grows on its own and new customers add on top; below it, new sales first have to replace what the base lost.
 
@@ -561,12 +563,12 @@ NRR is reported per customer segment. Each customer counts in the segment held o
 
 #### Operating Form: Cohort NRR (NRR-O)
 
-NRR-O uses the cohort method and includes only organic expansion: growth on the same product and usage realisation. It excludes expansion from new modules, new buying centres, reactivation, recontracting and pricing actions.
+NRR-O uses the cohort method and includes only organic expansion: growth on the same product. It excludes expansion from new modules, new buying centres, reactivation, recontracting and pricing actions.
 
 **CEL Source:** `Revenue_Event`
 **ATL Inclusion:**
 - `lifecycle_attribution` ∈ (`retention`, `expansion`)
-- `expansion_classification` ∈ (`same_product`, `usage_realisation`)
+- `expansion_classification` = `same_product`
 - Excludes: `expansion_classification` ∈ (`new_module`, `new_buying_centre`, `pricing_adjustment`, `recontracting`) and `lifecycle_attribution` = `reactivation`
 
 **Formula:**
@@ -622,8 +624,6 @@ Two methods are widely used. The GASP Standard uses the **formula method** as ca
 GRR = (Beginning MRR - Contraction MRR - Churned MRR) / Beginning MRR × 100
 ```
 
-Contraction MRR enters this formula without the reversal of realised usage, as [Usage and consumption](#gross-revenue-retention-grr) below sets out.
-
 **2. Cohort Method (Alternative):**
 Compare the MRR of a cohort, using the lesser of beginning MRR or current MRR for each customer (this mathematically eliminates expansion while capturing shrinkage and churn).
 
@@ -631,7 +631,7 @@ Compare the MRR of a cohort, using the lesser of beginning MRR or current MRR fo
 GRR = Sum of min(Beginning MRR, Current MRR) per customer / Beginning MRR × 100
 ```
 
-**Why they differ:** The cohort method nets each customer's movements within the period, so a customer who contracts and then expands back to their starting MRR shows no loss. The formula method counts every contraction and churn event as it happens, so it is equal to or lower than the cohort method. The formula method is canonical because it reads the contraction and churn events Net Revenue Retention (NRR) reads, less the reversal of realised usage, keeping the two retention rates on one basis. It also needs no per-customer end-of-period snapshot. Report the cohort method as a labelled alternative.
+**Why they differ:** The cohort method nets each customer's movements within the period, so a customer who contracts and then expands back to their starting MRR shows no loss. The formula method counts every contraction and churn event as it happens, so it is equal to or lower than the cohort method. The formula method is canonical because it reads the contraction and churn events Net Revenue Retention (NRR) reads, keeping the two retention rates on one basis. It also needs no per-customer end-of-period snapshot. Report the cohort method as a labelled alternative.
 
 **Time period:** Typically measured annually.
 
@@ -655,7 +655,7 @@ GRR tops out at 100%, reached with zero churn and zero contraction, because it l
 
 GRR is reported per customer segment. Each customer counts in the segment held on the first day of the period, with every snapshot and event of theirs in the period.
 
-**Usage and consumption:** GRR runs on the same MRR base as NRR, so a prepaid commitment counts in it. Usage above a commitment stays out of GRR in both directions. The expansion that realises it is expansion, which GRR never reads. The contraction that reverses it the next day, tagged `usage_realisation` by the [Commercial Event Ledger](../cel.md#deriving-usage-realisation), is left out of the formula, so a customer who runs over a commitment every month reads 100% for as long as the commitment holds. The SaaS Metrics Standards Board recommends "excluding variable revenue from usage-based pricing in the GRR calculation". [Contraction MRR](#contraction-mrr) and NRR keep the reversal, where it nets against the expansion before it. A pack of credits bought once or an automatic top-up is never in MRR and so never in GRR. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The consumption-revenue basis is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention).
+**Usage and consumption:** GRR runs on the same MRR base as NRR, so a prepaid commitment counts in it. Usage above a commitment is [Consumption Revenue](finance.md#consumption-revenue) with no Revenue_Event, so it stays out of GRR in both directions: a customer who runs over a commitment every month reads 100% for as long as the commitment holds. The SaaS Metrics Standards Board recommends "excluding variable revenue from usage-based pricing in the GRR calculation". A pack of credits bought once or an automatic top-up is never in MRR and so never in GRR. Pay-as-you-go customers have no MRR and sit outside the cohort, as Snowflake keeps its on-demand customers outside its NRR. The consumption-revenue basis is [Consumption Net Revenue Retention](finance.md#consumption-net-revenue-retention).
 
 **What it tells you:** The baseline health of your customer relationships, independent of upsell. Investors examine GRR alongside NRR because strong expansion can mask high churn.
 
@@ -723,8 +723,6 @@ Revenue Churn Rate = (Churned MRR + Contraction MRR) / Beginning MRR × 100
 ```
 
 **Who is counted:** The customers active on the first day of the period, the same cohort NRR, GRR and Logo Churn Rate follow. Churned MRR and Contraction MRR count when the customer was active on that day and Beginning MRR is the MRR those customers held on it, so the rate equals 100% less GRR over the same period and stays between 0% and 100%. MRR lost by a customer who joins inside the period appears in [Churned MRR](#churned-mrr) and [Contraction MRR](#contraction-mrr) and sits outside this rate.
-
-**Realised usage:** As in [GRR](#gross-revenue-retention-grr), Contraction MRR enters this rate without the contraction that reverses realised usage. Overage that falls back to the commitment was variable revenue, so it is no loss of recurring revenue, and the rate stays equal to 100% less GRR.
 
 This is gross revenue churn: it measures losses only, without netting against expansion. It is the canonical formula because it isolates the leakage.
 
