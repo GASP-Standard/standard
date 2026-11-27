@@ -828,8 +828,8 @@ describe("formatChange", () => {
   });
 
   // Decided 2026-11-26: notice and a late payment move nothing and their rule is a paragraph under MRR
-  it("says notice and a late payment leave MRR where it was and points at the rule under MRR", () => {
-    for (const change of ["notice", "late_payment"] as const) {
+  it("says notice, a late payment and an unpaid contract in force leave MRR where it was and points at the rule under MRR", () => {
+    for (const change of ["notice", "late_payment", "unpaid_in_term"] as const) {
       const text = formatChange(data, { change, monthlyValue: 1000 });
       expect(text, change).toContain("- **Reported as:** Nothing in MRR");
       expect(text, change).not.toContain("**Tagged:**");
@@ -840,6 +840,11 @@ describe("formatChange", () => {
     }
     expect(formatChange(data, { change: "notice" })).toContain("CARR net of known churn takes the cancellation's annual value off from the day notice is given");
     expect(formatChange(data, { change: "credit_or_refund" })).toContain("The rule is stated under Contraction MRR (");
+    // 2026-11-27: the committed-term case names Billings, linked, and the day the customer churns
+    const unpaid = formatChange(data, { change: "unpaid_in_term", monthlyValue: 1000 });
+    expect(unpaid).toContain("- **[Billings](https://gaspwiki.com/v1/metrics/finance/billings):** Yes. Each invoice of the term is issued and stays in Billings");
+    expect(unpaid).toContain("It is a churned customer on the day the contract ends");
+    expect(unpaid).toContain("https://gaspwiki.com/research/does-it-count?change=unpaid_in_term&monthly=1000");
     const core = readFileSync(join(new URL(".", import.meta.url).pathname, "..", "..", "standard", "metrics", "core.md"), "utf-8");
     for (const heading of ["**A right to cancel and notice:**", "**Late payment:**"]) {
       const mrr = core.slice(core.indexOf("### MRR (Monthly Recurring Revenue)"), core.indexOf("### ARR (Annual Recurring Revenue)"));

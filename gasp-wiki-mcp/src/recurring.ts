@@ -247,8 +247,9 @@ export interface Movement {
 /**
  * What can happen to a contract. Its start and its end, and three events
  * between them: notice of a future ending (or a right to cancel the customer
- * has not used), a payment that is late while the subscription stays open and
- * a contracted step up in a ramp or a stepped price.
+ * has not used), a payment that is late while the subscription stays open (a
+ * contract with a committed term the company keeps in force included) and a
+ * contracted step up in a ramp or a stepped price.
  */
 export type MovementEvent = "start" | "end" | "notice" | "late_payment" | "step_up";
 
@@ -290,7 +291,8 @@ export const MOVEMENT_ROWS: MovementRow[] = [
   { happens: "It ends early", reported: "Churned MRR on the day it ends. Contraction MRR when another subscription stays", item: { kind: "subscription", termMonths: 12 }, event: "end", otherMrr: false },
   { happens: "The customer gives notice of a later ending or holds a right to cancel it has not used", reported: "Nothing in MRR until the day the ending takes effect, when it is reported as above", item: COUNTS, event: "notice", otherMrr: false },
   { happens: "A payment is late and the subscription stays open", reported: "Nothing in MRR moves. The subscription keeps its MRR and the customer stays a customer while the invoice is collected", item: COUNTS, event: "late_payment", otherMrr: false },
-  { happens: "The subscription is cancelled for non-payment", reported: "Churned MRR and a churned customer, on the day it is cancelled", item: COUNTS, event: "end", otherMrr: false },
+  { happens: "A customer stops paying inside a committed term and the contract stays in force", reported: "Nothing in MRR moves. The contract is invoiced and keeps its MRR until the day it ends", item: { kind: "subscription", termMonths: 12 }, event: "late_payment", otherMrr: false },
+  { happens: "The subscription is cancelled for non-payment", reported: "Churned MRR and a churned customer, on the day the cancellation takes effect and the subscription ends", item: COUNTS, event: "end", otherMrr: false },
   { happens: "A fixed-term contract ends, on schedule or early", reported: "Nothing in MRR, in churn or in contraction", item: SHORT, event: "end", otherMrr: true },
   { happens: "A customer with fixed-term revenue alone signs a contract that counts", reported: "New MRR from that contract's start date", item: COUNTS, event: "start", otherMrr: false },
   { happens: "A second short contract follows the first with no break", reported: "New MRR from the second contract's start date. The first term stays fixed-term revenue", item: { kind: "subscription", termMonths: 4, followsEarlierTerm: true }, event: "start", otherMrr: false },
@@ -875,8 +877,9 @@ export function questionFromQuery(query: string): ContractQuestion | null {
 export const PRESETS: { label: string; question: ContractQuestion }[] = [
   { label: "Six months, no renewal", question: { kind: "subscription", termMonths: 6, contractValue: 30000 } },
   { label: "Monthly plan", question: { kind: "subscription", termMonths: 1, renews: true, monthlyValue: 500 } },
-  { label: "One fixed year", question: { kind: "subscription", termMonths: 12, contractValue: 60000 } },
+  { label: "One year, no renewal", question: { kind: "subscription", termMonths: 12, contractValue: 60000 } },
   { label: "Paid pilot", question: { kind: "pilot", termMonths: 3, contractValue: 9000 } },
+  { label: "Three-year contract", question: { kind: "subscription", termMonths: 36, contractValue: 108000 } },
   { label: "Second short contract", question: { kind: "subscription", termMonths: 4, followsEarlierTerm: true, contractValue: 12000 } },
   { label: "Short add-on", question: { kind: "add_on", termMonths: 3, contractValue: 6000 } },
   { label: "Credit pack", question: { kind: "credit_pack", contractValue: 2000 } },
@@ -1151,7 +1154,9 @@ export type ChangeKind =
   /** Notice of an ending on a later date, or a right to cancel the customer has not used */
   | "notice"
   /** A payment is late and the subscription stays open */
-  | "late_payment";
+  | "late_payment"
+  /** The customer stops paying inside a committed term and the contract stays in force */
+  | "unpaid_in_term";
 
 export const CHANGE_LABELS: Record<ChangeKind, string> = {
   upgrade: "More of the same product: seats added or a higher tier",
@@ -1165,12 +1170,13 @@ export const CHANGE_LABELS: Record<ChangeKind, string> = {
   credit_or_refund: "A one-off credit or refund",
   notice: "Notice to cancel on a later date",
   late_payment: "A late payment, with the subscription still open",
+  unpaid_in_term: "Payment stops inside a committed term, with the contract still in force",
 };
 
 export const CHANGE_GROUPS: { label: string; kinds: ChangeKind[] }[] = [
   { label: "MRR goes up", kinds: ["upgrade", "new_module", "price_increase"] },
   { label: "MRR goes down", kinds: ["downgrade", "price_cut", "temporary_discount", "annual_billing_discount"] },
-  { label: "MRR stays where it was", kinds: ["annual_billing_same_price", "credit_or_refund", "notice", "late_payment"] },
+  { label: "MRR stays where it was", kinds: ["annual_billing_same_price", "credit_or_refund", "notice", "late_payment", "unpaid_in_term"] },
 ];
 
 export const CHANGE_KINDS: ChangeKind[] = CHANGE_GROUPS.flatMap((g) => g.kinds);
@@ -1271,7 +1277,12 @@ const CHANGE_RULES: Record<ChangeKind, ChangeRule> = {
   late_payment: {
     metric: null,
     classification: null,
-    rule: "A subscription with a payment overdue keeps its MRR and its customer stays a customer while the invoice is collected. If the subscription is cancelled for non-payment, it is Churned MRR and a churned customer on the day it is cancelled.",
+    rule: "A subscription with a payment overdue keeps its MRR and its customer stays a customer while the invoice is collected. If the subscription is cancelled for non-payment, it is Churned MRR and a churned customer on the day the cancellation takes effect and the subscription ends, which can fall after the day the payment was missed.",
+  },
+  unpaid_in_term: {
+    metric: null,
+    classification: null,
+    rule: "A contract with a committed term is one the customer has agreed to pay for to its last day. While the company holds the customer to it the contract is invoiced and keeps its MRR, whatever has been paid and whenever the customer asked to leave. It is Churned MRR and a churned customer on the day the contract ends, whether the company ends it early or the term runs out with no renewal.",
   },
 };
 
@@ -1315,6 +1326,8 @@ export function assessChange(input: ChangeQuestion): ChangeAssessment {
         ? place("carr", "part", "CARR stays where it was until the ending takes effect. CARR net of known churn takes the cancellation's annual value off from the day notice is given")
         : place("carr", "no", "No. CARR moves through ARR alone"),
     );
+    if (question.change === "late_payment") out.push(place("billings", "yes", "Yes. The invoice stays in Billings, reported as unpaid until it is paid or written off"));
+    if (question.change === "unpaid_in_term") out.push(place("billings", "yes", "Yes. Each invoice of the term is issued and stays in Billings, reported as unpaid until it is paid or written off"));
     out.push(place("nrr", "no", "No. MRR has not moved"));
     out.push(place("grr", "no", "No. MRR has not moved, so nothing counts as contraction"));
     out.push(place("adjusted_retention", "no", "No. MRR has not moved"));
@@ -1340,8 +1353,10 @@ export function assessChange(input: ChangeQuestion): ChangeAssessment {
     );
   }
   out.push(place("total_customers", "no", "No change. The customer stays a customer"));
-  if (question.change === "notice" || question.change === "late_payment")
-    out.push(place("logo_churn_rate", "no", `No. The customer has not churned. It is a churned customer on the day ${question.change === "notice" ? "the ending takes effect" : "the subscription is cancelled"}, when it holds no other MRR`));
+  if (question.change === "notice" || question.change === "late_payment" || question.change === "unpaid_in_term") {
+    const day = question.change === "notice" ? "the ending takes effect" : question.change === "late_payment" ? "a cancellation takes effect" : "the contract ends";
+    out.push(place("logo_churn_rate", "no", `No. The customer has not churned. It is a churned customer on the day ${day}, when it holds no other MRR`));
+  }
 
   return {
     question,
@@ -1382,6 +1397,7 @@ export const CHANGE_PRESETS: { label: string; question: ChangeQuestion }[] = [
   { label: "One-off refund", question: { change: "credit_or_refund", monthlyValue: 1000 } },
   { label: "Notice to cancel", question: { change: "notice", monthlyValue: 1000 } },
   { label: "Late payment", question: { change: "late_payment", monthlyValue: 1000 } },
+  { label: "Unpaid inside a term", question: { change: "unpaid_in_term", monthlyValue: 1000 } },
 ];
 
 /** An amount as the examples print it: "$30,000", cents shown when it has them */

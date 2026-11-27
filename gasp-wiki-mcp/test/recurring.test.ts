@@ -227,17 +227,68 @@ describe("what a start and an end are reported as", () => {
     expect(standard("metrics/finance.md")).toContain("Notice of a future ending changes nothing until that day");
   });
 
-  it("reports a subscription cancelled for non-payment as any ending, on the day it is cancelled", () => {
+  // Reworded 2026-11-27: "the day it is cancelled" read as the day the customer stopped paying or
+  // asked to leave. The day is the one the subscription ends.
+  it("reports a subscription cancelled for non-payment as any ending, on the day the subscription ends", () => {
     const row = MOVEMENT_ROWS.find((r) => r.happens === "The subscription is cancelled for non-payment")!;
     expect(row.event).toBe("end");
+    expect(row.reported).toBe("Churned MRR and a churned customer, on the day the cancellation takes effect and the subscription ends");
     expect(movement(row.item, row.event, row.otherMrr)).toEqual({ metric: "Churned MRR", churnedCustomer: true });
-    expect(standard("metrics/core.md")).toContain("When the subscription is cancelled for non-payment it is Churned MRR and a churned customer on the day it is cancelled");
+    const core = standard("metrics/core.md");
+    expect(core).toContain("When the subscription is cancelled for non-payment it is Churned MRR and a churned customer on the day the cancellation takes effect and the subscription ends, which can fall after the day the payment was missed");
+    expect(core).not.toContain("on the day it is cancelled");
+    expect(assessChange({ change: "late_payment" }).rule).not.toContain("on the day it is cancelled");
     // The glossary used to make "payment current" a condition of an active customer.
     const definitions = standard("definitions.md");
     expect(definitions).not.toContain("payment current");
     expect(definitions).toContain("A customer with a payment overdue stays active while the invoice is collected and until the subscription is cancelled");
     const ontology = JSON.parse(standard("ontology.json")) as { fields: Array<{ id: string; description: string }> };
     expect(ontology.fields.find((f) => f.id === "subscription_status")!.description).toContain("A subscription with a payment overdue stays active until it is cancelled");
+  });
+
+  // 2026-11-27: a customer inside a committed term is invoiced to its last day whatever they pay
+  // and whenever they ask to leave, so the contract leaves MRR on the day it ends. The standard
+  // names no number of days past due at which an unpaid contract must be closed: practice splits.
+  it("keeps a contract with a committed term in MRR while the company keeps it in force, paid or unpaid", () => {
+    const row = MOVEMENT_ROWS.find((r) => r.happens === "A customer stops paying inside a committed term and the contract stays in force")!;
+    expect(row.reported).toBe("Nothing in MRR moves. The contract is invoiced and keeps its MRR until the day it ends");
+    expect(row.event).toBe("late_payment");
+    expect(classifyRevenue(row.item).counts).toBe("yes");
+    expect(movement(row.item, row.event, row.otherMrr)).toEqual({ metric: null, churnedCustomer: false });
+    expect(movement(row.item, "end", false)).toEqual({ metric: "Churned MRR", churnedCustomer: true });
+    const rows = MOVEMENT_ROWS.map((r) => r.happens);
+    expect(rows.indexOf(row.happens)).toBe(rows.indexOf("A payment is late and the subscription stays open") + 1);
+    expect(rows.indexOf("The subscription is cancelled for non-payment")).toBe(rows.indexOf(row.happens) + 1);
+
+    const c = assessChange({ change: "unpaid_in_term", monthlyValue: 1000 });
+    expect(c).toMatchObject({ metric: null, classification: null, changeNature: null, reported: "Nothing in MRR", title: CHANGE_LABELS.unpaid_in_term });
+    expect(c.amounts).toMatchObject({ before: 1000, change: 0, after: 1000, arrAfter: 12000 });
+    const at = (id: PlaceId) => c.places.find((p) => p.id === id)!;
+    for (const id of ["mrr", "arr", "carr", "nrr", "grr", "adjusted_retention", "total_customers", "logo_churn_rate"] as const) expect(at(id).counts, id).toBe("no");
+    expect(at("billings")).toMatchObject({ counts: "yes", answer: "Yes. Each invoice of the term is issued and stays in Billings, reported as unpaid until it is paid or written off" });
+    expect(at("logo_churn_rate").answer).toBe("No. The customer has not churned. It is a churned customer on the day the contract ends, when it holds no other MRR");
+    expect(c.rule).toContain("While the company holds the customer to it the contract is invoiced and keeps its MRR, whatever has been paid and whenever the customer asked to leave");
+    expect(c.rule).toContain("It is Churned MRR and a churned customer on the day the contract ends, whether the company ends it early or the term runs out with no renewal");
+    expect(changeFromQuery(changeToQuery(c.question))).toEqual(c.question);
+    expect(changeToQuery(c.question)).toBe("change=unpaid_in_term&monthly=1000");
+    expect(CHANGE_PRESETS.filter((p) => p.question.change === "unpaid_in_term")).toHaveLength(1);
+    expect(CHANGE_GROUPS.find((g) => g.label === "MRR stays where it was")!.kinds).toContain("unpaid_in_term");
+
+    // A late payment on an open subscription reads the invoice the same way and churns on the day a cancellation takes effect.
+    const late = assessChange({ change: "late_payment" });
+    expect(late.places.find((p) => p.id === "billings")).toMatchObject({ counts: "yes", answer: "Yes. The invoice stays in Billings, reported as unpaid until it is paid or written off" });
+    expect(late.places.find((p) => p.id === "logo_churn_rate")!.answer).toContain("on the day a cancellation takes effect");
+    expect(assessChange({ change: "notice" }).places.find((p) => p.id === "billings")).toBeUndefined();
+
+    const core = standard("metrics/core.md");
+    expect(core).toContain("A contract with a committed term, one the customer has agreed to pay for to its last day, is read the same way");
+    expect(core).toContain("While the company holds the customer to the term the contract is invoiced and keeps its MRR, whatever has been paid and whenever the customer asked to leave");
+    expect(core).toContain("It is Churned MRR and a churned customer on the day the contract ends, whether the company ends it early or the term runs out with no renewal");
+    expect(core).toContain("An invoice left unpaid stays in [Billings](finance.md#billings) under its payment status and enters [Bad Debt Rate](finance.md#bad-debt-rate) when it is written off");
+    expect(standard("metrics/finance.md")).toContain("Billings are reported per payment status (paid, unpaid, partial, written off) as of period end");
+    // Where practice splits the standard stays silent: no day count after which an unpaid contract leaves MRR.
+    expect(core).not.toMatch(/days past due|uncollect/i);
+    expect(`${c.rule} ${late.rule}`).not.toMatch(/days past due|uncollect/i);
   });
 
   it("reports a contracted step up as Expansion MRR on its day, for a contract that counts", () => {
@@ -556,6 +607,21 @@ describe("assessContract", () => {
       expect(describeContract(p.question).length, p.label).toBeGreaterThan(0);
     }
     expect(new Set(PRESETS.map((p) => assessContract(p.question).verdict.line)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  // 2026-11-27: a reader asked where a contract of several years goes. The slider stops at 36
+  // months and "One fixed year" read as the only contract with a set end.
+  it("holds a contract of several years, counted at one year's value", () => {
+    const preset = PRESETS.find((p) => p.label === "Three-year contract");
+    expect(preset?.question).toEqual({ kind: "subscription", termMonths: 36, contractValue: 108000 });
+    const a = assessContract(preset!.question);
+    expect(a.verdict.counts).toBe("yes");
+    expect(a.amounts).toMatchObject({ mrr: 3000, arr: 36000 });
+    const amount = (id: string) => a.places.find((p) => p.id === id)?.amount;
+    expect(amount("acv")).toBe(36000);
+    expect(amount("bookings")).toBe(108000);
+    // The four the homepage prints stay the first four, the year without a renewal among them.
+    expect(PRESETS.slice(0, 4).map((p) => p.label)).toEqual(["Six months, no renewal", "Monthly plan", "One year, no renewal", "Paid pilot"]);
   });
 
   it("prints money with thousands separators and cents only when there are some", () => {
@@ -988,6 +1054,7 @@ describe("assessChange", () => {
     expect(answer("credit_or_refund")).toEqual([null, null, null]);
     expect(answer("notice")).toEqual([null, null, null]);
     expect(answer("late_payment")).toEqual([null, null, null]);
+    expect(answer("unpaid_in_term")).toEqual([null, null, null]);
     const core = standard("metrics/core.md");
     const atl = standard("atl.md");
     expect(core).toContain("Every decrease in committed recurring revenue counts, whether or not the service changed");
@@ -1032,8 +1099,8 @@ describe("assessChange", () => {
       for (const id of ["mrr", "arr", "carr", "nrr", "grr", "adjusted_retention"] as const) expect(by(kind, id)!.counts, `${kind} ${id}`).toBe("no");
       expect(by(kind, "logo_churn_rate"), kind).toBeUndefined();
     }
-    // Notice and a late payment move nothing in MRR. CARR net of known churn reads the notice.
-    for (const kind of ["notice", "late_payment"] as const) {
+    // Notice, a late payment and an unpaid contract still in force move nothing in MRR. CARR net of known churn reads the notice.
+    for (const kind of ["notice", "late_payment", "unpaid_in_term"] as const) {
       const c = assessChange({ change: kind, monthlyValue: 1000 });
       expect(c.reported, kind).toBe("Nothing in MRR");
       expect(c.amounts, kind).toMatchObject({ before: 1000, change: 0, after: 1000 });
@@ -1044,7 +1111,8 @@ describe("assessChange", () => {
     expect(by("notice", "carr")!.answer).toContain("CARR net of known churn takes the cancellation's annual value off from the day notice is given");
     expect(by("late_payment", "carr")!.counts).toBe("no");
     expect(assessChange({ change: "notice" }).rule).toContain("A right to cancel the customer has not used moves nothing either");
-    expect(assessChange({ change: "late_payment" }).rule).toContain("cancelled for non-payment, it is Churned MRR and a churned customer on the day it is cancelled");
+    expect(assessChange({ change: "late_payment" }).rule).toContain("cancelled for non-payment, it is Churned MRR and a churned customer on the day the cancellation takes effect and the subscription ends");
+    expect(by("unpaid_in_term", "carr")!.counts).toBe("no");
     expect(standard("metrics/finance.md")).toContain("The other is the annual value of each cancellation made on or before period end for a contract that ends after it");
     for (const kind of CHANGE_KINDS) {
       const c = assessChange({ change: kind, monthlyValue: 2000, changeMonthly: 500 });

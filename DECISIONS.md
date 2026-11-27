@@ -5,6 +5,39 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-27] An unpaid contract leaves MRR on the day it ends and the standard names no earlier day
+
+**Context.** The late payment rule of 2026-11-26 said a subscription cancelled for non-payment is Churned MRR "on the day it is cancelled". The owner read the calculator and pointed at the case the wording hides: a customer on a contract with a committed term who stops paying, or asks to leave, is invoiced to the end of the term whatever the day of the request, so the day the revenue stops is the day the contract ends. "The day it is cancelled" could be read as the day of the missed payment, the day of the request or the day the contract ends. A source check on 2026-11-27 (about 450 listed filers, the SaaS Metrics Standards Board, ChartMogul, Chargebee, Stripe, Maxio and Dave Kellogg; `docs/year-or-renewal-open-cases.md`, section C) found no source that treats a committed contract differently from a card plan and no agreed day on which an unpaid account leaves MRR before its contract ends.
+
+**Decision.**
+- The day is the day the subscription ends. The row of the movement table reads "Churned MRR and a churned customer, on the day the cancellation takes effect and the subscription ends" and the paragraph under MRR in `core.md` adds that the day can fall after the day the payment was missed.
+- A contract with a committed term, one the customer has agreed to pay for to its last day, is read by the same rule and gets its own row: while the company holds the customer to the term the contract is invoiced and keeps its MRR, whatever has been paid and whenever the customer asked to leave. It is Churned MRR and a churned customer on the day the contract ends, whether the company ends it early or the term runs out with no renewal.
+- An invoice left unpaid stays in Billings under its payment status and enters Bad Debt Rate when it is written off. Both metrics already say so; the paragraph links them.
+- `recurring.ts` gains the row and a twelfth change kind, `unpaid_in_term`, with its label, rule, preset and address. It moves nothing in MRR, names Billings and says the customer churns on the day the contract ends. `late_payment` names Billings too. The calculator and `classify_revenue` print both from the same functions.
+- "Committed term" is the phrase, since "fixed-term" in the standard means product access under 12 months with no renewal.
+- The standard states no number of days past due and no test of collectability. A company that closes a subscription under its collections policy has ended it and that day is the churn date.
+
+**Sources, each found word for word in the page on 2026-11-27.**
+- SaaS Metrics Standards Board, "Annual Recurring Revenue": "ARR should be reduced by churned ARR in the month the down-sell or churn contractually occurs." and "Churned ARR should not be deducted from ARR upon learning about known churn in the future."
+- ChartMogul Help Center, "Handling past-due subscriptions": "Delinquent subscriptions will remain Past Due (and contribute to MRR) until they are explicitly cancelled (default)".
+- Chargebee, "Monthly Recurring Revenue": "Subscriptions in dunning are considered Active until the dunning period ends."
+- Dave Kellogg, Kellblog, 27 December 2016, on the other side: "we need to remove Foxtrot from the ARR base at some defined number of days past due (e.g., 90) or when we lose hope of collection (e.g., bankruptcy)".
+- EnerNOC, Form 10-K for fiscal 2015, also on the other side: churn is ARR lost "for any reason including, but not limited to non-renewal, early termination, or ongoing non-payment".
+
+**Alternatives considered.**
+- *A rule that takes an unpaid account out after a stated number of days, or when collection is judged unlikely.* Kellogg and one former filer support it, the vendors offer it as a setting beside a default that waits for the cancellation and the Board's text is contractual. Practice splits, so the standard stays silent (the owner's rule of 2026-11-26).
+- *Widen the `late_payment` answer and add no kind.* The reader with this case would have to find it under a label about a late payment on an open subscription, and the answer could not name the day the contract ends.
+- *A `past_due` value for `subscription_status`.* The field keeps its four values (2026-11-26): a past-due subscription is `active`.
+
+**Consequences.**
+- No formula, field, dataset or number changes. The rule of 2026-11-26 stands and is stated more exactly.
+- `change` in `classify_revenue` accepts a twelfth value, an addition to the tool's input, so the next release is a minor one.
+- The churn article reprints the table and says who chooses the day, with the ChartMogul and Kellogg quotations and both pages in its sources.
+- `recurring.test.ts` holds the row, the kind, the sentences in `core.md` and the absence of a day count; `tools.test.ts` and `does-it-count.test.ts` hold the tool's text and the calculator's preset.
+- The same day the calculator gained a "Three-year contract" preset (the preset "One fixed year" is now "One year, no renewal") and asks who the customer is as one choice of four with "A new customer" first, in place of three boxes. The address keys `other`, `returning` and `trial` are unchanged.
+
+---
+
 ## [2026-11-27] NRR-M counts every expansion and reactivation and reads no tag
 
 **Context.** The Market form of Net Revenue Retention (NRR-M) summed the expansion and reactivation events of cohort customers whose `expansion_classification` was one of six listed values. The enum has six values, so on tagged data the filter left out nothing. An event with no tag failed it, since a null is in no list. `derive_cel` writes the ledger with an empty tag (`cel.md`, step 6): a subscription ledger shows that MRR moved, not what was bought. A company on a derived ledger therefore reported an NRR-M with no expansion in it until every event was tagged. With an opening cohort of $100,000, $10,000 of expansion, $3,000 of contraction and $2,000 of churn the main formula gives 105% and NRR-M gave 95%. The record of 2026-11-26 below left the question open and called the filter the way the M form leaves out expansion a market reader would not count. That reading was wrong: the form's own note says it counts every classification and the Operating form is the one that selects. The owner's rule of agreed practice or silence does not reach the point, because the tag is the Attribution Taxonomy Layer's own and no filer or vendor publishes a rule for an event that lacks one. Shown the choice, the owner took the recommendation: "Yes, your recommendation".

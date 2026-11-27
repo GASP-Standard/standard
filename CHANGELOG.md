@@ -4,6 +4,17 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+## [1.25.0] - 2026-11-27
+
+### Added
+- **A twelfth change in `classify_revenue`, `unpaid_in_term`** (`DECISIONS.md` 2026-11-27): a customer stops paying inside a committed term and the contract stays in force. Nothing in MRR moves, each invoice of the term stays in Billings as unpaid until it is paid or written off and the customer churns on the day the contract ends. The movement table under MRR has a row for it and the calculator a preset.
+- A "Three-year contract" preset in the calculator: 36 months at $108,000 counts at $3,000 of MRR, $36,000 of ARR and ACV and $108,000 of Bookings.
+
+### Changed
+- **The late payment rule names its day.** A subscription cancelled for non-payment is Churned MRR and a churned customer on the day the cancellation takes effect and the subscription ends, which can fall after the day the payment was missed. The text said "on the day it is cancelled". A contract with a committed term keeps its MRR while the company holds the customer to it. No formula or number changes, and the standard names no number of days past due at which an unpaid contract leaves MRR.
+- A late payment's answer in `classify_revenue` lists Billings: the invoice stays there, reported as unpaid until it is paid or written off.
+- The calculator asks who the customer is as one choice of four (a new customer, one who holds another subscription, one coming back, one converting from a trial) in place of three boxes. Addresses are unchanged. The preset "One fixed year" is "One year, no renewal".
+
 ## [1.24.0] - 2026-11-27
 
 ### Added

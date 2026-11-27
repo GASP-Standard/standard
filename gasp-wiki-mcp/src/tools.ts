@@ -691,8 +691,8 @@ export function formatChange(data: StandardData, question: ChangeQuestion): stri
   } else if (c.metric) parts.push("", "_Pass `changeMonthly`, the size of the change per month, and `monthlyValue`, the MRR before it, for the amounts._");
 
   parts.push("", "## Every metric it reaches", ...placeSection(data, c.places));
-  // Notice and a late payment are paragraphs under MRR in core.md; a change with a movement is on that movement's page and the rest are under Contraction MRR
-  const underMrr = c.question.change === "notice" || c.question.change === "late_payment";
+  // Notice and the two unpaid cases are paragraphs under MRR in core.md; a change with a movement is on that movement's page and the rest are under Contraction MRR
+  const underMrr = c.question.change === "notice" || c.question.change === "late_payment" || c.question.change === "unpaid_in_term";
   const page = c.metric ?? (underMrr ? "MRR" : "Contraction MRR");
   const rule = revenuePageUrl(data, c.metric ?? (underMrr ? "MRR and ARR" : "Contraction MRR"));
   parts.push("", `The rule is stated under ${page}${rule ? ` (${rule})` : ""}. The same question in the calculator: ${calculatorUrl(changeToQuery(c.question))}`);
