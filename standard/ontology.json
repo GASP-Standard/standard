@@ -4226,7 +4226,7 @@
         "expired",
         "paused"
       ],
-      "description": "Subscription status",
+      "description": "Subscription status. A subscription with a payment overdue stays active until it is cancelled",
       "metricCount": 19
     },
     {

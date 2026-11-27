@@ -32,9 +32,9 @@ import {
   noDriversMessage,
   type PathStep,
 } from "./traversal.js";
-import { REVENUE_KINDS, MAX_AMOUNT, MAX_TERM_MONTHS, type RevenueKind } from "./recurring.js";
+import { CHANGE_KINDS, REVENUE_KINDS, MAX_AMOUNT, MAX_LINES, MAX_TERM_MONTHS, type ChangeKind, type RevenueKind } from "./recurring.js";
 import { SITE, metricUrl, definitionUrl, nodeUrl, resolveDocLink } from "./urls.js";
-import { formatAssessment, formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
+import { formatRevenueAnswer, formatCanonicalFormula, resolveMetric, suggestMatches, formatAmbiguous, fillTemplate, formatDataRequirement, breakdownTemplate, breakdownRequirement, chooseDialect } from "./tools.js";
 import { loadAdapter, validateMapping, parseDocument } from "./ossie/adapt.js";
 import { compileModelFromText } from "./ossie/company.js";
 import { compileTargetFromText, TARGETS } from "./targets/index.js";
@@ -1180,19 +1180,46 @@ tool(
 );
 
 // --- classify_revenue ---
+const KIND_HELP = "subscription (product access on a plan or contract), term_licence (software licensed for a term, on-premises software included), perpetual_licence (a perpetual licence fee, charged once), hardware (hardware sold outright), add_on, pilot (a paid pilot or proof of concept), support (support, maintenance or a managed service on subscription terms), committed_usage (a contracted minimum), usage_above_commitment, on_demand_usage, credit_pack (credits bought once, automatic top-ups included), recurring_credits (credits billed every period), professional_services (delivered work), one_time_fee, free_trial";
+const revenueKind = z.enum(REVENUE_KINDS as [RevenueKind, ...RevenueKind[]]);
+const termMonths = z.number().int().min(1).max(MAX_TERM_MONTHS).optional().describe("The contract's term in months. Omit it for a contract with no end date, which runs until the customer cancels. Read for subscription, term_licence, add_on, pilot, support and committed_usage");
+const renews = z.boolean().optional().describe("The contract carries a renewal provision: it continues unless cancelled or the customer holds an option to renew");
+const followsEarlierTerm = z.boolean().optional().describe("The contract follows an earlier term with no break in access, which makes it a renewal");
+const amount = () => z.number().positive().max(MAX_AMOUNT).optional();
 tool(
   "classify_revenue",
-  "Apply the GASP year-or-renewal test to one contract or charge: does it count in MRR and ARR, where is it reported if it does not (Fixed-Term Revenue, Services Revenue, Consumption Revenue), can it churn and what are its first and last day reported as (New, Expansion, Churned or Contraction MRR, or nothing). A subscription counts when its contract runs 12 months or more or when a shorter plan renews; product access under 12 months with neither is fixed-term revenue. Pass `contractValue` or `monthlyValue` for the MRR, ARR and fixed-term amounts. Use it to settle whether a deal belongs in ARR, whether an expiry is churn or how a pilot, an add-on, a credit pack or a services engagement is reported. The answer links the metric pages and the calculator at gaspwiki.com/research/does-it-count opened on the same contract.",
+  "Apply the GASP year-or-renewal test to a contract or a charge and name every metric it reaches. It answers three questions; pass `kind`, `lines` or `change`. (1) One contract (`kind`): does it count in MRR and ARR, where is it reported if it does not (Fixed-Term Revenue, Services Revenue, Consumption Revenue), can it churn and what are its first and last day reported as (New, Expansion, Reactivation, Churned or Contraction MRR, or nothing). A subscription counts when its contract runs 12 months or more or when a shorter plan renews; product access under 12 months with neither is fixed-term revenue. `returning` asks about a customer who churned and comes back and `afterTrial` about a free trial that converts. (2) A contract with several lines (`lines`): each line answered by its own kind and term, what they add up to and, with `bundleValue` or `bundleMonthly`, one bundle price shared across the lines by standalone price. (3) A change to a subscription the customer holds (`change`): an upgrade, a new module, a price increase, a downgrade, a price cut, a discount with an end date, a move to annual billing, a one-off credit, notice of a cancellation or a late payment, with the movement and the tags its Revenue_Event carries. Every answer lists the metrics reached with a yes, a part or a no and the reason: MRR, ARR, Contracted ARR, Bookings, Billings, Annual Contract Value, Net and Gross Revenue Retention with their adjusted variants, Total, New and Churned Customers, Consumption Revenue, Usage Run-Rate and Prepaid Credit Balance. Pass amounts as the customer pays them, after any discount. Use it to settle whether a deal belongs in ARR, whether an expiry is churn, how a discount moves retention or how a pilot, an add-on, a term or perpetual licence, hardware, a credit pack or a services engagement is reported. The answer links the metric pages and the calculator at gaspwiki.com/research/does-it-count opened on the same question.",
   {
-    kind: z.enum(REVENUE_KINDS as [RevenueKind, ...RevenueKind[]]).describe("What is sold: subscription (product access on a plan or contract), add_on, pilot (a paid pilot or proof of concept), support (support, maintenance or a managed service on subscription terms), committed_usage (a contracted minimum), usage_above_commitment, on_demand_usage, credit_pack (credits bought once, automatic top-ups included), recurring_credits (credits billed every period), professional_services (delivered work), one_time_fee, free_trial"),
-    termMonths: z.number().int().min(1).max(MAX_TERM_MONTHS).optional().describe("The contract's term in months. Omit it for a contract with no end date, which runs until the customer cancels. Read for subscription, add_on, pilot, support and committed_usage"),
-    renews: z.boolean().optional().describe("The contract carries a renewal provision: it continues unless cancelled or the customer holds an option to renew"),
-    followsEarlierTerm: z.boolean().optional().describe("The contract follows an earlier term with no break in access, which makes it a renewal"),
-    otherMrr: z.boolean().optional().describe("The customer holds MRR apart from this contract. It decides New against Expansion MRR at the start and Churned against Contraction MRR at the end. An add-on always sits beside a subscription"),
-    contractValue: z.number().positive().max(MAX_AMOUNT).optional().describe("The contract's value over its whole term, read with termMonths, or the amount charged for a kind sold once (professional_services, one_time_fee, credit_pack, on_demand_usage). A contract with no end date and recurring_credits take monthlyValue"),
-    monthlyValue: z.number().positive().max(MAX_AMOUNT).optional().describe("The price per month, for a contract priced by the month, one with no end date or recurring_credits. Pass one of the two amounts: where both are given, a kind priced by the month is answered from monthlyValue and a kind sold once from contractValue"),
+    kind: revenueKind.optional().describe(`One contract or charge. What is sold: ${KIND_HELP}`),
+    termMonths,
+    renews,
+    followsEarlierTerm,
+    otherMrr: z.boolean().optional().describe("The customer holds MRR apart from this contract. It decides New against Expansion MRR at the start and Churned against Contraction MRR at the end. An add-on always sits beside a subscription. Read with `kind` and with `lines`"),
+    returning: z.boolean().optional().describe("The customer churned earlier and is coming back: a contract that counts starts as Reactivation MRR and the customer stays out of New Customers. Read for a customer with no other MRR, with `kind` and with `lines`"),
+    afterTrial: z.boolean().optional().describe("The contract starts on the day a free trial converts. Read for a new customer buying a contract that counts, with `kind` and with `lines`"),
+    contractValue: amount().describe("The contract's value over its whole term, read with termMonths, or the amount charged for a kind sold once (professional_services, one_time_fee, perpetual_licence, hardware, credit_pack, on_demand_usage). A contract with no end date and recurring_credits take monthlyValue"),
+    monthlyValue: amount().describe("The price per month, for a contract priced by the month, one with no end date or recurring_credits. Pass one of the two amounts: where both are given, a kind priced by the month is answered from monthlyValue and a kind sold once from contractValue. With `change` it is the customer's MRR before the change"),
+    lines: z
+      .array(
+        z.object({
+          kind: revenueKind.describe(`What this line sells: ${KIND_HELP}`),
+          termMonths,
+          renews,
+          followsEarlierTerm,
+          contractValue: amount().describe("The line's value over its whole term or the amount charged for a kind sold once. Under a bundle price, its standalone price"),
+          monthlyValue: amount().describe("The line's price per month. Under a bundle price, its standalone price per month"),
+        }),
+      )
+      .min(1)
+      .max(MAX_LINES)
+      .optional()
+      .describe("A contract with several lines, such as a subscription, an implementation fee and a credit pack. Each line is answered by its own kind and term. Pass it in place of `kind`"),
+    bundleValue: amount().describe("One price for every line over the whole contract. Each line's own amount is then its standalone price and the bundle price is shared out in proportion. Needs an amount and an end date on every line"),
+    bundleMonthly: amount().describe("One price per month for every line, shared out the same way. Needs every line priced by the month"),
+    change: z.enum(CHANGE_KINDS as [ChangeKind, ...ChangeKind[]]).optional().describe("A change to a subscription the customer holds, in place of `kind`: upgrade (more of the same product), new_module, price_increase, downgrade (seats removed or a lower tier), price_cut (a price cut or a discount with no end date), temporary_discount (a discount with an end date), annual_billing_discount (a move to annual billing at a lower price), annual_billing_same_price, credit_or_refund (a one-off credit or refund), notice (notice to cancel on a later date, or a right to cancel the customer has not used), late_payment (a payment is late and the subscription stays open)"),
+    changeMonthly: amount().describe("The size of the change per month as a positive amount, read with `change`. A decrease as large as the MRR before it is a cancellation: ask about the contract's end with `kind`"),
   },
-  async (question) => ({ content: [{ type: "text" as const, text: formatAssessment(data, question) }] }),
+  async (args) => ({ content: [{ type: "text" as const, text: formatRevenueAnswer(data, args) }] }),
 );
 
 if (options.workspace) registerWorkspaceTools(options.workspace, tool);

@@ -74,7 +74,8 @@ CARR = ARR + Contracted ARR not yet started
 - The Annual Contract Value (ACV) of each new contract signed on or before period end whose start date is after period end
 
 **Exclude:**
-- One-time fees, professional services and usage above a commitment, as in ARR
+- One-time fees and professional services, as in ARR
+- Usage above a commitment beyond what ARR holds for the period billed: the ACV of a signed contract carries none
 - The later years of a multi-year agreement: a contract adds one year of recurring value
 - A signed contract once it has started: from its start date it is in ARR and leaves the second term
 

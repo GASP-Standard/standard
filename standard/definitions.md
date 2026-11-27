@@ -240,7 +240,7 @@ An entity (company/account) with a paid subscription.
 
 ### Active Customer
 A customer in good standing at a point in time.
-- **Criteria:** Not churned, not suspended, payment current
+- **Criteria:** Not churned, not suspended. A customer with a payment overdue stays active while the invoice is collected and until the subscription is cancelled
 - **Used for:** MRR counts, ARPA calculations, denominator in retention metrics
 
 ### User

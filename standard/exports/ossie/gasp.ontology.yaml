@@ -931,7 +931,7 @@ ontology:
         verbalizes:
           - "{Subscription} is identified by {SubscriptionId}"
       - name: subscription_status
-        description: Subscription status
+        description: Subscription status. A subscription with a payment overdue stays active until it is cancelled
         roles:
           - concept: Date
           - concept: SubscriptionStatus
@@ -4785,7 +4785,7 @@ ontology:
       - String
   - concept: SubscriptionStatus
     type: ValueType
-    description: Subscription status
+    description: Subscription status. A subscription with a payment overdue stays active until it is cancelled
     extends:
       - String
     requires:

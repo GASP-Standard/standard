@@ -79,13 +79,13 @@ The other variables: `WORKSPACE_JWKS_URL` (default `<issuer>/oauth2/jwks`), `WOR
 | `infer_drivers` | Diagnose what could explain an observed metric movement: up to 25 upstream candidates ranked by attenuation score, each with its implied direction and path. Direction flips across `reduces` edges and negative-polarity inputs; a baseline input (MRR read at period start by NRR) is listed but not walked through. Metric nodes only; `maxDepth` 1 to 8 (default 6) |
 | `explain_path` | Up to 5 forward edge chains from one graph node to another, shortest first, with edge type, classification (metric_signal / structural / lifecycle / behavioral / assignment / generative), attenuation and direction flips per step and the target's end direction per path. A baseline edge can only start a path |
 | `coverage_gap` | Audit a metric set: metrics with a direct edge into or out of it that it leaves out, plus graph metrics with no path to or from it. Inputs that are ambiguous, outside the graph or not metrics are listed as unresolved with the reason |
-| `classify_revenue` | Apply the year-or-renewal test to one contract (what is sold, its term in months, whether it renews or follows an earlier term, whether the customer holds another subscription, its value): whether it counts in MRR and ARR, the line the revenue is reported on, whether its end is churn, what its first and last day are reported as and the amounts, with the page of each metric named and a link to the same answer in the calculator at https://gaspwiki.com/research/does-it-count |
+| `classify_revenue` | Apply the year-or-renewal test to one contract (`kind`: what is sold, its term in months, whether it renews or follows an earlier term, whether the customer holds another subscription, is coming back or is converting from a trial, its value), a contract with several lines (`lines`, with an optional bundle price) or a change to a running subscription (`change`): whether it counts in MRR and ARR, the line the revenue is reported on, whether its end is churn, what its first and last day are reported as, every other metric it reaches and the amounts, with the page of each metric named and a link to the same answer in the calculator at https://gaspwiki.com/research/does-it-count |
 
 The traversal tools (`infer_drivers`, `explain_path`, `coverage_gap`) return paths, edge classifications and attenuation scores. A score says how strongly the graph connects two metrics, never how far one will move. The tools chain: `infer_drivers` picks candidates, `explain_path` shows the chain behind one and `coverage_gap` checks whether you measure it. For "what if" simulation, use the [TWIN Modifier](https://gaspwiki.com/v1/twin-modifier).
 
 ## Data
 
-Version 1.23.0.
+Version 1.24.0.
 
 - 320 metrics across 13 departments
 - 122 glossary definitions (109 SaaS domain + 13 GASP framework)

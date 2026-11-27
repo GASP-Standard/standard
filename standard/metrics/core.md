@@ -24,16 +24,17 @@ MRR contribution = Annual Contract Value / 12
 
 **Include:**
 - Recurring subscription fees under a contract of 12 months or more, or a shorter plan that renews
+- Term licence fees, on-premises software included, by the same test
 - Support, maintenance and managed services sold on subscription terms, by the same test
 - Expansion and upgrade revenue
 - Discounts (use discounted amount, not list price)
 
 **Exclude:**
-- One-time fees (setup, implementation)
+- One-time fees (setup, implementation, a perpetual licence fee, hardware sold outright)
 - Professional services at any length, even when the work repeats ([Services Revenue](professional-services.md#services-revenue))
 - Fixed-term revenue: product access sold for under 12 months with no renewal
 - Trial accounts and free users
-- Variable/usage-based fees (unless contractually guaranteed)
+- Usage billed on demand with no commitment behind it. Committed usage counts by the same test and usage above a commitment counts for the period billed
 - Non-recurring charges
 
 Usage with no commitment behind it is reported as [Consumption Revenue](finance.md#consumption-revenue). That covers a pack of credits bought once and an automatic top-up, which are [usage paid for in advance](finance.md#consumption-revenue): each is a purchase with no term and no renewal.
@@ -54,6 +55,11 @@ Usage with no commitment behind it is reported as [Consumption Revenue](finance.
 | Committed usage, a contracted minimum | By its contract, like the subscriptions above | Yes, if it counts |
 | Usage above the commitment | Yes, for the period billed | No |
 | Support, maintenance or a managed service sold on subscription terms | By its contract, like the subscriptions above | Yes, if it counts |
+| A term licence, on-premises software included | By its contract, like the subscriptions above | Yes, if it counts |
+| A perpetual licence fee | No | No |
+| Maintenance on a perpetual licence | By its contract, like the subscriptions above | Yes, if it counts |
+| Hardware sold outright | No | No |
+| Hardware a subscription's price includes, with no separate charge | By its contract, like the subscriptions above | Yes, if it counts |
 | Delivered work: implementation, consulting, training, a build | No, at any length. Services Revenue | No |
 | One-time fees such as setup | No | No |
 | Usage billed on demand with no commitment | No. Consumption Revenue | No |
@@ -62,6 +68,8 @@ Usage with no commitment behind it is reported as [Consumption Revenue](finance.
 
 The third column says whether the revenue can count against Revenue Churn Rate and GRR. Whatever counts in MRR is lost revenue on the day it ends and whatever stays outside MRR has none to lose. Usage above a commitment is the exception: it counts for the period billed and Revenue Churn Rate and GRR leave its reversal out.
 
+**Licences and hardware:** A term licence counts by the same test as a subscription, whether the software runs in the vendor's cloud or on the customer's premises. A perpetual licence fee and hardware sold outright are charged once and stay out of MRR and ARR. Maintenance on a perpetual licence counts by its own term and renewal. Hardware that a subscription's price includes, with no separate charge, is part of that subscription.
+
 **When a contract starts or ends:**
 
 | What happens | How it is reported |
@@ -69,12 +77,23 @@ The third column says whether the revenue can count against Revenue Churn Rate a
 | A contract that counts in MRR expires or is cancelled | Churned MRR and a churned customer, in the month it ends |
 | It ends and the customer keeps another subscription | Contraction MRR. The customer has not churned |
 | It ends early | Churned MRR on the day it ends. Contraction MRR when another subscription stays |
+| The customer gives notice of a later ending or holds a right to cancel it has not used | Nothing in MRR until the day the ending takes effect, when it is reported as above |
+| A payment is late and the subscription stays open | Nothing in MRR moves. The subscription keeps its MRR and the customer stays a customer while the invoice is collected |
+| The subscription is cancelled for non-payment | Churned MRR and a churned customer, on the day it is cancelled |
 | A fixed-term contract ends, on schedule or early | Nothing in MRR, in churn or in contraction |
 | A customer with fixed-term revenue alone signs a contract that counts | New MRR from that contract's start date |
 | A second short contract follows the first with no break | New MRR from the second contract's start date. The first term stays fixed-term revenue |
 | A customer who already has MRR adds a contract that counts | Expansion MRR |
+| A contracted step up takes effect, in a ramp or a stepped price | Expansion MRR on the day the step takes effect. MRR and ARR hold the current step until then |
+| A customer who churned comes back on a contract that counts | Reactivation MRR from that contract's start date, counted apart from New MRR and New Customers |
 
 In the data the `subscription` dataset and the ledger hold the contracts that count. [Fixed-Term Revenue](finance.md#fixed-term-revenue) is recognised under the `fixed_term` revenue type, its contract counts in [Bookings](finance.md#bookings) at total contract value with no ACV and a customer whose only paid contracts are fixed-term holds the status `fixed_term`, outside [Total Customers](#total-customers).
+
+**A right to cancel and notice:** The stated term and the renewal provision decide the test. A clause that lets the customer cancel for convenience changes neither, so the contract counts at its stated value until an ending takes effect. Notice of a future ending moves nothing in MRR or ARR until that day. On that day it is Churned MRR for a customer left with no MRR and Contraction MRR for one who keeps another subscription. [CARR net of known churn](finance.md#carr-contracted-annual-recurring-revenue) takes a cancellation off from the day notice is given.
+
+**Late payment:** A subscription with a payment overdue keeps its MRR and its customer stays a customer while the invoice is collected. When the subscription is cancelled for non-payment it is Churned MRR and a churned customer on the day it is cancelled. A customer who pays and comes back after that day returns as [Reactivation MRR](#reactivation-mrr).
+
+**Ramps and stepped prices:** A contract whose price steps up over its term counts each step from the day it takes effect. MRR holds the current step and ARR is 12 times it, never the average over the term and never a later year's price. Each step up is Expansion MRR on its day and takes the [Attribution Taxonomy Layer](../atl.md) tag of what changes, as any expansion does: more seats or volume is `same_product` and a higher price for the same service is `pricing_adjustment`. [CARR](finance.md#carr-contracted-annual-recurring-revenue) reads a step the same way: an uplift signed for a later date enters when it takes effect.
 
 **Temporary changes:** A contract of 12 months or more with no renewal counts in MRR at its monthly value until the day it ends, when it is Churned MRR, or Contraction MRR if the customer keeps another subscription. The [Commercial Event Ledger](../cel.md#change-nature) marks its movements with `change_nature` (`temporary` when it starts, `scheduled_reversal` when it ends), as it does a discount with an end date, so this revenue can be told apart and Adjusted NRR and Adjusted GRR leave it out.
 

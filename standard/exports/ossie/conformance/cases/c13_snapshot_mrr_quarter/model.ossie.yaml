@@ -109,7 +109,7 @@ datasets:
       - name: subscription_status
         expression:
           sql: subscription_status
-        description: Subscription status
+        description: Subscription status. A subscription with a payment overdue stays active until it is cancelled
         datatype: String
         ai_context:
           instructions: One of active, cancelled, expired, paused

@@ -6,7 +6,10 @@
  */
 import { metricFormulaId, closestNames } from "./loader.js";
 import { metricUrl, calculatorUrl } from "./urls.js";
-import { amountBasis, assessContract, questionToQuery, formatMoney, type ContractQuestion, type ReportingLine, type MrrMovement } from "./recurring.js";
+import {
+  amountBasis, assessChange, assessContract, assessDeal, changeToQuery, dealToQuery, questionToQuery, formatMoney, PLACE_GROUPS,
+  type Assessment, type ChangeKind, type ChangeQuestion, type ContractQuestion, type DealQuestion, type MrrMovement, type Place, type PlaceId, type ReportingLine, type RevenueKind,
+} from "./recurring.js";
 import { enumFilters, formatFilters } from "./filters.js";
 import { compileMetric, exampleSql, type CompileContext } from "./compile.js";
 import { DIALECTS, dialectOfWarehouse, type DialectName } from "./dialect.js";
@@ -483,6 +486,7 @@ export const REVENUE_PAGES: Record<Exclude<ReportingLine, null> | MrrMovement | 
   "Consumption Revenue": ["Finance", "consumption-revenue"],
   "New MRR": ["Core", "new-mrr"],
   "Expansion MRR": ["Core", "expansion-mrr"],
+  "Reactivation MRR": ["Core", "reactivation-mrr"],
   "Churned MRR": ["Core", "churned-mrr"],
   "Contraction MRR": ["Core", "contraction-mrr"],
 };
@@ -494,27 +498,87 @@ export function revenuePageUrl(data: StandardData, key: keyof typeof REVENUE_PAG
   return metric ? metricUrl(metric) : undefined;
 }
 
+/** The metric page behind each place an answer names. The adjusted variants are on the NRR page */
+export const PLACE_PAGES: Record<PlaceId, [department: string, slug: string]> = {
+  mrr: ["Core", "mrr-monthly-recurring-revenue"],
+  arr: ["Core", "arr-annual-recurring-revenue"],
+  carr: ["Finance", "carr-contracted-annual-recurring-revenue"],
+  bookings: ["Finance", "bookings"],
+  billings: ["Finance", "billings"],
+  acv: ["Sales", "acv-annual-contract-value"],
+  nrr: ["Core", "net-revenue-retention-nrr"],
+  grr: ["Core", "gross-revenue-retention-grr"],
+  adjusted_retention: ["Core", "net-revenue-retention-nrr"],
+  total_customers: ["Core", "total-customers"],
+  new_customers: ["Core", "new-customers"],
+  logo_churn_rate: ["Core", "logo-churn-rate-customer-churn"],
+  fixed_term_revenue: ["Finance", "fixed-term-revenue"],
+  services_revenue: ["Professional Services", "services-revenue"],
+  consumption_revenue: ["Finance", "consumption-revenue"],
+  usage_run_rate: ["Finance", "usage-run-rate"],
+  prepaid_credit_balance: ["Finance", "prepaid-credit-balance"],
+  trial_to_paid: ["Product", "trial-to-paid-conversion-rate"],
+};
+
+/** The address of the page behind a place, undefined when the standard holds no such metric */
+export function placePageUrl(data: StandardData, id: PlaceId): string | undefined {
+  const [department, slug] = PLACE_PAGES[id];
+  const metric = data.metrics.find((m) => m.department === department && m.slug === slug);
+  return metric ? metricUrl(metric) : undefined;
+}
+
+const revenueLink = (data: StandardData, label: string, key: keyof typeof REVENUE_PAGES) => {
+  const url = revenuePageUrl(data, key);
+  return url ? `[${label}](${url})` : label;
+};
+
+const placeLine = (data: StandardData, p: Place) => {
+  const url = placePageUrl(data, p.id);
+  return `- **${url ? `[${p.metric}](${url})` : p.metric}:** ${p.answer}${p.amount !== null ? ` (${formatMoney(p.amount)})` : ""}`;
+};
+
+/** Every place of an answer under its group heading */
+function placeSection(data: StandardData, places: Place[]): string[] {
+  const out: string[] = [];
+  for (const group of PLACE_GROUPS) {
+    const rows = places.filter((p) => p.group === group.label);
+    if (rows.length === 0) continue;
+    out.push("", `**${group.label}**`, "", ...rows.map((p) => placeLine(data, p)));
+  }
+  return out;
+}
+
+/** Where a contract is reported, as linked text */
+function reportedAs(data: StandardData, a: Assessment): string {
+  const line = a.verdict.line;
+  if (a.question.kind === "free_trial") return "Nothing: a free trial carries no revenue";
+  return line === null ? "No line of its own: it is revenue outside MRR and ARR"
+    : line === "MRR and ARR" ? `${revenueLink(data, "MRR", "MRR and ARR")} and ${revenueLink(data, "ARR", "ARR")}`
+    : revenueLink(data, line === "Fixed-term revenue" ? "Fixed-Term Revenue" : line, line);
+}
+
+const movementLink = (data: StandardData, text: string, metric: MrrMovement | null) => (metric ? text.replace(metric, revenueLink(data, metric, metric)) : text);
+
+const calculatorLine = (data: StandardData, query: string) => {
+  const test = revenuePageUrl(data, "MRR and ARR");
+  return `The year-or-renewal test is stated under MRR${test ? ` (${test})` : ""}. The same question in the calculator: ${calculatorUrl(query)}`;
+};
+
 /**
  * The year-or-renewal test applied to one contract, as the text `classify_revenue`
  * returns: whether it counts in MRR and ARR, where it is reported, what its first
- * and last day are reported as and the amounts when a value is given. Every answer
- * is `assessContract` in recurring.ts, the function the calculator on the site runs.
+ * and last day are reported as, the amounts when a value is given and every metric
+ * it reaches. Every answer is `assessContract` in recurring.ts, the function the
+ * calculator on the site runs.
  */
 export function formatAssessment(data: StandardData, question: ContractQuestion): string {
   const a = assessContract(question);
-  const link = (label: string, key: keyof typeof REVENUE_PAGES) => {
-    const url = revenuePageUrl(data, key);
-    return url ? `[${label}](${url})` : label;
-  };
   const line = a.verdict.line;
-  const reported = line === null ? "No line of its own: it is revenue outside MRR and ARR"
-    : line === "MRR and ARR" ? `${link("MRR", "MRR and ARR")} and ${link("ARR", "ARR")}`
-    : link(line === "Fixed-term revenue" ? "Fixed-Term Revenue" : line, line);
   const parts = [
     `# Does it count? ${a.title}`,
     "",
     `- **Counts in MRR and ARR:** ${a.verdict.answer}`,
-    `- **Reported as:** ${a.question.kind === "free_trial" ? "Nothing: a free trial carries no revenue" : reported}`,
+    `- **Reported as:** ${reportedAs(data, a)}`,
     `- **Can churn:** ${a.verdict.churnAnswer}`,
     `- **Rule:** ${a.verdict.rule}`,
   ];
@@ -537,12 +601,129 @@ export function formatAssessment(data: StandardData, question: ContractQuestion)
     if (basis === "charged") parts.push("", "_Pass `contractValue`, the amount charged, for the amount._");
   }
 
-  const movementLink = (text: string, metric: MrrMovement | null) => (metric ? text.replace(metric, link(metric, metric)) : text);
-  parts.push("", "## Its first and last day", "", `- **Starts:** ${movementLink(a.startReported, a.start.metric)}`, `- **Ends:** ${movementLink(a.endReported, a.end.metric)}`);
+  parts.push("", "## Its first and last day", "", `- **Starts:** ${movementLink(data, a.startReported, a.start.metric)}`, `- **Ends:** ${movementLink(data, a.endReported, a.end.metric)}`);
   if (a.endWhen) parts.push(`- **When:** ${a.endWhen}`);
   if (a.customer) parts.push(`- **Customer counts:** ${a.customer}`);
 
-  const test = revenuePageUrl(data, "MRR and ARR");
-  parts.push("", `The year-or-renewal test is stated under MRR${test ? ` (${test})` : ""}. The same question in the calculator: ${calculatorUrl(questionToQuery(a.question))}`);
+  parts.push("", "## Every metric it reaches", ...placeSection(data, a.places));
+  parts.push("", calculatorLine(data, questionToQuery(a.question)));
   return parts.join("\n");
+}
+
+/**
+ * A contract with several lines as text: what the lines add up to, the bundle
+ * price shared out by standalone price and each line answered by its own kind
+ * and term. Every answer is `assessDeal` in recurring.ts.
+ */
+export function formatDeal(data: StandardData, question: DealQuestion): string {
+  const d = assessDeal(question);
+  const parts = [`# Does it count? ${d.title}`, "", "Each line is answered by its own kind and term. A line that counts in MRR and ARR counts beside lines that stay out."];
+
+  parts.push("", "## The whole contract", "");
+  for (const t of d.totals) {
+    const url = placePageUrl(data, t.id);
+    parts.push(`- **${url ? `[${t.metric}](${url})` : t.metric}:** ${t.complete ? formatMoney(t.amount) : `${formatMoney(t.amount)} from the lines that give an amount`}`);
+  }
+  if (d.totals.length === 0) parts.push("_Pass `contractValue` or `monthlyValue` on each line for the amounts._");
+  if (d.customer) parts.push(`- **Customer counts:** ${d.customer}`);
+
+  if (d.allocation) {
+    const al = d.allocation;
+    const per = al.basis === "monthly" ? " a month" : "";
+    parts.push(
+      "",
+      "## The bundle price, shared out",
+      "",
+      `One price of ${formatMoney(al.price)}${per} covers every line. Each line takes its standalone price over the sum of the standalone prices, times the bundle price.`,
+      "",
+      "| Line | Standalone price | Allocated |",
+      "|---|---|---|",
+      ...d.lines.map((l, i) => `| ${l.title} | ${formatMoney(al.standalone[i])} | ${formatMoney(Math.round(al.allocated[i] * 100) / 100)} |`),
+    );
+  } else if (d.allocationNote) parts.push("", `_${d.allocationNote}_`);
+
+  d.lines.forEach((a, i) => {
+    parts.push(
+      "",
+      `## Line ${i + 1}: ${a.title}`,
+      "",
+      `- **Counts in MRR and ARR:** ${a.verdict.answer}`,
+      `- **Reported as:** ${reportedAs(data, a)}`,
+      `- **Starts:** ${movementLink(data, a.startReported, a.start.metric)}`,
+      `- **Ends:** ${movementLink(data, a.endReported, a.end.metric)}`,
+      `- **Rule:** ${a.verdict.rule}`,
+      "",
+      "It reaches:",
+      "",
+      ...a.places.filter((p) => p.counts !== "no").map((p) => placeLine(data, p)),
+    );
+  });
+
+  parts.push("", calculatorLine(data, dealToQuery(d.question)));
+  return parts.join("\n");
+}
+
+/**
+ * A change to a subscription the customer holds, as text: the movement it is
+ * reported as, its tags, the amounts and every metric it reaches. Every answer
+ * is `assessChange` in recurring.ts.
+ */
+export function formatChange(data: StandardData, question: ChangeQuestion): string {
+  const c = assessChange(question);
+  const parts = [
+    `# Does it count? ${c.title}`,
+    "",
+    `- **Reported as:** ${movementLink(data, c.reported, c.metric)}`,
+  ];
+  if (c.metric) {
+    const tags = [c.classification ? `expansion_classification \`${c.classification}\`` : null, `change_nature \`${c.changeNature}\``].filter(Boolean);
+    parts.push(`- **Tagged:** ${tags.join(", ")}`);
+  }
+  parts.push(`- **Rule:** ${c.rule}`);
+
+  if (c.amounts) {
+    const m = c.amounts;
+    parts.push("", "## Amounts", "");
+    if (m.before !== null) parts.push(`- **MRR before:** ${formatMoney(m.before)}`);
+    parts.push(`- **Change in MRR:** ${formatMoney(m.change)}`);
+    if (m.after !== null) parts.push(`- **MRR after:** ${formatMoney(m.after)}`);
+    if (m.arrAfter !== null) parts.push(`- **ARR after:** ${formatMoney(m.arrAfter)}`);
+  } else if (c.metric) parts.push("", "_Pass `changeMonthly`, the size of the change per month, and `monthlyValue`, the MRR before it, for the amounts._");
+
+  parts.push("", "## Every metric it reaches", ...placeSection(data, c.places));
+  // Notice and a late payment are paragraphs under MRR in core.md; a change with a movement is on that movement's page and the rest are under Contraction MRR
+  const underMrr = c.question.change === "notice" || c.question.change === "late_payment";
+  const page = c.metric ?? (underMrr ? "MRR" : "Contraction MRR");
+  const rule = revenuePageUrl(data, c.metric ?? (underMrr ? "MRR and ARR" : "Contraction MRR"));
+  parts.push("", `The rule is stated under ${page}${rule ? ` (${rule})` : ""}. The same question in the calculator: ${calculatorUrl(changeToQuery(c.question))}`);
+  return parts.join("\n");
+}
+
+/** What `classify_revenue` takes: one contract, a contract with several lines or a change to a running subscription */
+export interface RevenueArgs {
+  kind?: RevenueKind;
+  termMonths?: number;
+  renews?: boolean;
+  followsEarlierTerm?: boolean;
+  otherMrr?: boolean;
+  returning?: boolean;
+  afterTrial?: boolean;
+  contractValue?: number;
+  monthlyValue?: number;
+  lines?: ContractQuestion[];
+  bundleValue?: number;
+  bundleMonthly?: number;
+  change?: ChangeKind;
+  changeMonthly?: number;
+}
+
+/** The text `classify_revenue` returns for whichever of the three questions was asked */
+export function formatRevenueAnswer(data: StandardData, args: RevenueArgs): string {
+  const asked = [args.kind !== undefined, args.lines !== undefined, args.change !== undefined].filter(Boolean).length;
+  if (asked !== 1)
+    return "Pass one of `kind` (one contract or charge), `lines` (a contract with several lines) or `change` (a change to a subscription the customer holds).";
+  if (args.lines) return formatDeal(data, { lines: args.lines, otherMrr: args.otherMrr, returning: args.returning, afterTrial: args.afterTrial, bundleValue: args.bundleValue, bundleMonthly: args.bundleMonthly });
+  if (args.change) return formatChange(data, { change: args.change, monthlyValue: args.monthlyValue, changeMonthly: args.changeMonthly });
+  const { lines: _lines, bundleValue: _bundle, bundleMonthly: _bundleMonthly, change: _change, changeMonthly: _by, ...contract } = args;
+  return formatAssessment(data, contract as ContractQuestion);
 }
