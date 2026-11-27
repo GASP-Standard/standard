@@ -5,6 +5,32 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-27] The calculator leads with the verdict and keeps it in view
+
+**Context.** The calculator at `/research/does-it-count` grew in three steps over two days: one contract, then every metric it reaches with several lines and changes, then the customer choice and the unpaid contract. Each step added to the page and none rearranged it. The owner asked for a review ("Is the calculator as clean and user friendly as it could be, feels a little jank. Lets take a step back and review what we have, plan a design around that"). The review found the answer below the fold on a phone, 17 examples ahead of the first question, a term set by a slider with a number beside it, renewal and an earlier term as checkboxes under the slider and a list of up to 18 metrics in which the ones a contract stays out of outnumbered the ones it reaches. The owner approved the plan and chose to collapse those ("Ya you're on the right track. Lets collapse also and go for it on prod").
+
+**Decision.**
+- **One headline states the verdict and stays in view.** It says where the money is reported and how much: "Counts in MRR and ARR" with the MRR and ARR, or the line it is reported on with the amount and "Outside MRR and ARR" beneath. A contract with several lines says how many count and a change names its movement. From `lg` the headline holds under the site header at the top of the answer; on a phone it holds at the foot of the screen and updates with each tap. On a screen under 500px tall, which is what a high zoom makes of a tall one, it scrolls with the page.
+- **The form asks in the order of the test.** What is sold (six families, then the kind), how long it runs (one chip each for 1, 3, 6, 12, 24 and 36 months, no end date, or another term typed), whether it renews and whether it follows an earlier term as two yes or no questions, then the amount. The customer, further lines and the bundle price sit under "More about this contract", closed for a new customer with one line and opened by an example or an address that uses them.
+- **Five examples show and the rest are one step away.** The first four are the ones the homepage prints. A reader who arrives on a later example finds the full list open with that one chosen.
+- **The answer has three layers.** The verdict with its three tiles, the rule and the timeline; the first day, the last day and the customer; then sections that open and close. The metrics a contract reaches are open and the ones it stays out of are closed, as are the quotations from other standards and the tool arguments for an agent.
+- **A contract with several lines is one list.** Each line is a row with its own headline and amount, and a row opens to that line's full answer. The totals and the bundle allocation follow.
+- **The island still decides nothing.** The three headline functions in `src/lib/does-it-count.ts` read fields of the answers from `recurring.ts`. No rule, address key or tool output changed.
+
+**Alternatives considered.**
+- *A mockup first.* Offered and declined: the page has little traffic and a live page is the faster way to judge the layout.
+- *Leave the metrics a contract stays out of open.* They are most of the list for most contracts and push the quotations and the agent's arguments far down. Closed, they are one line with a count and still in the served page.
+- *A wizard, one question to a screen.* The test has four inputs and the reader learns from watching the verdict move as one changes. A form with the verdict in view keeps that.
+- *Sections that render when opened.* A crawler and a reader without JavaScript would lose the closed ones. `<details>` keeps every row in the page as served.
+
+**Consequences.**
+- The page as served holds the same text as before under different headings; the closed sections are in the HTML.
+- A phone gives about 125px at the foot of the screen to the headline while the reader is in the form. Controls that take focus stop clear of it.
+- The slider is gone, so a term other than the six offered is typed (1 to 120 months, as the address already allowed).
+- `test/does-it-count.test.ts` holds the headline for every kind, the order of the form, the examples, the sections and the built page.
+
+---
+
 ## [2026-11-27] An unpaid contract leaves MRR on the day it ends and the standard names no earlier day
 
 **Context.** The late payment rule of 2026-11-26 said a subscription cancelled for non-payment is Churned MRR "on the day it is cancelled". The owner read the calculator and pointed at the case the wording hides: a customer on a contract with a committed term who stops paying, or asks to leave, is invoiced to the end of the term whatever the day of the request, so the day the revenue stops is the day the contract ends. "The day it is cancelled" could be read as the day of the missed payment, the day of the request or the day the contract ends. A source check on 2026-11-27 (about 450 listed filers, the SaaS Metrics Standards Board, ChartMogul, Chargebee, Stripe, Maxio and Dave Kellogg; `docs/year-or-renewal-open-cases.md`, section C) found no source that treats a committed contract differently from a card plan and no agreed day on which an unpaid account leaves MRR before its contract ends.
