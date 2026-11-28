@@ -320,13 +320,11 @@ This is one person's plan for earning a place in an Apache community. Credibilit
 
 **2. A card on the ecosystem page**
 
-Listing is a pull request to `apache/ossie-website` with a logo and a description. The draft:
+Listing is a pull request to `apache/ossie-website` with a logo and a description. The reference model pull request has been open since 2026-11-19 (apache/ossie #773) and `GASP` is in the vendor catalog, so the card links to real files. Opened on 2026-11-28 as apache/ossie-website #66, an entry named "GASP Standard" with three features:
 
-- **SaaS ontology:** the first Ossie-native domain standard; entities, relationships and canonical metrics
-- **Map any Ossie model to GASP:** one mapping, then coverage and definition drift in one call
-- **GASP MCP:** one-line install; agents read canonical definitions and map models
-
-Wait until the reference model PR is at least open, so the card links to real files.
+- **The standard as Ossie files:** the ontology, the reference semantic model, the mapping and the coverage file at https://gaspwiki.com/downloads/ossie/
+- **Map a company's data to the standard:** the MCP server checks a mapping, compiles the company's Ossie model and scores definition drift
+- **Vendor validator:** `gasp-ossie-validator` on PyPI, run by the Ossie validator with `--vendor GASP`
 
 **3. Other tools running GASP**
 
