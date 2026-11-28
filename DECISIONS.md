@@ -5,6 +5,26 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-27] A metric page prints its whole entry, each block with the section it follows
+
+**Context.** The metric page template printed what the parser extracts from an entry: the definition, the formula block, the benchmarks, what it tells you, the common mistakes and the sources. An entry in `standard/metrics/*.md` says more than those fields hold. Measured against the built site, 941 of the 2,517 lines of the entries were absent from 215 of the 320 metric pages: the note under ARR on the two readings of the abbreviation, the year-or-renewal test and its two tables under MRR, include and exclude lists, targets, examples and most of the text of the dual-lens forms. The department page printed all of it, so the rule a reader needed sat one level up from the page a search lands on. The owner's answer to the note was "Fix it".
+
+**Decision.**
+
+- The page keeps its fixed order of sections and its anchors. Links from other pages, the tools and the research articles point at them, and a reader finds the formula in the same place on every metric.
+- `splitEntry` in `gasp-wiki-frontend/src/lib/metric-entry.ts` cuts the entry into those sections and every line lands in one of them. Six labels open a section (Definition, Formula, Benchmarks, What it tells you, Common mistakes, Sources). A block under any other label stays with the section it follows, in the order the entry gives, so the standard decides where a note reads and a new label needs no code.
+- Each section prints its authored markdown through `markdownFragmentToHtml`. The template formats nothing by hand: the earlier code that split sources and benchmarks into fields is removed.
+- The derived blocks (the computable definition, the data requirements, the access classification) stay after the formula. They come from `formulas.json` and the ontology and the entry's text never restates them.
+- The `####` parts of an entry are the dual-lens section: one card a form under the entry's own heading, the bridge outlined with a dashed line and the dual-lens note as a callout.
+- A cross-reference prints its own lines in the notice and the entry it names below. An entry with no labelled section prints where the opening line goes.
+- A `**Sources:**` line written on one line prints as a list, split at the commas outside brackets.
+
+**Alternatives.** Printing the entry as one block of markdown under the header, as the department page does: every line arrives, the anchors and the derived blocks lose their place and each page reads differently. Teaching the parser a field for each label: the labels are open (the entries use more than a hundred) and each new one would need code in the parser, the types and the template. Moving the notes in the standard under the six labels: the standard's text would bend to the site.
+
+**Consequences.** A line added to an entry reaches its page with no change to the site. `test/metric-entry.test.ts` fails when the splitter drops a line of any entry or a link has no address, and the built-page group in `site-quality.test.ts` fails when a line is absent from its page, a markdown marker prints as text or a link lands on a missing page or anchor. The same scan found 21 pages widening a 320px phone, where the breadcrumb and the rows of the Related Metrics panel held one line: both now wrap and a test holds it. The MCP tools print the parsed fields, so `lookup_metric` still lacks these notes. Carrying them there changes tool output and belongs to a release the owner decides.
+
+---
+
 ## [2026-11-27] ARR is Annual Recurring Revenue; an annualised run rate is Run-Rate Revenue, a glossary term with no formula
 
 **Context.** The owner asked: "Do we do enough to handle arr as annual recurring revenue vs arr as annualised run rate?" The answer was not quite, on three counts. The note in the ARR entry of `standard/metrics/core.md` read "ARR is used to mean two things in the industry: Annualised Run Rate = MRR × 12 ... Annual Recurring Revenue = Sum of annualised contract values ... Both are valid", which gave the name of a different measure to one of two ways of computing ARR. The ARR entry called ARR a run rate in three places and the MRR entry in one. And a lookup for "annualised run rate", "annualized run rate", "revenue run rate" or "run-rate revenue" resolved to nothing, so a company that reports a run rate as ARR had no term to be mapped to. Three changes were put to the owner, who answered "Sounds good and lets commit. Yes I want it added for 1.26.0".
