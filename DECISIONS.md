@@ -5,6 +5,37 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-28] The calculator opens the page, asks in one sentence and deals five contracts to guess
+
+**Context.** The owner asked for the calculator at `/research/does-it-count` to be more prominent ("On mobile i still need to scroll through text. Lets make this the authoritive source for this -which unfortunately means it should be the most accessible and fun"). On a 375 by 667 phone the page showed the article header, the byline and two paragraphs before the first question, and the form of 2026-11-27 asked in rows of chips (what is sold, the term, two yes or no questions), with the verdict held at the foot of the screen. Four changes were proposed and the owner took all of them ("All of the above homie").
+
+**Decision.**
+
+- **The calculator is the first thing on the page.** `ResearchLayout` takes `compact`: the header is the title and one sentence, and the byline and the two paragraphs of introduction follow the calculator. The tables, the method and the links below are unchanged.
+- **The question is one sentence.** "A customer buys product access for 6 months with no renewal, for $30,000 in total." Each underlined phrase is a choice and opens the browser's own list, so a phone shows its native picker and a screen reader reads a named list; an amount is typed in the sentence. The sentence asks in the order of the test and replaces the chip form at every width. Its words are the engine's: `kindNoun` in `recurring.ts` names the kind and a test holds the sentence equal to the title `describeContract` gives the same contract.
+- **The answer is one word.** Yes, No or In part for a contract, under "In MRR and ARR?", and Yes or No for a change, under "Moves MRR?", with the headline of 2026-11-27 beside it. The word is a field of the answer: `verdict.counts` for a contract, the count of lines that count for several and the `mrr` place of a change. It sits in one band between the sentence and the answer in full. The band holds under the site header and, while a question taller than the screen is above it, at the foot of the screen.
+- **Guess first.** A reader who arrives with no question in the address is dealt five contracts from the examples, one at a time: Yes or No, then the word with "You and the GASP Standard agree." or "You said yes. The GASP Standard says no.", then the next. After five the band shows the score with a button to share it. The answer to each card is the assessment the calculator already shows, hidden until the guess, and the served page holds it in a closed section named "Show the answer". Opening that section ends the card with no point. Changing any phrase of the sentence, choosing an example or arriving with a question in the address leaves the game.
+- **A short address.** `/does-it-count` answers 301 to `/research/does-it-count`. A shared score carries it. The canonical address and the one `classify_revenue` prints stay `/research/does-it-count`.
+- **The first screen is measured.** `npm run first-screen` opens the built page in headless Chrome as a 375 by 667 phone and fails when the question or the answer ends below the first screen. The suite runs it where Chrome is installed.
+
+**Alternatives considered.**
+
+- *Keep the chips and shorten them.* The four questions of the test as buttons are a row or more each on a phone. A sentence takes 144px at 375px wide and reads as the question it asks.
+- *Custom lists in place of native ones.* A custom list needs its own keyboard and screen reader handling and gives a phone a worse picker than its own. The native `<select>` laid over the words is the accessible one at no cost.
+- *A game on its own page.* The same engine and the same answer would sit at two addresses, and a reader who finishes the game would be a step from asking their own question. In the calculator the fifth card ends on the form.
+- *A leaderboard or a stored score.* It needs storage and an identity for a page with neither. The score lives in the page until the reader leaves and in the text they share.
+- *Move the page to `/does-it-count`.* The article index, the tool and three places on the site link the research address, and the page is an article with its tables and sources. A redirect gives the short address without a second canonical.
+
+**Consequences.**
+
+- On a 375 by 667 phone the sentence ends at 431px and the band at 590px before a guess, 660px after one and 588px for a question in the address. A change ends at 603px and a contract with several lines holds its band at the foot of the screen. At 320 by 568 the sentence fits and the two guess buttons end below the first screen.
+- The answer in full for the first card is closed until the reader guesses, so a visitor sees the question before the rule. The served page still holds every row.
+- `recurring.ts` gains one export, `kindNoun`, for the next release of `gasp-standard-mcp`. No rule, address key or tool output changed.
+- Whether Cloudflare carries a query across the redirect is untested, so the site prints the short address with no question after it.
+- `test/does-it-count.test.ts` holds the sentence against the engine's titles, the word for every kind and change, the game's state, the redirect, the order of the page and the built page; `scripts/first-screen.mjs` holds the measurement.
+
+---
+
 ## [2026-11-27] A metric page prints its whole entry, each block with the section it follows
 
 **Context.** The metric page template printed what the parser extracts from an entry: the definition, the formula block, the benchmarks, what it tells you, the common mistakes and the sources. An entry in `standard/metrics/*.md` says more than those fields hold. Measured against the built site, 941 of the 2,517 lines of the entries were absent from 215 of the 320 metric pages: the note under ARR on the two readings of the abbreviation, the year-or-renewal test and its two tables under MRR, include and exclude lists, targets, examples and most of the text of the dual-lens forms. The department page printed all of it, so the rule a reader needed sat one level up from the page a search lands on. The owner's answer to the note was "Fix it".

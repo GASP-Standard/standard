@@ -16,6 +16,7 @@ import {
   REVENUE_KINDS,
   assessContract,
   describeContract,
+  kindNoun,
   formatMoney,
   questionFromQuery,
   questionToQuery,
@@ -612,7 +613,10 @@ describe("assessContract", () => {
     for (const p of PRESETS) {
       expect(questionFromQuery(questionToQuery(p.question)), p.label).toEqual(assessContract(p.question).question);
       expect(describeContract(p.question).length, p.label).toBeGreaterThan(0);
+      // The title opens with the noun the calculator's sentence prints for the kind
+      expect(describeContract(p.question).startsWith(kindNoun(p.question.kind)), p.label).toBe(true);
     }
+    for (const kind of Object.keys(KIND_LABELS) as RevenueKind[]) expect(kindNoun(kind).length, kind).toBeGreaterThan(0);
     expect(new Set(PRESETS.map((p) => assessContract(p.question).verdict.line)).size).toBeGreaterThanOrEqual(4);
   });
 

@@ -548,6 +548,11 @@ const TERM_NOUNS: Partial<Record<RevenueKind, string>> = {
   committed_usage: "Committed usage",
 };
 
+/** What a kind sells as a contract's title names it: "Product access" for a subscription, the kind's label where it has no term */
+export function kindNoun(kind: RevenueKind): string {
+  return TERM_NOUNS[kind] ?? KIND_LABELS[kind];
+}
+
 /** The contract in words: "Product access for 6 months with no renewal" */
 export function describeContract(q: ContractQuestion): string {
   const noun = TERM_NOUNS[q.kind];

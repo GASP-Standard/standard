@@ -4,6 +4,9 @@ Changes to the GASP Standard and to the `gasp-standard-mcp` package, newest firs
 
 ## [Unreleased]
 
+### Added
+- **`kindNoun(kind)` in `recurring.ts`**: the name of a kind of revenue as the title of a contract begins with it ("Product access", "A paid pilot"), exported so the calculator at `/research/does-it-count` writes its question in the words `describeContract` uses. No tool output changes.
+
 ## [1.26.0] - 2026-11-27
 
 ### Added
