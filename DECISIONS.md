@@ -5,6 +5,30 @@ gasp-wiki-mcp server). Append new entries at the top.
 
 ---
 
+## [2026-11-28] The calculator answers on arrival: the guessing game is removed
+
+**Context.** The record below shipped that morning with a game: a reader with no question in the address was dealt five contracts and guessed yes or no before each answer showed. The owner reviewed the live page the same day: "this is not right. It should be a calculator to settle disputes, not a quiz game". Two people who disagree about a contract come to the page for the answer and the rule behind it. A game puts a guess between them and that answer and reads as a pastime, which is the wrong register for the page meant to be the authority on the question.
+
+**Decision.**
+
+- **The game is removed.** The deck, the guess buttons, the score, the share of a score and the closed section "Show the answer" are gone from the island and the lib. The page opens on its first example, a six-month contract with no renewal, with the answer showing: the word in the band and the rule under it.
+- **The band's one action is the link.** "Copy link to this answer" (on a phone, "Copy link") writes the question into the address and copies it, so one side of a dispute sends the other the same contract with the same answer.
+- **The page's one sentence says what it is for.** "Describe a contract and settle whether it counts as recurring revenue."
+- **Everything else in the record below stands.** The calculator first, the question as one sentence, the answer as one word in the band, the short address and the first-screen measurement.
+
+**Alternatives considered.**
+
+- *Keep the game behind the "Play" link in the examples column.* It would still be a quiz on the page that settles disputes, with its own state, wording and tests to keep. Removed whole.
+- *Take the short address out with the game.* It was live and is the address a person says aloud or types. It stays and Cloudflare keeps the query across it.
+
+**Consequences.**
+
+- On a 375 by 667 phone the page opens with the sentence ending at 431px and the answer at 608px. `scripts/first-screen.mjs` measures four states: as the page opens, a question in the address, a change in the address and a contract with several lines.
+- `test/does-it-count.test.ts` fails if a game, a guess, a score or a card returns to the island or the lib. It fails too if the served page puts a closed section between the reader and the rule.
+- The "Guess first" paragraph of the record below and its 590px and 660px figures describe a page that was live for part of one day.
+
+---
+
 ## [2026-11-28] The calculator opens the page, asks in one sentence and deals five contracts to guess
 
 **Context.** The owner asked for the calculator at `/research/does-it-count` to be more prominent ("On mobile i still need to scroll through text. Lets make this the authoritive source for this -which unfortunately means it should be the most accessible and fun"). On a 375 by 667 phone the page showed the article header, the byline and two paragraphs before the first question, and the form of 2026-11-27 asked in rows of chips (what is sold, the term, two yes or no questions), with the verdict held at the foot of the screen. Four changes were proposed and the owner took all of them ("All of the above homie").
@@ -31,7 +55,7 @@ gasp-wiki-mcp server). Append new entries at the top.
 - On a 375 by 667 phone the sentence ends at 431px and the band at 590px before a guess, 660px after one and 588px for a question in the address. A change ends at 603px and a contract with several lines holds its band at the foot of the screen. At 320 by 568 the sentence fits and the two guess buttons end below the first screen.
 - The answer in full for the first card is closed until the reader guesses, so a visitor sees the question before the rule. The served page still holds every row.
 - `recurring.ts` gains one export, `kindNoun`, for the next release of `gasp-standard-mcp`. No rule, address key or tool output changed.
-- Whether Cloudflare carries a query across the redirect is untested, so the site prints the short address with no question after it.
+- Cloudflare carries a query across the redirect (checked on the live site after the deploy: `/does-it-count?kind=subscription&term=1&renews=1&monthly=500` answers 301 to the page with the same query). The site prints the short address with no question after it.
 - `test/does-it-count.test.ts` holds the sentence against the engine's titles, the word for every kind and change, the game's state, the redirect, the order of the page and the built page; `scripts/first-screen.mjs` holds the measurement.
 
 ---
